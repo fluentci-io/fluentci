@@ -22,8 +22,6 @@ export async function main() {
     .action(function (_, pipeline) {
       run(pipeline);
     })
-    .command("init", new Command().description("Initialize a new pipeline"))
-    .action(() => init())
     .parse(Deno.args);
 }
 
