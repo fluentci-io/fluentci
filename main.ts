@@ -1,5 +1,4 @@
 import { Command } from "cliffy/command";
-import init from "./init.ts";
 import run from "./run.ts";
 
 export async function main() {
