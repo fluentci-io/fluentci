@@ -65,6 +65,10 @@
     "https://deno.land/x/cliffy@v1.0.0-rc.2/table/consume_words.ts": "456e75755fdf6966abdefb8b783df2855e2a8bad6ddbdf21bd748547c5fc1d4b",
     "https://deno.land/x/cliffy@v1.0.0-rc.2/table/deps.ts": "6493ba75cbe219ef74de1d1a1cf1ed72cdcb09d3eee240a16ff5fd9bb069b816",
     "https://deno.land/x/cliffy@v1.0.0-rc.2/table/row.ts": "79eb1468aafdd951e5963898cdafe0752d4ab4c519d5f847f3d8ecb8fe857d4f",
-    "https://deno.land/x/cliffy@v1.0.0-rc.2/table/table.ts": "298671e72e61f1ab18b42ae36643181993f79e29b39dc411fdc6ffd53aa04684"
+    "https://deno.land/x/cliffy@v1.0.0-rc.2/table/table.ts": "298671e72e61f1ab18b42ae36643181993f79e29b39dc411fdc6ffd53aa04684",
+    "https://deno.land/x/fluentci@v0.2.0/init.ts": "80a9c58ce67e4ed5ed80c7008427c5c63cf5e5249a9dcbcb60420a3a337e04da",
+    "https://deno.land/x/fluentci@v0.2.0/main.ts": "033facb7b3b88c7fa0197c97158ccb86a2399f42738c948e9b96fb85e9c2ec18",
+    "https://deno.land/x/fluentci@v0.2.0/run.ts": "9222bb9fdc2b772bf3092245aeca80c879f5e1dc99f1390ba0a84268ced74679",
+    "https://deno.land/x/fluentci@v0.2.0/search.ts": "afcf25047c30e636617e748cf6787350677d34f4c0338c667e44cd8eaea0896b"
   }
 }

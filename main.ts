@@ -2,6 +2,7 @@ import { Command } from "cliffy/command";
 import run from "./run.ts";
 import init from "./init.ts";
 import search from "./search.ts";
+import upgrade from "./upgrade.ts";
 
 export async function main() {
   await new Command()
@@ -37,6 +38,10 @@ export async function main() {
     .arguments("<query:string>")
     .action(async function (_, query) {
       await search(query);
+    })
+    .command("upgrade", "Upgrade FluentCI CLI to the latest version")
+    .action(async () => {
+      await upgrade();
     })
     .parse(Deno.args);
 }
