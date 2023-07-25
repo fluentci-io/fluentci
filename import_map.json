@@ -1,6 +1,7 @@
 {
   "imports": {
-    "cliffy/command": "https://deno.land/x/cliffy@v1.0.0-rc.2/command/mod.ts"
+    "cliffy/command": "https://deno.land/x/cliffy@v1.0.0-rc.2/command/mod.ts",
+    "colors": "https://deno.land/std@0.195.0/fmt/colors.ts"
   },
   "scopes": {}
 }
