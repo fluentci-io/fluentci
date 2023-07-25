@@ -2,6 +2,7 @@ async function upgrade() {
   const command = new Deno.Command(Deno.execPath(), {
     args: [
       "install",
+      "-A",
       "-r",
       "--import-map=https://deno.land/x/fluentci/import_map.json",
       "https://deno.land/x/fluentci/main.ts",
