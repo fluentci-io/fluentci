@@ -1,5 +1,7 @@
 import { Command } from "cliffy/command";
 import run from "./run.ts";
+import init from "./init.ts";
+import search from "./search.ts";
 
 export async function main() {
   await new Command()
@@ -20,6 +22,21 @@ export async function main() {
     .arguments("<pipeline:string>")
     .action(function (_, pipeline) {
       run(pipeline);
+    })
+    .command("init", "Initialize a new pipeline")
+    .arguments("[pipeline-name:string]")
+    .option("-t, --template <template>", "Initialize pipeline from template")
+    .option(
+      "-s, --standalone",
+      "Initialize pipeline as standalone project, so it can be reused in other projects"
+    )
+    .action(function (_, pipeline) {
+      init(pipeline);
+    })
+    .command("search", "Search for reusable pipelines")
+    .arguments("<query:string>")
+    .action(async function (_, query) {
+      await search(query);
     })
     .parse(Deno.args);
 }
