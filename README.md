@@ -14,6 +14,37 @@ It is also a registry of pre-built pipelines that you can use to build, test, an
 deno install -A -r https://cli.fluentci.io -n fluentci
 ```
 
+### 🚀 Usage
+
+```bash
+fluentci --help
+
+Usage:   fluentci <pipeline>
+Version: 0.1.0              
+
+Description:
+
+                                                                                      
+      ______              __  _________                                                
+     / __/ /_ _____ ___  / /_/ ___/  _/                                                
+    / _// / // / -_) _ \/ __/ /___/ /                                                  
+   /_/ /_/\_,_/\__/_//_/\__/\___/___/                                                  
+                                                                                       
+  FluentCI CLI - An Open Source CI/CD tool written in TypeScript (Deno) based on Dagger
+
+Options:
+
+  -h, --help     - Show this help.                            
+  -V, --version  - Show the version number for this program.  
+
+Commands:
+
+  init     [pipeline-name]  - Initialize a new pipeline                 
+  search   <query>          - Search for reusable pipelines             
+  upgrade                   - Upgrade FluentCI CLI to the latest version
+
+```
+
 ### 📚 Documentation
 
 [View the full documentation](https://docs.fluentci.io)
