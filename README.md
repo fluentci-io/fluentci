@@ -20,6 +20,6 @@ deno install -A -r https://cli.fluentci.io -n fluentci
 
 ### 🤝 Contributing
 
-We would love to hear your feedback or suggestions. The best way to reach us is on Discord.
+We would love to hear your feedback or suggestions. The best way to reach us is on [Discord](https://discord.gg/H7M28d9dRk).
 
 We also welcome pull requests into this repo. See [CONTRIBUTING.md](CONTRIBUTING.md) for information on setting up this repo locally.
