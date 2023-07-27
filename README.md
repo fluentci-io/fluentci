@@ -16,7 +16,7 @@ deno install -A -r https://cli.fluentci.io -n fluentci
 
 ### ✨ Quick Start
 
-Setup a new pipeline in your current directory and run it with using the following commands:
+Setup a new pipeline in your current directory and run it by using the following commands:
 
 ```bash
 fluentci init # Initialize a new pipeline in the current directory
