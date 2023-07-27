@@ -14,6 +14,15 @@ It is also a registry of pre-built pipelines that you can use to build, test, an
 deno install -A -r https://cli.fluentci.io -n fluentci
 ```
 
+### ✨ Quick Start
+
+Setup a new pipeline in your current directory and run it with using the following commands:
+
+```bash
+fluentci init # Initialize a new pipeline in the current directory
+dagger run fluentci . # Run the pipeline
+```
+
 ### 🚀 Usage
 
 ```bash
