@@ -14,6 +14,11 @@ It is also a registry of pre-built pipelines that you can use to build, test, an
 deno install -A -r https://cli.fluentci.io -n fluentci
 ```
 
+Requirements:
+- [Deno](https://deno.land) 1.35 or higher. See [Deno Installation](https://deno.land/manual/getting_started/installation) for more information.
+- [Dagger](https://dagger.io) 0.6.3 or higher. See [Dagger Installation](https://docs.dagger.io/cli/465058/install) for more information.
+
+
 ### ✨ Quick Start
 
 Setup a new pipeline in your current directory and run it by using the following commands:
