@@ -18,7 +18,9 @@ async function init(template = "base") {
     )}/zip/refs/tags/${data.version}`;
     await download(archiveUrl);
 
-    const outputDir = `${data.name}-${data.version.replace("v", "")}`;
+    const repoName = data.github_url.split("/").pop();
+
+    const outputDir = `${repoName}-${data.version.replace("v", "")}`;
     await copyDir(outputDir, ".fluentci");
     await Deno.remove(outputDir, { recursive: true });
 
