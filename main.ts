@@ -7,7 +7,7 @@ import upgrade from "./upgrade.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.2.5")
+    .version("0.2.6")
     .description(
       `
       .
@@ -31,8 +31,8 @@ export async function main() {
       "-s, --standalone",
       "Initialize pipeline as standalone project, so it can be reused in other projects"
     )
-    .action(async function (_, pipeline) {
-      await init(pipeline);
+    .action(async function (options, pipeline) {
+      await init(options, pipeline);
     })
     .command("search", "Search for reusable pipelines")
     .arguments("<query:string>")

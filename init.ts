@@ -4,7 +4,11 @@ import { decompress } from "https://deno.land/x/zip@v1.2.5/mod.ts";
 
 const BASE_URL = "https://api.fluentci.io/v1";
 
-async function init(template = "base") {
+async function init(
+  { template, standalone }: { template?: string; standalone?: boolean },
+  _name?: string
+) {
+  template = template || "base";
   if (!template.endsWith("_pipeline")) {
     template = template + "_pipeline";
   }
@@ -21,7 +25,7 @@ async function init(template = "base") {
     const repoName = data.github_url.split("/").pop();
 
     const outputDir = `${repoName}-${data.version.replace("v", "")}`;
-    await copyDir(outputDir, ".fluentci");
+    await copyDir(outputDir, standalone ? "." : ".fluentci");
     await Deno.remove(outputDir, { recursive: true });
 
     return;
