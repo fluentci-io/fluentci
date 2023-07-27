@@ -1,6 +1,9 @@
-import { downstream } from "downstream";
-import { ProgressBar } from "https://deno.land/x/downstream@0.3.3/deps/_progressbar.ts";
 import { decompress } from "https://deno.land/x/zip@v1.2.5/mod.ts";
+import {
+  TerminalSpinner,
+  SpinnerTypes,
+} from "https://deno.land/x/spinners@v1.1.2/mod.ts";
+import { green } from "https://deno.land/std@0.52.0/fmt/colors.ts";
 
 const BASE_URL = "https://api.fluentci.io/v1";
 
@@ -20,7 +23,7 @@ async function init(
       "https://github.com",
       "https://codeload.github.com"
     )}/zip/refs/tags/${data.version}`;
-    await download(archiveUrl);
+    await download(archiveUrl, template);
 
     const repoName = data.github_url.split("/").pop();
 
@@ -31,25 +34,23 @@ async function init(
     return;
   }
 
-  async function download(url: string) {
+  async function download(url: string, template: string) {
     console.log("template:", url);
-    const { progressStream, fileStream } = await downstream(url);
 
-    const progressBar = new ProgressBar({
-      title: "downloading: ",
-      total: 100,
+    const terminalSpinner = new TerminalSpinner({
+      text: `Downloading ${green(template)} template ...`,
+      spinner: SpinnerTypes.dots,
     });
+    terminalSpinner.start();
 
     const tempFilePath = await Deno.makeTempFile();
-    const tempFile = await Deno.open(tempFilePath, { write: true });
-    const fileHandlingPromise = fileStream.pipeTo(tempFile.writable);
 
-    for await (const progress of progressStream) {
-      progressBar.render(Number.parseFloat(progress));
-    }
+    const response = await fetch(url);
+    const value = await response.arrayBuffer();
 
-    // Await the file handling promise from step 3
-    await fileHandlingPromise;
+    terminalSpinner.succeed("Downloaded template");
+
+    Deno.writeFile(tempFilePath, new Uint8Array(value));
 
     await decompress(tempFilePath, ".");
 
