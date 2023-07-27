@@ -31,8 +31,8 @@ export async function main() {
       "-s, --standalone",
       "Initialize pipeline as standalone project, so it can be reused in other projects"
     )
-    .action(function (_, pipeline) {
-      init(pipeline);
+    .action(async function (_, pipeline) {
+      await init(pipeline);
     })
     .command("search", "Search for reusable pipelines")
     .arguments("<query:string>")
