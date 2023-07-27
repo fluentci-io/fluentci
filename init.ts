@@ -59,7 +59,9 @@ async function init(
 }
 
 async function copyDir(src: string, dest: string) {
-  await Deno.mkdir(dest);
+  if (dest !== ".") {
+    await Deno.mkdir(dest);
+  }
   for await (const dirEntry of Deno.readDir(src)) {
     const srcPath = `${src}/${dirEntry.name}`;
     const destPath = `${dest}/${dirEntry.name}`;
