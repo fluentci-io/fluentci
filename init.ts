@@ -5,8 +5,8 @@ import { decompress } from "https://deno.land/x/zip@v1.2.5/mod.ts";
 const BASE_URL = "https://api.fluentci.io/v1";
 
 async function init(template = "base") {
-  if (!template.endsWith("-pipeline")) {
-    template = template + "-pipeline";
+  if (!template.endsWith("_pipeline")) {
+    template = template + "_pipeline";
   }
 
   const result = await fetch(`${BASE_URL}/pipeline/${template}`);
