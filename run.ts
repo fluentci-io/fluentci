@@ -22,7 +22,9 @@ async function run(pipeline: string) {
     });
 
     await command.output();
+    return;
   }
+
   const command = new Deno.Command(Deno.execPath(), {
     args: [
       "run",
