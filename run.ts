@@ -1,6 +1,6 @@
 import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
 
-async function run(pipeline: string) {
+async function run(pipeline: string, reload = false) {
   if (pipeline === ".") {
     try {
       // verify if .fluentci directory exists
@@ -25,13 +25,17 @@ async function run(pipeline: string) {
     return;
   }
 
+  let denoModule = [
+    `--import-map=https://deno.land/x/${pipeline}/import_map.json`,
+    `https://deno.land/x/${pipeline}/src/dagger/runner.ts`,
+  ];
+
+  if (reload) {
+    denoModule = ["-r", ...denoModule];
+  }
+
   const command = new Deno.Command(Deno.execPath(), {
-    args: [
-      "run",
-      "-A",
-      `--import-map=https://deno.land/x/${pipeline}/import_map.json`,
-      `https://deno.land/x/${pipeline}/src/dagger/runner.ts`,
-    ],
+    args: ["run", "-A", ...denoModule],
   });
 
   await command.output();

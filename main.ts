@@ -7,7 +7,7 @@ import upgrade from "./upgrade.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.2.10")
+    .version("0.2.11")
     .description(
       `
       .
@@ -21,8 +21,9 @@ export async function main() {
       `
     )
     .arguments("<pipeline:string>")
-    .action(function (_, pipeline) {
-      run(pipeline);
+    .option("-r, --reload", "Reload pipeline source cache")
+    .action(function (options, pipeline) {
+      run(pipeline, options.reload);
     })
     .command("init", "Initialize a new pipeline")
     .arguments("[pipeline-name:string]")
