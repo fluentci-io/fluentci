@@ -1,5 +1,7 @@
 import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
 
+const BASE_URL = "https://api.fluentci.io/v1";
+
 async function run(pipeline: string, reload = false) {
   if (pipeline === ".") {
     try {
@@ -23,6 +25,17 @@ async function run(pipeline: string, reload = false) {
 
     await command.output();
     return;
+  }
+
+  const result = await fetch(`${BASE_URL}/pipeline/${pipeline}`);
+  const data = await result.json();
+  if (!data.github_url) {
+    console.log(
+      `Pipeline template ${green('"')}${green(pipeline)}${green(
+        '"'
+      )} not found in Fluent CI registry`
+    );
+    Deno.exit(1);
   }
 
   let denoModule = [
