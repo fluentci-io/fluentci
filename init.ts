@@ -34,29 +34,12 @@ async function init(
     return;
   }
 
-  async function download(url: string, template: string) {
-    console.log("template:", url);
-
-    const terminalSpinner = new TerminalSpinner({
-      text: `Downloading ${green(template)} template ...`,
-      spinner: SpinnerTypes.dots,
-    });
-    terminalSpinner.start();
-
-    const tempFilePath = await Deno.makeTempFile();
-
-    const response = await fetch(url);
-    const value = await response.arrayBuffer();
-
-    terminalSpinner.succeed("Downloaded template");
-
-    Deno.writeFile(tempFilePath, new Uint8Array(value));
-
-    await decompress(tempFilePath, ".");
-
-    // Cleanup the temp file
-    await Deno.remove(tempFilePath);
-  }
+  console.log(
+    `Pipeline template ${green('"')}${green(template)}${green(
+      '"'
+    )} not found in Fluent CI registry`
+  );
+  Deno.exit(1);
 }
 
 async function copyDir(src: string, dest: string) {
@@ -72,6 +55,30 @@ async function copyDir(src: string, dest: string) {
       await Deno.copyFile(srcPath, destPath);
     }
   }
+}
+
+async function download(url: string, template: string) {
+  console.log("template:", url);
+
+  const terminalSpinner = new TerminalSpinner({
+    text: `Downloading ${green(template)} template ...`,
+    spinner: SpinnerTypes.dots,
+  });
+  terminalSpinner.start();
+
+  const tempFilePath = await Deno.makeTempFile();
+
+  const response = await fetch(url);
+  const value = await response.arrayBuffer();
+
+  terminalSpinner.succeed("Downloaded template");
+
+  Deno.writeFile(tempFilePath, new Uint8Array(value));
+
+  await decompress(tempFilePath, ".");
+
+  // Cleanup the temp file
+  await Deno.remove(tempFilePath);
 }
 
 export default init;
