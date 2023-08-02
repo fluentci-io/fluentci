@@ -7,7 +7,7 @@ import upgrade from "./upgrade.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.2.11")
+    .version("0.3.1")
     .description(
       `
       .
@@ -36,9 +36,14 @@ export async function main() {
       await init(options, pipeline);
     })
     .command("search", "Search for reusable pipelines")
+    .option(
+      "-l, --limit <limit:number>",
+      "Limit the number of results, default: 100",
+      { default: 100 }
+    )
     .arguments("<query:string>")
-    .action(async function (_, query) {
-      await search(query);
+    .action(async function (options, query) {
+      await search(query, options);
     })
     .command("upgrade", "Upgrade FluentCI CLI to the latest version")
     .action(async () => {
