@@ -1,7 +1,9 @@
 import { cyan, gray, brightGreen } from "colors";
 
-async function search(query: string) {
-  const response = await fetch(`https://search.fluentci.io?q=${query}`);
+async function search(query: string, options: { limit: number }) {
+  const response = await fetch(
+    `https://search.fluentci.io?q=${query}&limit=${options.limit}`
+  );
   const { results } = await response.json();
 
   if (results.length === 0) {
