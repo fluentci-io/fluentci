@@ -33,8 +33,8 @@ dagger run fluentci . # Run the pipeline
 ```bash
 fluentci --help
 
-Usage:   fluentci <pipeline>
-Version: 0.1.0              
+Usage:   fluentci <pipeline> [jobs...]
+Version: 0.3.2             
 
 Description:
 
