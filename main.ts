@@ -7,7 +7,7 @@ import upgrade from "./upgrade.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.3.2")
+    .version("0.3.3")
     .description(
       `
       .

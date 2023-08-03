@@ -114,6 +114,7 @@
     "https://deno.land/x/fluentci@v0.2.0/main.ts": "033facb7b3b88c7fa0197c97158ccb86a2399f42738c948e9b96fb85e9c2ec18",
     "https://deno.land/x/fluentci@v0.2.0/run.ts": "9222bb9fdc2b772bf3092245aeca80c879f5e1dc99f1390ba0a84268ced74679",
     "https://deno.land/x/fluentci@v0.2.0/search.ts": "afcf25047c30e636617e748cf6787350677d34f4c0338c667e44cd8eaea0896b",
+    "https://deno.land/x/fluentci@v0.3.2/run.ts": "86c42c8ac760e110979985c68b06483d6d95e7cf033b602dc81f7616e19a6f16",
     "https://deno.land/x/math@v1.1.0/abs.ts": "d64fe603ae4bb57037f06a1a5004285b99ed016dab6bfcded07c8155efce24b7",
     "https://deno.land/x/math@v1.1.0/big/mod.ts": "ba561f56a24ecc9f03542693ed0c81166ed0c921f8017d220ec70c963e935509",
     "https://deno.land/x/math@v1.1.0/div.ts": "5dda45b8bb5c1f778f2cfb28cbee648c5c7aa818f915acce336651fd13994f07",

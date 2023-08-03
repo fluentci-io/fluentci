@@ -31,6 +31,7 @@ async function run(
     const { stderr, success } = await command.output();
     if (!success) {
       console.log(new TextDecoder().decode(stderr));
+      Deno.exit(1);
     }
     return;
   }
@@ -60,7 +61,11 @@ async function run(
     args: ["run", "-A", ...denoModule],
   });
 
-  await command.output();
+  const { stderr, success } = await command.output();
+  if (!success) {
+    console.log(new TextDecoder().decode(stderr));
+    Deno.exit(1);
+  }
 }
 
 const displayErrorMessage = () => {
