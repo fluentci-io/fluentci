@@ -2,7 +2,11 @@ import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
 
 const BASE_URL = "https://api.fluentci.io/v1";
 
-async function run(pipeline: string, reload = false) {
+async function run(
+  pipeline: string,
+  jobs: [string, ...Array<string>],
+  reload = false
+) {
   if (pipeline === ".") {
     try {
       // verify if .fluentci directory exists
@@ -18,12 +22,16 @@ async function run(pipeline: string, reload = false) {
       args: [
         "run",
         "-A",
-        `--import-map=.fluentci/import_map.json`,
-        `.fluentci/src/dagger/runner.ts`,
+        "--import-map=.fluentci/import_map.json",
+        ".fluentci/src/dagger/runner.ts",
+        ...jobs,
       ],
     });
 
-    await command.output();
+    const { stderr, success } = await command.output();
+    if (!success) {
+      console.log(new TextDecoder().decode(stderr));
+    }
     return;
   }
 
@@ -41,6 +49,7 @@ async function run(pipeline: string, reload = false) {
   let denoModule = [
     `--import-map=https://deno.land/x/${pipeline}/import_map.json`,
     `https://deno.land/x/${pipeline}/src/dagger/runner.ts`,
+    ...jobs,
   ];
 
   if (reload) {
