@@ -22,7 +22,7 @@ async function run(
         "run",
         "-A",
         "--import-map=.fluentci/import_map.json",
-        ".fluentci/src/dagger/list_jobs.ts",
+        ".fluentci/src/dagger/runner.ts",
         ...jobs,
       ],
     });
@@ -48,7 +48,7 @@ async function run(
 
   let denoModule = [
     `--import-map=https://deno.land/x/${pipeline}/import_map.json`,
-    `https://deno.land/x/${pipeline}/src/dagger/list_jobs.ts`,
+    `https://deno.land/x/${pipeline}/src/dagger/runner.ts`,
     ...jobs,
   ];
 
