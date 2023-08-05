@@ -3,11 +3,12 @@ import run from "./run.ts";
 import init from "./init.ts";
 import search from "./search.ts";
 import upgrade from "./upgrade.ts";
+import listJobs from "./list.ts";
 
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.3.3")
+    .version("0.3.4")
     .description(
       `
       .
@@ -48,6 +49,11 @@ export async function main() {
     .command("upgrade", "Upgrade FluentCI CLI to the latest version")
     .action(async () => {
       await upgrade();
+    })
+    .command("ls, list", "List all jobs in a pipeline")
+    .arguments("<pipeline:string>")
+    .action(async (_, pipeline) => {
+      await listJobs(pipeline);
     })
     .parse(Deno.args);
 }
