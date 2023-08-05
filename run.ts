@@ -1,6 +1,5 @@
 import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
-
-const BASE_URL = "https://api.fluentci.io/v1";
+import { BASE_URL } from "./consts.ts";
 
 async function run(
   pipeline: string,
@@ -23,7 +22,7 @@ async function run(
         "run",
         "-A",
         "--import-map=.fluentci/import_map.json",
-        ".fluentci/src/dagger/runner.ts",
+        ".fluentci/src/dagger/list_jobs.ts",
         ...jobs,
       ],
     });
@@ -49,7 +48,7 @@ async function run(
 
   let denoModule = [
     `--import-map=https://deno.land/x/${pipeline}/import_map.json`,
-    `https://deno.land/x/${pipeline}/src/dagger/runner.ts`,
+    `https://deno.land/x/${pipeline}/src/dagger/list_jobs.ts`,
     ...jobs,
   ];
 
