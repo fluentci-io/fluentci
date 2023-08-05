@@ -22,11 +22,14 @@ async function listJobs(pipeline: string) {
       ],
     });
 
-    const { stderr, success } = await command.output();
+    const { stdout, stderr, success } = await command.output();
     if (!success) {
       console.log(new TextDecoder().decode(stderr));
       Deno.exit(1);
     }
+
+    console.log(new TextDecoder().decode(stdout));
+
     return;
   }
 
@@ -50,11 +53,13 @@ async function listJobs(pipeline: string) {
     ],
   });
 
-  const { stderr, success } = await command.output();
+  const { stdout, stderr, success } = await command.output();
   if (!success) {
     console.log(new TextDecoder().decode(stderr));
     Deno.exit(1);
   }
+
+  console.log(new TextDecoder().decode(stdout));
 }
 
 const displayErrorMessage = () => {
