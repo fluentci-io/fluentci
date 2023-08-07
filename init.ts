@@ -31,6 +31,10 @@ async function init(
     await copyDir(outputDir, standalone ? "." : ".fluentci");
     await Deno.remove(outputDir, { recursive: true });
 
+    if (!standalone) {
+      await setupDevbox();
+    }
+
     return;
   }
 
@@ -79,6 +83,23 @@ async function download(url: string, template: string) {
 
   // Cleanup the temp file
   await Deno.remove(tempFilePath);
+}
+
+async function setupDevbox() {
+  const devboxFiles = ["devbox.json", "devbox.lock"];
+  for (const devboxFile of devboxFiles) {
+    if (exists(`.fluentci/example/${devboxFile}`) && !exists(devboxFile)) {
+      await Deno.copyFile(`.fluentci/example/${devboxFile}`, devboxFile);
+    }
+  }
+}
+
+function exists(file: string): boolean {
+  try {
+    return Deno.statSync(file).isFile;
+  } catch (_) {
+    return false;
+  }
 }
 
 export default init;
