@@ -9,7 +9,7 @@ import generateWorkflow from "./github.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.3.8")
+    .version("0.3.9")
     .description(
       `
       .
