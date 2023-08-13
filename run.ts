@@ -27,8 +27,9 @@ async function run(
       ],
     });
 
-    const { stderr, success } = await command.output();
+    const { stdout, stderr, success } = await command.output();
     if (!success) {
+      console.log(new TextDecoder().decode(stdout));
       console.log(new TextDecoder().decode(stderr));
       Deno.exit(1);
     }
@@ -60,8 +61,9 @@ async function run(
     args: ["run", "-A", ...denoModule],
   });
 
-  const { stderr, success } = await command.output();
+  const { stdout, stderr, success } = await command.output();
   if (!success) {
+    console.log(new TextDecoder().decode(stdout));
     console.log(new TextDecoder().decode(stderr));
     Deno.exit(1);
   }
