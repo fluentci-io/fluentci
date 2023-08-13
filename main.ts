@@ -4,11 +4,12 @@ import init from "./init.ts";
 import search from "./search.ts";
 import upgrade from "./upgrade.ts";
 import listJobs from "./list.ts";
+import generateWorkflow from "./github.ts";
 
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.3.8")
+    .version("0.3.9")
     .description(
       `
       .
@@ -55,6 +56,20 @@ export async function main() {
     .action(async (_, pipeline) => {
       await listJobs(pipeline);
     })
+    .command(
+      "gh, github",
+      new Command()
+        .command("init", "Initialize a new GitHub Actions workflow")
+        .option(
+          "-t, --template <template>",
+          "Initialize GitHub Action workflow from template"
+        )
+        .option("-r, --reload", "Reload pipeline source cache")
+        .action(async function ({ template, reload }) {
+          await generateWorkflow(template, reload);
+        })
+    )
+    .description("GitHub Actions integration")
     .parse(Deno.args);
 }
 
