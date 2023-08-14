@@ -9,7 +9,7 @@ import generateWorkflow from "./github.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.3.10")
+    .version("0.3.11")
     .description(
       `
       .
@@ -52,7 +52,7 @@ export async function main() {
       await upgrade();
     })
     .command("ls, list", "List all jobs in a pipeline")
-    .arguments("<pipeline:string>")
+    .arguments("[pipeline:string]")
     .action(async (_, pipeline) => {
       await listJobs(pipeline);
     })
@@ -70,6 +70,9 @@ export async function main() {
         })
     )
     .description("GitHub Actions integration")
+    .action(function () {
+      this.showHelp();
+    })
     .parse(Deno.args);
 }
 
