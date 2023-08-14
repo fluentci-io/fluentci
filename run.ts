@@ -30,8 +30,7 @@ async function run(
     const { stdout, stderr, success } = await command.output();
     if (!success) {
       console.log(new TextDecoder().decode(stdout));
-      console.log(new TextDecoder().decode(stderr));
-      Deno.exit(1);
+      throw new Error(new TextDecoder().decode(stderr));
     }
     return;
   }
@@ -64,8 +63,7 @@ async function run(
   const { stdout, stderr, success } = await command.output();
   if (!success) {
     console.log(new TextDecoder().decode(stdout));
-    console.log(new TextDecoder().decode(stderr));
-    Deno.exit(1);
+    throw new Error(new TextDecoder().decode(stderr));
   }
 }
 
