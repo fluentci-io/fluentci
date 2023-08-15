@@ -66,6 +66,8 @@ async function generateWorkflow(pipeline?: string, reload = false) {
     console.log(new TextDecoder().decode(stderr));
     Deno.exit(1);
   }
+
+  console.log("Workflow generated successfully ✅");
 }
 
 const displayErrorMessage = () => {
