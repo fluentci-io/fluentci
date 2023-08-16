@@ -34,11 +34,11 @@ dagger run fluentci . # Run the pipeline
 fluentci --help
 
 Usage:   fluentci <pipeline> [jobs...]
-Version: 0.3.2             
+Version: 0.3.12                       
 
 Description:
 
-                                                                                      
+  .                                                                                    
       ______              __  _________                                                
      / __/ /_ _____ ___  / /_/ ___/  _/                                                
     / _// / // / -_) _ \/ __/ /___/ /                                                  
@@ -50,13 +50,15 @@ Options:
 
   -h, --help     - Show this help.                            
   -V, --version  - Show the version number for this program.  
+  -r, --reload   - Reload pipeline source cache               
 
 Commands:
 
-  init     [pipeline-name]  - Initialize a new pipeline                 
-  search   <query>          - Search for reusable pipelines             
-  upgrade                   - Upgrade FluentCI CLI to the latest version
-
+  init        [pipeline-name]  - Initialize a new pipeline                 
+  search      <query>          - Search for reusable pipelines             
+  upgrade                      - Upgrade FluentCI CLI to the latest version
+  ls, list    [pipeline]       - List all jobs in a pipeline               
+  gh, github                   - GitHub Actions integration 
 ```
 
 ### 📚 Documentation
