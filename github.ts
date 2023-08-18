@@ -36,6 +36,10 @@ async function generateWorkflow(pipeline?: string, reload = false) {
     return;
   }
 
+  if (!pipeline.endsWith("_pipeline")) {
+    pipeline = pipeline + "_pipeline";
+  }
+
   const result = await fetch(`${BASE_URL}/pipeline/${pipeline}`);
   const data = await result.json();
   if (!data.github_url) {
