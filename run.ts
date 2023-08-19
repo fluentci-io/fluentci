@@ -1,6 +1,13 @@
 import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
 import { BASE_URL } from "./consts.ts";
 
+/**
+ * Runs a Fluent CI pipeline.
+ * @param pipeline - The name of the pipeline to run. If set to ".", the pipeline will be run from the current directory.
+ * @param jobs - An array of job names to run.
+ * @param reload - Whether to reload the pipeline before running it.
+ * @throws An error if the pipeline fails to run.
+ */
 async function run(
   pipeline: string,
   jobs: [string, ...Array<string>],

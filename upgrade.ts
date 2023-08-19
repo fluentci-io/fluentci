@@ -1,3 +1,7 @@
+/**
+ * Upgrades FluentCI by installing the latest version from the Deno registry.
+ * @returns {Promise<void>}
+ */
 async function upgrade() {
   const command = new Deno.Command(Deno.execPath(), {
     args: [

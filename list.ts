@@ -1,6 +1,11 @@
 import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
 import { BASE_URL } from "./consts.ts";
 
+/**
+ * Lists the jobs in a Fluent CI pipeline.
+ * @param pipeline The name of the pipeline to list jobs for. Defaults to "." (the current directory).
+ * @returns void
+ */
 async function listJobs(pipeline = ".") {
   if (pipeline === ".") {
     try {
@@ -62,6 +67,10 @@ async function listJobs(pipeline = ".") {
   console.log(new TextDecoder().decode(stdout));
 }
 
+/**
+ * Displays an error message indicating that the directory does not contain a FluentCI pipeline.
+ * Exits the process with a non-zero status code.
+ */
 const displayErrorMessage = () => {
   console.log(
     `This directory does not contain a FluentCI pipeline. Please run ${green(

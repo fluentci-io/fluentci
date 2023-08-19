@@ -1,5 +1,11 @@
 import { cyan, gray, brightGreen } from "colors";
 
+/**
+ * Searches for packages on the FluentCI registry.
+ * @param query - The search query.
+ * @param options - The search options.
+ * @param options.limit - The maximum number of results to return.
+ */
 async function search(query: string, options: { limit: number }) {
   const response = await fetch(
     `https://search.fluentci.io?q=${query}&limit=${options.limit}`

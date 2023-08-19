@@ -7,6 +7,14 @@ import { green } from "https://deno.land/std@0.52.0/fmt/colors.ts";
 
 const BASE_URL = "https://api.fluentci.io/v1";
 
+/**
+ * Initializes a Fluent CI pipeline by fetching the specified template from the registry, downloading it, and copying it to the specified output directory.
+ * @param {Object} options - The options for the initialization.
+ * @param {string} [options.template="base"] - The name of the template to use for the pipeline.
+ * @param {boolean} [options.standalone=false] - Whether to create a standalone pipeline or not.
+ * @param {string} [_name] - The name of the pipeline.
+ * @returns {Promise<void>}
+ */
 async function init(
   { template, standalone }: { template?: string; standalone?: boolean },
   _name?: string
@@ -46,6 +54,11 @@ async function init(
   Deno.exit(1);
 }
 
+/**
+ * Copies a directory from the source to the destination.
+ * @param src The source directory.
+ * @param dest The destination directory.
+ */
 async function copyDir(src: string, dest: string) {
   if (dest !== ".") {
     await Deno.mkdir(dest);
@@ -61,6 +74,11 @@ async function copyDir(src: string, dest: string) {
   }
 }
 
+/**
+ * Downloads a template from the specified URL and extracts it to the current directory.
+ * @param url The URL of the template to download.
+ * @param template The name of the template being downloaded.
+ */
 async function download(url: string, template: string) {
   console.log("template:", url);
 
@@ -85,6 +103,9 @@ async function download(url: string, template: string) {
   await Deno.remove(tempFilePath);
 }
 
+/**
+ * Sets up the devbox configuration files.
+ */
 async function setupDevbox() {
   const devboxFiles = ["devbox.json", "devbox.lock"];
   for (const devboxFile of devboxFiles) {
