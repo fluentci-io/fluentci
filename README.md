@@ -34,7 +34,7 @@ dagger run fluentci . # Run the pipeline
 fluentci --help
 
 Usage:   fluentci <pipeline> [jobs...]
-Version: 0.3.12                       
+Version: 0.4.0                        
 
 Description:
 
@@ -54,11 +54,15 @@ Options:
 
 Commands:
 
-  init        [pipeline-name]  - Initialize a new pipeline                 
-  search      <query>          - Search for reusable pipelines             
-  upgrade                      - Upgrade FluentCI CLI to the latest version
-  ls, list    [pipeline]       - List all jobs in a pipeline               
-  gh, github                   - GitHub Actions integration 
+  init           [pipeline-name]  - Initialize a new pipeline                 
+  search         <query>          - Search for reusable pipelines             
+  upgrade                         - Upgrade FluentCI CLI to the latest version
+  ls, list       [pipeline]       - List all jobs in a pipeline               
+  gh, github                      - GitHub Actions integration                
+  gl, gitlab                      - GitLab CI integration                     
+  cci, circleci                   - CircleCI integration                      
+  ap, azure                       - Azure Pipelines integration               
+  ac, aws                         - AWS CodePipeline integration  
 ```
 
 ### 📚 Documentation
