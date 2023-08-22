@@ -42,9 +42,7 @@ async function docs(pipeline: string) {
   }
 
   const command = new Deno.Command("glow", {
-    args: [
-      `https://raw.githubusercontent.com/fluent-ci-templates/${pipeline}/main/README.md`,
-    ],
+    args: [`https://deno.land/x/${pipeline}/README.md`],
     stdout: "inherit",
     stderr: "inherit",
   });
