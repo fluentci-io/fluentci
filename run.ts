@@ -114,8 +114,8 @@ const displayErrorMessage = () => {
 const pipeToStdout = async (command: Deno.Command) => {
   const child = command.spawn();
   await child.stdout.pipeTo(Deno.stdout.writable, { preventCancel: true });
+  await child.stderr.pipeTo(Deno.stderr.writable, { preventCancel: true });
   if ((await child.status).code !== 0) {
-    await child.stderr.pipeTo(Deno.stderr.writable, { preventCancel: true });
     Deno.exit(1);
   }
 };
