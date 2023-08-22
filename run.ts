@@ -33,6 +33,7 @@ async function run(
         ...jobs,
       ],
       stdout: "piped",
+      stderr: "piped",
     });
 
     if (
@@ -52,6 +53,7 @@ async function run(
           ...jobs,
         ],
         stdout: "piped",
+        stderr: "piped",
       });
     }
 
@@ -83,6 +85,7 @@ async function run(
   let command = new Deno.Command(Deno.execPath(), {
     args: ["run", "-A", ...denoModule],
     stdout: "piped",
+    stderr: "piped",
   });
 
   if (
@@ -92,6 +95,7 @@ async function run(
     command = new Deno.Command("dagger", {
       args: ["run", "--progress", "plain", "deno", "run", "-A", ...denoModule],
       stdout: "piped",
+      stderr: "piped",
     });
   }
 
