@@ -34,7 +34,7 @@ dagger run fluentci . # Run the pipeline
 fluentci --help
 
 Usage:   fluentci <pipeline> [jobs...]
-Version: 0.4.4                      
+Version: 0.4.5                     
 
 Description:
 
@@ -63,6 +63,7 @@ Commands:
   cci, circleci                   - CircleCI integration                      
   ap, azure                       - Azure Pipelines integration               
   ac, aws                         - AWS CodePipeline integration  
+  docs, man      [pipeline]       - Show documentation for a pipeline
 ```
 
 ### 📚 Documentation
