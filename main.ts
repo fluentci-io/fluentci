@@ -9,11 +9,12 @@ import generateGitlabCIConfig from "./gitlab.ts";
 import generateAWSCodePipelineConfig from "./aws.ts";
 import generateAzurePipelinesConfig from "./azure.ts";
 import generateCircleCIConfig from "./circleci.ts";
+import docs from "./docs.ts";
 
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.4.4")
+    .version("0.4.5")
     .description(
       `
       .
@@ -144,6 +145,11 @@ export async function main() {
     .description("AWS CodePipeline integration")
     .action(function () {
       this.showHelp();
+    })
+    .command("docs, man", "Show documentation for a pipeline")
+    .arguments("<pipeline:string>")
+    .action(async function (_, pipeline) {
+      await docs(pipeline);
     })
     .parse(Deno.args);
 }
