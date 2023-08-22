@@ -35,7 +35,7 @@ async function generateAzurePipelinesConfig(pipeline?: string, reload = false) {
       Deno.exit(1);
     }
 
-    console.log("Workflow generated successfully ✅");
+    console.log(`${green("`azure-pipelines.yml`")} generated successfully ✅`);
 
     return;
   }
@@ -75,7 +75,7 @@ async function generateAzurePipelinesConfig(pipeline?: string, reload = false) {
     Deno.exit(1);
   }
 
-  console.log("Workflow generated successfully ✅");
+  console.log(`${green("`azure-pipelines.yml`")} generated successfully ✅`);
 }
 
 const displayErrorMessage = () => {

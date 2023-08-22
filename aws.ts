@@ -38,7 +38,7 @@ async function generateAWSCodePipelineConfig(
       Deno.exit(1);
     }
 
-    console.log("Workflow generated successfully ✅");
+    console.log(`${green("`buildspec.yml`")} generated successfully ✅`);
 
     return;
   }
@@ -78,7 +78,7 @@ async function generateAWSCodePipelineConfig(
     Deno.exit(1);
   }
 
-  console.log("Workflow generated successfully ✅");
+  console.log(`${green("`buildspec.yml`")} generated successfully ✅`);
 }
 
 const displayErrorMessage = () => {

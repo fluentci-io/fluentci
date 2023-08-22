@@ -35,7 +35,7 @@ async function generateGitlabCIConfig(pipeline?: string, reload = false) {
       Deno.exit(1);
     }
 
-    console.log("Workflow generated successfully ✅");
+    console.log(`${green("`.gitlab-ci.yml`")} generated successfully ✅`);
 
     return;
   }
@@ -75,7 +75,7 @@ async function generateGitlabCIConfig(pipeline?: string, reload = false) {
     Deno.exit(1);
   }
 
-  console.log("Workflow generated successfully ✅");
+  console.log(`${green("`.gitlab-ci.yml`")} generated successfully ✅`);
 }
 
 const displayErrorMessage = () => {
