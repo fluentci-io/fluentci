@@ -34,7 +34,7 @@ dagger run fluentci . # Run the pipeline
 fluentci --help
 
 Usage:   fluentci <pipeline> [jobs...]
-Version: 0.4.3                       
+Version: 0.4.4                      
 
 Description:
 

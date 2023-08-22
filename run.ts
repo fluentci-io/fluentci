@@ -32,8 +32,8 @@ async function run(
         ".fluentci/src/dagger/runner.ts",
         ...jobs,
       ],
-      stdout: "piped",
-      stderr: "piped",
+      stdout: "inherit",
+      stderr: "inherit",
     });
 
     if (
@@ -52,12 +52,12 @@ async function run(
           ".fluentci/src/dagger/runner.ts",
           ...jobs,
         ],
-        stdout: "piped",
-        stderr: "piped",
+        stdout: "inherit",
+        stderr: "inherit",
       });
     }
 
-    await pipeToStdout(command);
+    await spawnCommand(command);
     return;
   }
 
@@ -84,8 +84,8 @@ async function run(
 
   let command = new Deno.Command(Deno.execPath(), {
     args: ["run", "-A", ...denoModule],
-    stdout: "piped",
-    stderr: "piped",
+    stdout: "inherit",
+    stderr: "inherit",
   });
 
   if (
@@ -94,12 +94,12 @@ async function run(
   ) {
     command = new Deno.Command("dagger", {
       args: ["run", "--progress", "plain", "deno", "run", "-A", ...denoModule],
-      stdout: "piped",
-      stderr: "piped",
+      stdout: "inherit",
+      stderr: "inherit",
     });
   }
 
-  await pipeToStdout(command);
+  await spawnCommand(command);
 }
 
 const displayErrorMessage = () => {
@@ -111,10 +111,8 @@ const displayErrorMessage = () => {
   Deno.exit(1);
 };
 
-const pipeToStdout = async (command: Deno.Command) => {
+const spawnCommand = async (command: Deno.Command) => {
   const child = command.spawn();
-  await child.stdout.pipeTo(Deno.stdout.writable, { preventCancel: true });
-  await child.stderr.pipeTo(Deno.stderr.writable, { preventCancel: true });
   if ((await child.status).code !== 0) {
     Deno.exit(1);
   }
