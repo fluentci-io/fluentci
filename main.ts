@@ -13,7 +13,7 @@ import generateCircleCIConfig from "./circleci.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.4.2")
+    .version("0.4.3")
     .description(
       `
       .
