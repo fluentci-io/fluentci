@@ -147,7 +147,7 @@ export async function main() {
       this.showHelp();
     })
     .command("docs, man", "Show documentation for a pipeline")
-    .arguments("<pipeline:string>")
+    .arguments("[pipeline:string]")
     .action(async function (_, pipeline) {
       await docs(pipeline);
     })

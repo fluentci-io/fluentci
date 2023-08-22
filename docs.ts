@@ -1,7 +1,7 @@
 import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
 import { BASE_URL } from "./consts.ts";
 
-async function docs(pipeline: string) {
+async function docs(pipeline = ".") {
   // verify if glow is installed
 
   if (pipeline === ".") {
