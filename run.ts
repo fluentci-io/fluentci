@@ -43,8 +43,6 @@ async function run(
       command = new Deno.Command("dagger", {
         args: [
           "run",
-          "--progress",
-          "plain",
           "deno",
           "run",
           "-A",
@@ -93,7 +91,7 @@ async function run(
     !Deno.env.has("DAGGER_SESSION_TOKEN")
   ) {
     command = new Deno.Command("dagger", {
-      args: ["run", "--progress", "plain", "deno", "run", "-A", ...denoModule],
+      args: ["run", "deno", "run", "-A", ...denoModule],
       stdout: "inherit",
       stderr: "inherit",
     });
