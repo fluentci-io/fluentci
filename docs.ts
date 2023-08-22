@@ -17,14 +17,14 @@ async function docs(pipeline: string) {
 
     const command = new Deno.Command("glow", {
       args: [".fluentci/README.md"],
-      stdout: "piped",
+      stdout: "inherit",
+      stderr: "inherit",
     });
 
-    const { stdout, stderr, success } = await command.output();
-    console.log(new TextDecoder().decode(stdout));
+    const { status } = await command.spawn();
 
-    if (!success) {
-      throw new Error(new TextDecoder().decode(stderr));
+    if ((await status).code !== 0) {
+      Deno.exit(1);
     }
 
     return;
@@ -45,13 +45,13 @@ async function docs(pipeline: string) {
     args: [
       `https://raw.githubusercontent.com/fluent-ci-templates/${pipeline}/main/README.md`,
     ],
+    stdout: "inherit",
+    stderr: "inherit",
   });
 
-  const { stdout, stderr, success } = await command.output();
-  console.log(new TextDecoder().decode(stdout));
-
-  if (!success) {
-    throw new Error(new TextDecoder().decode(stderr));
+  const { status } = await command.spawn();
+  if ((await status).code !== 0) {
+    Deno.exit(1);
   }
 }
 
