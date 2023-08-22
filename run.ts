@@ -24,7 +24,7 @@ async function run(
       displayErrorMessage();
     }
 
-    const command = new Deno.Command(Deno.execPath(), {
+    let command = new Deno.Command(Deno.execPath(), {
       args: [
         "run",
         "-A",
@@ -32,13 +32,30 @@ async function run(
         ".fluentci/src/dagger/runner.ts",
         ...jobs,
       ],
+      stdout: "piped",
     });
 
-    const { stdout, stderr, success } = await command.output();
-    if (!success) {
-      console.log(new TextDecoder().decode(stdout));
-      throw new Error(new TextDecoder().decode(stderr));
+    if (
+      !Deno.env.has("DAGGER_SESSION_PORT") ||
+      !Deno.env.has("DAGGER_SESSION_TOKEN")
+    ) {
+      command = new Deno.Command("dagger", {
+        args: [
+          "run",
+          "--progress",
+          "plain",
+          "deno",
+          "run",
+          "-A",
+          "--import-map=.fluentci/import_map.json",
+          ".fluentci/src/dagger/runner.ts",
+          ...jobs,
+        ],
+        stdout: "piped",
+      });
     }
+
+    await pipeToStdout(command);
     return;
   }
 
@@ -63,15 +80,22 @@ async function run(
     denoModule = ["-r", ...denoModule];
   }
 
-  const command = new Deno.Command(Deno.execPath(), {
+  let command = new Deno.Command(Deno.execPath(), {
     args: ["run", "-A", ...denoModule],
+    stdout: "piped",
   });
 
-  const { stdout, stderr, success } = await command.output();
-  if (!success) {
-    console.log(new TextDecoder().decode(stdout));
-    throw new Error(new TextDecoder().decode(stderr));
+  if (
+    !Deno.env.has("DAGGER_SESSION_PORT") ||
+    !Deno.env.has("DAGGER_SESSION_TOKEN")
+  ) {
+    command = new Deno.Command("dagger", {
+      args: ["run", "--progress", "plain", "deno", "run", "-A", ...denoModule],
+      stdout: "piped",
+    });
   }
+
+  await pipeToStdout(command);
 }
 
 const displayErrorMessage = () => {
@@ -81,6 +105,15 @@ const displayErrorMessage = () => {
     )} to initialize a new pipeline.`
   );
   Deno.exit(1);
+};
+
+const pipeToStdout = async (command: Deno.Command) => {
+  const child = command.spawn();
+  await child.stdout.pipeTo(Deno.stdout.writable, { preventCancel: true });
+  if ((await child.status).code !== 0) {
+    await child.stderr.pipeTo(Deno.stderr.writable, { preventCancel: true });
+    Deno.exit(1);
+  }
 };
 
 export default run;
