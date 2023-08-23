@@ -14,7 +14,7 @@ import docs from "./docs.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.4.7")
+    .version("0.4.8")
     .description(
       `
       .
@@ -148,8 +148,13 @@ export async function main() {
     })
     .command("docs, man", "Show documentation for a pipeline")
     .arguments("[pipeline:string]")
-    .action(async function (_, pipeline) {
-      await docs(pipeline);
+    .option("--gl, --gitlab", "Show GitLab CI documentation")
+    .option("--gh, --github", "Show GitHub Actions documentation")
+    .option("--cci, --circleci", "Show CircleCI documentation")
+    .option("--ap, --azure", "Show Azure Pipelines documentation")
+    .option("--ac, --aws", "Show AWS CodePipeline documentation")
+    .action(async function (options, pipeline) {
+      await docs(options, pipeline);
     })
     .parse(Deno.args);
 }

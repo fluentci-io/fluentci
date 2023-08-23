@@ -1,7 +1,16 @@
 import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
 import { BASE_URL } from "./consts.ts";
 
-async function docs(pipeline = ".") {
+async function docs(
+  options: {
+    gl?: unknown;
+    gh?: unknown;
+    cci?: unknown;
+    ap?: unknown;
+    ac?: unknown;
+  },
+  pipeline = "."
+) {
   // verify if glow is installed
 
   if (pipeline === ".") {
@@ -16,7 +25,7 @@ async function docs(pipeline = ".") {
     }
 
     const command = new Deno.Command("glow", {
-      args: [".fluentci/README.md"],
+      args: [`.fluentci/${buildREADMEPath(options)}`],
       stdout: "inherit",
       stderr: "inherit",
     });
@@ -42,7 +51,7 @@ async function docs(pipeline = ".") {
   }
 
   const command = new Deno.Command("glow", {
-    args: [`https://deno.land/x/${pipeline}/README.md`],
+    args: [`https://deno.land/x/${pipeline}/${buildREADMEPath(options)}`],
     stdout: "inherit",
     stderr: "inherit",
   });
@@ -60,6 +69,36 @@ const displayErrorMessage = () => {
     )} to initialize a new pipeline.`
   );
   Deno.exit(1);
+};
+
+const buildREADMEPath = (options: {
+  gl?: unknown;
+  gh?: unknown;
+  cci?: unknown;
+  ap?: unknown;
+  ac?: unknown;
+}) => {
+  if (options.gl) {
+    return "src/gitlab/README.md";
+  }
+
+  if (options.gh) {
+    return "src/github/README.md";
+  }
+
+  if (options.cci) {
+    return "src/circleci/README.md";
+  }
+
+  if (options.ap) {
+    return "src/azure/README.md";
+  }
+
+  if (options.ac) {
+    return "src/aws/README.md";
+  }
+
+  return "README.md";
 };
 
 export default docs;
