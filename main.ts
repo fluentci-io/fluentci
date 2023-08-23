@@ -14,7 +14,7 @@ import docs from "./docs.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.4.8")
+    .version("0.4.9")
     .description(
       `
       .
@@ -27,6 +27,12 @@ export async function main() {
              
       `
     )
+    .arguments("[pipeline:string] [jobs...:string]")
+    .option("-r, --reload", "Reload pipeline source cache")
+    .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
+      run(pipeline || ".", jobs, options.reload);
+    })
+    .command("run", "Run a pipeline")
     .arguments("<pipeline:string> [jobs...:string]")
     .option("-r, --reload", "Reload pipeline source cache")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
