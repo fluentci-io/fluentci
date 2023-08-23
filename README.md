@@ -25,7 +25,7 @@ Setup a new pipeline in your current directory and run it by using the following
 
 ```bash
 fluentci init # Initialize a new pipeline in the current directory
-dagger run fluentci . # Run the pipeline
+fluentci # Run the pipeline
 ```
 
 ### 🚀 Usage
@@ -33,7 +33,7 @@ dagger run fluentci . # Run the pipeline
 ```bash
 fluentci --help
 
-Usage:   fluentci <pipeline> [jobs...]
+Usage:   fluentci [pipeline] [jobs...]
 Version: 0.4.9                    
 
 Description:
