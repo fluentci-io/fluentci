@@ -53,17 +53,18 @@ Options:
   -r, --reload   - Reload pipeline source cache               
 
 Commands:
-
-  init           [pipeline-name]  - Initialize a new pipeline                 
-  search         <query>          - Search for reusable pipelines             
-  upgrade                         - Upgrade FluentCI CLI to the latest version
-  ls, list       [pipeline]       - List all jobs in a pipeline               
-  gh, github                      - GitHub Actions integration                
-  gl, gitlab                      - GitLab CI integration                     
-  cci, circleci                   - CircleCI integration                      
-  ap, azure                       - Azure Pipelines integration               
-  ac, aws                         - AWS CodePipeline integration  
-  docs, man      [pipeline]       - Show documentation for a pipeline
+  
+  run            <pipeline> [jobs...]  - Run a pipeline
+  init           [pipeline-name]       - Initialize a new pipeline                 
+  search         <query>               - Search for reusable pipelines             
+  upgrade                              - Upgrade FluentCI CLI to the latest version
+  ls, list       [pipeline]            - List all jobs in a pipeline               
+  gh, github                           - GitHub Actions integration                
+  gl, gitlab                           - GitLab CI integration                     
+  cci, circleci                        - CircleCI integration                      
+  ap, azure                            - Azure Pipelines integration               
+  ac, aws                              - AWS CodePipeline integration  
+  docs, man      [pipeline]            - Show documentation for a pipeline
 ```
 
 ### 📚 Documentation
