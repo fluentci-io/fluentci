@@ -2,8 +2,8 @@ import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
 import { BASE_URL } from "./consts.ts";
 
 /**
- * Lists the jobs in a Fluent CI pipeline.
- * @param pipeline The name of the pipeline to list jobs for. Defaults to "." (the current directory).
+ * Fetches a pipeline template from https://deno.land/x and caches it using Deno cache command.
+ * @param pipeline - The name of the pipeline template to be cached.
  * @returns void
  */
 async function cache(pipeline: string) {
