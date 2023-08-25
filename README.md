@@ -58,6 +58,7 @@ Commands:
   init           [pipeline-name]       - Initialize a new pipeline                 
   search         <query>               - Search for reusable pipelines             
   upgrade                              - Upgrade FluentCI CLI to the latest version
+  cache          <pipeline>            - Cache and compile remote dependencies of a pipeline
   ls, list       [pipeline]            - List all jobs in a pipeline               
   gh, github                           - GitHub Actions integration                
   gl, gitlab                           - GitLab CI integration                     
