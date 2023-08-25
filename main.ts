@@ -10,11 +10,12 @@ import generateAWSCodePipelineConfig from "./aws.ts";
 import generateAzurePipelinesConfig from "./azure.ts";
 import generateCircleCIConfig from "./circleci.ts";
 import docs from "./docs.ts";
+import cache from "./cache.ts";
 
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.4.9")
+    .version("0.4.10")
     .description(
       `
       .
@@ -61,6 +62,13 @@ export async function main() {
     .command("upgrade", "Upgrade FluentCI CLI to the latest version")
     .action(async () => {
       await upgrade();
+    })
+    .command(
+      "cache <pipeline:string>",
+      "Cache and compile remote dependencies of a pipeline"
+    )
+    .action(async function (_, pipeline) {
+      await cache(pipeline);
     })
     .command("ls, list", "List all jobs in a pipeline")
     .arguments("[pipeline:string]")
