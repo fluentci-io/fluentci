@@ -15,7 +15,7 @@ import cache from "./cache.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.4.10")
+    .version("0.5.0")
     .description(
       `
       .
