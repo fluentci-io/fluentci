@@ -56,8 +56,8 @@ async function generateGitlabCIConfig(pipeline?: string, reload = false) {
   }
 
   let denoModule = [
-    `--import-map=https://deno.land/x/${pipeline}/import_map.json`,
-    `https://deno.land/x/${pipeline}/src/gitlab/init.ts`,
+    `--import-map=https://cdn.jsdelivr.net/gh/${data.repo_name}@${data.version}/import_map.json`,
+    `https://cdn.jsdelivr.net/gh/${data.repo_name}@${data.version}/src/gitlab/init.ts`,
   ];
 
   if (reload) {

@@ -71,8 +71,8 @@ async function run(
   }
 
   let denoModule = [
-    `--import-map=https://deno.land/x/${pipeline}/import_map.json`,
-    `https://deno.land/x/${pipeline}/src/dagger/runner.ts`,
+    `--import-map=https://cdn.jsdelivr.net/gh/${data.repo_name}@${data.version}/import_map.json`,
+    `https://cdn.jsdelivr.net/gh/${data.repo_name}@${data.version}/src/dagger/runner.ts`,
     ...jobs,
   ];
 

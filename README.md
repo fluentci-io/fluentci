@@ -34,7 +34,7 @@ fluentci # Run the pipeline
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.4.10                    
+Version: 0.5.0                 
 
 Description:
 
