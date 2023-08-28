@@ -52,9 +52,9 @@ async function docs(
 
   const command = new Deno.Command("glow", {
     args: [
-      `https://cdn.jsdelivr.net/gh/${data.repo_name}@${
-        data.version
-      }/${buildREADMEPath(options)}`,
+      `https://pkg.fluentci.io/${pipeline}@${data.version}/${buildREADMEPath(
+        options
+      )}`,
     ],
     stdout: "inherit",
     stderr: "inherit",
