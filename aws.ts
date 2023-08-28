@@ -59,8 +59,8 @@ async function generateAWSCodePipelineConfig(
   }
 
   let denoModule = [
-    `--import-map=https://cdn.jsdelivr.net/gh/${data.repo_name}@${data.version}/import_map.json`,
-    `https://cdn.jsdelivr.net/gh/${data.repo_name}@${data.version}/src/aws/init.ts`,
+    `--import-map=https://pkg.fluentci.io/${data.repo_name}@${data.version}/import_map.json`,
+    `https://pkg.fluentci.io/${data.repo_name}@${data.version}/src/aws/init.ts`,
   ];
 
   if (reload) {
