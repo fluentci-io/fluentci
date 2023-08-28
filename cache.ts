@@ -21,8 +21,8 @@ async function cache(pipeline: string) {
   const command = new Deno.Command(Deno.execPath(), {
     args: [
       "cache",
-      `--import-map=https://pkg.fluentci.io/${data.repo_name}@${data.version}/import_map.json`,
-      `https://pkg.fluentci.io/${data.repo_name}@${data.version}/src/dagger/list_jobs.ts`,
+      `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
+      `https://pkg.fluentci.io/${pipeline}@${data.version}/src/dagger/list_jobs.ts`,
     ],
     stderr: "inherit",
     stdout: "inherit",
