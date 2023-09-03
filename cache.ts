@@ -23,6 +23,7 @@ async function cache(pipeline: string) {
       "cache",
       `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
       `https://pkg.fluentci.io/${pipeline}@${data.version}/src/dagger/list_jobs.ts`,
+      "--reload"
     ],
     stderr: "inherit",
     stdout: "inherit",
