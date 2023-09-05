@@ -66,6 +66,7 @@ Commands:
   ap, azure                            - Azure Pipelines integration               
   ac, aws                              - AWS CodePipeline integration  
   docs, man      [pipeline]            - Show documentation for a pipeline
+  doctor                               - Check if FluentCI CLI is installed correctly
 ```
 
 ### 📚 Documentation
