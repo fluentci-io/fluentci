@@ -1,6 +1,7 @@
 import { green, red } from "https://deno.land/std@0.192.0/fmt/colors.ts";
 
 async function doctor() {
+  console.log("Doctor summary:");
   const glowOk = await verifyGlow();
   const denoOk = await verifyDeno();
   const daggerOk = await verifyDagger();
