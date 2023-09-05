@@ -11,11 +11,12 @@ import generateAzurePipelinesConfig from "./azure.ts";
 import generateCircleCIConfig from "./circleci.ts";
 import docs from "./docs.ts";
 import cache from "./cache.ts";
+import doctor from "./doctor.ts";
 
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.5.3")
+    .version("0.5.4")
     .description(
       `
       .
@@ -169,6 +170,10 @@ export async function main() {
     .option("--ac, --aws", "Show AWS CodePipeline documentation")
     .action(async function (options, pipeline) {
       await docs(options, pipeline);
+    })
+    .command("doctor", "Check if FluentCI CLI is installed correctly")
+    .action(async function () {
+      await doctor();
     })
     .parse(Deno.args);
 }

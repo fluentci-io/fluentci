@@ -34,7 +34,7 @@ fluentci # Run the pipeline
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.5.3               
+Version: 0.5.4               
 
 Description:
 
@@ -66,6 +66,7 @@ Commands:
   ap, azure                            - Azure Pipelines integration               
   ac, aws                              - AWS CodePipeline integration  
   docs, man      [pipeline]            - Show documentation for a pipeline
+  doctor                               - Check if FluentCI CLI is installed correctly
 ```
 
 ### 📚 Documentation
