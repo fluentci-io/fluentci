@@ -1,5 +1,11 @@
-import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
-import { BASE_URL } from "./consts.ts";
+import {
+  cyan,
+  bold,
+  green,
+  magenta,
+} from "https://deno.land/std@0.192.0/fmt/colors.ts";
+import { BASE_URL, FLUENTCI_API_URL, FLUENTCI_WS_URL } from "./consts.ts";
+import { LogEventSchema } from "./types.ts";
 
 /**
  * Runs a Fluent CI pipeline.
@@ -22,6 +28,11 @@ async function run(
       }
     } catch (_) {
       displayErrorMessage();
+    }
+
+    if (Deno.env.has("FLUENTCI_TOKEN")) {
+      await runPipelineRemotely(pipeline, jobs);
+      return;
     }
 
     let command = new Deno.Command(Deno.execPath(), {
@@ -80,6 +91,11 @@ async function run(
     denoModule = ["-r", ...denoModule];
   }
 
+  if (Deno.env.has("FLUENTCI_TOKEN")) {
+    await runPipelineRemotely(pipeline, jobs, denoModule);
+    return;
+  }
+
   let command = new Deno.Command(Deno.execPath(), {
     args: ["run", "-A", ...denoModule],
     stdout: "inherit",
@@ -114,6 +130,107 @@ const spawnCommand = async (command: Deno.Command) => {
   if ((await child.status).code !== 0) {
     Deno.exit(1);
   }
+};
+
+const runPipelineRemotely = async (
+  pipeline: string,
+  jobs: [string, ...Array<string>],
+  denoModule?: string[]
+) => {
+  const response = await fetch(`${FLUENTCI_API_URL}/connect`, {
+    headers: {
+      Authorization: `Basic ${btoa(Deno.env.get("FLUENTCI_TOKEN") + ":")}`,
+    },
+  });
+  const { id } = await response.json();
+  console.log(`=> Connected to Fluent CI session ${green(id)}`);
+
+  const websocket = new WebSocket(`${FLUENTCI_WS_URL}?id=${id}`);
+
+  const operations: Record<string, number> = {};
+
+  let previousOpId = 0;
+
+  websocket.addEventListener("message", (event) => {
+    const log = LogEventSchema.parse(JSON.parse(event.data));
+
+    if (log.payload.internal) {
+      return;
+    }
+
+    operations[log.payload.op_id] =
+      operations[log.payload.op_id] || Object.keys(operations).length + 1;
+
+    if (previousOpId !== operations[log.payload.op_id]) {
+      console.log("");
+    }
+
+    previousOpId = operations[log.payload.op_id];
+
+    console.log(
+      `${magenta(operations[log.payload.op_id] + ":")} > in ${bold(
+        log.payload.pipeline?.map((x) => x.name).filter((x) => x !== "")[0] ||
+          ""
+      )}`
+    );
+    console.log(
+      magenta(`${operations[log.payload.op_id]}:`),
+      log.payload.op_name,
+      // log.payload.op_id,
+      log.payload.cached
+        ? cyan("CACHED")
+        : log.payload.completed
+        ? green("DONE")
+        : ""
+    );
+  });
+
+  if (pipeline === ".") {
+    const command = new Deno.Command(Deno.execPath(), {
+      args: [
+        "run",
+        "-A",
+        "--import-map=.fluentci/import_map.json",
+        ".fluentci/src/dagger/runner.ts",
+        ...jobs,
+      ],
+      env: {
+        FLUENTCI_SESSION_ID: id,
+      },
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    await spawnCommand(command);
+    await fetch(`${FLUENTCI_API_URL}/context`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Basic ${btoa(Deno.env.get("FLUENTCI_TOKEN") + ":")}`,
+        "X-FluentCI-Session-ID": id,
+      },
+    });
+    websocket.close();
+    Deno.exit(0);
+  }
+
+  const command = new Deno.Command(Deno.execPath(), {
+    args: ["run", "-A", ...denoModule!],
+    env: {
+      FLUENTCI_SESSION_ID: id,
+    },
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+
+  await spawnCommand(command);
+  await fetch(`${FLUENTCI_API_URL}/context`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Basic ${btoa(Deno.env.get("FLUENTCI_TOKEN") + ":")}`,
+      "X-FluentCI-Session-ID": id,
+    },
+  });
+  websocket.close();
+  Deno.exit(0);
 };
 
 export default run;
