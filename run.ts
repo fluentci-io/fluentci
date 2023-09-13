@@ -169,8 +169,10 @@ const runPipelineRemotely = async (
 
     console.log(
       `${magenta(operations[log.payload.op_id] + ":")} > in ${bold(
-        log.payload.pipeline?.map((x) => x.name).filter((x) => x !== "")[0] ||
-          ""
+        purple(
+          log.payload.pipeline?.map((x) => x.name).filter((x) => x !== "")[0] ||
+            ""
+        )
       )}`
     );
     console.log(
@@ -232,5 +234,9 @@ const runPipelineRemotely = async (
   websocket.close();
   Deno.exit(0);
 };
+
+function purple(text: string) {
+  return `\x1b[95m${text}\x1b[0m`;
+}
 
 export default run;
