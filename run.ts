@@ -154,7 +154,7 @@ const runPipelineRemotely = async (
   websocket.addEventListener("message", (event) => {
     const log = LogEventSchema.parse(JSON.parse(event.data));
 
-    if (log.payload.internal) {
+    if (log.payload.internal || log.payload.pipeline === null) {
       return;
     }
 
