@@ -6,6 +6,7 @@ import {
 } from "https://deno.land/std@0.192.0/fmt/colors.ts";
 import { BASE_URL, FLUENTCI_API_URL, FLUENTCI_WS_URL } from "./consts.ts";
 import { LogEventSchema } from "./types.ts";
+import fs from "node:fs";
 
 /**
  * Runs a Fluent CI pipeline.
@@ -64,6 +65,29 @@ async function run(
         stdout: "inherit",
         stderr: "inherit",
       });
+    }
+
+    let jobFileExists = true;
+    const commands = [];
+    for (const job of jobs) {
+      if (!fs.existsSync(`.fluentci/${job}.ts`)) {
+        jobFileExists = false;
+        break;
+      }
+      commands.push(
+        new Deno.Command("dagger", {
+          args: ["run", "deno", "run", "-A", `.fluentci/${job}.ts`],
+          stdout: "inherit",
+          stderr: "inherit",
+        })
+      );
+    }
+
+    if (jobFileExists) {
+      for (const command of commands) {
+        await spawnCommand(command);
+      }
+      return;
     }
 
     await spawnCommand(command);
