@@ -1,7 +1,7 @@
 ## Fluent CI CLI
 
 [![deno module](https://shield.deno.dev/x/fluentci)](https://deno.land/x/fluentci)
-![deno compatibility](https://shield.deno.dev/deno/^1.34)
+![deno compatibility](https://shield.deno.dev/deno/^1.37)
 
 Fluent CI is a CI/CD tool that allows you to build, test, and deploy your code. It is a self-hosted solution built on top of [Dagger](https://dagger.io) and [Deno](https://deno.land/), can be run locally or on a server, and is completely free and open-source.
 
