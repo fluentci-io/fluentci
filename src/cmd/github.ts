@@ -1,14 +1,14 @@
-import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
-import { BASE_URL } from "./consts.ts";
+import { green } from "../../deps.ts";
+import { BASE_URL } from "../consts.ts";
 
 /**
- * Generates a CircleCI file based on a pipeline template.
+ * Generates a GitHub workflow file based on a pipeline template.
  * @param pipeline - The name of the pipeline template to use. If not provided, it will use the pipeline template specified in the `.fluentci` directory.
  * @param reload - Whether to reload the pipeline template from the registry or use the cached version.
  * @returns void
  */
-async function generateCircleCIConfig(pipeline?: string, reload = false) {
-  await Deno.mkdir(".circleci");
+async function generateWorkflow(pipeline?: string, reload = false) {
+  await Deno.mkdir(".github/workflows", { recursive: true });
 
   if (!pipeline) {
     try {
@@ -26,7 +26,7 @@ async function generateCircleCIConfig(pipeline?: string, reload = false) {
         "run",
         "-A",
         "--import-map=.fluentci/import_map.json",
-        ".fluentci/src/circleci/init.ts",
+        ".fluentci/src/github/init.ts",
       ],
     });
 
@@ -37,7 +37,7 @@ async function generateCircleCIConfig(pipeline?: string, reload = false) {
       Deno.exit(1);
     }
 
-    console.log(`${green("`.circleci/config.yml`")} generated successfully ✅`);
+    console.log("Workflow generated successfully ✅");
 
     return;
   }
@@ -59,7 +59,7 @@ async function generateCircleCIConfig(pipeline?: string, reload = false) {
 
   let denoModule = [
     `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
-    `https://pkg.fluentci.io/${pipeline}@${data.version}/src/circleci/init.ts`,
+    `https://pkg.fluentci.io/${pipeline}@${data.version}/src/github/init.ts`,
   ];
 
   if (reload) {
@@ -77,7 +77,7 @@ async function generateCircleCIConfig(pipeline?: string, reload = false) {
     Deno.exit(1);
   }
 
-  console.log(`${green("`.circleci/config.yml`")} generated successfully ✅`);
+  console.log("Workflow generated successfully ✅");
 }
 
 const displayErrorMessage = () => {
@@ -89,4 +89,4 @@ const displayErrorMessage = () => {
   Deno.exit(1);
 };
 
-export default generateCircleCIConfig;
+export default generateWorkflow;

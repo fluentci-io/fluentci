@@ -1,13 +1,14 @@
-import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
-import { BASE_URL } from "./consts.ts";
+import { green } from "../../deps.ts";
+import { BASE_URL } from "../consts.ts";
 
 /**
- * Lists the jobs in a Fluent CI pipeline.
- * @param pipeline The name of the pipeline to list jobs for. Defaults to "." (the current directory).
+ * Generates Azure Pipelines file based on a pipeline template.
+ * @param pipeline - The name of the pipeline template to use. If not provided, it will use the pipeline template specified in the `.fluentci` directory.
+ * @param reload - Whether to reload the pipeline template from the registry or use the cached version.
  * @returns void
  */
-async function listJobs(pipeline = ".") {
-  if (pipeline === ".") {
+async function generateAzurePipelinesConfig(pipeline?: string, reload = false) {
+  if (!pipeline) {
     try {
       // verify if .fluentci directory exists
       const fluentciDir = await Deno.stat(".fluentci");
@@ -23,19 +24,24 @@ async function listJobs(pipeline = ".") {
         "run",
         "-A",
         "--import-map=.fluentci/import_map.json",
-        ".fluentci/src/dagger/list_jobs.ts",
+        ".fluentci/src/azure/init.ts",
       ],
     });
 
     const { stdout, stderr, success } = await command.output();
     if (!success) {
+      console.log(new TextDecoder().decode(stdout));
       console.log(new TextDecoder().decode(stderr));
       Deno.exit(1);
     }
 
-    console.log(new TextDecoder().decode(stdout));
+    console.log(`${green("`azure-pipelines.yml`")} generated successfully ✅`);
 
     return;
+  }
+
+  if (!pipeline.endsWith("_pipeline")) {
+    pipeline = pipeline + "_pipeline";
   }
 
   const result = await fetch(`${BASE_URL}/pipeline/${pipeline}`);
@@ -49,28 +55,29 @@ async function listJobs(pipeline = ".") {
     Deno.exit(1);
   }
 
+  let denoModule = [
+    `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
+    `https://pkg.fluentci.io/${pipeline}@${data.version}/src/azure/init.ts`,
+  ];
+
+  if (reload) {
+    denoModule = ["-r", ...denoModule];
+  }
+
   const command = new Deno.Command(Deno.execPath(), {
-    args: [
-      "run",
-      "-A",
-      `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
-      `https://pkg.fluentci.io/${pipeline}@${data.version}/src/dagger/list_jobs.ts`,
-    ],
+    args: ["run", "-A", ...denoModule],
   });
 
   const { stdout, stderr, success } = await command.output();
   if (!success) {
+    console.log(new TextDecoder().decode(stdout));
     console.log(new TextDecoder().decode(stderr));
     Deno.exit(1);
   }
 
-  console.log(new TextDecoder().decode(stdout));
+  console.log(`${green("`azure-pipelines.yml`")} generated successfully ✅`);
 }
 
-/**
- * Displays an error message indicating that the directory does not contain a FluentCI pipeline.
- * Exits the process with a non-zero status code.
- */
 const displayErrorMessage = () => {
   console.log(
     `This directory does not contain a FluentCI pipeline. Please run ${green(
@@ -80,4 +87,4 @@ const displayErrorMessage = () => {
   Deno.exit(1);
 };
 
-export default listJobs;
+export default generateAzurePipelinesConfig;

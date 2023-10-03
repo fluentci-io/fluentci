@@ -1,16 +1,15 @@
-import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
-import { BASE_URL } from "./consts.ts";
+import { green } from "../../deps.ts";
+import { BASE_URL } from "../consts.ts";
 
 /**
- * Generates AWS CodePipeline file based on a pipeline template.
+ * Generates a CircleCI file based on a pipeline template.
  * @param pipeline - The name of the pipeline template to use. If not provided, it will use the pipeline template specified in the `.fluentci` directory.
  * @param reload - Whether to reload the pipeline template from the registry or use the cached version.
  * @returns void
  */
-async function generateAWSCodePipelineConfig(
-  pipeline?: string,
-  reload = false
-) {
+async function generateCircleCIConfig(pipeline?: string, reload = false) {
+  await Deno.mkdir(".circleci");
+
   if (!pipeline) {
     try {
       // verify if .fluentci directory exists
@@ -27,7 +26,7 @@ async function generateAWSCodePipelineConfig(
         "run",
         "-A",
         "--import-map=.fluentci/import_map.json",
-        ".fluentci/src/aws/init.ts",
+        ".fluentci/src/circleci/init.ts",
       ],
     });
 
@@ -38,7 +37,7 @@ async function generateAWSCodePipelineConfig(
       Deno.exit(1);
     }
 
-    console.log(`${green("`buildspec.yml`")} generated successfully ✅`);
+    console.log(`${green("`.circleci/config.yml`")} generated successfully ✅`);
 
     return;
   }
@@ -60,7 +59,7 @@ async function generateAWSCodePipelineConfig(
 
   let denoModule = [
     `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
-    `https://pkg.fluentci.io/${pipeline}@${data.version}/src/aws/init.ts`,
+    `https://pkg.fluentci.io/${pipeline}@${data.version}/src/circleci/init.ts`,
   ];
 
   if (reload) {
@@ -78,7 +77,7 @@ async function generateAWSCodePipelineConfig(
     Deno.exit(1);
   }
 
-  console.log(`${green("`buildspec.yml`")} generated successfully ✅`);
+  console.log(`${green("`.circleci/config.yml`")} generated successfully ✅`);
 }
 
 const displayErrorMessage = () => {
@@ -90,4 +89,4 @@ const displayErrorMessage = () => {
   Deno.exit(1);
 };
 
-export default generateAWSCodePipelineConfig;
+export default generateCircleCIConfig;

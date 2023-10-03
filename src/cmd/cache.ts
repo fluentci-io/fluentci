@@ -1,5 +1,5 @@
-import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
-import { BASE_URL } from "./consts.ts";
+import { green } from "../../deps.ts";
+import { BASE_URL } from "../consts.ts";
 
 /**
  * Fetches a pipeline template from https://deno.land/x and caches it using Deno cache command.
@@ -23,7 +23,7 @@ async function cache(pipeline: string) {
       "cache",
       `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
       `https://pkg.fluentci.io/${pipeline}@${data.version}/src/dagger/list_jobs.ts`,
-      "--reload"
+      "--reload",
     ],
     stderr: "inherit",
     stdout: "inherit",

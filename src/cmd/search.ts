@@ -1,4 +1,4 @@
-import { cyan, gray, brightGreen } from "colors";
+import { cyan, gray, brightGreen } from "../../deps.ts";
 
 /**
  * Searches for packages on the FluentCI registry.

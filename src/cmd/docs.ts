@@ -1,5 +1,5 @@
-import { green } from "https://deno.land/std@0.192.0/fmt/colors.ts";
-import { BASE_URL } from "./consts.ts";
+import { green } from "../../deps.ts";
+import { BASE_URL } from "../consts.ts";
 
 async function docs(
   options: {

@@ -1,4 +1,4 @@
-import { green, red } from "https://deno.land/std@0.192.0/fmt/colors.ts";
+import { green, red } from "../../deps.ts";
 
 async function doctor() {
   console.log("Doctor summary:");

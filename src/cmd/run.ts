@@ -1,11 +1,6 @@
-import {
-  cyan,
-  bold,
-  green,
-  magenta,
-} from "https://deno.land/std@0.192.0/fmt/colors.ts";
-import { BASE_URL, FLUENTCI_API_URL, FLUENTCI_WS_URL } from "./consts.ts";
-import { LogEventSchema } from "./types.ts";
+import { cyan, bold, green, magenta } from "../../deps.ts";
+import { BASE_URL, FLUENTCI_API_URL, FLUENTCI_WS_URL } from "../consts.ts";
+import { LogEventSchema } from "../types.ts";
 import fs from "node:fs";
 
 /**
