@@ -1,4 +1,4 @@
-import { decompress } from "https://deno.land/x/zip@v1.2.5/mod.ts";
+import { decompress } from "../../deps.ts";
 import {
   TerminalSpinner,
   SpinnerTypes,

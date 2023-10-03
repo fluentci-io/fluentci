@@ -1,17 +1,17 @@
 import { Command } from "cliffy/command";
-import run from "./run.ts";
-import init from "./init.ts";
-import search from "./search.ts";
-import upgrade from "./upgrade.ts";
-import listJobs from "./list.ts";
-import generateWorkflow from "./github.ts";
-import generateGitlabCIConfig from "./gitlab.ts";
-import generateAWSCodePipelineConfig from "./aws.ts";
-import generateAzurePipelinesConfig from "./azure.ts";
-import generateCircleCIConfig from "./circleci.ts";
-import docs from "./docs.ts";
-import cache from "./cache.ts";
-import doctor from "./doctor.ts";
+import run from "./src/cmd/run.ts";
+import init from "./src/cmd/init.ts";
+import search from "./src/cmd/search.ts";
+import upgrade from "./src/cmd/upgrade.ts";
+import listJobs from "./src/cmd/list.ts";
+import generateWorkflow from "./src/cmd/github.ts";
+import generateGitlabCIConfig from "./src/cmd/gitlab.ts";
+import generateAWSCodePipelineConfig from "./src/cmd/aws.ts";
+import generateAzurePipelinesConfig from "./src/cmd/azure.ts";
+import generateCircleCIConfig from "./src/cmd/circleci.ts";
+import docs from "./src/cmd/docs.ts";
+import cache from "./src/cmd/cache.ts";
+import doctor from "./src/cmd/doctor.ts";
 
 export async function main() {
   await new Command()
