@@ -1,5 +1,6 @@
 # Fluent CI CLI
 
+[![FlakeHub](https://img.shields.io/endpoint?url=https://flakehub.com/f/fluentci-io/fluentci/badge)](https://flakehub.com/flake/fluentci-io/fluentci)
 [![deno module](https://shield.deno.dev/x/fluentci)](https://deno.land/x/fluentci)
 ![deno compatibility](https://shield.deno.dev/deno/^1.37)
 [![discord](https://img.shields.io/discord/1132020671262773358?label=discord&logo=discord&color=5865F2)](https://discord.gg/V4U6dPskKc)
