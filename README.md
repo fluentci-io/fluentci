@@ -4,13 +4,13 @@
 ![deno compatibility](https://shield.deno.dev/deno/^1.37)
 [![discord](https://img.shields.io/discord/1132020671262773358?label=discord&logo=discord&color=5865F2)](https://discord.gg/V4U6dPskKc)
 
-Fluent CI is a CI/CD tool that allows you to build, test, and deploy your code. It is a self-hosted solution built on top of [Dagger](https://dagger.io) and [Deno](https://deno.land/), can be run locally or on a server, and is completely free and open-source.
+Fluent CI is a CI/CD tool that allows you to build, test, and deploy your code. It is a self-hosted solution built on top of [Dagger](https://dagger.io) and [Deno](https://deno.com/), can be run locally or on a server, and is completely free and open-source.
 
 It is also a registry of pre-built pipelines that you can use to build, test, and deploy your code. This means you don't have to write your CI/CD configuration from scratch. You can simply search for and use pipelines that others have already built for frameworks like Django, React, Node, etc.
 
 
 ## 🚚 Installation
-using [Deno](https://deno.land) (recommended):
+using [Deno](https://deno.com) (recommended):
 
 ```bash
 deno install -A -r https://cli.fluentci.io -n fluentci
@@ -23,7 +23,7 @@ nix profile install --experimental-features "nix-command flakes" github:fluentci
 ```
 
 Requirements:
-- [Deno](https://deno.land) 1.37 or higher. See [Deno Installation](https://deno.land/manual/getting_started/installation) for more information.
+- [Deno](https://deno.com) 1.37 or higher. See [Deno Installation](https://deno.land/manual/getting_started/installation) for more information.
 - [Dagger](https://dagger.io) 0.8.4 or higher. See [Dagger Installation](https://docs.dagger.io/cli/465058/install) for more information.
 
 
