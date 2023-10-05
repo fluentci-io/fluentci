@@ -10,9 +10,16 @@ It is also a registry of pre-built pipelines that you can use to build, test, an
 
 
 ## 🚚 Installation
+using [Deno](https://deno.land) (recommended):
 
 ```bash
 deno install -A -r https://cli.fluentci.io -n fluentci
+```
+
+using [Nix](https://nixos.org):
+
+```bash
+nix profile install --experimental-features "nix-command flakes" github:fluentci-io/fluentci
 ```
 
 Requirements:
