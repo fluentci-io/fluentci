@@ -1,5 +1,5 @@
 {
-  "version": "2",
+  "version": "3",
   "remote": {
     "https://cdn.skypack.dev/-/big.js@v5.2.2-sUR8fKsGHRxsJyqyvOSP/dist=es2019,mode=imports/optimized/bigjs.js": "b6d8e6af0c1f7bdc7e8cd0890819ecee2dcbb0776ec4089eae281de8ebd7b2bd",
     "https://cdn.skypack.dev/big.js@^5.2.2": "f74e8935c06af6664d64a5534d1d6db1ab66649df8164696117ab5a1cd10714e",
@@ -41,6 +41,7 @@
     "https://deno.land/std@0.192.0/console/unicode_width.ts": "86ced742f92a12ab313e60e45201d076a4af5e9819728fdd358205e78e5d48e1",
     "https://deno.land/std@0.192.0/fmt/colors.ts": "d67e3cd9f472535241a8e410d33423980bec45047e343577554d3356e1f0ef4e",
     "https://deno.land/std@0.195.0/fmt/colors.ts": "a7eecffdf3d1d54db890723b303847b6e0a1ab4b528ba6958b8f2e754cf1b3bc",
+    "https://deno.land/std@0.203.0/fs/exists.ts": "cb59a853d84871d87acab0e7936a4dac11282957f8e195102c5a7acb42546bb8",
     "https://deno.land/std@0.52.0/fmt/colors.ts": "ec9d653672a9a3c7b6eafe53c5bc797364a2db2dcf766ab649c1155fea7a80b2",
     "https://deno.land/x/cliffy@v1.0.0-rc.2/_utils/distance.ts": "02af166952c7c358ac83beae397aa2fbca4ad630aecfcd38d92edb1ea429f004",
     "https://deno.land/x/cliffy@v1.0.0-rc.2/command/_argument_types.ts": "ab269dacea2030f865a07c2a1e953ec437a64419a05bad1f1ddaab3f99752ead",
@@ -334,11 +335,6 @@
     "https://deno.land/x/zod@v3.22.2/index.ts": "d27aabd973613985574bc31f39e45cb5d856aa122ef094a9f38a463b8ef1a268",
     "https://deno.land/x/zod@v3.22.2/locales/en.ts": "a7a25cd23563ccb5e0eed214d9b31846305ddbcdb9c5c8f508b108943366ab4c",
     "https://deno.land/x/zod@v3.22.2/mod.ts": "64e55237cb4410e17d968cd08975566059f27638ebb0b86048031b987ba251c4",
-    "https://deno.land/x/zod@v3.22.2/types.ts": "18cbe3d895f42977c43fa9411da214b06d0d682cf2f4c9dd26cc8c3737740d40",
-    "https://esm.sh/extract-files@12.0.0/extractFiles.mjs": "1e8b6edc57046175f07617ba4a9af4d16dd1f87d799c833f821a5625a1eb8172",
-    "https://esm.sh/extract-files@12.0.0/isExtractableFile.mjs": "2c6e5aa23bfd6673d6d2ab5665247cc775515e4661986cc243f8a7f3dee8b075",
-    "https://esm.sh/v132/extract-files@12.0.0/denonext/extractFiles.js": "5805f5e0d319233d0ba50c732e8d8b150d8de513b8477cc6d51746f0d2ea6eb9",
-    "https://esm.sh/v132/extract-files@12.0.0/denonext/isExtractableFile.js": "93462c162e29fc0e8fd7e9de3665dfd7705f03d41d2721d654f177bc2a7fe305",
-    "https://esm.sh/v132/is-plain-obj@4.1.0/denonext/is-plain-obj.mjs": "d3d86a7174ad7935de7b00f904b6424c103bce530c502efb7f42114cbb1a555f"
+    "https://deno.land/x/zod@v3.22.2/types.ts": "18cbe3d895f42977c43fa9411da214b06d0d682cf2f4c9dd26cc8c3737740d40"
   }
 }

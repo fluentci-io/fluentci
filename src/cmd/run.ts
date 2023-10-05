@@ -1,7 +1,6 @@
-import { cyan, bold, green, magenta } from "../../deps.ts";
+import { cyan, bold, green, magenta, existsSync } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_API_URL, FLUENTCI_WS_URL } from "../consts.ts";
 import { LogEventSchema } from "../types.ts";
-import fs from "node:fs";
 
 /**
  * Runs a Fluent CI pipeline.
@@ -65,7 +64,7 @@ async function run(
     let jobFileExists = true;
     const commands = [];
     for (const job of jobs) {
-      if (!fs.existsSync(`.fluentci/${job}.ts`)) {
+      if (existsSync(`.fluentci/${job}.ts`, { isFile: true })) {
         jobFileExists = false;
         break;
       }
