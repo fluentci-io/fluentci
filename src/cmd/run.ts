@@ -1,4 +1,4 @@
-import { cyan, bold, green, magenta, existsSync } from "../../deps.ts";
+import { cyan, bold, green, magenta } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_API_URL, FLUENTCI_WS_URL } from "../consts.ts";
 import { LogEventSchema } from "../types.ts";
 
@@ -64,7 +64,8 @@ async function run(
     let jobFileExists = true;
     const commands = [];
     for (const job of jobs) {
-      if (existsSync(`.fluentci/${job}.ts`, { isFile: true })) {
+      const jobFile = await Deno.stat(`.fluentci/${job}.ts`);
+      if (!jobFile.isFile) {
         jobFileExists = false;
         break;
       }
