@@ -16,7 +16,7 @@ import doctor from "./src/cmd/doctor.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.6.4")
+    .version("0.6.5")
     .description(
       `
       .
