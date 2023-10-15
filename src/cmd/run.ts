@@ -64,8 +64,13 @@ async function run(
     let jobFileExists = true;
     const commands = [];
     for (const job of jobs) {
-      const jobFile = await Deno.stat(`.fluentci/${job}.ts`);
-      if (!jobFile.isFile) {
+      try {
+        const jobFile = await Deno.stat(`.fluentci/${job}.ts`);
+        if (!jobFile.isFile) {
+          jobFileExists = false;
+          break;
+        }
+      } catch (_) {
         jobFileExists = false;
         break;
       }
