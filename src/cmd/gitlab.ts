@@ -19,7 +19,7 @@ async function generateGitlabCIConfig(pipeline?: string, reload = false) {
       displayErrorMessage();
     }
 
-    const command = new Deno.Command(Deno.execPath(), {
+    const command = new Deno.Command("deno", {
       args: [
         "run",
         "-A",
@@ -64,7 +64,7 @@ async function generateGitlabCIConfig(pipeline?: string, reload = false) {
     denoModule = ["-r", ...denoModule];
   }
 
-  const command = new Deno.Command(Deno.execPath(), {
+  const command = new Deno.Command("deno", {
     args: ["run", "-A", ...denoModule],
   });
 

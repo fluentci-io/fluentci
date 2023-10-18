@@ -3,7 +3,7 @@
  * @returns {Promise<void>}
  */
 async function upgrade() {
-  const command = new Deno.Command(Deno.execPath(), {
+  const command = new Deno.Command("deno", {
     args: [
       "install",
       "-A",

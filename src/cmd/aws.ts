@@ -22,7 +22,7 @@ async function generateAWSCodePipelineConfig(
       displayErrorMessage();
     }
 
-    const command = new Deno.Command(Deno.execPath(), {
+    const command = new Deno.Command("deno", {
       args: [
         "run",
         "-A",
@@ -67,7 +67,7 @@ async function generateAWSCodePipelineConfig(
     denoModule = ["-r", ...denoModule];
   }
 
-  const command = new Deno.Command(Deno.execPath(), {
+  const command = new Deno.Command("deno", {
     args: ["run", "-A", ...denoModule],
   });
 

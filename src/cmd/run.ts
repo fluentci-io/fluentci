@@ -30,7 +30,7 @@ async function run(
       return;
     }
 
-    let command = new Deno.Command(Deno.execPath(), {
+    let command = new Deno.Command("deno", {
       args: [
         "run",
         "-A",
@@ -120,7 +120,7 @@ async function run(
     return;
   }
 
-  let command = new Deno.Command(Deno.execPath(), {
+  let command = new Deno.Command("deno", {
     args: ["run", "-A", ...denoModule],
     stdout: "inherit",
     stderr: "inherit",
@@ -212,7 +212,7 @@ const runPipelineRemotely = async (
   });
 
   if (pipeline === ".") {
-    const command = new Deno.Command(Deno.execPath(), {
+    const command = new Deno.Command("deno", {
       args: [
         "run",
         "-A",
@@ -238,7 +238,7 @@ const runPipelineRemotely = async (
     Deno.exit(0);
   }
 
-  const command = new Deno.Command(Deno.execPath(), {
+  const command = new Deno.Command("deno", {
     args: ["run", "-A", ...denoModule!],
     env: {
       FLUENTCI_SESSION_ID: id,

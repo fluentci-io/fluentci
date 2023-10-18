@@ -18,7 +18,7 @@ async function listJobs(pipeline = ".") {
       displayErrorMessage();
     }
 
-    const command = new Deno.Command(Deno.execPath(), {
+    const command = new Deno.Command("deno", {
       args: [
         "run",
         "-A",
@@ -49,7 +49,7 @@ async function listJobs(pipeline = ".") {
     Deno.exit(1);
   }
 
-  const command = new Deno.Command(Deno.execPath(), {
+  const command = new Deno.Command("deno", {
     args: [
       "run",
       "-A",

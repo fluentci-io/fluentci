@@ -18,7 +18,7 @@ async function cache(pipeline: string) {
     Deno.exit(1);
   }
 
-  const command = new Deno.Command(Deno.execPath(), {
+  const command = new Deno.Command("deno", {
     args: [
       "cache",
       `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
