@@ -32,7 +32,9 @@ nix profile install --experimental-features "nix-command flakes" github:fluentci
 using [Docker](https://www.docker.com) :
 
 ```bash
-docker run --privileged -v /var/run/docker.sock:/var/run/docker.sock -it ghcr.io/fluentci-io/cli:latest run base_pipeline
+docker run --privileged \
+-v /var/run/docker.sock:/var/run/docker.sock \
+-it ghcr.io/fluentci-io/cli:latest run base_pipeline
 ```
 
 Or download the binary from the [releases page](https://github.com/fluentci-io/fluentci/releases) and add it to your PATH.
