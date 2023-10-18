@@ -11,19 +11,19 @@ It is also a registry of pre-built pipelines that you can use to build, test, an
 
 
 ## 🚚 Installation
-using [Deno](https://deno.com) (recommended):
+using [Deno](https://deno.com) (recommended) :
 
 ```bash
 deno install -A -r https://cli.fluentci.io -n fluentci
 ```
 
-using [Homebrew](https://brew.sh):
+using [Homebrew](https://brew.sh) :
 
 ```bash
 brew install fluentci-io/tap/fluentci
 ```
 
-using [Nix](https://nixos.org):
+using [Nix](https://nixos.org) :
 
 ```bash
 nix profile install --experimental-features "nix-command flakes" github:fluentci-io/fluentci
