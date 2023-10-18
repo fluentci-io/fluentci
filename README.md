@@ -17,11 +17,19 @@ using [Deno](https://deno.com) (recommended):
 deno install -A -r https://cli.fluentci.io -n fluentci
 ```
 
+using [Homebrew](https://brew.sh):
+
+```bash
+brew install fluentci-io/tap/fluentci
+```
+
 using [Nix](https://nixos.org):
 
 ```bash
 nix profile install --experimental-features "nix-command flakes" github:fluentci-io/fluentci
 ```
+
+Or download the binary from the [releases page](https://github.com/fluentci-io/fluentci/releases) and add it to your PATH.
 
 Requirements:
 - [Deno](https://deno.com) 1.37 or higher. See [Deno Installation](https://deno.land/manual/getting_started/installation) for more information.
