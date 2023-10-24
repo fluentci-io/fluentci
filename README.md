@@ -20,7 +20,13 @@ deno install -A -r https://cli.fluentci.io -n fluentci
 using [Homebrew](https://brew.sh) :
 
 ```bash
-brew install fluentci-io/tap/fluentci
+brew install fluentci-io/tap/cli
+```
+
+using [Pkgx](https://pkgx.sh/) :
+
+```bash
+pkgx install fluentci
 ```
 
 using [Nix](https://nixos.org) :
