@@ -20,7 +20,7 @@ const baseCtr = (client: Client, pipeline: string) => {
         .container()
         .from("alpine:latest")
         .withExec(["apk", "update"])
-        .withExec(["apk", "add", "bash", "curl"])
+        .withExec(["apk", "add", "bash", "curl", "perl-utils"])
         .withMountedCache("/nix", client.cacheVolume("nix"))
         .withMountedCache("/etc/nix", client.cacheVolume("nix-etc"))
     );
