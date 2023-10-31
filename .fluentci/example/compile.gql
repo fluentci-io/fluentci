@@ -1,0 +1,10 @@
+{
+  deno {
+    compile(
+      src: "."
+      file: "main.ts"
+      output: "hello"
+      target: "x86_64-unknown-linux-gnu"
+    )
+  }
+}
