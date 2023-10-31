@@ -1,10 +1,10 @@
 export { assertEquals } from "https://deno.land/std@0.191.0/testing/asserts.ts";
-import Client from "https://sdk.fluentci.io/z1/mod.ts";
+import Client from "https://sdk.fluentci.io/v0.2.0/mod.ts";
 export default Client;
 
-export { connect, uploadContext } from "https://sdk.fluentci.io/z1/mod.ts";
+export { connect, uploadContext } from "https://sdk.fluentci.io/v0.2.0/mod.ts";
 export { brightGreen } from "https://deno.land/std@0.191.0/fmt/colors.ts";
-export { withDevbox } from "https://nix.fluentci.io/zenith/src/dagger/steps.ts";
+export { withDevbox } from "https://nix.fluentci.io/v0.5.2/src/dagger/steps.ts";
 export { stringifyTree } from "https://esm.sh/stringify-tree@1.1.1";
 import gql from "https://esm.sh/graphql-tag@2.12.6";
 export { gql };
