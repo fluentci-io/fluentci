@@ -25,7 +25,12 @@ const baseCtr = (client: Client, pipeline: string) => {
         .withMountedCache("/etc/nix", client.cacheVolume("nix-etc"))
     );
   }
-  return client.pipeline(pipeline).container().from("denoland/deno:alpine");
+  return client
+    .pipeline(pipeline)
+    .container()
+    .from("denoland/deno:alpine")
+    .withExec(["apk", "update"])
+    .withExec(["apk", "add", "perl-utils"]);
 };
 
 export const lint = async (src = ".") => {
