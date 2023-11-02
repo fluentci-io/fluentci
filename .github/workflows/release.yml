@@ -26,10 +26,10 @@ jobs:
           TARGET: ${{ matrix.target }}
       - name: Upload release assets
         run: |
-          export FILE=/assets/fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz
-          fluentci run github_pipeline release_upload
-          export FILE=/assets/fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz.sha256
-          fluentci run github_pipeline release_upload
+          for ext in tar.gz tar.gz.sha256; do
+            export FILE=/assets/fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.$ext
+            fluentci run github_pipeline release_upload
+          done
         env:
           TAG: ${{ env.RELEASE_VERSION }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
