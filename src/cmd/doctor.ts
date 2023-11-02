@@ -42,16 +42,21 @@ const verifyGlow = async () => {
     stderr: "piped",
   });
 
-  const { stdout, code } = await command.output();
+  try {
+    const { stdout, code } = await command.output();
 
-  if (code !== 0) {
+    if (code !== 0) {
+      console.log(`${red("[✗]")} Glow (not installed)`);
+      return false;
+    }
+
+    console.log(
+      `${green("[✓]")} Glow (${new TextDecoder().decode(stdout).trimEnd()})`
+    );
+  } catch (_) {
     console.log(`${red("[✗]")} Glow (not installed)`);
     return false;
   }
-
-  console.log(
-    `${green("[✓]")} Glow (${new TextDecoder().decode(stdout).trimEnd()})`
-  );
   return true;
 };
 
@@ -62,16 +67,21 @@ const verifyDeno = async () => {
     stderr: "piped",
   });
 
-  const { stdout, code } = await command.output();
+  try {
+    const { stdout, code } = await command.output();
 
-  if (code !== 0) {
+    if (code !== 0) {
+      console.log(`${red("[✗]")} Deno (not installed)`);
+      return false;
+    }
+
+    const version = new TextDecoder().decode(stdout).split("\n")[0].trimEnd();
+
+    console.log(`${green("[✓]")} Deno (${version})`);
+  } catch (_) {
     console.log(`${red("[✗]")} Deno (not installed)`);
     return false;
   }
-
-  const version = new TextDecoder().decode(stdout).split("\n")[0].trimEnd();
-
-  console.log(`${green("[✓]")} Deno (${version})`);
 
   return true;
 };
@@ -83,16 +93,21 @@ const verifyDagger = async () => {
     stderr: "piped",
   });
 
-  const { stdout, code } = await command.output();
+  try {
+    const { stdout, code } = await command.output();
 
-  if (code !== 0) {
+    if (code !== 0) {
+      console.log(`${red("[✗]")} Dagger (not installed)`);
+      return false;
+    }
+
+    console.log(
+      `${green("[✓]")} Dagger (${new TextDecoder().decode(stdout).trimEnd()})`
+    );
+  } catch (_) {
     console.log(`${red("[✗]")} Dagger (not installed)`);
     return false;
   }
-
-  console.log(
-    `${green("[✓]")} Dagger (${new TextDecoder().decode(stdout).trimEnd()})`
-  );
 
   return true;
 };

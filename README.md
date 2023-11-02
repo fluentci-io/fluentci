@@ -65,7 +65,7 @@ fluentci # Run the pipeline
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.6.7             
+Version: 0.6.8             
 
 Description:
 
