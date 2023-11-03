@@ -61,13 +61,13 @@ async function run(
       });
     }
 
-    let jobFileExists = true;
+    let jobFileExists = false;
     const commands = [];
     for (const job of jobs) {
       try {
         const jobFile = await Deno.stat(`.fluentci/${job}.ts`);
-        if (!jobFile.isFile) {
-          jobFileExists = false;
+        if (jobFile.isFile) {
+          jobFileExists = true;
           break;
         }
       } catch (_) {
