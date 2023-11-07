@@ -6,13 +6,13 @@ import { LogEventSchema } from "../types.ts";
  * Runs a Fluent CI pipeline.
  * @param pipeline - The name of the pipeline to run. If set to ".", the pipeline will be run from the current directory.
  * @param jobs - An array of job names to run.
- * @param reload - Whether to reload the pipeline before running it.
+ * @param options - An object of options.
  * @throws An error if the pipeline fails to run.
  */
 async function run(
   pipeline: string,
   jobs: [string, ...Array<string>],
-  reload = false
+  options: Record<string, string | number | boolean | undefined>
 ) {
   if (pipeline === ".") {
     try {
@@ -37,6 +37,10 @@ async function run(
         "--import-map=.fluentci/import_map.json",
         ".fluentci/src/dagger/runner.ts",
         ...jobs,
+        Object.keys(options)
+          .filter((key) => key !== "reload")
+          .map((key) => `--${key} ${options[key]}`)
+          .join(" "),
       ],
       stdout: "inherit",
       stderr: "inherit",
@@ -55,6 +59,10 @@ async function run(
           "--import-map=.fluentci/import_map.json",
           ".fluentci/src/dagger/runner.ts",
           ...jobs,
+          Object.keys(options)
+            .filter((key) => key !== "reload")
+            .map((key) => `--${key} ${options[key]}`)
+            .join(" "),
         ],
         stdout: "inherit",
         stderr: "inherit",
@@ -68,6 +76,23 @@ async function run(
         const jobFile = await Deno.stat(`.fluentci/${job}.ts`);
         if (jobFile.isFile) {
           jobFileExists = true;
+          commands.push(
+            new Deno.Command("dagger", {
+              args: [
+                "run",
+                "deno",
+                "run",
+                "-A",
+                `.fluentci/${job}.ts`,
+                Object.keys(options)
+                  .filter((key) => key !== "reload")
+                  .map((key) => `--${key} ${options[key]}`)
+                  .join(" "),
+              ],
+              stdout: "inherit",
+              stderr: "inherit",
+            })
+          );
           break;
         }
       } catch (_) {
@@ -76,7 +101,17 @@ async function run(
       }
       commands.push(
         new Deno.Command("dagger", {
-          args: ["run", "deno", "run", "-A", `.fluentci/${job}.ts`],
+          args: [
+            "run",
+            "deno",
+            "run",
+            "-A",
+            `.fluentci/${job}.ts`,
+            Object.keys(options)
+              .filter((key) => key !== "reload")
+              .map((key) => `--${key} ${options[key]}`)
+              .join(" "),
+          ],
           stdout: "inherit",
           stderr: "inherit",
         })
@@ -109,9 +144,13 @@ async function run(
     `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
     `https://pkg.fluentci.io/${pipeline}@${data.version}/src/dagger/runner.ts`,
     ...jobs,
+    Object.keys(options)
+      .filter((key) => key !== "reload")
+      .map((key) => `--${key} ${options[key]}`)
+      .join(" "),
   ];
 
-  if (reload) {
+  if (options.reload) {
     denoModule = ["-r", ...denoModule];
   }
 
