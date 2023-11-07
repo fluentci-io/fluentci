@@ -16,7 +16,7 @@ import doctor from "./src/cmd/doctor.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.6.9")
+    .version("0.7.0")
     .description(
       `
       .
@@ -31,14 +31,16 @@ export async function main() {
     )
     .arguments("[pipeline:string] [jobs...:string]")
     .option("-r, --reload", "Reload pipeline source cache")
+    .option("-*, --* <args:string>", "Pass arguments to pipeline")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
-      run(pipeline || ".", jobs, options.reload);
+      run(pipeline || ".", jobs, options);
     })
     .command("run", "Run a pipeline")
     .arguments("<pipeline:string> [jobs...:string]")
     .option("-r, --reload", "Reload pipeline source cache")
+    .option("-*, --* <args:string>", "Pass arguments to pipeline")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
-      run(pipeline, jobs, options.reload);
+      run(pipeline, jobs, options);
     })
     .command("init", "Initialize a new pipeline")
     .arguments("[pipeline-name:string]")
