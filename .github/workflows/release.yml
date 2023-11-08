@@ -21,7 +21,7 @@ jobs:
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
       - name: Build
         run: |
-          deno install -A -r -f -q https://deno.land/x/fluentci@v0.6.9/main.ts -n fluentci
+          deno install --import-map=https://deno.land/x/fluentci@v0.6.9/import_map.json -A -r -f https://deno.land/x/fluentci@v0.6.9/main.ts -n fluentci
           fluentci run . compile
         env:
           TAG: ${{ env.RELEASE_VERSION }}
