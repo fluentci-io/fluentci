@@ -37,10 +37,9 @@ async function run(
         "--import-map=.fluentci/import_map.json",
         ".fluentci/src/dagger/runner.ts",
         ...jobs,
-        Object.keys(options)
+        ...Object.keys(options)
           .filter((key) => key !== "reload")
-          .map((key) => `--${key} ${options[key]}`)
-          .join(" "),
+          .map((key) => `--${key}=${options[key]}`),
       ],
       stdout: "inherit",
       stderr: "inherit",
@@ -59,10 +58,9 @@ async function run(
           "--import-map=.fluentci/import_map.json",
           ".fluentci/src/dagger/runner.ts",
           ...jobs,
-          Object.keys(options)
+          ...Object.keys(options)
             .filter((key) => key !== "reload")
-            .map((key) => `--${key} ${options[key]}`)
-            .join(" "),
+            .map((key) => `--${key}=${options[key]}`),
         ],
         stdout: "inherit",
         stderr: "inherit",
@@ -84,10 +82,9 @@ async function run(
                 "run",
                 "-A",
                 `.fluentci/${job}.ts`,
-                Object.keys(options)
+                ...Object.keys(options)
                   .filter((key) => key !== "reload")
-                  .map((key) => `--${key} ${options[key]}`)
-                  .join(" "),
+                  .map((key) => `--${key}=${options[key]}`),
               ],
               stdout: "inherit",
               stderr: "inherit",
@@ -107,9 +104,9 @@ async function run(
             "run",
             "-A",
             `.fluentci/${job}.ts`,
-            Object.keys(options)
+            ...Object.keys(options)
               .filter((key) => key !== "reload")
-              .map((key) => `--${key} ${options[key]}`)
+              .map((key) => `--${key}=${options[key]}`)
               .join(" "),
           ],
           stdout: "inherit",
@@ -144,10 +141,9 @@ async function run(
     `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
     `https://pkg.fluentci.io/${pipeline}@${data.version}/src/dagger/runner.ts`,
     ...jobs,
-    Object.keys(options)
+    ...Object.keys(options)
       .filter((key) => key !== "reload")
-      .map((key) => `--${key} ${options[key]}`)
-      .join(" "),
+      .map((key) => `--${key}=${options[key]}`),
   ];
 
   if (options.reload) {
