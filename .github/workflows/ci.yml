@@ -13,4 +13,6 @@ jobs:
       - name: Setup Fluent CI
         uses: fluentci-io/setup-fluentci@v1
       - name: Run Dagger Pipelines
-        run: fluentci run deno_pipeline fmt lint
+        run: |
+          deno install -A -r -f -q https://deno.land/x/fluentci@v0.6.9/main.ts -n fluentci
+          fluentci run deno_pipeline fmt lint
