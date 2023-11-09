@@ -98,6 +98,7 @@ Commands:
   ac, aws                              - AWS CodePipeline integration  
   docs, man      [pipeline]            - Show documentation for a pipeline
   doctor                               - Check if FluentCI CLI is installed correctly
+  env                                  - Show environment variables (read from .fluentci/.env file)
 ```
 
 ## 📚 Documentation
