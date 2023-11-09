@@ -65,7 +65,7 @@ fluentci # Run the pipeline
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.7.1           
+Version: 0.8.0          
 
 Description:
 
@@ -98,6 +98,7 @@ Commands:
   ac, aws                              - AWS CodePipeline integration  
   docs, man      [pipeline]            - Show documentation for a pipeline
   doctor                               - Check if FluentCI CLI is installed correctly
+  env                                  - Show environment variables (read from .fluentci/.env file)
 ```
 
 ## 📚 Documentation

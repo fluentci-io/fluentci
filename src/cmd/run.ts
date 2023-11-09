@@ -1,4 +1,4 @@
-import { cyan, bold, green, magenta } from "../../deps.ts";
+import { cyan, bold, green, magenta, load } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_API_URL, FLUENTCI_WS_URL } from "../consts.ts";
 import { LogEventSchema } from "../types.ts";
 
@@ -14,6 +14,10 @@ async function run(
   jobs: [string, ...Array<string>],
   options: Record<string, string | number | boolean | undefined>
 ) {
+  await load({
+    envPath: ".fluentci/.env",
+    export: true,
+  });
   if (pipeline === ".") {
     try {
       // verify if .fluentci directory exists
