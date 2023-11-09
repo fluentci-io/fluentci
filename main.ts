@@ -12,11 +12,13 @@ import generateCircleCIConfig from "./src/cmd/circleci.ts";
 import docs from "./src/cmd/docs.ts";
 import cache from "./src/cmd/cache.ts";
 import doctor from "./src/cmd/doctor.ts";
+import showEnvs from "./src/cmd/env.ts";
+import { brightGreen } from "./deps.ts";
 
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.7.1")
+    .version("0.8.0")
     .description(
       `
       .
@@ -176,6 +178,15 @@ export async function main() {
     .command("doctor", "Check if FluentCI CLI is installed correctly")
     .action(async function () {
       await doctor();
+    })
+    .command(
+      "env",
+      `Show environment variables (read from ${brightGreen(
+        ".fluentci/.env"
+      )} file)`
+    )
+    .action(async function () {
+      await showEnvs();
     })
     .parse(Deno.args);
 }
