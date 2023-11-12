@@ -16,6 +16,7 @@ async function run(
 ) {
   await load({
     envPath: ".fluentci/.env",
+    examplePath: ".fluentci/.env_required",
     export: true,
   });
   if (pipeline === ".") {
