@@ -4,5 +4,20 @@
     "esm:add": "deno run -A https://esm.sh/v128 add",
     "esm:update": "deno run -A https://esm.sh/v128 update",
     "esm:remove": "deno run -A https://esm.sh/v128 remove"
+  },
+  "fmt": {
+    "exclude": [
+      ".fluentci/"
+    ]
+  },
+  "lint": {
+    "exclude": [
+      ".fluentci/"
+    ]
+  },
+  "test": {
+    "exclude": [
+      ".fluentci/"
+    ]
   }
 }
