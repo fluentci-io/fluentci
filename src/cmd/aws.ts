@@ -59,8 +59,12 @@ async function generateAWSCodePipelineConfig(
   }
 
   let denoModule = [
-    `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
-    `https://pkg.fluentci.io/${pipeline}@${data.version}/src/aws/init.ts`,
+    `--import-map=https://pkg.fluentci.io/${pipeline}@${
+      data.version || data.default_branch
+    }/import_map.json`,
+    `https://pkg.fluentci.io/${pipeline}@${
+      data.version || data.default_branch
+    }/src/aws/init.ts`,
   ];
 
   if (reload) {

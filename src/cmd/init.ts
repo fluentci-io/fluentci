@@ -27,16 +27,34 @@ async function init(
   const result = await fetch(`${BASE_URL}/pipeline/${template}`);
   const data = await result.json();
   if (data.github_url) {
-    const archiveUrl = `${data.github_url.replace(
-      "https://github.com",
-      "https://codeload.github.com"
-    )}/zip/refs/tags/${data.version}`;
+    const archiveUrl =
+      data.version && data.version.startsWith("v")
+        ? `${data.github_url.replace(
+            "https://github.com",
+            "https://codeload.github.com"
+          )}/zip/refs/tags/${data.version}`
+        : `${data.github_url.replace(
+            "https://github.com",
+            "https://api.github.com/repos"
+          )}/zipball/${data.version || data.default_branch}`;
+
     await download(archiveUrl, template);
 
     const repoName = data.github_url.split("/").pop();
 
-    const outputDir = `${repoName}-${data.version.replace("v", "")}`;
+    let outputDir = `${repoName}-${data.version.replace("v", "")}`;
+
+    if (data.directory) {
+      outputDir += `/${data.directory}`;
+      outputDir = `${data.owner}-${outputDir}`;
+    }
+
     await copyDir(outputDir, standalone ? "." : ".fluentci");
+
+    if (data.directory) {
+      outputDir = outputDir.split("/")[0];
+    }
+
     await Deno.remove(outputDir, { recursive: true });
 
     if (!standalone) {

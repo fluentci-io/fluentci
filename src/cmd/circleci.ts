@@ -58,8 +58,12 @@ async function generateCircleCIConfig(pipeline?: string, reload = false) {
   }
 
   let denoModule = [
-    `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
-    `https://pkg.fluentci.io/${pipeline}@${data.version}/src/circleci/init.ts`,
+    `--import-map=https://pkg.fluentci.io/${pipeline}@${
+      data.version || data.default_branch
+    }/import_map.json`,
+    `https://pkg.fluentci.io/${pipeline}@${
+      data.version || data.default_branch
+    }/src/circleci/init.ts`,
   ];
 
   if (reload) {

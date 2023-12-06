@@ -143,8 +143,12 @@ async function run(
   }
 
   let denoModule = [
-    `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
-    `https://pkg.fluentci.io/${pipeline}@${data.version}/src/dagger/runner.ts`,
+    `--import-map=https://pkg.fluentci.io/${pipeline}@${
+      data.version || data.default_branch
+    }/import_map.json`,
+    `https://pkg.fluentci.io/${pipeline}@${
+      data.version || data.default_branch
+    }/src/dagger/runner.ts`,
     ...jobs,
     ...Object.keys(options)
       .filter((key) => key !== "reload")

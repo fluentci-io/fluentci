@@ -53,8 +53,12 @@ async function listJobs(pipeline = ".") {
     args: [
       "run",
       "-A",
-      `--import-map=https://pkg.fluentci.io/${pipeline}@${data.version}/import_map.json`,
-      `https://pkg.fluentci.io/${pipeline}@${data.version}/src/dagger/list_jobs.ts`,
+      `--import-map=https://pkg.fluentci.io/${pipeline}@${
+        data.version || data.default_branch
+      }/import_map.json`,
+      `https://pkg.fluentci.io/${pipeline}@${
+        data.version || data.default_branch
+      }/src/dagger/list_jobs.ts`,
     ],
   });
 
