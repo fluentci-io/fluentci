@@ -25,9 +25,9 @@ async function search(query: string, options: { limit: number }) {
 
   for (const item of results) {
     console.log(
-      `* ${cyan(item.name)}${gray("@")}${gray(item.version)} - ${
-        item.description
-      }`
+      `* ${cyan(item.name)}${gray("@")}${gray(
+        item.version || item.default_branch
+      )} - ${item.description}`
     );
   }
 }
