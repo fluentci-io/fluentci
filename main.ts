@@ -14,6 +14,7 @@ import cache from "./src/cmd/cache.ts";
 import doctor from "./src/cmd/doctor.ts";
 import showEnvs from "./src/cmd/env.ts";
 import login from "./src/cmd/login.ts";
+import publish from "./src/cmd/publish.ts";
 import { brightGreen } from "./deps.ts";
 
 export async function main() {
@@ -192,6 +193,10 @@ export async function main() {
     .command("login", "Login to FluentCI")
     .action(async function () {
       await login();
+    })
+    .command("publish", "Publish a pipeline to FluentCI Registry")
+    .action(async function () {
+      await publish();
     })
     .parse(Deno.args);
 }
