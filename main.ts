@@ -13,6 +13,7 @@ import docs from "./src/cmd/docs.ts";
 import cache from "./src/cmd/cache.ts";
 import doctor from "./src/cmd/doctor.ts";
 import showEnvs from "./src/cmd/env.ts";
+import login from "./src/cmd/login.ts";
 import { brightGreen } from "./deps.ts";
 
 export async function main() {
@@ -187,6 +188,10 @@ export async function main() {
     )
     .action(async function () {
       await showEnvs();
+    })
+    .command("login", "Login to FluentCI")
+    .action(async function () {
+      await login();
     })
     .parse(Deno.args);
 }
