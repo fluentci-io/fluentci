@@ -5,12 +5,24 @@ import {
   brightGreen,
   wait,
 } from "../../deps.ts";
+import { isLogged, getAccessToken } from "../utils.ts";
 import { validatePackage, validateConfigFiles } from "../validate.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const REGISTRY_URL = "https://whole-badger-28.deno.dev";
 
 const publish = async () => {
+  if (!(await isLogged())) {
+    console.log(
+      `FLUENTCI_ACCESS_TOKEN is not set, Please login first with ${brightGreen(
+        "`fluentci login`"
+      )}`
+    );
+    Deno.exit(1);
+  }
+
+  const accessToken = getAccessToken();
+
   const entries = walkSync(".", {
     skip: parseIgnoredFiles(),
   });
@@ -53,6 +65,7 @@ const publish = async () => {
   const xhr = new XMLHttpRequest();
   xhr.open("POST", REGISTRY_URL);
   xhr.setRequestHeader("Content-Type", "application/zip");
+  xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
 
   xhr.onload = function () {
     if (xhr.status != 200) {
