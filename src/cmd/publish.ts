@@ -69,7 +69,7 @@ const publish = async () => {
 
   xhr.onload = function () {
     if (xhr.status != 200) {
-      console.log("Error " + xhr.status + ": " + xhr.statusText);
+      spinner.fail(`Failed to publish package, ${xhr.responseText}`);
     } else {
       spinner.succeed(brightGreen(" Package published successfully"));
     }
