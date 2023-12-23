@@ -1,10 +1,4 @@
-import {
-  walkSync,
-  ZipWriter,
-  BlobWriter,
-  brightGreen,
-  wait,
-} from "../../deps.ts";
+import { walk, ZipWriter, BlobWriter, brightGreen, wait } from "../../deps.ts";
 import { isLogged, getAccessToken } from "../utils.ts";
 import { validatePackage, validateConfigFiles } from "../validate.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -23,7 +17,7 @@ const publish = async () => {
 
   const accessToken = getAccessToken();
 
-  const entries = walkSync(".", {
+  const entries = walk(".", {
     skip: parseIgnoredFiles(),
   });
   const paths = [];
@@ -94,15 +88,17 @@ const publish = async () => {
 
 const parseIgnoredFiles = () => {
   let ignoredFilesArray: RegExp[] = [
-    new RegExp(".git"),
-    new RegExp(".fluentci"),
+    new RegExp("\\.git"),
+    new RegExp("\\.fluentci"),
   ];
   try {
     // verify if .fluentciignore exists
     if (Deno.statSync(".fluentciignore").isFile) {
       const ignoredFiles = Deno.readTextFileSync(".fluentciignore");
       ignoredFilesArray = ignoredFilesArray.concat(
-        ignoredFiles.split("\n").map((file) => new RegExp(file))
+        ignoredFiles
+          .split("\n")
+          .map((file) => new RegExp(file.replace(".", "\\.")))
       );
     }
   } catch (_e) {

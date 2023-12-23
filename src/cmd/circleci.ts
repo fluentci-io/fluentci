@@ -43,12 +43,16 @@ async function generateCircleCIConfig(pipeline?: string, reload = false) {
   }
 
   if (!pipeline.endsWith("_pipeline")) {
-    pipeline = pipeline + "_pipeline";
+    const result = await fetch(`${BASE_URL}/pipeline/${pipeline}`);
+    const data = await result.json();
+    if (!data.name) {
+      pipeline = pipeline + "_pipeline";
+    }
   }
 
   const result = await fetch(`${BASE_URL}/pipeline/${pipeline}`);
   const data = await result.json();
-  if (!data.github_url) {
+  if (!data.github_url && !data.version) {
     console.log(
       `Pipeline template ${green('"')}${green(pipeline)}${green(
         '"'
