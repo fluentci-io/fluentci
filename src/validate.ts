@@ -7,7 +7,10 @@ const DaggerSchema = z.object({
   include: z.array(z.string()).optional(),
   exclude: z.array(z.string()).optional(),
   dependencies: z.array(z.string()).optional(),
-  version: z.string().optional(),
+  version: z.string(),
+  description: z.string(),
+  keywords: z.array(z.string()).optional(),
+  license: z.string().optional(),
 });
 
 export const validatePackage = (entries: string[]) => {
