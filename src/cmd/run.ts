@@ -133,7 +133,7 @@ async function run(
 
   const result = await fetch(`${BASE_URL}/pipeline/${pipeline}`);
   const data = await result.json();
-  if (!data.github_url) {
+  if (!data.github_url && !data.version) {
     console.log(
       `Pipeline template ${green('"')}${green(pipeline)}${green(
         '"'
