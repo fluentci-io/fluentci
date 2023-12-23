@@ -9,7 +9,7 @@ import { BASE_URL } from "../consts.ts";
 async function cache(pipeline: string) {
   const result = await fetch(`${BASE_URL}/pipeline/${pipeline}`);
   const data = await result.json();
-  if (!data.github_url) {
+  if (!data.github_url && !data.version) {
     console.log(
       `Pipeline template ${green('"')}${green(pipeline)}${green(
         '"'
