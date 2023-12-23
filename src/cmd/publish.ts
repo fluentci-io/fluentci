@@ -35,6 +35,20 @@ const publish = async () => {
     });
   }
 
+  if (paths.length === 0) {
+    console.error("No files found in the current directory");
+    Deno.exit(1);
+  }
+
+  if (paths.length > 1000) {
+    console.error(
+      `A FluentCI package can contain a maximum of ${brightGreen(
+        "1000 files"
+      )}, found ${paths.length}`
+    );
+    Deno.exit(1);
+  }
+
   if (!validatePackage(paths.map((x) => x.path))) {
     console.error(
       `A valid FluentCI package must contain ${brightGreen(
