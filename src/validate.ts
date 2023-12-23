@@ -7,10 +7,15 @@ const DaggerSchema = z.object({
   include: z.array(z.string()).optional(),
   exclude: z.array(z.string()).optional(),
   dependencies: z.array(z.string()).optional(),
-  version: z.string(),
+  version: z
+    .string()
+    .regex(
+      /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(alpha|beta)\.([1-9]\d*|0))?$/
+    ),
   description: z.string(),
   keywords: z.array(z.string()).optional(),
   license: z.string().optional(),
+  author: z.string().optional(),
 });
 
 export const validatePackage = (entries: string[]) => {
