@@ -1,4 +1,12 @@
-import { decompress } from "../../deps.ts";
+import {
+  decompress,
+  prompt,
+  Input,
+  brightGreen,
+  Confirm,
+  R,
+  _,
+} from "../../deps.ts";
 import {
   TerminalSpinner,
   SpinnerTypes,
@@ -19,7 +27,8 @@ async function init(
   { template, standalone }: { template?: string; standalone?: boolean },
   _name?: string
 ) {
-  template = template || "base";
+  const infos = await promptPackageDetails(standalone);
+  template = template || "base_pipeline";
 
   let result = await fetch(`${BASE_URL}/pipeline/${template}`);
   let data = await result.json();
@@ -28,6 +37,11 @@ async function init(
     if (
       await downloadTemplateFromRegistry(template, data.version, standalone)
     ) {
+      if (standalone === true) {
+        await overrideDaggerJson(infos, ".");
+        return;
+      }
+      await overrideDaggerJson(infos, ".fluentci");
       return;
     }
   }
@@ -41,6 +55,11 @@ async function init(
 
   if (data.github_url) {
     await downloadTemplateFromGithub(data, template, standalone);
+    if (standalone === true) {
+      await overrideDaggerJson(infos, ".");
+      return;
+    }
+    await overrideDaggerJson(infos, ".fluentci");
     return;
   }
 
@@ -191,4 +210,105 @@ async function downloadTemplateFromRegistry(
   return false;
 }
 
+async function promptPackageDetails(standalone?: boolean) {
+  console.log(`👋 Welcome to ${brightGreen("Fluent CI")}!\n`);
+  console.log(`This utility will walk you through creating a new pipeline.`);
+  console.log(
+    `It only covers the most common items, and tries to guess sensible defaults.\n`
+  );
+  console.log(
+    `Use ${brightGreen(
+      "`fluentci run <pkg>`"
+    )} to run a published pipeline, or ${brightGreen(
+      "`fluentci publish`"
+    )} to publish one.\n`
+  );
+  console.log(`See ${brightGreen("`fluentci help`")} for more information.\n`);
+  console.log(`Press ${brightGreen("CTRL+C")} at any time to quit.\n`);
+  const infos = await prompt([
+    {
+      name: "name",
+      message: "package name",
+      type: Input,
+      default: Deno.cwd().split("/").pop(),
+    },
+    {
+      name: "version",
+      message: "version",
+      type: Input,
+      default: "v0.1.0",
+    },
+    {
+      name: "description",
+      message: "description",
+      type: Input,
+    },
+    {
+      name: "keywords",
+      message: "keywords",
+      type: Input,
+    },
+    {
+      name: "author",
+      message: "author",
+      type: Input,
+    },
+    {
+      name: "license",
+      message: "license",
+      type: Input,
+      default: "MIT",
+    },
+  ]);
+
+  console.log(
+    `\n✨ About to create a new${
+      standalone ? " reusable " : " "
+    }pipeline in ${brightGreen(Deno.cwd())}\n`
+  );
+
+  console.log("📦 Package details:\n");
+  const meta = {
+    ...infos,
+    keywords: infos.keywords?.split(",").map((keyword) => keyword.trim()),
+  };
+  if (R.equals(meta.keywords, [""])) {
+    delete meta.keywords;
+  }
+  console.log(meta);
+
+  const { confirm } = await prompt([
+    {
+      name: "confirm",
+      message: "Is this OK? (yes)",
+      type: Confirm,
+    },
+  ]);
+
+  if (!confirm) {
+    console.log("Aborting");
+    Deno.exit(1);
+  }
+
+  return meta;
+}
+
+async function overrideDaggerJson(infos: Record<string, unknown>, path = ".") {
+  const dagger = await Deno.readFile(`${path}/dagger.json`);
+  // deno-lint-ignore no-explicit-any
+  const daggerJson: Record<string, any> = JSON.parse(
+    new TextDecoder().decode(dagger)
+  );
+  for (const key of Object.keys(infos)) {
+    daggerJson[key] = _.get(infos, key);
+  }
+  await Deno.writeFile(
+    `${path}/dagger.json`,
+    new TextEncoder().encode(JSON.stringify(daggerJson, null, 2))
+  );
+
+  if (R.equals(path, ".fluentci")) {
+    await Deno.copyFile(".fluentci/dagger.json", "dagger.json");
+  }
+}
 export default init;
