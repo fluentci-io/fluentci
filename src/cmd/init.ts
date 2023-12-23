@@ -20,47 +20,27 @@ async function init(
   _name?: string
 ) {
   template = template || "base";
-  if (!template.endsWith("_pipeline")) {
-    template = template + "_pipeline";
+
+  let result = await fetch(`${BASE_URL}/pipeline/${template}`);
+  let data = await result.json();
+
+  if (data.version) {
+    if (
+      await downloadTemplateFromRegistry(template, data.version, standalone)
+    ) {
+      return;
+    }
   }
 
-  const result = await fetch(`${BASE_URL}/pipeline/${template}`);
-  const data = await result.json();
+  if (!template.endsWith("_pipeline")) {
+    template += "_pipeline";
+  }
+
+  result = await fetch(`${BASE_URL}/pipeline/${template}`);
+  data = await result.json();
+
   if (data.github_url) {
-    const archiveUrl =
-      data.version && data.version.startsWith("v")
-        ? `${data.github_url.replace(
-            "https://github.com",
-            "https://codeload.github.com"
-          )}/zip/refs/tags/${data.version}`
-        : `${data.github_url.replace(
-            "https://github.com",
-            "https://api.github.com/repos"
-          )}/zipball/${data.version || data.default_branch}`;
-
-    await download(archiveUrl, template);
-
-    const repoName = data.github_url.split("/").pop();
-
-    let outputDir = `${repoName}-${data.version.replace("v", "")}`;
-
-    if (data.directory) {
-      outputDir += `/${data.directory}`;
-      outputDir = `${data.owner}-${outputDir}`;
-    }
-
-    await copyDir(outputDir, standalone ? "." : ".fluentci");
-
-    if (data.directory) {
-      outputDir = outputDir.split("/")[0];
-    }
-
-    await Deno.remove(outputDir, { recursive: true });
-
-    if (!standalone) {
-      await setupDevbox();
-    }
-
+    await downloadTemplateFromGithub(data, template, standalone);
     return;
   }
 
@@ -139,6 +119,76 @@ function exists(file: string): boolean {
   } catch (_) {
     return false;
   }
+}
+
+async function downloadTemplateFromGithub(
+  data: {
+    github_url: string;
+    version: string;
+    default_branch: string;
+    directory?: string;
+    owner: string;
+  },
+  template: string,
+  standalone?: boolean
+) {
+  const archiveUrl =
+    data.version && data.version.startsWith("v")
+      ? `${data.github_url.replace(
+          "https://github.com",
+          "https://codeload.github.com"
+        )}/zip/refs/tags/${data.version}`
+      : `${data.github_url.replace(
+          "https://github.com",
+          "https://api.github.com/repos"
+        )}/zipball/${data.version || data.default_branch}`;
+
+  await download(archiveUrl, template);
+
+  const repoName = data.github_url.split("/").pop();
+
+  let outputDir = `${repoName}-${data.version.replace("v", "")}`;
+
+  if (data.directory) {
+    outputDir += `/${data.directory}`;
+    outputDir = `${data.owner}-${outputDir}`;
+  }
+
+  await copyDir(outputDir, standalone ? "." : ".fluentci");
+
+  if (data.directory) {
+    outputDir = outputDir.split("/")[0];
+  }
+
+  await Deno.remove(outputDir, { recursive: true });
+
+  if (!standalone) {
+    await setupDevbox();
+  }
+}
+
+async function downloadTemplateFromRegistry(
+  template: string,
+  version: string,
+  standalone?: boolean
+) {
+  const status = await fetch(
+    `https://pkg.fluentci.io/${template}@${version}`
+  ).then((res) => res.status);
+  if (status === 200) {
+    await download(`https://pkg.fluentci.io/${template}@${version}`, template);
+
+    const outputDir = `${template}/${version}`;
+    await copyDir(outputDir, standalone ? "." : ".fluentci");
+
+    await Deno.remove(template, { recursive: true });
+
+    if (!standalone) {
+      await setupDevbox();
+    }
+    return true;
+  }
+  return false;
 }
 
 export default init;
