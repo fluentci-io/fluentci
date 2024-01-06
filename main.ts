@@ -35,6 +35,7 @@ export async function main() {
       `
     )
     .arguments("[pipeline:string] [jobs...:string]")
+    .option("--remote", "Run pipeline remotely")
     .option("-r, --reload", "Reload pipeline source cache")
     .option("-*, --* <args:string>", "Pass arguments to pipeline")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
@@ -42,6 +43,7 @@ export async function main() {
     })
     .command("run", "Run a pipeline")
     .arguments("<pipeline:string> [jobs...:string]")
+    .option("--remote", "Run pipeline remotely")
     .option("-r, --reload", "Reload pipeline source cache")
     .option("-*, --* <args:string>", "Pass arguments to pipeline")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
