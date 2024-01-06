@@ -36,3 +36,6 @@ import * as R from "https://deno.land/x/ramda@v0.27.2/mod.ts";
 export { R };
 import * as _ from "https://cdn.skypack.dev/lodash";
 export { _ };
+import Logger from "https://deno.land/x/logger@v1.1.3/logger.ts";
+export { Logger };
+export { generateName } from "https://deno.land/x/docker_names@v1.1.0/mod.ts";
