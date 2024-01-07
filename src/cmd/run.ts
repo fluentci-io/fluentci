@@ -5,8 +5,10 @@ import {
   Logger,
   walk,
   ZipWriter,
+  dayjs,
+  Buffer,
 } from "../../deps.ts";
-import { BASE_URL, FLUENTCI_WS_URL } from "../consts.ts";
+import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
 import { getAccessToken, isLogged } from "../utils.ts";
 
 /**
@@ -37,7 +39,7 @@ async function run(
       displayErrorMessage();
     }
 
-    if (options.remote) {
+    if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
       await runPipelineRemotely(pipeline, jobs);
       return;
     }
@@ -51,7 +53,6 @@ async function run(
         ...jobs,
         ...Object.keys(options)
           .filter((key) => key !== "reload")
-          .filter((key) => key !== "remote")
           .map((key) => `--${key}=${options[key]}`),
       ],
       stdout: "inherit",
@@ -73,7 +74,6 @@ async function run(
           ...jobs,
           ...Object.keys(options)
             .filter((key) => key !== "reload")
-            .filter((key) => key !== "remote")
             .map((key) => `--${key}=${options[key]}`),
         ],
         stdout: "inherit",
@@ -98,7 +98,6 @@ async function run(
                 `.fluentci/${job}.ts`,
                 ...Object.keys(options)
                   .filter((key) => key !== "reload")
-                  .filter((key) => key !== "remote")
                   .map((key) => `--${key}=${options[key]}`),
               ],
               stdout: "inherit",
@@ -121,7 +120,6 @@ async function run(
             `.fluentci/${job}.ts`,
             ...Object.keys(options)
               .filter((key) => key !== "reload")
-              .filter((key) => key !== "remote")
               .map((key) => `--${key}=${options[key]}`)
               .join(" "),
           ],
@@ -163,7 +161,6 @@ async function run(
     ...jobs,
     ...Object.keys(options)
       .filter((key) => key !== "reload")
-      .filter((key) => key !== "remote")
       .map((key) => `--${key}=${options[key]}`),
   ];
 
@@ -171,7 +168,7 @@ async function run(
     denoModule = ["-r", ...denoModule];
   }
 
-  if (options.remote) {
+  if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
     await runPipelineRemotely(pipeline, jobs, denoModule);
     return;
   }
@@ -228,7 +225,7 @@ const runPipelineRemotely = async (
 
   const logger = new Logger();
   logger.info("🚀 Running pipeline remotely ...");
-  const id = "ecstatic_pike_622";
+  const id = Deno.env.get("FLUENTCI_PROJECT_ID");
 
   const websocket = new WebSocket(`${FLUENTCI_WS_URL}?id=${id}`);
 
@@ -236,7 +233,7 @@ const runPipelineRemotely = async (
     console.log(event.data);
   });
 
-  const _accessToken = getAccessToken();
+  const accessToken = getAccessToken();
 
   const entries = walk(".", {
     skip: parseIgnoredFiles(),
@@ -263,7 +260,12 @@ const runPipelineRemotely = async (
   for await (const { path, isFile } of paths) {
     if (isFile) {
       const file = await Deno.open(path);
-      await zipWriter.add(path, file);
+      await zipWriter.add(path, file, {
+        // this is required to make sure the zip file is deterministic
+        // so that the hash of the zip file is always the same
+        lastAccessDate: dayjs("2024-01-07T18:30:04.810Z").toDate(),
+        lastModDate: dayjs("2024-01-07T18:30:04.810Z").toDate(),
+      });
     }
   }
 
@@ -271,7 +273,23 @@ const runPipelineRemotely = async (
   logger.info("🌎 Uploading context ...");
 
   const blob = await blobWriter.getData();
-  // TODO: Upload blob to server
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", RUNNER_URL);
+  xhr.setRequestHeader("Content-Type", "application/zip");
+  xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+
+  xhr.onload = function () {
+    if (xhr.status != 200) {
+      logger.error("❌ Failed to upload context");
+      Deno.exit(1);
+    } else {
+      logger.info("✅ Context uploaded successfully");
+      Deno.exit(0);
+    }
+  };
+
+  xhr.send(blob);
 };
 
 const parseIgnoredFiles = () => {

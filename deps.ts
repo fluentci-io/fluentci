@@ -39,3 +39,7 @@ export { _ };
 import Logger from "https://deno.land/x/logger@v1.1.3/logger.ts";
 export { Logger };
 export { generateName } from "https://deno.land/x/docker_names@v1.1.0/mod.ts";
+import dayjs from "npm:dayjs";
+export { dayjs };
+import { Buffer } from "npm:buffer";
+export { Buffer };
