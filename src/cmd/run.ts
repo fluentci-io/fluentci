@@ -1,6 +1,14 @@
-import { cyan, bold, green, magenta, load } from "../../deps.ts";
-import { BASE_URL, FLUENTCI_API_URL, FLUENTCI_WS_URL } from "../consts.ts";
-import { LogEventSchema } from "../types.ts";
+import {
+  BlobWriter,
+  green,
+  load,
+  Logger,
+  walk,
+  ZipWriter,
+  dayjs,
+} from "../../deps.ts";
+import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
+import { getAccessToken, isLogged } from "../utils.ts";
 
 /**
  * Runs a Fluent CI pipeline.
@@ -30,7 +38,7 @@ async function run(
       displayErrorMessage();
     }
 
-    if (Deno.env.has("FLUENTCI_TOKEN")) {
+    if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
       await runPipelineRemotely(pipeline, jobs);
       return;
     }
@@ -159,7 +167,7 @@ async function run(
     denoModule = ["-r", ...denoModule];
   }
 
-  if (Deno.env.has("FLUENTCI_TOKEN")) {
+  if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
     await runPipelineRemotely(pipeline, jobs, denoModule);
     return;
   }
@@ -205,106 +213,108 @@ const runPipelineRemotely = async (
   jobs: [string, ...Array<string>],
   denoModule?: string[]
 ) => {
-  const response = await fetch(`${FLUENTCI_API_URL}/connect`, {
-    headers: {
-      Authorization: `Basic ${btoa(Deno.env.get("FLUENTCI_TOKEN") + ":")}`,
-    },
-  });
-  const { id } = await response.json();
-  console.log(`=> Connected to Fluent CI session ${green(id)}`);
+  if (!(await isLogged())) {
+    console.log(
+      `You must be logged in to run a pipeline remotely. Run ${green(
+        "`fluentci login`"
+      )} to log in.`
+    );
+    Deno.exit(1);
+  }
+
+  const logger = new Logger();
+  logger.info("🚀 Running pipeline remotely ...");
+  const id = Deno.env.get("FLUENTCI_PROJECT_ID");
 
   const websocket = new WebSocket(`${FLUENTCI_WS_URL}?id=${id}`);
 
-  const operations: Record<string, number> = {};
-
-  let previousOpId = 0;
-
   websocket.addEventListener("message", (event) => {
-    const log = LogEventSchema.parse(JSON.parse(event.data));
-
-    if (log.payload.internal || log.payload.pipeline === null) {
-      return;
-    }
-
-    operations[log.payload.op_id] =
-      operations[log.payload.op_id] || Object.keys(operations).length + 1;
-
-    if (previousOpId !== operations[log.payload.op_id]) {
-      console.log("");
-    }
-
-    previousOpId = operations[log.payload.op_id];
-
-    console.log(
-      `${magenta(operations[log.payload.op_id] + ":")} > in ${bold(
-        purple(
-          log.payload.pipeline?.map((x) => x.name).filter((x) => x !== "")[0] ||
-            ""
-        )
-      )}`
-    );
-    console.log(
-      magenta(`${operations[log.payload.op_id]}:`),
-      log.payload.op_name,
-      // log.payload.op_id,
-      log.payload.cached
-        ? cyan("CACHED")
-        : log.payload.completed
-        ? green("DONE")
-        : ""
-    );
+    console.log(event.data);
   });
 
-  if (pipeline === ".") {
-    const command = new Deno.Command("deno", {
-      args: [
-        "run",
-        "-A",
-        "--import-map=.fluentci/import_map.json",
-        ".fluentci/src/dagger/runner.ts",
-        ...jobs,
-      ],
-      env: {
-        FLUENTCI_SESSION_ID: id,
-      },
-      stdout: "inherit",
-      stderr: "inherit",
+  const accessToken = getAccessToken();
+
+  const entries = walk(".", {
+    skip: parseIgnoredFiles(),
+  });
+  const paths = [];
+
+  for await (const entry of entries) {
+    paths.push({
+      path: entry.path,
+      isFile: entry.isFile,
     });
-    await spawnCommand(command);
-    await fetch(`${FLUENTCI_API_URL}/context`, {
-      method: "DELETE",
-      headers: {
-        Authorization: `Basic ${btoa(Deno.env.get("FLUENTCI_TOKEN") + ":")}`,
-        "X-FluentCI-Session-ID": id,
-      },
-    });
-    websocket.close();
-    Deno.exit(0);
   }
 
-  const command = new Deno.Command("deno", {
-    args: ["run", "-A", ...denoModule!],
-    env: {
-      FLUENTCI_SESSION_ID: id,
-    },
-    stdout: "inherit",
-    stderr: "inherit",
-  });
+  if (paths.length === 0) {
+    console.error("No files found in the current directory");
+    Deno.exit(1);
+  }
 
-  await spawnCommand(command);
-  await fetch(`${FLUENTCI_API_URL}/context`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Basic ${btoa(Deno.env.get("FLUENTCI_TOKEN") + ":")}`,
-      "X-FluentCI-Session-ID": id,
-    },
-  });
-  websocket.close();
-  Deno.exit(0);
+  logger.info("📦 Creating zip file ...");
+
+  const blobWriter = new BlobWriter("application/zip");
+  const zipWriter = new ZipWriter(blobWriter);
+
+  for await (const { path, isFile } of paths) {
+    if (isFile) {
+      const file = await Deno.open(path);
+      await zipWriter.add(path, file, {
+        // this is required to make sure the zip file is deterministic
+        // so that the hash of the zip file is always the same
+        lastAccessDate: dayjs("2024-01-07T18:30:04.810Z").toDate(),
+        lastModDate: dayjs("2024-01-07T18:30:04.810Z").toDate(),
+      });
+    }
+  }
+
+  await zipWriter.close();
+  logger.info("🌎 Uploading context ...");
+
+  const blob = await blobWriter.getData();
+
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", RUNNER_URL);
+  xhr.setRequestHeader("Content-Type", "application/zip");
+  xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
+
+  xhr.onload = function () {
+    if (xhr.status != 200) {
+      logger.error("❌ Failed to upload context");
+      Deno.exit(1);
+    } else {
+      logger.info("✅ Context uploaded successfully");
+      Deno.exit(0);
+    }
+  };
+
+  xhr.send(blob);
 };
 
-function purple(text: string) {
-  return `\x1b[95m${text}\x1b[0m`;
-}
+const parseIgnoredFiles = () => {
+  let ignoredFilesArray: RegExp[] = [];
+  try {
+    // verify if .fluentciignore exists
+    if (Deno.statSync(".fluentciignore").isFile) {
+      const ignoredFiles = Deno.readTextFileSync(".fluentciignore");
+      ignoredFilesArray = ignoredFilesArray.concat(
+        ignoredFiles
+          .split("\n")
+          .map((file) => new RegExp(file.replace(".", "\\.")))
+      );
+    }
+  } catch (_e) {
+    // do nothing
+  }
+
+  try {
+    const ignoredFiles = Deno.readTextFileSync(".gitignore");
+    return ignoredFilesArray.concat(
+      ignoredFiles.split("\n").map((file: string) => new RegExp(file))
+    );
+  } catch (_e) {
+    return ignoredFilesArray;
+  }
+};
 
 export default run;
