@@ -6,7 +6,6 @@ import {
   walk,
   ZipWriter,
   dayjs,
-  Buffer,
 } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
 import { getAccessToken, isLogged } from "../utils.ts";
@@ -317,9 +316,5 @@ const parseIgnoredFiles = () => {
     return ignoredFilesArray;
   }
 };
-
-function purple(text: string) {
-  return `\x1b[95m${text}\x1b[0m`;
-}
 
 export default run;
