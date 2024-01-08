@@ -144,7 +144,7 @@ const spawnFluentCI = async (
     env: {
       _EXPERIMENTAL_DAGGER_CLOUD_URL: `https://events.fluentci.io?id=${
         "build-" + clientId
-      }`,
+      }&project_id=${project_id}`,
       DAGGER_CLOUD_TOKEN: Deno.env.get("DAGGER_TOKEN") || "123",
     },
   });
