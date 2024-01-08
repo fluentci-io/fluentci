@@ -15,12 +15,13 @@ import doctor from "./src/cmd/doctor.ts";
 import showEnvs from "./src/cmd/env.ts";
 import login from "./src/cmd/login.ts";
 import publish from "./src/cmd/publish.ts";
+import startAgent from "./src/cmd/agent.ts";
 import { brightGreen } from "./deps.ts";
 
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.9.1")
+    .version("0.10.0")
     .description(
       `
       .
@@ -197,6 +198,10 @@ export async function main() {
     .command("publish", "Publish a pipeline to FluentCI Registry")
     .action(async function () {
       await publish();
+    })
+    .command("agent", "Start FluentCI Runner Agent")
+    .action(async function () {
+      await startAgent();
     })
     .parse(Deno.args);
 }

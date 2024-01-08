@@ -28,6 +28,7 @@ export {
   TextWriter,
   ZipReader,
   ZipWriter,
+  Uint8ArrayReader,
 } from "https://deno.land/x/zipjs@v2.7.32/index.js";
 import introspect from "https://cdn.jsdelivr.net/gh/fluentci-io/daggerverse@main/deno-sdk/sdk/src/mod/introspect.ts";
 export { introspect };
@@ -36,3 +37,11 @@ import * as R from "https://deno.land/x/ramda@v0.27.2/mod.ts";
 export { R };
 import * as _ from "https://cdn.skypack.dev/lodash";
 export { _ };
+import Logger from "https://deno.land/x/logger@v1.1.3/logger.ts";
+export { Logger };
+export { generateName } from "https://deno.land/x/docker_names@v1.1.0/mod.ts";
+import dayjs from "npm:dayjs";
+export { dayjs };
+import { Buffer } from "npm:buffer";
+export { Buffer };
+export { mergeReadableStreams } from "https://deno.land/std@0.211.0/streams/merge_readable_streams.ts";
