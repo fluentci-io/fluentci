@@ -224,13 +224,6 @@ const runPipelineRemotely = async (
 
   const logger = new Logger();
   logger.info("🚀 Running pipeline remotely ...");
-  const id = Deno.env.get("FLUENTCI_PROJECT_ID");
-
-  const websocket = new WebSocket(`${FLUENTCI_WS_URL}?id=${id}`);
-
-  websocket.addEventListener("message", (event) => {
-    console.log(event.data);
-  });
 
   const accessToken = getAccessToken();
 
@@ -274,16 +267,28 @@ const runPipelineRemotely = async (
   const blob = await blobWriter.getData();
 
   const xhr = new XMLHttpRequest();
-  xhr.open("POST", RUNNER_URL);
+  xhr.open(
+    "POST",
+    `${RUNNER_URL}?project_id=${Deno.env.get("FLUENTCI_PROJECT_ID")}`
+  );
   xhr.setRequestHeader("Content-Type", "application/zip");
   xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
 
   xhr.onload = function () {
     if (xhr.status != 200) {
-      logger.error("❌ Failed to upload context");
+      logger.error(
+        "❌ Failed to upload context " + xhr.responseText + " " + xhr.status
+      );
       Deno.exit(1);
     } else {
       logger.info("✅ Context uploaded successfully");
+      const { buildId } = JSON.parse(xhr.response);
+      const websocket = new WebSocket(`${FLUENTCI_WS_URL}?id=${buildId}`);
+
+      websocket.addEventListener("message", (event) => {
+        console.log(event.data);
+      });
+
       Deno.exit(0);
     }
   };
