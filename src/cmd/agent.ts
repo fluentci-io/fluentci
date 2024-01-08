@@ -113,7 +113,7 @@ const extractZipBlob = async (
     const [_, ...path] = entry.filename.split("/").reverse();
     const stream = new TransformStream();
     const arrayBuffer = new Response(stream.readable).arrayBuffer();
-    await entry.getData(stream.writable);
+    await entry.getData!(stream.writable);
     const data = await arrayBuffer;
     await Deno.mkdir(
       `${BUILD_DIR}/${project_id}/${sha256}/${path.reverse().join("/")}`,
