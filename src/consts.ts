@@ -12,7 +12,7 @@ const scheme =
 
 export const FLUENTCI_API_URL = `${scheme}://${FLUENTCI_HOST}`;
 export const FLUENTCI_WS_URL = "wss://events.fluentci.io";
-
+export const FLUENTCI_EVENTS_URL = "https://events.fluentci.io";
 export const RUNNER_URL = "https://whole-dove-21.deno.dev";
 
 export const BUILD_DIR = `${dir("home")}/.fluentci/builds`;

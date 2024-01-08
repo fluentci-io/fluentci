@@ -6,7 +6,12 @@ import {
   ZipReader,
   BlobReader,
 } from "../../deps.ts";
-import { FLUENTCI_WS_URL, RUNNER_URL, BUILD_DIR } from "../consts.ts";
+import {
+  FLUENTCI_WS_URL,
+  RUNNER_URL,
+  FLUENTCI_EVENTS_URL,
+  BUILD_DIR,
+} from "../consts.ts";
 
 async function startAgent() {
   console.log(`
@@ -41,7 +46,9 @@ async function startAgent() {
     try {
       logger.info(`Message from server ${event.data}`);
       const data = JSON.parse(event.data);
-      const { action, src } = JSON.parse(data.event);
+      const { action, src, query, buildId } = JSON.parse(data.event);
+      const { jobs, pipeline } = JSON.parse(query);
+
       if (action === "build") {
         const project_id = src.split("/")[0];
         const sha256 = src.split("/")[1].replace(".zip", "");
@@ -52,7 +59,14 @@ async function startAgent() {
           logger.info(
             `${brightGreen(src)} already exists, skipping download ...`
           );
-          await spawnFluentCI(logger, project_id, sha256);
+          await spawnFluentCI(
+            logger,
+            project_id,
+            sha256,
+            pipeline,
+            jobs,
+            buildId
+          );
           return;
         }
 
@@ -64,7 +78,14 @@ async function startAgent() {
         const blob = await response.then((res) => res.blob());
         logger.info(`Extracting ${brightGreen(src)} ...`);
         await extractZipBlob(blob, project_id, sha256);
-        await spawnFluentCI(logger, project_id, sha256);
+        await spawnFluentCI(
+          logger,
+          project_id,
+          sha256,
+          pipeline,
+          jobs,
+          buildId
+        );
       }
     } catch (e) {
       logger.error(`Failed to parse message from server ${event.data}`);
@@ -110,10 +131,13 @@ const extractZipBlob = async (
 const spawnFluentCI = async (
   logger: Logger,
   project_id: string,
-  sha256: string
+  sha256: string,
+  pipeline: string,
+  jobs: [string, ...Array<string>],
+  clientId: string
 ) => {
   const command = new Deno.Command("dagger", {
-    args: ["--progress", "plain", "run", "fluentci", "run", "."],
+    args: ["--progress", "plain", "run", "fluentci", "run", pipeline, ...jobs],
     cwd: `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
     stdout: "piped",
     stderr: "piped",
@@ -123,11 +147,20 @@ const spawnFluentCI = async (
     write: (chunk) => {
       const text = new TextDecoder().decode(chunk);
       logger.info(text);
+      fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+        method: "POST",
+        body: text,
+      }).catch((e) => logger.error(e.message));
     },
   });
 
   await process.stderr?.pipeTo(writable);
-  await process.status;
+  const { code } = await process.status;
+
+  fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+    method: "POST",
+    body: `fluentci_exit=${code}`,
+  }).catch((e) => logger.error(e.message));
 };
 
 export default startAgent;

@@ -1,12 +1,4 @@
-import {
-  BlobWriter,
-  green,
-  load,
-  Logger,
-  walk,
-  ZipWriter,
-  dayjs,
-} from "../../deps.ts";
+import { BlobWriter, green, load, walk, ZipWriter, dayjs } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
 import { getAccessToken, isLogged } from "../utils.ts";
 
@@ -222,8 +214,7 @@ const runPipelineRemotely = async (
     Deno.exit(1);
   }
 
-  const logger = new Logger();
-  logger.info("🚀 Running pipeline remotely ...");
+  console.log("🚀 Running pipeline remotely ...");
 
   const accessToken = getAccessToken();
 
@@ -244,7 +235,7 @@ const runPipelineRemotely = async (
     Deno.exit(1);
   }
 
-  logger.info("📦 Creating zip file ...");
+  console.log("📦 Creating zip file ...");
 
   const blobWriter = new BlobWriter("application/zip");
   const zipWriter = new ZipWriter(blobWriter);
@@ -262,34 +253,48 @@ const runPipelineRemotely = async (
   }
 
   await zipWriter.close();
-  logger.info("🌎 Uploading context ...");
+  console.log("🌎 Uploading context ...");
+
+  const query = JSON.stringify({
+    pipeline,
+    jobs,
+    denoModule,
+  });
 
   const blob = await blobWriter.getData();
 
   const xhr = new XMLHttpRequest();
   xhr.open(
     "POST",
-    `${RUNNER_URL}?project_id=${Deno.env.get("FLUENTCI_PROJECT_ID")}`
+    `${RUNNER_URL}?project_id=${Deno.env.get(
+      "FLUENTCI_PROJECT_ID"
+    )}&query=${query}`
   );
   xhr.setRequestHeader("Content-Type", "application/zip");
   xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
 
   xhr.onload = function () {
     if (xhr.status != 200) {
-      logger.error(
+      console.error(
         "❌ Failed to upload context " + xhr.responseText + " " + xhr.status
       );
       Deno.exit(1);
     } else {
-      logger.info("✅ Context uploaded successfully");
+      console.log("✅ Context uploaded successfully");
       const { buildId } = JSON.parse(xhr.response);
-      const websocket = new WebSocket(`${FLUENTCI_WS_URL}?id=${buildId}`);
+      const websocket = new WebSocket(
+        `${FLUENTCI_WS_URL}?client_id=${buildId}`
+      );
 
       websocket.addEventListener("message", (event) => {
+        if (event.data === "fluentci_exit=0") {
+          Deno.exit(0);
+        }
+        if (event.data === "fluentci_exit=1") {
+          Deno.exit(1);
+        }
         console.log(event.data);
       });
-
-      Deno.exit(0);
     }
   };
 
