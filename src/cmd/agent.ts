@@ -141,6 +141,12 @@ const spawnFluentCI = async (
     cwd: `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
     stdout: "piped",
     stderr: "piped",
+    env: {
+      _EXPERIMENTAL_DAGGER_CLOUD_URL: `https://events.fluentci.io?id=${
+        "build-" + clientId
+      }`,
+      DAGGER_CLOUD_TOKEN: Deno.env.get("DAGGER_TOKEN") || "123",
+    },
   });
   const process = command.spawn();
   const writable = new WritableStream({
