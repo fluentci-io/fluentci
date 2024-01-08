@@ -65,7 +65,7 @@ fluentci # Run the pipeline
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.9.1         
+Version: 0.10.0        
 
 Description:
 
@@ -99,6 +99,9 @@ Commands:
   docs, man      [pipeline]            - Show documentation for a pipeline
   doctor                               - Check if FluentCI CLI is installed correctly
   env                                  - Show environment variables (read from .fluentci/.env file)
+  login                                - Login to FluentCI                                         
+  publish                              - Publish a pipeline to FluentCI Registry                   
+  agent                                - Start FluentCI Runner Agent 
 ```
 
 ## 📚 Documentation
