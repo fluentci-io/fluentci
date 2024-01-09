@@ -12,6 +12,7 @@ import {
   FLUENTCI_EVENTS_URL,
   BUILD_DIR,
 } from "../consts.ts";
+import { getAccessToken, isLogged } from "../utils.ts";
 
 async function startAgent() {
   console.log(`
@@ -35,7 +36,21 @@ async function startAgent() {
     await Deno.writeTextFile(`${dir("home")}/.fluentci/agent-id`, id);
   }
 
-  const websocket = new WebSocket(`${FLUENTCI_WS_URL}?agent_id=${id}`);
+  if (!(await isLogged())) {
+    console.log("You need to login first before starting the agent");
+    console.log(
+      `Run ${brightGreen(
+        "`fluentci login`"
+      )} or set FLUENTCI_ACCESS_TOKEN env variable to login`
+    );
+    Deno.exit(1);
+  }
+
+  const accessToken = await getAccessToken();
+
+  const websocket = new WebSocket(
+    `${FLUENTCI_WS_URL}?agent_id=${id}&token=${accessToken}`
+  );
   websocket.onopen = function () {
     logger.info(`Connected to FluentCI server as ${brightGreen(id)}`);
     logger.info("FluentCI Agent started successfully ✅");
