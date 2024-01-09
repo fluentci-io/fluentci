@@ -72,11 +72,12 @@ export async function main() {
       await upgrade();
     })
     .command(
-      "cache <pipeline:string>",
-      "Cache and compile remote dependencies of a pipeline"
+      "cache [pipeline:string]",
+      "Cache remote dependencies of a pipeline"
     )
-    .action(async function (_, pipeline) {
-      await cache(pipeline);
+    .option("--lock-write", "Update lock file")
+    .action(async function ({ lockWrite }, pipeline) {
+      await cache(pipeline, lockWrite);
     })
     .command("ls, list", "List all jobs in a pipeline")
     .arguments("[pipeline:string]")
