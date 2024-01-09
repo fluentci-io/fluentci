@@ -33,8 +33,6 @@ export {
 import introspect from "https://cdn.jsdelivr.net/gh/fluentci-io/daggerverse@main/deno-sdk/sdk/src/mod/introspect.ts";
 export { introspect };
 export { wait } from "https://deno.land/x/wait@0.1.13/mod.ts";
-import * as R from "https://deno.land/x/ramda@v0.27.2/mod.ts";
-export { R };
 import * as _ from "https://cdn.skypack.dev/lodash";
 export { _ };
 import Logger from "https://deno.land/x/logger@v1.1.3/logger.ts";

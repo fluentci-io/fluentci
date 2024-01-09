@@ -4,7 +4,6 @@ import {
   Input,
   brightGreen,
   Confirm,
-  R,
   _,
 } from "../../deps.ts";
 import {
@@ -272,7 +271,7 @@ async function promptPackageDetails(standalone?: boolean) {
     ...infos,
     keywords: infos.keywords?.split(",").map((keyword) => keyword.trim()),
   };
-  if (R.equals(meta.keywords, [""])) {
+  if (_.isEqual(meta.keywords, [""])) {
     delete meta.keywords;
   }
   console.log(meta);
@@ -307,7 +306,7 @@ async function overrideDaggerJson(infos: Record<string, unknown>, path = ".") {
     new TextEncoder().encode(JSON.stringify(daggerJson, null, 2))
   );
 
-  if (R.equals(path, ".fluentci")) {
+  if (_.isEqual(path, ".fluentci")) {
     await Deno.copyFile(".fluentci/dagger.json", "dagger.json");
   }
 }
