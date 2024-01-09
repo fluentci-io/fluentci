@@ -65,7 +65,7 @@ fluentci # Run the pipeline
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.10.1        
+Version: 0.10.2        
 
 Description:
 
@@ -102,6 +102,7 @@ Commands:
   login                                - Login to FluentCI                                         
   publish                              - Publish a pipeline to FluentCI Registry                   
   agent                                - Start FluentCI Runner Agent 
+  whoami                               - Show current logged in user
 ```
 
 ## 📚 Documentation

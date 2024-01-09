@@ -16,12 +16,13 @@ import showEnvs from "./src/cmd/env.ts";
 import login from "./src/cmd/login.ts";
 import publish from "./src/cmd/publish.ts";
 import startAgent from "./src/cmd/agent.ts";
+import whoami from "./src/cmd/whoami.ts";
 import { brightGreen } from "./deps.ts";
 
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.10.1")
+    .version("0.10.2")
     .description(
       `
       .
@@ -203,6 +204,10 @@ export async function main() {
     .command("agent", "Start FluentCI Runner Agent")
     .action(async function () {
       await startAgent();
+    })
+    .command("whoami", "Show current logged in user")
+    .action(async function () {
+      await whoami();
     })
     .parse(Deno.args);
 }

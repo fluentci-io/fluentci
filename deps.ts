@@ -1,5 +1,6 @@
 export {
   magenta,
+  brightMagenta,
   cyan,
   bold,
   green,
