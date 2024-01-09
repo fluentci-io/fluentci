@@ -21,7 +21,7 @@ import { brightGreen } from "./deps.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.10.0")
+    .version("0.10.1")
     .description(
       `
       .
