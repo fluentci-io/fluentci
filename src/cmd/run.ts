@@ -1,5 +1,6 @@
 import { BlobWriter, green, load, walk, ZipWriter, dayjs } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
+import { getCommitInfos } from "../git.ts";
 import { getAccessToken, isLogged } from "../utils.ts";
 
 /**
@@ -253,6 +254,7 @@ const runPipelineRemotely = async (
   }
 
   await zipWriter.close();
+
   console.log("🌎 Uploading context ...");
 
   const query = JSON.stringify({
@@ -282,6 +284,7 @@ const runPipelineRemotely = async (
     } else {
       console.log("✅ Context uploaded successfully");
       const { buildId } = JSON.parse(xhr.response);
+      saveRepositoryMetadata(buildId);
       const websocket = new WebSocket(
         `${FLUENTCI_WS_URL}?client_id=${buildId}`
       );
@@ -324,6 +327,32 @@ const parseIgnoredFiles = () => {
     );
   } catch (_e) {
     return ignoredFilesArray;
+  }
+};
+
+const saveRepositoryMetadata = async (id: string) => {
+  try {
+    const { commit, sha, author, branch } = await getCommitInfos();
+    console.log("📝 Saving repository metadata ...");
+    const status = await fetch(`${BASE_URL}/build/${id}/metadata`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getAccessToken()}`,
+      },
+      body: JSON.stringify({
+        commit,
+        sha,
+        author,
+        branch,
+      }),
+    }).then((res) => res.status);
+    if (status !== 200) {
+      console.error("❌ Failed to save repository metadata");
+      Deno.exit(1);
+    }
+  } catch (_) {
+    // do nothing, not a git repository
   }
 };
 
