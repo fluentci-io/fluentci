@@ -151,6 +151,10 @@ const spawnFluentCI = async (
   jobs: [string, ...Array<string>],
   clientId: string
 ) => {
+  const accessToken = await getAccessToken();
+  const headers = {
+    Authorization: `Bearer ${accessToken}`,
+  };
   const command = new Deno.Command("dagger", {
     args: ["--progress", "plain", "run", "fluentci", "run", pipeline, ...jobs],
     cwd: `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
@@ -160,17 +164,20 @@ const spawnFluentCI = async (
       _EXPERIMENTAL_DAGGER_CLOUD_URL: `https://events.fluentci.io?id=${
         "build-" + clientId
       }&project_id=${project_id}`,
-      DAGGER_CLOUD_TOKEN: Deno.env.get("DAGGER_TOKEN") || "123",
+      DAGGER_CLOUD_TOKEN: Deno.env.get("DAGGER_CLOUD_TOKEN") || "123",
     },
   });
   const process = command.spawn();
+  const logs = "";
   const writable = new WritableStream({
     write: (chunk) => {
       const text = new TextDecoder().decode(chunk);
       logger.info(text);
+      logs.concat(text);
       fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
         method: "POST",
         body: text,
+        headers,
       }).catch((e) => logger.error(e.message));
     },
   });
@@ -178,10 +185,18 @@ const spawnFluentCI = async (
   await process.stderr?.pipeTo(writable);
   const { code } = await process.status;
 
-  fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
-    method: "POST",
-    body: `fluentci_exit=${code}`,
-  }).catch((e) => logger.error(e.message));
+  Promise.all([
+    fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+      method: "POST",
+      body: `fluentci_exit=${code}`,
+      headers,
+    }),
+    fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+      method: "POST",
+      body: `fluentci_logs=${logs}`,
+      headers,
+    }),
+  ]).catch((e) => logger.error(e.message));
 };
 
 export default startAgent;
