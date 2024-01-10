@@ -168,12 +168,12 @@ const spawnFluentCI = async (
     },
   });
   const process = command.spawn();
-  const logs = "";
+  let logs = "";
   const writable = new WritableStream({
     write: (chunk) => {
       const text = new TextDecoder().decode(chunk);
       logger.info(text);
-      logs.concat(text);
+      logs = logs.concat(text);
       fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
         method: "POST",
         body: text,
