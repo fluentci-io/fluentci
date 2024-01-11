@@ -46,13 +46,13 @@ async function startAgent() {
     Deno.exit(1);
   }
 
-  const accessToken = await getAccessToken();
-
+  const uuid = await getWebSocketUuid(id);
   const websocket = new WebSocket(
-    `${FLUENTCI_WS_URL}?agent_id=${id}&token=${accessToken}`
+    `${FLUENTCI_WS_URL}?agent_id=${id}&uuid=${uuid}`
   );
   websocket.onopen = function () {
     logger.info(`Connected to FluentCI server as ${brightGreen(id)}`);
+    logger.info(`uuid: ${brightGreen(uuid)}`);
     logger.info("FluentCI Agent started successfully ✅");
     logger.info("Waiting for jobs ...");
     logger.info("Press Ctrl+C to exit");
@@ -109,20 +109,16 @@ async function startAgent() {
   });
 }
 
-const exists = (path: string) => {
+function exists(path: string) {
   try {
     Deno.statSync(path);
     return true;
   } catch (_) {
     return false;
   }
-};
+}
 
-const extractZipBlob = async (
-  blob: Blob,
-  project_id: string,
-  sha256: string
-) => {
+async function extractZipBlob(blob: Blob, project_id: string, sha256: string) {
   const zipReader = new ZipReader(new BlobReader(blob));
   for (const entry of await zipReader.getEntries()) {
     const [_, ...path] = entry.filename.split("/").reverse();
@@ -141,16 +137,16 @@ const extractZipBlob = async (
       new Uint8Array(data)
     );
   }
-};
+}
 
-const spawnFluentCI = async (
+async function spawnFluentCI(
   logger: Logger,
   project_id: string,
   sha256: string,
   pipeline: string,
   jobs: [string, ...Array<string>],
   clientId: string
-) => {
+) {
   const accessToken = await getAccessToken();
   const headers = {
     Authorization: `Bearer ${accessToken}`,
@@ -197,6 +193,16 @@ const spawnFluentCI = async (
       headers,
     }),
   ]).catch((e) => logger.error(e.message));
-};
+}
 
+async function getWebSocketUuid(agentId: string) {
+  const accessToken = await getAccessToken();
+  const uuid = await fetch(`${FLUENTCI_EVENTS_URL}/auth?agent_id=${agentId}`, {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  }).then((res) => res.text());
+  return uuid;
+}
 export default startAgent;
