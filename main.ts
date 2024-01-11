@@ -22,7 +22,7 @@ import { brightGreen } from "./deps.ts";
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.10.6")
+    .version("0.10.7")
     .description(
       `
       .
@@ -205,6 +205,7 @@ export async function main() {
       "agent",
       new Command()
         .command("list", "List all agents")
+        .alias("ls")
         .action(async function () {
           await listAgents();
         })
