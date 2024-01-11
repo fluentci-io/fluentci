@@ -5,6 +5,8 @@ import {
   generateName,
   ZipReader,
   BlobReader,
+  Table,
+  dayjs,
 } from "../../deps.ts";
 import {
   FLUENTCI_WS_URL,
@@ -12,7 +14,9 @@ import {
   FLUENTCI_EVENTS_URL,
   BUILD_DIR,
 } from "../consts.ts";
-import { getAccessToken, isLogged } from "../utils.ts";
+import { formatBytes, getAccessToken, isLogged } from "../utils.ts";
+import { hostname, release, cpus, arch, totalmem, platform } from "node:os";
+import { Agent } from "../types.ts";
 
 async function startAgent() {
   console.log(`
@@ -197,12 +201,54 @@ async function spawnFluentCI(
 
 async function getWebSocketUuid(agentId: string) {
   const accessToken = await getAccessToken();
-  const uuid = await fetch(`${FLUENTCI_EVENTS_URL}/auth?agent_id=${agentId}`, {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-    },
-  }).then((res) => res.text());
+  const uuid = await fetch(
+    `${FLUENTCI_EVENTS_URL}/auth?agent_id=${agentId}&hostname=${hostname()}&release=${release()}&cpus=${
+      cpus().length
+    }&arch=${arch()}&totalmem=${totalmem()}&platform=${platform()}`,
+    {
+      method: "GET",
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+      },
+    }
+  ).then((res) => res.text());
   return uuid;
 }
+
+export async function listAgents() {
+  const accessToken = await getAccessToken();
+  const userId = await fetch(
+    `https://api.fluentci.io/validate?token=${accessToken}`
+  ).then((res) => res.text());
+  const agents: Agent[] = await fetch(
+    `${FLUENTCI_EVENTS_URL}?id=${userId}`
+  ).then((res) => res.json());
+
+  if (!agents.length) {
+    console.log("No agents found");
+    return;
+  }
+
+  const table = new Table();
+  table.header([
+    "NAME",
+    "HOSTNAME",
+    "RELEASE",
+    "CPUs",
+    "ARCH",
+    "RAM",
+    "OS",
+    "STARTED AT",
+  ]);
+
+  for (const agent of agents) {
+    const rows = Object.values(agent);
+    rows[5] = formatBytes(rows[5] as number);
+    rows[7] = dayjs(rows[7]).fromNow();
+    table.push(rows.map((x) => (x === 0 || x === "0 Bytes" ? "" : x)));
+  }
+
+  table.render();
+}
+
 export default startAgent;

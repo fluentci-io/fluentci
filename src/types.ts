@@ -29,8 +29,21 @@ export const LogEventSchema = z.object({
   }),
 });
 
+export const AgentSchema = z.object({
+  agent_id: z.string(),
+  hostname: z.string(),
+  release: z.string(),
+  cpus: z.number(),
+  arch: z.string(),
+  totalmem: z.number(),
+  platform: z.string(),
+  startedAt: z.string(),
+});
+
 export type Pipeline = z.infer<typeof PipelineSchema>;
 
 export type Label = z.infer<typeof LabelSchema>;
 
 export type LogEvent = z.infer<typeof LogEventSchema>;
+
+export type Agent = z.infer<typeof AgentSchema>;

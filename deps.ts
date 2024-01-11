@@ -40,7 +40,13 @@ import Logger from "https://deno.land/x/logger@v1.1.3/logger.ts";
 export { Logger };
 export { generateName } from "https://deno.land/x/docker_names@v1.1.0/mod.ts";
 import dayjs from "npm:dayjs";
+import relativeTime from "npm:dayjs/plugin/relativeTime.js";
+dayjs.extend(relativeTime);
 export { dayjs };
 import { Buffer } from "npm:buffer";
 export { Buffer };
 export { mergeReadableStreams } from "https://deno.land/std@0.211.0/streams/merge_readable_streams.ts";
+export {
+  Cell,
+  Table,
+} from "https://deno.land/x/cliffy@v1.0.0-rc.3/table/mod.ts";
