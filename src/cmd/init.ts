@@ -11,6 +11,7 @@ import {
   SpinnerTypes,
 } from "https://deno.land/x/spinners@v1.1.2/mod.ts";
 import { green } from "https://deno.land/std@0.52.0/fmt/colors.ts";
+import { extractVersion } from "../utils.ts";
 
 const BASE_URL = "https://api.fluentci.io/v1";
 
@@ -27,15 +28,16 @@ async function init(
   _name?: string
 ) {
   const infos = await promptPackageDetails(standalone);
-  template = template || "base_pipeline";
+  let version = extractVersion(template || "base_pipeline");
+  template = template?.split("@")[0] || "base_pipeline";
 
   let result = await fetch(`${BASE_URL}/pipeline/${template}`);
   let data = await result.json();
 
   if (data.version) {
-    if (
-      await downloadTemplateFromRegistry(template, data.version, standalone)
-    ) {
+    version =
+      version === "latest" ? data.version || data.default_branch : version;
+    if (await downloadTemplateFromRegistry(template, version, standalone)) {
       if (standalone === true) {
         await overrideDaggerJson(infos, ".");
         return;
@@ -53,7 +55,9 @@ async function init(
   data = await result.json();
 
   if (data.github_url) {
-    await downloadTemplateFromGithub(data, template, standalone);
+    version =
+      version === "latest" ? data.version || data.default_branch : version;
+    await downloadTemplateFromGithub(data, template, version, standalone);
     if (standalone === true) {
       await overrideDaggerJson(infos, ".");
       return;
@@ -148,6 +152,7 @@ async function downloadTemplateFromGithub(
     owner: string;
   },
   template: string,
+  version: string,
   standalone?: boolean
 ) {
   const archiveUrl =
@@ -155,17 +160,17 @@ async function downloadTemplateFromGithub(
       ? `${data.github_url.replace(
           "https://github.com",
           "https://codeload.github.com"
-        )}/zip/refs/tags/${data.version}`
+        )}/zip/refs/tags/${version}`
       : `${data.github_url.replace(
           "https://github.com",
           "https://api.github.com/repos"
-        )}/zipball/${data.version || data.default_branch}`;
+        )}/zipball/${version}`;
 
   await download(archiveUrl, template);
 
   const repoName = data.github_url.split("/").pop();
 
-  let outputDir = `${repoName}-${data.version.replace("v", "")}`;
+  let outputDir = `${repoName}-${version.replace("v", "")}`;
 
   if (data.directory) {
     outputDir += `/${data.directory}`;

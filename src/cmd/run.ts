@@ -1,7 +1,7 @@
 import { BlobWriter, green, load, walk, ZipWriter, dayjs } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
 import { getCommitInfos } from "../git.ts";
-import { getAccessToken, isLogged } from "../utils.ts";
+import { getAccessToken, isLogged, extractVersion } from "../utils.ts";
 
 /**
  * Runs a Fluent CI pipeline.
@@ -132,24 +132,25 @@ async function run(
     return;
   }
 
-  const result = await fetch(`${BASE_URL}/pipeline/${pipeline}`);
+  const name = pipeline.split("@")[0];
+  let version = extractVersion(pipeline);
+
+  const result = await fetch(`${BASE_URL}/pipeline/${name}`);
   const data = await result.json();
+
   if (!data.github_url && !data.version) {
     console.log(
-      `Pipeline template ${green('"')}${green(pipeline)}${green(
+      `Pipeline template ${green('"')}${green(name)}${green(
         '"'
       )} not found in Fluent CI registry`
     );
     Deno.exit(1);
   }
-
+  version =
+    version === "latest" ? data.version || data.default_branch : version;
   let denoModule = [
-    `--import-map=https://pkg.fluentci.io/${pipeline}@${
-      data.version || data.default_branch
-    }/import_map.json`,
-    `https://pkg.fluentci.io/${pipeline}@${
-      data.version || data.default_branch
-    }/src/dagger/runner.ts`,
+    `--import-map=https://pkg.fluentci.io/${name}@${version}/import_map.json`,
+    `https://pkg.fluentci.io/${name}@${version}/src/dagger/runner.ts`,
     ...jobs,
     ...Object.keys(options)
       .filter((key) => key !== "reload")
