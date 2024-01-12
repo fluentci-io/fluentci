@@ -47,3 +47,19 @@ export function formatBytes(bytes: number, decimals = 2) {
     parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + " " + sizes[i]
   );
 }
+
+export function extractVersion(name: string): string {
+  const version = name.split("@").pop();
+  if (version && name.split("@").length === 2) {
+    if (
+      /^v?(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(alpha|beta)\.([1-9]\d*|0))?$/g.test(
+        version
+      )
+    ) {
+      return version.startsWith("v") ? version : `v${version}`;
+    }
+    console.log('Invalid version format. Please use "vX.X.X" format.');
+    Deno.exit(1);
+  }
+  return "latest";
+}
