@@ -1,5 +1,7 @@
 import { dir } from "../deps.ts";
 
+export const VERSION = "0.10.8";
+
 export const BASE_URL = "https://api.fluentci.io/v1";
 
 const FLUENTCI_HOST = Deno.env.get("FLUENTCI_HOST") || "vm.fluentci.io";

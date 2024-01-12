@@ -547,6 +547,7 @@
     "https://esm.sh/v128/graphql-request@6.1.0": "17f00c323eb825811ce14e2b0e88a0c873acb666c382ac963d1edeb03e01f372",
     "https://esm.sh/v128/graphql-request@6.1.0/denonext/graphql-request.mjs": "0b15f49d44489423ae6f06004725b6d050b6359da4969e6569bd6ad45065bd94",
     "https://esm.sh/v128/graphql@16.7.1/denonext/graphql.mjs": "418ad7c07b0f2d687f33b6275d3b5f317f4afbef1f462f318229f458dff45416",
+    "https://esm.sh/v133/mimic-fn@4.0.0/denonext/mimic-fn.mjs": "10bcf0f2f20cbbba0c289ef7bf4d2422639bbc1c36c247be876afd6fe2d67138",
     "https://esm.sh/v135/@dagger.io/dagger@0.9.3/denonext/dagger.mjs": "998e8e63729621141c0a9b74128db8f81ab7446d1a5d4ff41a6a6b0944db4ddf",
     "https://esm.sh/v135/adm-zip@0.5.10/denonext/adm-zip.mjs": "9441de5c60a276046d55945f45775d674a319e8e5fd3a8ab7131d8d192d9abb3",
     "https://esm.sh/v135/chownr@2.0.0/denonext/chownr.mjs": "d7282b2612a9f13c62084c76fc72cdfb20503bccce959178b77b6def14d3ffd2",

@@ -63,3 +63,14 @@ export function extractVersion(name: string): string {
   }
   return "latest";
 }
+
+export async function getDaggerVersion(): Promise<string> {
+  const command = new Deno.Command("dagger", {
+    args: ["version"],
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const { stdout } = await command.output();
+  const version = new TextDecoder().decode(stdout).trim().split(" ")[1];
+  return version;
+}

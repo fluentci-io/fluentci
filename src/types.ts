@@ -32,11 +32,14 @@ export const LogEventSchema = z.object({
 export const AgentSchema = z.object({
   agent_id: z.string(),
   hostname: z.string(),
-  release: z.string(),
   cpus: z.number(),
   arch: z.string(),
   totalmem: z.number(),
   platform: z.string(),
+  release: z.string(),
+  version: z.string(),
+  pid: z.number(),
+  daggerVersion: z.string(),
   startedAt: z.string(),
 });
 

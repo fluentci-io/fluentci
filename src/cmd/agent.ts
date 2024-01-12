@@ -13,10 +13,17 @@ import {
   RUNNER_URL,
   FLUENTCI_EVENTS_URL,
   BUILD_DIR,
+  VERSION,
 } from "../consts.ts";
-import { formatBytes, getAccessToken, isLogged } from "../utils.ts";
+import {
+  formatBytes,
+  getAccessToken,
+  getDaggerVersion,
+  isLogged,
+} from "../utils.ts";
 import { hostname, release, cpus, arch, totalmem, platform } from "node:os";
 import { Agent } from "../types.ts";
+import O from "https://esm.sh/v133/mimic-fn@4.0.0/denonext/mimic-fn.mjs";
 
 async function startAgent() {
   console.log(`
@@ -201,10 +208,13 @@ async function spawnFluentCI(
 
 async function getWebSocketUuid(agentId: string) {
   const accessToken = await getAccessToken();
+  const daggerVersion = await getDaggerVersion();
   const uuid = await fetch(
     `${FLUENTCI_EVENTS_URL}/auth?agent_id=${agentId}&hostname=${hostname()}&release=${release()}&cpus=${
       cpus().length
-    }&arch=${arch()}&totalmem=${totalmem()}&platform=${platform()}`,
+    }&arch=${arch()}&totalmem=${totalmem()}&platform=${platform()}&version=${VERSION}&pid=${
+      Deno.pid
+    }&daggerversion=${daggerVersion}`,
     {
       method: "GET",
       headers: {
@@ -221,7 +231,7 @@ export async function listAgents() {
     `https://api.fluentci.io/validate?token=${accessToken}`
   ).then((res) => res.text());
   const agents: Agent[] = await fetch(
-    `${FLUENTCI_EVENTS_URL}?id=${userId}`
+    `${FLUENTCI_EVENTS_URL}/agents?id=${userId}`
   ).then((res) => res.json());
 
   if (!agents.length) {
@@ -233,19 +243,29 @@ export async function listAgents() {
   table.header([
     "NAME",
     "HOSTNAME",
-    "RELEASE",
     "CPUs",
     "ARCH",
     "RAM",
     "OS",
+    "VERSION",
+    "PID",
+    "DAGGER",
     "STARTED AT",
   ]);
-
   for (const agent of agents) {
-    const rows = Object.values(agent);
-    rows[5] = formatBytes(rows[5] as number);
-    rows[7] = dayjs(rows[7]).fromNow();
-    table.push(rows.map((x) => (x === 0 || x === "0 Bytes" ? "" : x)));
+    const totalmem = agent.totalmem === 0 ? "" : formatBytes(agent.totalmem);
+    table.push([
+      agent.agent_id,
+      agent.hostname,
+      agent.cpus,
+      agent.arch,
+      totalmem,
+      agent.platform,
+      agent.version,
+      agent.pid,
+      agent.daggerVersion,
+      dayjs(agent.startedAt).fromNow(),
+    ]);
   }
 
   table.render();

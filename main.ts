@@ -18,11 +18,12 @@ import publish from "./src/cmd/publish.ts";
 import startAgent, { listAgents } from "./src/cmd/agent.ts";
 import whoami from "./src/cmd/whoami.ts";
 import { brightGreen } from "./deps.ts";
+import { VERSION } from "./src/consts.ts";
 
 export async function main() {
   await new Command()
     .name("fluentci")
-    .version("0.10.7")
+    .version(VERSION)
     .description(
       `
       .
