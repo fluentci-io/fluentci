@@ -2,7 +2,7 @@ import { Command } from "cliffy/command";
 import run from "./src/cmd/run.ts";
 import init from "./src/cmd/init.ts";
 import search from "./src/cmd/search.ts";
-import upgrade from "./src/cmd/upgrade.ts";
+import upgrade, { checkForUpdate } from "./src/cmd/upgrade.ts";
 import listJobs from "./src/cmd/list.ts";
 import generateWorkflow from "./src/cmd/github.ts";
 import generateGitlabCIConfig from "./src/cmd/gitlab.ts";
@@ -39,8 +39,9 @@ export async function main() {
     .arguments("[pipeline:string] [jobs...:string]")
     .option("-r, --reload", "Reload pipeline source cache")
     .option("-*, --* <args:string>", "Pass arguments to pipeline")
-    .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
-      run(pipeline || ".", jobs, options);
+    .action(async function (options, pipeline, ...jobs: [string, ...Array<string>]) {
+      await run(pipeline || ".", jobs, options);
+      await checkForUpdate();
     })
     .command("run", "Run a pipeline")
     .arguments("<pipeline:string> [jobs...:string]")
