@@ -23,7 +23,7 @@ import {
 } from "../utils.ts";
 import { hostname, release, cpus, arch, totalmem, platform } from "node:os";
 import { Agent } from "../types.ts";
-import O from "https://esm.sh/v133/mimic-fn@4.0.0/denonext/mimic-fn.mjs";
+// import O from "https://esm.sh/v133/mimic-fn@4.0.0/denonext/mimic-fn.mjs";
 
 async function startAgent() {
   console.log(`

@@ -2,7 +2,7 @@ import { Command } from "cliffy/command";
 import run from "./src/cmd/run.ts";
 import init from "./src/cmd/init.ts";
 import search from "./src/cmd/search.ts";
-import upgrade from "./src/cmd/upgrade.ts";
+import upgrade, { checkForUpdate } from "./src/cmd/upgrade.ts";
 import listJobs from "./src/cmd/list.ts";
 import generateWorkflow from "./src/cmd/github.ts";
 import generateGitlabCIConfig from "./src/cmd/gitlab.ts";
@@ -218,6 +218,10 @@ export async function main() {
     .command("whoami", "Show current logged in user")
     .action(async function () {
       await whoami();
+    })
+    .globalOption("--check-update <checkUpdate:boolean>", "check for update", {default: true})
+    .globalAction(async (options: { checkUpdate: boolean }) => {
+        await checkForUpdate(options)
     })
     .parse(Deno.args);
 }
