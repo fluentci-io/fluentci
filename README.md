@@ -9,6 +9,11 @@ Fluent CI is a CI/CD tool that allows you to build, test, and deploy your code. 
 
 It is also a registry of pre-built pipelines. This means you don't have to write your CI/CD configuration from scratch. You can simply search for and use pipelines that others have already built for frameworks like Django, React, Node, etc.
 
+<br clear="both"/>
+
+<p align="left">
+    <a href="https://devhunt.org/tool/fluent-ci" title="DevHunt - Tool of the Week"><img src="https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github@main/assets/images/tab_solid.png" width=225 alt="DevHunt - Tool of the Week" /></a>&nbsp;
+</p>
 
 ## 🚚 Installation
 using [Deno](https://deno.com) (recommended) :
