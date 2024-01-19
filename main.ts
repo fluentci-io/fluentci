@@ -220,7 +220,7 @@ export async function main() {
       await whoami();
     })
     .globalOption("--check-update <checkUpdate:boolean>", "check for update", {default: true})
-    .globalAction(async (options) => {
+    .globalAction(async (options: { checkUpdate: boolean }) => {
         await checkForUpdate(options)
     })
     .parse(Deno.args);

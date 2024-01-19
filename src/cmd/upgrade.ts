@@ -27,7 +27,7 @@ async function upgrade() {
 
 export default upgrade;
 
-export async function checkForUpdate(options) {
+export async function checkForUpdate(options: { checkUpdate: boolean }) {
   const { checkUpdate } = options
   if (!checkUpdate) {
     return
