@@ -27,7 +27,12 @@ async function upgrade() {
 
 export default upgrade;
 
-export async function checkForUpdate() {
+export async function checkForUpdate(options) {
+  const { checkUpdate } = options
+  if (!checkUpdate) {
+    return
+  }
+
   try {
     const result = await fetch("https://api.github.com/repos/fluentci-io/fluentci/releases/latest")
     const releaseInfo = await result.json()

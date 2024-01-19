@@ -39,9 +39,8 @@ export async function main() {
     .arguments("[pipeline:string] [jobs...:string]")
     .option("-r, --reload", "Reload pipeline source cache")
     .option("-*, --* <args:string>", "Pass arguments to pipeline")
-    .action(async function (options, pipeline, ...jobs: [string, ...Array<string>]) {
-      await run(pipeline || ".", jobs, options);
-      await checkForUpdate();
+    .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
+      run(pipeline || ".", jobs, options);
     })
     .command("run", "Run a pipeline")
     .arguments("<pipeline:string> [jobs...:string]")
@@ -219,6 +218,10 @@ export async function main() {
     .command("whoami", "Show current logged in user")
     .action(async function () {
       await whoami();
+    })
+    .globalOption("--check-update <checkUpdate:boolean>", "check for update", {default: true})
+    .globalAction(async (options) => {
+        await checkForUpdate(options)
     })
     .parse(Deno.args);
 }
