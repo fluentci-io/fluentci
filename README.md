@@ -12,7 +12,7 @@ It is also a registry of pre-built pipelines. This means you don't have to write
 <br clear="both"/>
 
 <p align="left">
-    <a href="https://devhunt.org/tool/fluent-ci" title="DevHunt - Tool of the Week"><img src="https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github@main/assets/images/tab_solid.png" width=225 alt="DevHunt - Tool of the Week" /></a>&nbsp;
+    <a href="https://devhunt.org/tool/fluent-ci" title="DevHunt - Tool of the Week" target="_blank"><img src="https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github@main/assets/images/tab_solid.png" width=225 alt="DevHunt - Tool of the Week" /></a>&nbsp;
 </p>
 
 ## 🚚 Installation
