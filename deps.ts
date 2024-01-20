@@ -1,3 +1,5 @@
+import * as semver from "https://deno.land/x/semver/mod.ts";
+export { semver };
 export {
   magenta,
   brightMagenta,

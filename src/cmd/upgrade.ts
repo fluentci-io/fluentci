@@ -1,5 +1,5 @@
 import { VERSION } from "../consts.ts";
-import { yellow, green } from "../../deps.ts";
+import { semver, yellow, green } from "../../deps.ts";
 
 /**
  * Upgrades FluentCI by installing the latest version from the Deno registry.
@@ -37,7 +37,7 @@ export async function checkForUpdate(options: { checkUpdate: boolean }) {
     const result = await fetch("https://api.github.com/repos/fluentci-io/fluentci/releases/latest")
     const releaseInfo = await result.json()
  
-   if (versionGreaterThan(releaseInfo.tag_name, VERSION)) {
+   if (semver.gt(releaseInfo.tag_name, VERSION)) {
       console.log(
     `${green('A new release of fluentci is available:')} ${VERSION} → ${releaseInfo.tag_name} \nTo upgrade: run fluentci upgrade\n${releaseInfo.url}
    `)
@@ -47,17 +47,4 @@ export async function checkForUpdate(options: { checkUpdate: boolean }) {
       ${yellow('WARNING: ')} checking for udpate failed ${e}
     `)
   }
-}
-
-export const versionGreaterThan = (v1: string, v2: string): boolean => {
-  const numbers1 = v1.replace('v', '').split('.').map(Number)
-  const numbers2 = v2.replace('v', '').split('.').map(Number)
-
-  for (let i = 0; i < 3; i++) {
-    if (numbers1[i] > numbers2[i]) {
-      return true;
-    }
-  }
-
-  return false;
 }
