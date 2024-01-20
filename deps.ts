@@ -1,4 +1,4 @@
-import * as semver from "https://deno.land/x/semver/mod.ts";
+import * as semver from "https://deno.land/std@0.212.0/semver/mod.ts";
 export { semver };
 export {
   magenta,
