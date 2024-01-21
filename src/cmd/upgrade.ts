@@ -1,5 +1,5 @@
 import { VERSION } from "../consts.ts";
-import { yellow, green } from "../../deps.ts";
+import { green, semver, yellow } from "../../deps.ts";
 
 /**
  * Upgrades FluentCI by installing the latest version from the Deno registry.
@@ -28,36 +28,31 @@ async function upgrade() {
 export default upgrade;
 
 export async function checkForUpdate(options: { checkUpdate: boolean }) {
-  const { checkUpdate } = options
+  const { checkUpdate } = options;
   if (!checkUpdate) {
-    return
+    return;
   }
 
   try {
-    const result = await fetch("https://api.github.com/repos/fluentci-io/fluentci/releases/latest")
-    const releaseInfo = await result.json()
- 
-   if (versionGreaterThan(releaseInfo.tag_name, VERSION)) {
+    const result = await fetch(
+      "https://api.github.com/repos/fluentci-io/fluentci/releases/latest",
+    );
+    const releaseInfo = await result.json();
+
+    const latestVersion = semver.parse(releaseInfo.tag_name);
+    const currentVersion = semver.parse(VERSION);
+
+    if (semver.gt(latestVersion, currentVersion)) {
       console.log(
-    `${green('A new release of fluentci is available:')} ${VERSION} → ${releaseInfo.tag_name} \nTo upgrade: run fluentci upgrade\n${releaseInfo.url}
-   `)
+        `${
+          green("A new release of fluentci is available:")
+        } ${VERSION} → ${releaseInfo.tag_name} \nTo upgrade: run fluentci upgrade\n${releaseInfo.url}
+   `,
+      );
     }
   } catch (e) {
     console.log(`
-      ${yellow('WARNING: ')} checking for udpate failed ${e}
-    `)
+      ${yellow("WARNING: ")} checking for udpate failed ${e}
+    `);
   }
-}
-
-export const versionGreaterThan = (v1: string, v2: string): boolean => {
-  const numbers1 = v1.replace('v', '').split('.').map(Number)
-  const numbers2 = v2.replace('v', '').split('.').map(Number)
-
-  for (let i = 0; i < 3; i++) {
-    if (numbers1[i] > numbers2[i]) {
-      return true;
-    }
-  }
-
-  return false;
 }
