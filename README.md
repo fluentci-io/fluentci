@@ -110,7 +110,7 @@ Commands:
   publish                              - Publish a pipeline to FluentCI Registry                   
   agent                                - Start FluentCI Runner Agent 
   whoami                               - Show current logged in user
-  repl           [pipeline]            - Start FluentCI REPL   
+  repl           [pipelines...]        - Start FluentCI REPL   
 ```
 
 ## 📚 Documentation
