@@ -20,5 +20,38 @@ import startAgent, {
   listAgents,
 } from "https://deno.land/x/fluentci@v0.10.9/src/cmd/agent.ts";
 import whoami from "https://deno.land/x/fluentci@v0.10.9/src/cmd/whoami.ts";
+import { Client } from "https://esm.sh/@dagger.io/dagger@0.9.7";
+import GraphQLClient from "https://esm.sh/graphql-client@2.0.1";
 
 const ls = listJobs;
+
+let client: Client;
+
+// Prefer DAGGER_SESSION_PORT if set
+const daggerSessionPort = Deno.env.get("DAGGER_SESSION_PORT");
+if (daggerSessionPort) {
+  const sessionToken = Deno.env.get("DAGGER_SESSION_TOKEN");
+  if (!sessionToken) {
+    throw new Error(
+      "DAGGER_SESSION_TOKEN must be set when using DAGGER_SESSION_PORT"
+    );
+  }
+
+  client = new Client({
+    ctx: {
+      connection: async () => {
+        return new GraphQLClient(
+          `http://127.0.0.1:${daggerSessionPort}/query`,
+          {
+            headers: {
+              Authorization: `Bearer ${btoa(sessionToken + ":")}`,
+            },
+          }
+        );
+      },
+      close: () => {},
+    },
+  });
+} else {
+  throw new Error("DAGGER_SESSION_PORT must be set");
+}
