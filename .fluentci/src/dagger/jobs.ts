@@ -159,7 +159,7 @@ export async function compile(
       "compile",
       "-A",
       "--output",
-      output,
+      "fluentci",
       "--target",
       Deno.env.get("TARGET") || target,
       file,
@@ -180,26 +180,45 @@ export async function compile(
       .withExec([
         "tar",
         "czvf",
-        `/assets/${output}_${Deno.env.get("TAG") || ""}_${
+        `/assets/fluentci_${Deno.env.get("TAG") || ""}_${
           Deno.env.get("TARGET") || target
         }.tar.gz`,
-        output,
+        "fluentci",
       ])
       .withExec([
         "sh",
         "-c",
-        `shasum -a 256 /assets/${output}_${Deno.env.get("TAG") || ""}_${
+        `shasum -a 256 /assets/fluentci_${Deno.env.get("TAG") || ""}_${
           Deno.env.get("TARGET") || target
-        }.tar.gz > /assets/${output}_${
-          Deno.env.get("TAG") || ""
-        }_${Deno.env.get("TARGET" || target)}.tar.gz.sha256`,
-      ]);
+        }.tar.gz > /assets/fluentci_${Deno.env.get("TAG") || ""}_${
+          Deno.env.get("TARGET") || target
+        }.tar.gz.sha256`,
+      ])
+      .withExec(["sh", "-c", "cp /assets/* /app"]);
 
-    const exe = await ctr.file(`/app/${output}`);
-    exe.export(`./${output}`);
+    const sha256 = await ctr.file(
+      `/app/fluentci_${Deno.env.get("TAG") || ""}_${
+        Deno.env.get("TARGET") || target
+      }.tar.gz.sha256`
+    );
+    const tar = await ctr.file(
+      `/app/fluentci_${Deno.env.get("TAG") || ""}_${
+        Deno.env.get("TARGET") || target
+      }.tar.gz`
+    );
+    tar.export(
+      `./fluentci_${Deno.env.get("TAG") || ""}_${
+        Deno.env.get("TARGET") || target
+      }.tar.gz`
+    );
+    sha256.export(
+      `./fluentci_${Deno.env.get("TAG") || ""}_${
+        Deno.env.get("TARGET") || target
+      }.tar.gz.sha256`
+    );
 
     await ctr.stdout();
-    id = await exe.id();
+    id = await tar.id();
   });
 
   return id;
