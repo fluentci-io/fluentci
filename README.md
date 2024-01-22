@@ -115,7 +115,7 @@ Commands:
 
 ## 🧑‍💻 FluentCI REPL
 
-<img src="https://vhs.charm.sh/vhs-5zSBaXWVvsiCsVWNOzNxcn.gif" alt="Made with VHS">
+<img src="https://vhs.charm.sh/vhs-1MJWuxoyaLKEOUIHPJwCRT.gif" alt="Made with VHS">
 <a href="https://vhs.charm.sh">
   <img src="https://stuff.charm.sh/vhs/badge.svg">
 </a>
