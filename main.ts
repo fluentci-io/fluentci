@@ -221,9 +221,11 @@ export async function main() {
       await whoami();
     })
     .command("repl", "Start FluentCI REPL")
+    .arguments("[pipeline:string]")
     .option("--quiet", "Disable verbose output")
-    .action(async function (options) {
-      await repl(options);
+    .option("--debug", "Enable debug mode")
+    .action(async function (options, pipeline) {
+      await repl(options, pipeline);
     })
     .globalOption("--check-update <checkUpdate:boolean>", "check for update", {
       default: true,
