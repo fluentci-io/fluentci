@@ -10,7 +10,7 @@ import { extractVersion, fluentciDirExists } from "../utils.ts";
 
 async function repl(
   { quiet, debug }: { quiet?: boolean; debug?: boolean },
-  pipeline?: string
+  pipelines: string[]
 ) {
   const isFluentciProject = await fluentciDirExists();
   const args = [];
@@ -20,7 +20,7 @@ async function repl(
     args.push(`--eval=import {${functions}} from "./.fluentci/mod.ts"`);
   }
 
-  if (pipeline) {
+  for (const pipeline of pipelines) {
     const name = pipeline.split("@")[0];
     let version = extractVersion(pipeline);
 
