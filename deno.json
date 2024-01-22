@@ -7,12 +7,14 @@
   },
   "fmt": {
     "exclude": [
-      ".fluentci/"
+      ".fluentci/",
+      "src/prelude.ts"
     ]
   },
   "lint": {
     "exclude": [
-      ".fluentci/"
+      ".fluentci/",
+      "src/prelude.ts"
     ]
   },
   "test": {
