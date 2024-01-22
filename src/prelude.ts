@@ -20,3 +20,5 @@ import startAgent, {
   listAgents,
 } from "https://deno.land/x/fluentci@v0.10.9/src/cmd/agent.ts";
 import whoami from "https://deno.land/x/fluentci@v0.10.9/src/cmd/whoami.ts";
+
+const ls = listJobs;
