@@ -97,7 +97,10 @@ async function repl(
    
   https://fluentci.io       
  
-Welcome to the ${magenta("FluentCI REPL!")}`);
+Welcome to the ${magenta("FluentCI REPL!")}
+You can call any ${green("FluentCI Pipeline function")} or any ${green(
+    "fluentci command"
+  )} (as a function) here.`);
 
   const process = command.spawn();
   await process.status;
@@ -110,6 +113,7 @@ Welcome to the ${magenta("FluentCI REPL!")}`);
 }
 
 async function startDagger(debug?: boolean) {
+  let ready = false;
   const terminalSpinner = new TerminalSpinner({
     text: `Starting Dagger API ...`,
     spinner: SpinnerTypes.dots,
@@ -128,7 +132,7 @@ async function startDagger(debug?: boolean) {
   const writable = new WritableStream({
     write: (chunk) => {
       const text = new TextDecoder().decode(chunk);
-      if (debug) {
+      if (debug || ready) {
         console.log(text);
       }
     },
@@ -151,6 +155,7 @@ async function startDagger(debug?: boolean) {
     }
   }
   terminalSpinner.succeed("Dagger API started!");
+  ready = true;
   return process;
 }
 
