@@ -60,7 +60,7 @@ async function repl(
       "deno",
       "repl",
       "-A",
-      "--eval-file=https://cdn.jsdelivr.net/gh/fluentci-io/fluentci@main/src/prelude.ts",
+      "--eval-file=https://cdn.jsdelivr.net/gh/fluentci-io/fluentci@b8540ff/src/prelude.ts",
       ...args,
     ],
     stdout: "inherit",
@@ -75,7 +75,7 @@ async function repl(
       args: [
         "repl",
         "-A",
-        "--eval-file=https://cdn.jsdelivr.net/gh/fluentci-io/fluentci@main/src/prelude.ts",
+        "--eval-file=https://cdn.jsdelivr.net/gh/fluentci-io/fluentci@b8540ff/src/prelude.ts",
         ...args,
       ],
       env: {
