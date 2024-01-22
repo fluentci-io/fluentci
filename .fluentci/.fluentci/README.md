@@ -1,5 +1,6 @@
 # Deno Pipeline
 
+[![fluentci pipeline](https://img.shields.io/badge/dynamic/json?label=pkg.fluentci.io&labelColor=%23000&color=%23460cf1&url=https%3A%2F%2Fapi.fluentci.io%2Fv1%2Fpipeline%2Fdeno_pipeline&query=%24.version)](https://pkg.fluentci.io/deno_pipeline)
 [![deno module](https://shield.deno.dev/x/deno_pipeline)](https://deno.land/x/deno_pipeline)
 ![deno compatibility](https://shield.deno.dev/deno/^1.37)
 [![](https://img.shields.io/codecov/c/gh/fluent-ci-templates/deno-pipeline)](https://codecov.io/gh/fluent-ci-templates/deno-pipeline)
@@ -11,7 +12,7 @@ A ready-to-use CI/CD Pipeline for your Deno projects.
 Run the following command:
 
 ```bash
-dagger run fluentci deno_pipeline
+fluentci run deno_pipeline
 ```
 
 Or, if you want to use it as a template:
@@ -25,7 +26,7 @@ This will create a `.fluentci` folder in your project.
 Now you can run the pipeline with:
 
 ```bash
-dagger run fluentci .
+fluentci run .
 ```
 
 ## Environment variables (Deno Deploy)
@@ -40,30 +41,45 @@ dagger run fluentci .
 
 ## Jobs
 
-| Job    | Description                    | Options                |
-| ------ | ------------------------------ | ---------------------- |
-| fmt    | Format your code               |                        |
-| lint   | Lint your code                 |                        |
-| test   | Run your tests                 | `{ ignore: string[] }` |
-| deploy | Deploy your app to Deno Deploy |                        |
+| Job     | Description                                               | Options                |
+| ------- | --------------------------------------------------------- | ---------------------- |
+| fmt     | Format your code                                          |                        |
+| lint    | Lint your code                                            |                        |
+| test    | Run your tests                                            | `{ ignore: string[] }` |
+| compile | Compile the given script into a self contained executable |                        |
+| deploy  | Deploy your app to Deno Deploy                            |                        |
+
+```graphql
+compile(
+  file: String!, 
+  output: String!, 
+  src: String!, 
+  target: String!
+): String
+
+deploy(
+  main: String!, 
+  noStatic: Boolean!, 
+  project: String!, 
+  src: String!, 
+  token: String!
+): String
+
+fmt(src: String!): String
+
+lint(src: String!): String
+
+test(src: String!): String
+```
 
 ## Programmatic usage
 
 You can also use this pipeline programmatically:
 
 ```ts
-import { Client, connect } from "https://esm.sh/@dagger.io/dagger@0.8.1";
-import { Dagger } from "https://deno.land/x/deno_pipeline/mod.ts";
+import { fmt, lint, test } from "https://deno.land/x/deno_pipeline/mod.ts";
 
-const { fmt, lint, test } = Dagger;
-
-function pipeline(src = ".") {
-  connect(async (client: Client) => {
-    await fmt(client, src);
-    await lint(client, src);
-    await test(client, src);
-  });
-}
-
-pipeline();
+await fmt();
+await lint();
+await test();
 ```

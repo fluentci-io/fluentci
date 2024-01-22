@@ -4,7 +4,7 @@ name: Zenith Example
 on:
   push:
     branches:
-      - zenith
+      - main
 
 jobs:
   tests:
@@ -13,11 +13,12 @@ jobs:
       - uses: actions/checkout@v2
       - name: Setup Dagger Zenith
         run: |
-          curl -L https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=0.8.8 sh
+          curl -L https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=0.9.3 sh
           sudo mv bin/dagger /usr/local/bin
           dagger version
       - name: Run Dagger Pipelines
         run: |
           dagger query --doc lint.gql
           dagger query --doc fmt.gql
+          dagger query --doc compile.gql
         working-directory: example

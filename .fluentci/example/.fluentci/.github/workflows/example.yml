@@ -5,24 +5,13 @@ on:
   push:
     branches:
       - main
-    paths:
-      - example/**
-      - .github/workflows/example.yml
 jobs:
   tests:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: denoland/setup-deno@v1
-        with:
-          deno-version: v1.37
-      - name: Setup Fluent CI CLI
-        run: deno install -A -r https://cli.fluentci.io -n fluentci
-      - name: Setup Dagger
-        run: |
-          curl -L https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=0.8.1 sh
-          sudo mv bin/dagger /usr/local/bin
-          dagger version
+      - name: Setup Fluent CI
+        uses: fluentci-io/setup-fluentci@v2
       - name: Run Dagger Pipelines
         run: dagger run deno run -A ../src/dagger/runner.ts fmt lint
         working-directory: example

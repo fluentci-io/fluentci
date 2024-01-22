@@ -1,6 +1,6 @@
 {
   "imports": {
-    "@fluentci.io/dagger": "https://sdk.fluentci.io/v0.1.5/mod.ts",
+    "@fluentci.io/dagger": "https://sdk.fluentci.io/v0.1.9/mod.ts",
     "@dagger.io/dagger": "https://esm.sh/v128/*@dagger.io/dagger@0.8.4",
     "graphql-tag": "https://esm.sh/v128/graphql-tag@2.12.6",
     "graphql-request": "https://esm.sh/v128/graphql-request@6.1.0",

@@ -19,6 +19,7 @@ import startAgent, { listAgents } from "./src/cmd/agent.ts";
 import whoami from "./src/cmd/whoami.ts";
 import { brightGreen } from "./deps.ts";
 import { VERSION } from "./src/consts.ts";
+import repl from "./src/cmd/repl.ts";
 
 export async function main() {
   await new Command()
@@ -219,9 +220,16 @@ export async function main() {
     .action(async function () {
       await whoami();
     })
-    .globalOption("--check-update <checkUpdate:boolean>", "check for update", {default: true})
+    .command("repl", "Start FluentCI REPL")
+    .option("--quiet", "Disable verbose output")
+    .action(async function (options) {
+      await repl(options);
+    })
+    .globalOption("--check-update <checkUpdate:boolean>", "check for update", {
+      default: true,
+    })
     .globalAction(async (options: { checkUpdate: boolean }) => {
-        await checkForUpdate(options)
+      await checkForUpdate(options);
     })
     .parse(Deno.args);
 }

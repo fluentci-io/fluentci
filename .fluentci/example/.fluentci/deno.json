@@ -11,21 +11,24 @@
     "exclude": [
       "example/",
       ".fluentci/",
-      "gen/"
+      "gen/",
+      "sdk/"
     ]
   },
   "lint": {
     "exclude": [
       "example/",
       ".fluentci/",
-      "gen/"
+      "gen/",
+      "sdk/"
     ]
   },
   "test": {
     "exclude": [
       "example/",
       ".fluentci/",
-      "gen/"
+      "gen/",
+      "sdk/"
     ]
   }
 }

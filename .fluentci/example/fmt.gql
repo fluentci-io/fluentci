@@ -1,5 +1,7 @@
 {
-  deno {
-    fmt(src: ".")
+  denoExample {
+    fmt {
+      id
+    }
   }
 }

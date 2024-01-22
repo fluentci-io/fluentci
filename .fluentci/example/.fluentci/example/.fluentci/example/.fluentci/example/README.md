@@ -12,5 +12,5 @@ You need to set the following environment variables:
 Then, run the following command:
 
 ```bash
-dagger run fluentci . fmt lint deploy
+fluentci run . fmt lint deploy
 ```

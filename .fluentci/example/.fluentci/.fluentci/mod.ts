@@ -1,4 +1,3 @@
-import * as GitLab from "./src/gitlab/index.ts";
-import * as Dagger from "./src/dagger/index.ts";
-
-export { Dagger, GitLab };
+export * from "./src/dagger/index.ts";
+export * as queries from "./src/dagger/queries.ts";
+export { schema } from "./src/dagger/schema.ts";

@@ -41,28 +41,45 @@ fluentci run .
 
 ## Jobs
 
-| Job    | Description                    | Options                |
-| ------ | ------------------------------ | ---------------------- |
-| fmt    | Format your code               |                        |
-| lint   | Lint your code                 |                        |
-| test   | Run your tests                 | `{ ignore: string[] }` |
-| deploy | Deploy your app to Deno Deploy |                        |
+| Job     | Description                                               | Options                |
+| ------- | --------------------------------------------------------- | ---------------------- |
+| fmt     | Format your code                                          |                        |
+| lint    | Lint your code                                            |                        |
+| test    | Run your tests                                            | `{ ignore: string[] }` |
+| compile | Compile the given script into a self contained executable |                        |
+| deploy  | Deploy your app to Deno Deploy                            |                        |
+
+```graphql
+compile(
+  file: String!, 
+  output: String!, 
+  src: String!, 
+  target: String!
+): String
+
+deploy(
+  main: String!, 
+  noStatic: Boolean!, 
+  project: String!, 
+  src: String!, 
+  token: String!
+): String
+
+fmt(src: String!): String
+
+lint(src: String!): String
+
+test(src: String!): String
+```
 
 ## Programmatic usage
 
 You can also use this pipeline programmatically:
 
 ```ts
-import Client, { connect } from "https://sdk.fluentci.io/v0.1.9/mod.ts";
 import { fmt, lint, test } from "https://deno.land/x/deno_pipeline/mod.ts";
 
-function pipeline(src = ".") {
-  connect(async (client: Client) => {
-    await fmt(client, src);
-    await lint(client, src);
-    await test(client, src);
-  });
-}
-
-pipeline();
+await fmt();
+await lint();
+await test();
 ```

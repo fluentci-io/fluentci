@@ -12,7 +12,7 @@ A ready-to-use CI/CD Pipeline for your Deno projects.
 Run the following command:
 
 ```bash
-dagger run fluentci deno_pipeline
+fluentci run deno_pipeline
 ```
 
 Or, if you want to use it as a template:
@@ -26,7 +26,7 @@ This will create a `.fluentci` folder in your project.
 Now you can run the pipeline with:
 
 ```bash
-dagger run fluentci .
+fluentci run .
 ```
 
 ## Environment variables (Deno Deploy)
@@ -53,10 +53,8 @@ dagger run fluentci .
 You can also use this pipeline programmatically:
 
 ```ts
-import Client, { connect } from "https://sdk.fluentci.io/v0.1.5/mod.ts";
-import { Dagger } from "https://deno.land/x/deno_pipeline/mod.ts";
-
-const { fmt, lint, test } = Dagger;
+import Client, { connect } from "https://sdk.fluentci.io/v0.1.9/mod.ts";
+import { fmt, lint, test } from "https://deno.land/x/deno_pipeline/mod.ts";
 
 function pipeline(src = ".") {
   connect(async (client: Client) => {

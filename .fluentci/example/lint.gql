@@ -1,5 +1,7 @@
 {
-  deno {
-    lint(src: ".")
+  denoExample {
+    lint {
+      id
+    }
   }
 }

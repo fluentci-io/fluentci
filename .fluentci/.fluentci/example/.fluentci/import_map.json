@@ -1,7 +1,14 @@
 {
   "imports": {
-    "@dagger.io/dagger": "https://esm.sh/v128/*@dagger.io/dagger@0.6.3",
-    "fluent_gitlab_ci": "https://deno.land/x/fluent_gitlab_ci@v0.3.2/mod.ts",
+    "@fluentci.io/dagger": "https://sdk.fluentci.io/v0.1.9/mod.ts",
+    "@dagger.io/dagger": "https://esm.sh/v128/*@dagger.io/dagger@0.8.4",
+    "graphql-tag": "https://esm.sh/v128/graphql-tag@2.12.6",
+    "graphql-request": "https://esm.sh/v128/graphql-request@6.1.0",
+    "fluent_gitlab_ci": "https://deno.land/x/fluent_gitlab_ci@v0.4.2/mod.ts",
+    "fluent_github_actions": "https://deno.land/x/fluent_github_actions@v0.2.1/mod.ts",
+    "fluent_circleci": "https://deno.land/x/fluent_circleci@v0.2.5/mod.ts",
+    "fluent_azure_pipelines": "https://deno.land/x/fluent_azure_pipelines@v0.2.0/mod.ts",
+    "fluent_aws_codepipeline": "https://deno.land/x/fluent_aws_codepipeline@v0.2.3/mod.ts",
     "url": "node:url",
     "readline": "node:readline",
     "process": "node:process",

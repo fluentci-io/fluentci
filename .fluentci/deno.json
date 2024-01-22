@@ -3,9 +3,7 @@
   "tasks": {
     "esm:add": "deno run -A https://esm.sh/v128 add",
     "esm:update": "deno run -A https://esm.sh/v128 update",
-    "esm:remove": "deno run -A https://esm.sh/v128 remove",
-    "schema": "deno run -A src/dagger/schema.ts",
-    "clean": "rm -rf gen schema.graphql"
+    "esm:remove": "deno run -A https://esm.sh/v128 remove"
   },
   "fmt": {
     "exclude": [

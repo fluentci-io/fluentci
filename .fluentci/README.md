@@ -7,6 +7,8 @@
 
 A ready-to-use CI/CD Pipeline for your Deno projects.
 
+![Made with VHS](https://vhs.charm.sh/vhs-3itysSnE548cLEyRNkuLAo.gif)
+
 ## 🚀 Usage
 
 Run the following command:
@@ -29,6 +31,14 @@ Now you can run the pipeline with:
 fluentci run .
 ```
 
+## Dagger Module
+
+Use as a [Dagger](https://dagger.io) module:
+
+```bash
+dagger mod install github.com/fluent-ci-templates/deno-pipeline@mod
+```
+
 ## Environment variables (Deno Deploy)
 
 | Variable          | Description               | Default    |
@@ -49,27 +59,35 @@ fluentci run .
 | compile | Compile the given script into a self contained executable |                        |
 | deploy  | Deploy your app to Deno Deploy                            |                        |
 
-```graphql
+```typescript
+lint(
+  src: string | Directory | undefined = "."
+): Promise<Directory | string>
+
+fmt(
+  src: string | Directory | undefined = "."
+): Promise<Directory | string>
+
+test(
+  src: string | Directory | undefined = ".",
+  ignore: string[] = []
+): Promise<File | string>
+
 compile(
-  file: String!, 
-  output: String!, 
-  src: String!, 
-  target: String!
-): String
+  src: string | Directory | undefined = ".",
+  file = "main.ts",
+  output = "main",
+  target = "x86_64-unknown-linux-gnu"
+): Promise<File | string>
 
 deploy(
-  main: String!, 
-  noStatic: Boolean!, 
-  project: String!, 
-  src: String!, 
-  token: String!
-): String
-
-fmt(src: String!): String
-
-lint(src: String!): String
-
-test(src: String!): String
+  src: string | Directory | undefined = ".",
+  token?: string | Secret,
+  project?: string,
+  main?: string,
+  noStatic?: boolean,
+  excludeOpt?: string
+): Promise<string>
 ```
 
 ## Programmatic usage

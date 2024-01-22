@@ -1,6 +1,7 @@
-import Client from "../../deps.ts";
-import { withDevbox, connect } from "../../deps.ts";
+import Client, { Directory, Secret, File } from "../../deps.ts";
+import { connect } from "../../sdk/connect.ts";
 import { existsSync } from "node:fs";
+import { getDirectory, getDenoDeployToken } from "./lib.ts";
 
 export enum Job {
   fmt = "fmt",
@@ -13,18 +14,6 @@ export enum Job {
 export const exclude = [".git", ".devbox", ".fluentci"];
 
 const baseCtr = (client: Client, pipeline: string) => {
-  if (existsSync("devbox.json")) {
-    return withDevbox(
-      client
-        .pipeline(pipeline)
-        .container()
-        .from("alpine:latest")
-        .withExec(["apk", "update"])
-        .withExec(["apk", "add", "bash", "curl", "perl-utils"])
-        .withMountedCache("/nix", client.cacheVolume("nix"))
-        .withMountedCache("/etc/nix", client.cacheVolume("nix-etc"))
-    );
-  }
   return client
     .pipeline(pipeline)
     .container()
@@ -33,10 +22,18 @@ const baseCtr = (client: Client, pipeline: string) => {
     .withExec(["apk", "add", "perl-utils"]);
 };
 
-export const lint = async (src = ".") => {
-  let result = "";
+/**
+ * @function
+ * @description Lint your code
+ * @param {string | Directory} src
+ * @returns {string}
+ */
+export async function lint(
+  src: string | Directory | undefined = "."
+): Promise<Directory | string> {
+  let id = "";
   await connect(async (client) => {
-    const context = client.host().directory(src);
+    const context = getDirectory(client, src);
     let command = ["deno", "lint"];
 
     if (existsSync("devbox.json")) {
@@ -50,16 +47,26 @@ export const lint = async (src = ".") => {
       .withWorkdir("/app")
       .withExec(command);
 
-    result = await ctr.stdout();
+    const result = await ctr.stdout();
     console.log(result);
-  });
-  return "Done";
-};
 
-export const fmt = async (src = ".") => {
-  let result = "";
+    id = await ctr.directory("/app").id();
+  });
+  return id;
+}
+
+/**
+ * @function
+ * @description Format your code
+ * @param {string | Directory} src
+ * @returns {string}
+ */
+export async function fmt(
+  src: string | Directory | undefined = "."
+): Promise<Directory | string> {
+  let id = "";
   await connect(async (client) => {
-    const context = client.host().directory(src);
+    const context = getDirectory(client, src);
     let command = ["deno", "fmt"];
 
     if (existsSync("devbox.json")) {
@@ -73,24 +80,32 @@ export const fmt = async (src = ".") => {
       .withWorkdir("/app")
       .withExec(command);
 
-    result = await ctr.stdout();
+    const result = await ctr.stdout();
     console.log(result);
+    id = await ctr.directory("/app").id();
   });
 
-  return "Done";
-};
+  return id;
+}
 
-export const test = async (
-  src = ".",
-  options: { ignore: string[] } = { ignore: [] }
-) => {
-  let result = "";
+/**
+ * @function
+ * @description Run your tests
+ * @param {string | Directory} src
+ * @param {string[]} ignore
+ * @returns {string}
+ */
+export async function test(
+  src: string | Directory | undefined = ".",
+  ignore: string[] = []
+): Promise<File | string> {
+  let id = "";
   await connect(async (client) => {
-    const context = client.host().directory(src);
+    const context = getDirectory(client, src);
     let command = ["deno", "test", "-A", "--coverage=coverage", "--lock-write"];
 
-    if (options.ignore.length > 0) {
-      command = command.concat([`--ignore=${options.ignore.join(",")}`]);
+    if (ignore.length > 0) {
+      command = command.concat([`--ignore=${ignore.join(",")}`]);
     }
 
     if (existsSync("devbox.json")) {
@@ -111,22 +126,34 @@ export const test = async (
         "deno coverage ./coverage --lcov > coverage.lcov",
       ]);
 
-    await ctr.file("/app/coverage.lcov").export("./coverage.lcov");
+    const cov = await ctr.file("/app/coverage.lcov");
+    cov.export("./coverage.lcov");
+    id = await cov.id();
 
-    result = await ctr.stdout();
+    const result = await ctr.stdout();
     console.log(result);
   });
-  return "Done";
-};
+  return id;
+}
 
-export const compile = async (
-  src = ".",
+/**
+ * @function
+ * @description Compile your code
+ * @param {string | Directory} src
+ * @param {string} file
+ * @param {string} output
+ * @param {string} target
+ * @returns {string}
+ */
+export async function compile(
+  src: string | Directory | undefined = ".",
   file = "main.ts",
-  output = "fluentci",
+  output = "main",
   target = "x86_64-unknown-linux-gnu"
-) => {
+): Promise<File | string> {
+  let id = "";
   await connect(async (client) => {
-    const context = client.host().directory(src);
+    const context = getDirectory(client, src);
     let command = [
       "deno",
       "compile",
@@ -168,25 +195,38 @@ export const compile = async (
         }_${Deno.env.get("TARGET" || target)}.tar.gz.sha256`,
       ]);
 
-    await ctr.file(`/app/${output}`).export(`./${output}`);
+    const exe = await ctr.file(`/app/${output}`);
+    exe.export(`./${output}`);
 
     await ctr.stdout();
+    id = await exe.id();
   });
 
-  return "Done";
-};
+  return id;
+}
 
-export const deploy = async (
-  src = ".",
-  token?: string,
+/**
+ * @function
+ * @description Deploy your code to Deno Deploy
+ * @param {string | Directory} src
+ * @param {string | Secret} token
+ * @param {string} project
+ * @param {string} main
+ * @param {boolean} noStatic
+ * @param {string} excludeOpt
+ * @returns {string}
+ */
+export async function deploy(
+  src: string | Directory | undefined = ".",
+  token?: string | Secret,
   project?: string,
   main?: string,
   noStatic?: boolean,
   excludeOpt?: string
-) => {
+): Promise<string> {
   let result = "";
   await connect(async (client) => {
-    const context = client.host().directory(src);
+    const context = getDirectory(client, src);
     let installDeployCtl = [
       "deno",
       "install",
@@ -209,8 +249,11 @@ export const deploy = async (
       ]);
     }
 
-    if (!Deno.env.get("DENO_DEPLOY_TOKEN") && !token) {
-      throw new Error("DENO_DEPLOY_TOKEN environment variable is not set");
+    const secret = getDenoDeployToken(client, token);
+
+    if (!secret) {
+      console.error("DENO_DEPLOY_TOKEN environment variable is not set");
+      Deno.exit(1);
     }
 
     if (!project) {
@@ -239,10 +282,7 @@ export const deploy = async (
       })
       .withWorkdir("/app")
       .withEnvVariable("PATH", "/root/.deno/bin:$PATH", { expand: true })
-      .withEnvVariable(
-        "DENO_DEPLOY_TOKEN",
-        Deno.env.get("DENO_DEPLOY_TOKEN") || token!
-      )
+      .withSecretVariable("DENO_DEPLOY_TOKEN", secret)
       .withEnvVariable(
         "DENO_MAIN_SCRIPT",
         Deno.env.get("DENO_MAIN_SCRIPT") || main || "main.tsx"
@@ -255,17 +295,20 @@ export const deploy = async (
   });
 
   return "Done";
-};
+}
 
-export type JobExec = (src?: string) =>
-  | Promise<string>
+export type JobExec =
+  | ((src: string | Directory | undefined) => Promise<Directory | string>)
   | ((
-      client: Client,
-      src?: string,
-      options?: {
-        ignore: string[];
-      }
-    ) => Promise<string>);
+      src: string | Directory | undefined,
+      ignore?: string[]
+    ) => Promise<File | string>)
+  | ((
+      src: string | Directory | undefined,
+      file?: string,
+      output?: string,
+      target?: string
+    ) => Promise<File | string>);
 
 export const runnableJobs: Record<Job, JobExec> = {
   [Job.fmt]: fmt,

@@ -28,20 +28,31 @@ Now you can run the pipeline with:
 dagger run fluentci .
 ```
 
+## Environment variables (Deno Deploy)
+
+| Variable          | Description               | Default    |
+| ----------------- | ------------------------- | ---------- |
+| DENO_PROJECT      | Your project name         |            |
+| NO_STATIC         | Disable static assets     | `false`    |
+| EXCLUDE           | Exclude files from deploy |            |
+| DENO_DEPLOY_TOKEN | Your Deno Deploy token    |            |
+| DENO_MAIN_SCRIPT  | Your main script          | `main.tsx` |
+
 ## Jobs
 
-| Job   | Description      | Options                |
-| ----- | ---------------- | ---------------------- |
-| fmt   | Format your code |                        |
-| lint  | Lint your code   |                        |
-| test  | Run your tests   | `{ ignore: string[] }` |
+| Job    | Description                    | Options                |
+| ------ | ------------------------------ | ---------------------- |
+| fmt    | Format your code               |                        |
+| lint   | Lint your code                 |                        |
+| test   | Run your tests                 | `{ ignore: string[] }` |
+| deploy | Deploy your app to Deno Deploy |                        |
 
 ## Programmatic usage
 
 You can also use this pipeline programmatically:
 
 ```ts
-import Client, { connect } from "@dagger.io/dagger";
+import { Client, connect } from "https://esm.sh/@dagger.io/dagger@0.8.1";
 import { Dagger } from "https://deno.land/x/deno_pipeline/mod.ts";
 
 const { fmt, lint, test } = Dagger;
