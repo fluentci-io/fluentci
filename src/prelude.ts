@@ -20,7 +20,7 @@ import startAgent, {
   listAgents,
 } from "https://deno.land/x/fluentci@v0.10.9/src/cmd/agent.ts";
 import whoami from "https://deno.land/x/fluentci@v0.10.9/src/cmd/whoami.ts";
-import { Client } from "https://esm.sh/@dagger.io/dagger@0.9.7";
+import { Client } from "https://esm.sh/@dagger.io/dagger@0.9.6";
 import GraphQLClient from "https://esm.sh/graphql-client@2.0.1";
 
 const ls = listJobs;
