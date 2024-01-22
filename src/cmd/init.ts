@@ -4,13 +4,11 @@ import {
   Input,
   brightGreen,
   Confirm,
-  _,
-} from "../../deps.ts";
-import {
   TerminalSpinner,
   SpinnerTypes,
-} from "https://deno.land/x/spinners@v1.1.2/mod.ts";
-import { green } from "https://deno.land/std@0.52.0/fmt/colors.ts";
+  green,
+  _,
+} from "../../deps.ts";
 import { extractVersion } from "../utils.ts";
 
 const BASE_URL = "https://api.fluentci.io/v1";

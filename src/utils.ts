@@ -74,3 +74,12 @@ export async function getDaggerVersion(): Promise<string> {
   const version = new TextDecoder().decode(stdout).trim().split(" ")[1];
   return version;
 }
+
+export async function fluentciDirExists(): Promise<boolean> {
+  try {
+    const fluentciDir = await Deno.stat(".fluentci");
+    return fluentciDir.isDirectory;
+  } catch (_) {
+    return false;
+  }
+}
