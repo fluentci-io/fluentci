@@ -11,9 +11,9 @@ import { getAccessToken, isLogged, extractVersion } from "../utils.ts";
  * @throws An error if the pipeline fails to run.
  */
 async function run(
-  pipeline: string,
-  jobs: [string, ...Array<string>],
-  options: Record<string, string | number | boolean | undefined>
+  pipeline = ".",
+  jobs: [string, ...Array<string>] | string[] = [],
+  options: Record<string, string | number | boolean | undefined> = {}
 ) {
   await load({
     envPath: ".fluentci/.env",
@@ -204,7 +204,7 @@ const spawnCommand = async (command: Deno.Command) => {
 
 const runPipelineRemotely = async (
   pipeline: string,
-  jobs: [string, ...Array<string>],
+  jobs: [string, ...Array<string>] | string[],
   denoModule?: string[]
 ) => {
   if (!(await isLogged())) {

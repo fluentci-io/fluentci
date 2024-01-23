@@ -34,8 +34,11 @@ export {
   ZipReader,
   ZipWriter,
 } from "https://deno.land/x/zipjs@v2.7.32/index.js";
-import introspect from "https://cdn.jsdelivr.net/gh/fluentci-io/daggerverse@main/deno-sdk/sdk/src/mod/introspect.ts";
+import introspect, {
+  Metadata,
+} from "https://cdn.jsdelivr.net/gh/fluentci-io/daggerverse@main/deno-sdk/sdk/src/mod/introspect.ts";
 export { introspect };
+export type { Metadata };
 export { wait } from "https://deno.land/x/wait@0.1.13/mod.ts";
 import * as _ from "https://cdn.skypack.dev/lodash";
 export { _ };

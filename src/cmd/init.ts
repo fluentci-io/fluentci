@@ -22,7 +22,7 @@ const BASE_URL = "https://api.fluentci.io/v1";
  * @returns {Promise<void>}
  */
 async function init(
-  { template, standalone }: { template?: string; standalone?: boolean },
+  { template, standalone }: { template?: string; standalone?: boolean } = {},
   _name?: string
 ) {
   const infos = await promptPackageDetails(standalone);

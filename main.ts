@@ -180,7 +180,7 @@ export async function main() {
     .option("--ap, --azure", "Show Azure Pipelines documentation")
     .option("--ac, --aws", "Show AWS CodePipeline documentation")
     .action(async function (options, pipeline) {
-      await docs(options, pipeline);
+      await docs(pipeline, options);
     })
     .command("doctor", "Check if FluentCI CLI is installed correctly")
     .action(async function () {

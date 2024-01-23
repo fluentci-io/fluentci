@@ -2,14 +2,14 @@ import { green } from "../../deps.ts";
 import { BASE_URL } from "../consts.ts";
 
 async function docs(
+  pipeline = ".",
   options: {
     gl?: unknown;
     gh?: unknown;
     cci?: unknown;
     ap?: unknown;
     ac?: unknown;
-  },
-  pipeline = "."
+  } = {}
 ) {
   // verify if glow is installed
 
