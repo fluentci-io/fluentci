@@ -8,10 +8,7 @@ import {
 import { BASE_URL } from "../consts.ts";
 import { extractVersion, fluentciDirExists } from "../utils.ts";
 
-async function repl(
-  { quiet, debug }: { quiet?: boolean; debug?: boolean },
-  pipelines: string[]
-) {
+async function repl({ debug }: { debug?: boolean }, pipelines: string[]) {
   const isFluentciProject = await fluentciDirExists();
   const args = [];
   if (isFluentciProject) {
@@ -52,41 +49,23 @@ async function repl(
     }
   }
 
-  let command = new Deno.Command("dagger", {
+  const port = Math.floor(Math.random() * (65535 - 1024 + 1)) + 1024;
+  const dagger = await startDagger(port, debug);
+  const command = new Deno.Command("deno", {
     args: [
-      "--progress",
-      "plain",
-      "run",
-      "deno",
       "repl",
       "-A",
       "--eval-file=https://cdn.jsdelivr.net/gh/fluentci-io/fluentci@0c8a9aa/src/prelude.ts",
       ...args,
     ],
+    env: {
+      DAGGER_SESSION_TOKEN: "repl",
+      DAGGER_SESSION_PORT: port.toString(),
+    },
     stdout: "inherit",
     stdin: "inherit",
     stderr: "inherit",
   });
-  let dagger: Deno.ChildProcess | undefined;
-
-  if (quiet) {
-    dagger = await startDagger(debug);
-    command = new Deno.Command("deno", {
-      args: [
-        "repl",
-        "-A",
-        "--eval-file=https://cdn.jsdelivr.net/gh/fluentci-io/fluentci@0c8a9aa/src/prelude.ts",
-        ...args,
-      ],
-      env: {
-        DAGGER_SESSION_TOKEN: "repl",
-        DAGGER_SESSION_PORT: "8080",
-      },
-      stdout: "inherit",
-      stdin: "inherit",
-      stderr: "inherit",
-    });
-  }
 
   console.log(`
   .
@@ -112,7 +91,7 @@ You can call any ${green("FluentCI Pipeline function")} or any ${green(
   Deno.exit(0);
 }
 
-async function startDagger(debug?: boolean) {
+async function startDagger(port: number, debug?: boolean) {
   let ready = false;
   const terminalSpinner = new TerminalSpinner({
     text: `Starting Dagger API ...`,
@@ -121,7 +100,7 @@ async function startDagger(debug?: boolean) {
   terminalSpinner.start();
 
   const command = new Deno.Command("dagger", {
-    args: ["listen"],
+    args: ["listen", "--listen", `127.0.0.1:${port}`],
     env: {
       DAGGER_SESSION_TOKEN: "repl",
     },
@@ -147,7 +126,7 @@ async function startDagger(debug?: boolean) {
     try {
       // sleep for 1 second
       await new Promise((resolve) => setTimeout(resolve, 1000));
-      const conn = await Deno.connect({ port: 8080 });
+      const conn = await Deno.connect({ port });
       conn.close();
       break;
     } catch (_) {

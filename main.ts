@@ -222,8 +222,7 @@ export async function main() {
     })
     .command("repl", "Start FluentCI REPL")
     .arguments("[pipelines...:string]")
-    .option("--quiet", "Disable verbose output")
-    .option("--debug", "Enable debug mode")
+    .option("--debug", "Show more information for debugging")
     .action(async function (options, ...pipelines: [string, ...Array<string>]) {
       await repl(options, pipelines);
     })

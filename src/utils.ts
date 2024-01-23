@@ -78,6 +78,7 @@ export async function getDaggerVersion(): Promise<string> {
 export async function fluentciDirExists(): Promise<boolean> {
   try {
     const fluentciDir = await Deno.stat(".fluentci");
+    await Deno.stat(".fluentci/mod.ts");
     return fluentciDir.isDirectory;
   } catch (_) {
     return false;
