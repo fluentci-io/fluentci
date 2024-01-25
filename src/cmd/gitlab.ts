@@ -12,7 +12,7 @@ async function generateGitlabCIConfig(pipeline?: string, reload = false) {
     try {
       // verify if .fluentci directory exists
       const fluentciDir = await Deno.stat(".fluentci");
-      Deno.stat(".fluentci/mod.ts");
+      await Deno.stat(".fluentci/mod.ts");
       if (!fluentciDir.isDirectory) {
         displayErrorMessage();
       }

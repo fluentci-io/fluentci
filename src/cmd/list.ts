@@ -11,7 +11,7 @@ async function listJobs(pipeline = ".") {
     try {
       // verify if .fluentci directory exists
       const fluentciDir = await Deno.stat(".fluentci");
-      Deno.stat(".fluentci/mod.ts");
+      await Deno.stat(".fluentci/mod.ts");
       if (!fluentciDir.isDirectory) {
         displayErrorMessage();
       }
