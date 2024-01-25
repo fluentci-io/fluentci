@@ -1,25 +1,25 @@
-import run from "https://deno.land/x/fluentci@v0.11.4/src/cmd/run.ts";
-import init from "https://deno.land/x/fluentci@v0.11.4/src/cmd/init.ts";
-import search from "https://deno.land/x/fluentci@v0.11.4/src/cmd/search.ts";
+import run from "https://deno.land/x/fluentci@v0.11.6/src/cmd/run.ts";
+import init from "https://deno.land/x/fluentci@v0.11.6/src/cmd/init.ts";
+import search from "https://deno.land/x/fluentci@v0.11.6/src/cmd/search.ts";
 import upgrade, {
   checkForUpdate,
-} from "https://deno.land/x/fluentci@v0.11.4/src/cmd/upgrade.ts";
-import listJobs from "https://deno.land/x/fluentci@v0.11.4/src/cmd/list.ts";
-import generateWorkflow from "https://deno.land/x/fluentci@v0.11.4/src/cmd/github.ts";
-import generateGitlabCIConfig from "https://deno.land/x/fluentci@v0.11.4/src/cmd/gitlab.ts";
-import generateAWSCodePipelineConfig from "https://deno.land/x/fluentci@v0.11.4/src/cmd/aws.ts";
-import generateAzurePipelinesConfig from "https://deno.land/x/fluentci@v0.11.4/src/cmd/azure.ts";
-import generateCircleCIConfig from "https://deno.land/x/fluentci@v0.11.4/src/cmd/circleci.ts";
-import docs from "https://deno.land/x/fluentci@v0.11.4/src/cmd/docs.ts";
-import cache from "https://deno.land/x/fluentci@v0.11.4/src/cmd/cache.ts";
-import doctor from "https://deno.land/x/fluentci@v0.11.4/src/cmd/doctor.ts";
-import showEnvs from "https://deno.land/x/fluentci@v0.11.4/src/cmd/env.ts";
-import login from "https://deno.land/x/fluentci@v0.11.4/src/cmd/login.ts";
-import publish from "https://deno.land/x/fluentci@v0.11.4/src/cmd/publish.ts";
+} from "https://deno.land/x/fluentci@v0.11.6/src/cmd/upgrade.ts";
+import listJobs from "https://deno.land/x/fluentci@v0.11.6/src/cmd/list.ts";
+import generateWorkflow from "https://deno.land/x/fluentci@v0.11.6/src/cmd/github.ts";
+import generateGitlabCIConfig from "https://deno.land/x/fluentci@v0.11.6/src/cmd/gitlab.ts";
+import generateAWSCodePipelineConfig from "https://deno.land/x/fluentci@v0.11.6/src/cmd/aws.ts";
+import generateAzurePipelinesConfig from "https://deno.land/x/fluentci@v0.11.6/src/cmd/azure.ts";
+import generateCircleCIConfig from "https://deno.land/x/fluentci@v0.11.6/src/cmd/circleci.ts";
+import docs from "https://deno.land/x/fluentci@v0.11.6/src/cmd/docs.ts";
+import cache from "https://deno.land/x/fluentci@v0.11.6/src/cmd/cache.ts";
+import doctor from "https://deno.land/x/fluentci@v0.11.6/src/cmd/doctor.ts";
+import showEnvs from "https://deno.land/x/fluentci@v0.11.6/src/cmd/env.ts";
+import login from "https://deno.land/x/fluentci@v0.11.6/src/cmd/login.ts";
+import publish from "https://deno.land/x/fluentci@v0.11.6/src/cmd/publish.ts";
 import startAgent, {
   listAgents,
-} from "https://deno.land/x/fluentci@v0.11.4/src/cmd/agent.ts";
-import whoami from "https://deno.land/x/fluentci@v0.11.4/src/cmd/whoami.ts";
+} from "https://deno.land/x/fluentci@v0.11.6/src/cmd/agent.ts";
+import whoami from "https://deno.land/x/fluentci@v0.11.6/src/cmd/whoami.ts";
 import { Client } from "https://esm.sh/@dagger.io/dagger@0.9.6";
 import { GraphQLClient } from "https://esm.sh/graphql-request@6.1.0";
 
