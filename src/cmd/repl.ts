@@ -78,7 +78,7 @@ async function repl({ debug }: { debug?: boolean }, pipelines: string[]) {
     args: [
       "repl",
       "-A",
-      "--eval-file=https://cdn.jsdelivr.net/gh/fluentci-io/fluentci@c46b324/src/prelude.ts",
+      "--eval-file=https://cdn.jsdelivr.net/gh/fluentci-io/fluentci@b9921ee/src/prelude.ts",
       ...args,
     ],
     env: {
