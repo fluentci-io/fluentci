@@ -24,6 +24,7 @@ async function run(
     try {
       // verify if .fluentci directory exists
       const fluentciDir = await Deno.stat(".fluentci");
+      Deno.stat(".fluentci/mod.ts");
       if (!fluentciDir.isDirectory) {
         displayErrorMessage();
       }

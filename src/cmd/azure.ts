@@ -12,6 +12,7 @@ async function generateAzurePipelinesConfig(pipeline?: string, reload = false) {
     try {
       // verify if .fluentci directory exists
       const fluentciDir = await Deno.stat(".fluentci");
+      Deno.stat(".fluentci/mod.ts");
       if (!fluentciDir.isDirectory) {
         displayErrorMessage();
       }
