@@ -5,6 +5,8 @@
 ![deno compatibility](https://shield.deno.dev/deno/^1.37)
 [![discord](https://img.shields.io/discord/1132020671262773358?label=discord&logo=discord&color=5865F2)](https://discord.gg/V4U6dPskKc)
 
+[![CodeSee](https://codesee-docs.s3.amazonaws.com/badge.svg?)](https://app.codesee.io/maps/public/16daf950-c4dd-11ee-b3d5-db051da2172a)
+
 ![Made with VHS](https://vhs.charm.sh/vhs-f5jk3sceXQrc55XC4fW3c.gif)
 
 Fluent CI is a CI/CD tool that allows you to build, test, and deploy your code. It is a self-hosted solution built on top of [Dagger](https://dagger.io) and [Deno](https://deno.com/), can be run locally or on a server, and is completely free and open-source.
