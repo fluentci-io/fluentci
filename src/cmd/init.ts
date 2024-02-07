@@ -10,6 +10,7 @@ import {
   _,
 } from "../../deps.ts";
 import { extractVersion } from "../utils.ts";
+import { existsSync } from "node:fs";
 
 const BASE_URL = "https://api.fluentci.io/v1";
 
@@ -23,9 +24,9 @@ const BASE_URL = "https://api.fluentci.io/v1";
  */
 async function init(
   { template, standalone }: { template?: string; standalone?: boolean } = {},
-  _name?: string
+  name?: string
 ) {
-  const infos = await promptPackageDetails(standalone);
+  const infos = await promptPackageDetails(standalone, name);
   let version = extractVersion(template || "base_pipeline");
   template = template?.split("@")[0] || "base_pipeline";
 
@@ -177,6 +178,10 @@ async function downloadTemplateFromGithub(
 
   await copyDir(outputDir, standalone ? "." : ".fluentci");
 
+  if (!standalone) {
+    await removeUnnecessaryFiles();
+  }
+
   if (data.directory) {
     outputDir = outputDir.split("/")[0];
   }
@@ -202,6 +207,10 @@ async function downloadTemplateFromRegistry(
     const outputDir = `${template}/${version}`;
     await copyDir(outputDir, standalone ? "." : ".fluentci");
 
+    if (!standalone) {
+      await removeUnnecessaryFiles();
+    }
+
     await Deno.remove(template, { recursive: true });
 
     if (!standalone) {
@@ -212,7 +221,19 @@ async function downloadTemplateFromRegistry(
   return false;
 }
 
-async function promptPackageDetails(standalone?: boolean) {
+async function removeUnnecessaryFiles() {
+  if (existsSync(".fluentci/.github")) {
+    await Deno.remove(".fluentci/.github", { recursive: true });
+  }
+  if (existsSync(".fluentci/.fluentci")) {
+    await Deno.remove(".fluentci/.fluentci", { recursive: true });
+  }
+  if (existsSync(".fluentci/example")) {
+    await Deno.remove(".fluentci/example", { recursive: true });
+  }
+}
+
+async function promptPackageDetails(standalone?: boolean, name?: string) {
   console.log(`👋 Welcome to ${brightGreen("Fluent CI")}!\n`);
   console.log(`This utility will walk you through creating a new pipeline.`);
   console.log(
@@ -232,7 +253,7 @@ async function promptPackageDetails(standalone?: boolean) {
       name: "name",
       message: "package name",
       type: Input,
-      default: Deno.cwd().split("/").pop(),
+      default: name || Deno.cwd().split("/").pop(),
     },
     {
       name: "version",
