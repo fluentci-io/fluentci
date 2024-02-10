@@ -20,6 +20,7 @@ import whoami from "./src/cmd/whoami.ts";
 import { brightGreen } from "./deps.ts";
 import { VERSION } from "./src/consts.ts";
 import repl from "./src/cmd/repl.ts";
+import studio from "./src/cmd/studio.ts";
 
 export async function main() {
   await new Command()
@@ -249,6 +250,11 @@ export async function main() {
     .option("--debug", "Show more information for debugging")
     .action(async function (options, ...pipelines: [string, ...Array<string>]) {
       await repl(options, pipelines);
+    })
+    .command("studio", "Start FluentCI Studio, a web-based user interface")
+    .option("--port <port:number>", "Port to run FluentCI Studio")
+    .action(function (options) {
+      studio(options);
     })
     .globalOption("--check-update <checkUpdate:boolean>", "check for update", {
       default: true,
