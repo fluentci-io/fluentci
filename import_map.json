@@ -2,7 +2,8 @@
   "imports": {
     "cliffy/command": "https://deno.land/x/cliffy@v1.0.0-rc.2/command/mod.ts",
     "colors": "https://deno.land/std@0.195.0/fmt/colors.ts",
-    "downstream": "https://deno.land/x/downstream@0.3.3/mod.ts"
+    "downstream": "https://deno.land/x/downstream@0.3.3/mod.ts",
+    "graphql": "https://esm.sh/graphql@16.6.0"
   },
   "scopes": {}
 }
