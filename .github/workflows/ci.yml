@@ -16,7 +16,10 @@ jobs:
         run: |
           deno install --import-map=https://deno.land/x/fluentci@v0.8.1/import_map.json -A -r -f https://deno.land/x/fluentci@v0.8.0/main.ts -n fluentci
           fluentci run deno_pipeline fmt lint test
+        env:
+          DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
       - name: Upload to Codecov
         run: fluentci run codecov_pipeline
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+          DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
