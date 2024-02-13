@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup Fluent CI
-        uses: fluentci-io/setup-fluentci@v1
+        uses: fluentci-io/setup-fluentci@v3
       - name: Set env
         run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
       - name: Build
@@ -26,6 +26,7 @@ jobs:
         env:
           TAG: ${{ env.RELEASE_VERSION }}
           TARGET: ${{ matrix.target }}
+          DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
       - name: Upload release assets
         run: |
           for ext in tar.gz tar.gz.sha256; do
@@ -35,3 +36,4 @@ jobs:
         env:
           TAG: ${{ env.RELEASE_VERSION }}
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DAGGER_CLOUD_TOKEN: ${{ secrets.DAGGER_CLOUD_TOKEN }}
