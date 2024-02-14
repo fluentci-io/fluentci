@@ -8,8 +8,8 @@ export async function createProject(
 ): Promise<Project> {
   return new Project({
     id: "1",
-    path: "path",
-    name: "name",
+    path: "/home/tsirysndr/Documents/github/fluentci",
+    name: "fluentci",
     createdAt: new Date().toISOString(),
   });
 }
@@ -21,8 +21,8 @@ export async function runPipeline(
 ): Promise<Project> {
   return new Project({
     id: "1",
-    path: "path",
-    name: "name",
+    path: "/home/tsirysndr/Documents/github/gleam_pipeline/example",
+    name: "gleam_example",
     createdAt: new Date().toISOString(),
   });
 }

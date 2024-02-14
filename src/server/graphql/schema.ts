@@ -19,6 +19,11 @@ builder.objectType(Job, {
     name: t.exposeString("name"),
     status: t.exposeString("status"),
     createdAt: t.exposeString("createdAt"),
+    logs: t.field({
+      type: Log,
+      nullable: true,
+      resolve: (root) => root.logs,
+    }),
   }),
 });
 
@@ -41,6 +46,11 @@ builder.objectType(Project, {
     path: t.exposeString("path"),
     name: t.exposeString("name"),
     createdAt: t.exposeString("createdAt"),
+    logs: t.field({
+      type: Log,
+      nullable: true,
+      resolve: (root) => root.logs,
+    }),
   }),
 });
 
@@ -77,6 +87,10 @@ builder.queryType({
     }),
     logs: t.field({
       type: [Log],
+      args: {
+        jobId: t.arg.id(),
+        projectId: t.arg.id(),
+      },
       resolve: getLogs,
     }),
   }),
