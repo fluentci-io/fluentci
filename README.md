@@ -19,10 +19,17 @@ It is also a registry of pre-built pipelines. This means you don't have to write
 </p>
 
 ## 🚚 Installation
+
 using [Deno](https://deno.com) (recommended) :
 
 ```bash
 deno install -A -r https://cli.fluentci.io -n fluentci
+```
+
+using Bash (Linux/macOS) :
+
+```bash
+curl -fsSL https://cli.fluentci.io | sh
 ```
 
 using [Homebrew](https://brew.sh) :
