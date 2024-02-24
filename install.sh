@@ -35,7 +35,7 @@ if ! command -v dagger >/dev/null 2>&1; then
     else
         sudo mv bin/dagger /usr/local/bin
     fi
-    rmdir bin
+    rmdir bin || true
 fi
 
 if ! command -v tar >/dev/null 2>&1; then
