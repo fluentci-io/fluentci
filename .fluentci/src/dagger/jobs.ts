@@ -1,7 +1,8 @@
-import Client, { Directory, Secret, File } from "../../deps.ts";
+import { Directory, Secret, File } from "../../deps.ts";
 import { connect } from "../../sdk/connect.ts";
 import { existsSync } from "node:fs";
 import { getDirectory, getDenoDeployToken, getGithubToken } from "./lib.ts";
+import { Client } from "../../sdk/client.gen.ts";
 
 export enum Job {
   fmt = "fmt",
