@@ -1,19 +1,9 @@
 {
   "version": "3",
-  "packages": {
-    "specifiers": {
-      "npm:typescript": "npm:typescript@5.3.2"
-    },
-    "npm": {
-      "typescript@5.3.2": {
-        "integrity": "sha512-6l+RyNy7oAHDfxC4FzSJcz9vnjTKxrLpDG5M2Vu4SHRVNg6xzqZp6LYSR9zjqQTu8DU/f5xwxUdADOkbrIX2gQ==",
-        "dependencies": {}
-      }
-    }
-  },
   "remote": {
     "https://cdn.jsdelivr.net/gh/tsirysndr/tar@v0.1.1/deps.ts": "096395daebc7ed8a18f0484e4ffcc3a7f70e50946735f7df9611a7fcfd8272cc",
     "https://cdn.jsdelivr.net/gh/tsirysndr/tar@v0.1.1/mod.ts": "e269d71c72ae68e82c1960e5db2a0c7419c97c9683ef717de0ab75d90f364713",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/tar@v0.1.1/src/interface.ts": "3d4371b7590e90af7b191b93f8681ea7add6f5dca0d26a4d171701de09707c4f",
     "https://cdn.jsdelivr.net/gh/tsirysndr/tar@v0.1.1/src/tar.ts": "9b02eaaa784b225ad7a23d2769cd492adf113ea7c11c02e3646849e98f4ae43b",
     "https://cdn.skypack.dev/-/lodash@v4.17.21-K6GEbP02mWFnLA45zAmi/dist=es2019,mode=imports/optimized/lodash.js": "10c4df47937ffc78548d136dd535a021df5f57182a653260d715c0690dd22978",
     "https://cdn.skypack.dev/lodash": "8280de0b3efd87f06ea0eb330d15b8de32c059556023b8c6524e9eb9e4844dc0",
