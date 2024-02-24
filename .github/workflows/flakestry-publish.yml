@@ -17,6 +17,14 @@ jobs:
       id-token: "write"
       contents: "read"
     steps:
-      - uses: tsirysndr/flakestry-publish@main
-        with:
-          version: "${{ inputs.tag || github.ref_name }}"
+      - uses: actions/checkout@v3
+      - name: Setup Fluent CI
+        uses: fluentci-io/setup-fluentci@v4
+      - name: Publish flake
+        run: fluentci run . publish
+        env:
+          VERSION: ${{ inputs.tag || github.ref_name }}
+          GH_TOKEN: ${{ github.token }}
+          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
+          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
+          REF: ${{ github.sha }}

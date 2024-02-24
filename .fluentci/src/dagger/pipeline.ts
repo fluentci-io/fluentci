@@ -1,4 +1,4 @@
-import { uploadContext } from "../../deps.ts";
+import { Directory, uploadContext } from "../../deps.ts";
 import * as jobs from "./jobs.ts";
 
 const { fmt, lint, test, runnableJobs, exclude } = jobs;
@@ -23,6 +23,27 @@ async function runSpecificJobs(args: jobs.Job[]) {
     if (!job) {
       throw new Error(`Job ${name} not found`);
     }
-    await job(".");
+    if (name === "publish") {
+      const publish = job as (
+        src: string | Directory,
+        version: string,
+        ref: string,
+        ghToken: string,
+        actionsIdTokenRequestToken: string,
+        actionsIdTokenRequestUrl: string,
+        url?: string,
+        ignoreConflicts?: boolean
+      ) => Promise<string>;
+      await publish(
+        ".",
+        Deno.env.get("VERSION")!,
+        Deno.env.get("REF")!,
+        Deno.env.get("GH_TOKEN")!,
+        Deno.env.get("ACTIONS_ID_TOKEN_REQUEST_TOKEN")!,
+        Deno.env.get("ACTIONS_ID_TOKEN_REQUEST_URL")!,
+        Deno.env.get("URL"),
+        Deno.env.get("IGNORE_CONFLICTS") === "true"
+      );
+    }
   }
 }
