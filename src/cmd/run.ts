@@ -1,7 +1,12 @@
 import { BlobWriter, green, load, walk, ZipWriter, dayjs } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
 import { getCommitInfos } from "../git.ts";
-import { getAccessToken, isLogged, extractVersion } from "../utils.ts";
+import {
+  getAccessToken,
+  isLogged,
+  extractVersion,
+  verifyRequiredDependencies,
+} from "../utils.ts";
 
 /**
  * Runs a Fluent CI pipeline.
@@ -15,6 +20,8 @@ async function run(
   jobs: [string, ...Array<string>] | string[] = [],
   options: Record<string, string | number | boolean | undefined> = {}
 ) {
+  await verifyRequiredDependencies();
+
   await load({
     envPath: ".fluentci/.env",
     examplePath: ".fluentci/.env_required",

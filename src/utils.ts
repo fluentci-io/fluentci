@@ -1,4 +1,4 @@
-import { dir } from "../deps.ts";
+import { dir, brightGreen } from "../deps.ts";
 
 export async function isLogged(): Promise<boolean> {
   if (Deno.env.get("FLUENTCI_ACCESS_TOKEN")) {
@@ -83,4 +83,89 @@ export async function fluentciDirExists(): Promise<boolean> {
   } catch (_) {
     return false;
   }
+}
+
+export async function verifyRequiredDependencies(
+  dependencies = ["deno", "dagger", "docker"]
+) {
+  for (const dependency of dependencies) {
+    const command = new Deno.Command("sh", {
+      args: ["-c", `type ${dependency}`],
+      stdout: "piped",
+      stderr: "piped",
+    });
+    const process = await command.spawn();
+    const { code } = await process.status;
+
+    if (code !== 0) {
+      switch (dependency) {
+        case "deno":
+          await installDeno();
+          break;
+        case "dagger":
+          await installDagger();
+          break;
+        default:
+          console.log(
+            `${brightGreen(
+              dependency
+            )} is not installed. Please install it before running this command.`
+          );
+          Deno.exit(1);
+      }
+    }
+  }
+}
+
+async function installDeno() {
+  console.log(`${brightGreen("Deno")} is not installed`);
+  console.log("Downloading and installing Deno...");
+
+  const command = new Deno.Command("sh", {
+    args: ["-c", "curl -fsSL https://deno.land/install.sh | sh"],
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+
+  const process = await command.spawn();
+  const { code } = await process.status;
+
+  if (code !== 0) {
+    console.log("Failed to install Deno.");
+    Deno.exit(1);
+  }
+
+  Deno.env.set("DENO_INSTALL", `${Deno.env.get("HOME")}/.deno`);
+  Deno.env.set(
+    "PATH",
+    `${Deno.env.get("DENO_INSTALL")}/bin:${Deno.env.get("PATH")}`
+  );
+  console.log("Deno installed successfully");
+}
+
+async function installDagger() {
+  console.log(`${brightGreen("Dagger")} is not installed. Installing...`);
+  console.log("Downloading and installing Dagger...");
+
+  const command = new Deno.Command("sh", {
+    args: [
+      "-c",
+      `curl -L https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=0.9.11 sh &&
+      if ! command -v sudo >/dev/null 2>&1; then mv bin/dagger /usr/local/bin; else sudo mv bin/dagger /usr/local/bin; fi &&
+      rmdir bin || true
+      `,
+    ],
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+
+  const process = await command.spawn();
+  const { code } = await process.status;
+
+  if (code !== 0) {
+    console.log("Failed to install Dagger.");
+    Deno.exit(1);
+  }
+
+  console.log("Dagger installed successfully");
 }

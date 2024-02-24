@@ -1,5 +1,6 @@
 import { green } from "../../deps.ts";
 import { BASE_URL } from "../consts.ts";
+import { verifyRequiredDependencies } from "../utils.ts";
 
 async function docs(
   pipeline = ".",
@@ -12,6 +13,7 @@ async function docs(
   } = {}
 ) {
   // verify if glow is installed
+  await verifyRequiredDependencies(["glow"]);
 
   if (pipeline === ".") {
     try {
