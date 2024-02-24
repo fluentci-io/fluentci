@@ -35,7 +35,7 @@ curl -fsSL https://cli.fluentci.io | sh
 using [Homebrew](https://brew.sh) :
 
 ```bash
-brew install fluentci-io/tap/cli
+brew install fluentci-io/tap/fluentci
 ```
 
 using [Pkgx](https://pkgx.sh/) :
