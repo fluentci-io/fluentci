@@ -1,12 +1,9 @@
-import { Directory, uploadContext } from "../../deps.ts";
+import { Directory } from "../../deps.ts";
 import * as jobs from "./jobs.ts";
 
-const { fmt, lint, test, runnableJobs, exclude } = jobs;
+const { fmt, lint, test, runnableJobs } = jobs;
 
 export default async function pipeline(src = ".", args: string[] = []) {
-  if (Deno.env.has("FLUENTCI_SESSION_ID")) {
-    await uploadContext(src, exclude);
-  }
   if (args.length > 0) {
     await runSpecificJobs(args as jobs.Job[]);
     return;
@@ -44,6 +41,15 @@ async function runSpecificJobs(args: jobs.Job[]) {
         Deno.env.get("URL"),
         Deno.env.get("IGNORE_CONFLICTS") === "true"
       );
+    }
+    if (name === "compile") {
+      const compile = job as (
+        src: string | Directory | undefined,
+        file?: string,
+        output?: string,
+        target?: string
+      ) => Promise<File | string>;
+      await compile(".");
     }
   }
 }
