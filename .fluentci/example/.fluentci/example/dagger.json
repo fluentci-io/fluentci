@@ -1,4 +1,0 @@
-{
-  "name": "deno",
-  "sdk": "github.com/fluentci-io/daggerverse/deno-sdk@main"
-}
