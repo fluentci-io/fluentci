@@ -16,12 +16,13 @@ if ! command -v unzip >/dev/null 2>&1; then
     exit 1
 fi
 
+export DENO_INSTALL=$HOME/.deno
+export PATH=$DENO_INSTALL/bin:$PATH
+
 if ! command -v deno >/dev/null 2>&1; then
     echo "Deno is not installed."
     echo "Downloading and installing Deno..."
     curl -fsSL https://deno.land/install.sh | sh
-    export DENO_INSTALL=$HOME/.deno
-    export PATH=$DENO_INSTALL/bin:$PATH
     echo 'export DENO_INSTALL=$HOME/.deno' >> ~/.bashrc
     echo 'export PATH=$DENO_INSTALL/bin:$PATH' >> ~/.bashrc
 fi
