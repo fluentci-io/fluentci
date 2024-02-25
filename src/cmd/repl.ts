@@ -132,7 +132,7 @@ async function startDagger(port: number, debug?: boolean) {
   terminalSpinner.start();
 
   const command = new Deno.Command("dagger", {
-    args: ["listen", "--listen", `127.0.0.1:${port}`],
+    args: ["--progress", "plain", "listen", "--listen", `127.0.0.1:${port}`],
     env: {
       DAGGER_SESSION_TOKEN: "repl",
     },
