@@ -39,6 +39,7 @@ export async function main() {
     )
     .arguments("[pipeline:string] [jobs...:string]")
     .option("-r, --reload", "Reload pipeline source cache")
+    .option("-w, --wasm", "Run pipeline as WebAssembly Module")
     .option("-*, --* <args:string>", "Pass arguments to pipeline")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
       run(pipeline || ".", jobs, options);
@@ -46,6 +47,7 @@ export async function main() {
     .command("run", "Run a pipeline")
     .arguments("<pipeline:string> [jobs...:string]")
     .option("-r, --reload", "Reload pipeline source cache")
+    .option("-w, --wasm", "Run pipeline as WebAssembly Module")
     .option("-*, --* <args:string>", "Pass arguments to pipeline")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
       run(pipeline, jobs, options);
@@ -200,8 +202,9 @@ export async function main() {
       await login();
     })
     .command("publish", "Publish a pipeline to FluentCI Registry")
-    .action(async function () {
-      await publish();
+    .option("-w, --wasm", "Publish pipeline as WebAssembly Module")
+    .action(async function (options) {
+      await publish(options);
     })
     .command(
       "agent",

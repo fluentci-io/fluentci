@@ -1,11 +1,14 @@
+import { readAllSync, toml } from "../../deps.ts";
 import { walk, ZipWriter, BlobWriter, brightGreen, wait } from "../../deps.ts";
-import { isLogged, getAccessToken } from "../utils.ts";
+import { isLogged, getAccessToken, setupRust } from "../utils.ts";
 import { validatePackage, validateConfigFiles } from "../validate.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 
 const REGISTRY_URL = "https://whole-badger-28.deno.dev";
 
-const publish = async () => {
+const publish = async (
+  options: Record<string, string | number | boolean | undefined> = {}
+) => {
   if (!(await isLogged())) {
     console.log(
       `FLUENTCI_ACCESS_TOKEN is not set, Please login first with ${brightGreen(
@@ -54,6 +57,11 @@ const publish = async () => {
 
   validateConfigFiles();
 
+  if (options.wasm) {
+    await publishWasm();
+    return;
+  }
+
   const blobWriter = new BlobWriter("application/zip");
   const zipWriter = new ZipWriter(blobWriter);
 
@@ -90,6 +98,7 @@ const parseIgnoredFiles = () => {
   let ignoredFilesArray: RegExp[] = [
     new RegExp("\\.git"),
     new RegExp("\\.fluentci"),
+    new RegExp("plugin/target"),
   ];
   try {
     // verify if .fluentciignore exists
@@ -112,6 +121,66 @@ const parseIgnoredFiles = () => {
     );
   } catch (_e) {
     return ignoredFilesArray;
+  }
+};
+
+const publishWasm = async () => {
+  await setupRust();
+
+  const wasm32 = new Deno.Command("rustup", {
+    args: ["target", "add", "wasm32-unknown-unknown"],
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  await spawnCommand(wasm32);
+
+  const build = new Deno.Command("bash", {
+    args: ["-c", "cargo build --target wasm32-unknown-unknown --release"],
+    stderr: "inherit",
+    stdout: "inherit",
+    cwd: "plugin",
+  });
+  await spawnCommand(build);
+
+  const cargoToml = toml.parse(
+    Deno.readTextFileSync("plugin/Cargo.toml")
+    // deno-lint-ignore no-explicit-any
+  ) as Record<string, any>;
+
+  const spinner = wait("Publishing package...").start();
+
+  const ls = new Deno.Command("bash", {
+    args: ["-c", "ls plugin/target/wasm32-unknown-unknown/release/*.wasm"],
+    stderr: "piped",
+    stdout: "piped",
+  });
+  const { stdout } = ls.outputSync();
+
+  const file = await Deno.open(new TextDecoder().decode(stdout).trim(), {
+    read: true,
+  });
+  const blob = readAllSync(file);
+  const xhr = new XMLHttpRequest();
+  xhr.open("POST", `${REGISTRY_URL}`);
+  xhr.setRequestHeader("Content-Type", "application/wasm");
+  xhr.setRequestHeader("Authorization", `Bearer ${getAccessToken()}`);
+  xhr.setRequestHeader("Name", cargoToml.package.name);
+  xhr.setRequestHeader("Version", cargoToml.package.version);
+  xhr.onload = function () {
+    if (xhr.status != 200) {
+      spinner.fail(`Failed to publish package, ${xhr.responseText}`);
+    } else {
+      spinner.succeed(brightGreen(" Package published successfully"));
+    }
+  };
+
+  xhr.send(blob);
+};
+
+const spawnCommand = async (command: Deno.Command) => {
+  const child = command.spawn();
+  if ((await child.status).code !== 0) {
+    Deno.exit(1);
   }
 };
 

@@ -60,3 +60,6 @@ export {
   TerminalSpinner,
   SpinnerTypes,
 } from "https://deno.land/x/spinners@v1.1.2/mod.ts";
+export { readAllSync } from "https://deno.land/std@0.221.0/io/read_all.ts";
+import * as toml from "npm:toml@3.0.0";
+export { toml };
