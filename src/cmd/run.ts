@@ -2,6 +2,11 @@ import { BlobWriter, green, load, walk, ZipWriter, dayjs } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
 import { getCommitInfos } from "../git.ts";
 import {
+  setupFluentCIengine,
+  setupRust,
+  fluentciPluginDirExists,
+} from "../utils.ts";
+import {
   getAccessToken,
   isLogged,
   extractVersion,
@@ -20,13 +25,22 @@ async function run(
   jobs: [string, ...Array<string>] | string[] = [],
   options: Record<string, string | number | boolean | undefined> = {}
 ) {
-  await verifyRequiredDependencies();
+  await verifyRequiredDependencies(
+    options.wasm ? ["deno"] : ["deno", "dagger", "docker"]
+  );
 
   await load({
     envPath: ".fluentci/.env",
     examplePath: ".fluentci/.env_required",
     export: true,
   });
+
+  if (options.wasm) {
+    Deno.env.set("WASM_ENABLED", "1");
+    await runWasmPlugin(pipeline, jobs);
+    Deno.exit(0);
+  }
+
   if (pipeline === ".") {
     try {
       // verify if .fluentci directory exists
@@ -52,7 +66,7 @@ async function run(
         ".fluentci/src/dagger/runner.ts",
         ...jobs,
         ...Object.keys(options)
-          .filter((key) => key !== "reload")
+          .filter((key) => key !== "reload" && key !== "wasm")
           .map((key) => `--${key}=${options[key]}`),
       ],
       stdout: "inherit",
@@ -73,7 +87,7 @@ async function run(
           ".fluentci/src/dagger/runner.ts",
           ...jobs,
           ...Object.keys(options)
-            .filter((key) => key !== "reload")
+            .filter((key) => key !== "reload" && key !== "wasm")
             .map((key) => `--${key}=${options[key]}`),
         ],
         stdout: "inherit",
@@ -97,7 +111,7 @@ async function run(
                 "-A",
                 `.fluentci/${job}.ts`,
                 ...Object.keys(options)
-                  .filter((key) => key !== "reload")
+                  .filter((key) => key !== "reload" && key !== "wasm")
                   .map((key) => `--${key}=${options[key]}`),
               ],
               stdout: "inherit",
@@ -119,7 +133,7 @@ async function run(
             "-A",
             `.fluentci/${job}.ts`,
             ...Object.keys(options)
-              .filter((key) => key !== "reload")
+              .filter((key) => key !== "reload" && key !== "wasm")
               .map((key) => `--${key}=${options[key]}`)
               .join(" "),
           ],
@@ -161,7 +175,7 @@ async function run(
     `https://pkg.fluentci.io/${name}@${version}/src/dagger/runner.ts`,
     ...jobs,
     ...Object.keys(options)
-      .filter((key) => key !== "reload")
+      .filter((key) => key !== "reload" && key !== "wasm")
       .map((key) => `--${key}=${options[key]}`),
   ];
 
@@ -363,6 +377,70 @@ const saveRepositoryMetadata = async (id: string) => {
   } catch (_) {
     // do nothing, not a git repository
   }
+};
+
+const runWasmPlugin = async (pipeline: string, job: string[]) => {
+  if (!(await fluentciPluginDirExists())) {
+    console.log("This directory does not contain a FluentCI plugin");
+    Deno.exit(1);
+  }
+  await setupRust();
+  await setupFluentCIengine();
+  if (pipeline == ".") {
+    const wasm32 = new Deno.Command("rustup", {
+      args: ["target", "add", "wasm32-unknown-unknown"],
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    await spawnCommand(wasm32);
+
+    const build = new Deno.Command("cargo", {
+      args: ["build", "--release", "--target", "wasm32-unknown-unknown"],
+      stdout: "inherit",
+      stderr: "inherit",
+      cwd: ".fluentci/plugin",
+    });
+    await spawnCommand(build);
+
+    const command = new Deno.Command("bash", {
+      args: [
+        "-c",
+        "fluentci-engine call -m .fluentci/plugin/target/wasm32-unknown-unknown/release/*.wasm -- " +
+          job.join(" "),
+      ],
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    await spawnCommand(command);
+    return;
+  }
+
+  let name = pipeline.split("@")[0];
+  let version = extractVersion(pipeline);
+
+  const result = await fetch(`${BASE_URL}/pipeline/${name}`);
+  const data = await result.json();
+
+  if (!data.github_url && !data.version) {
+    console.log(
+      `Pipeline template ${green('"')}${green(name)}${green(
+        '"'
+      )} not found in Fluent CI registry`
+    );
+    Deno.exit(1);
+  }
+  version =
+    version === "latest" ? data.version || data.default_branch : version;
+
+  name = name.replaceAll("_pipeline", "");
+  const url = `https://mod.fluentci.io/${name}/${version}/${name}.wasm`;
+
+  const command = new Deno.Command("bash", {
+    args: ["-c", `fluentci-engine call -m ${url} -- ` + job.join(" ")],
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  await spawnCommand(command);
 };
 
 export default run;

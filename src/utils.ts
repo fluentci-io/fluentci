@@ -169,3 +169,65 @@ async function installDagger() {
 
   console.log("Dagger installed successfully");
 }
+
+export async function setupRust() {
+  Deno.env.set(
+    "PATH",
+    `${Deno.env.get("HOME")}/.cargo/bin:${Deno.env.get("PATH")}`
+  );
+  const command = new Deno.Command("bash", {
+    args: [
+      "-c",
+      `type rustup >/dev/null 2>&1 || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh`,
+    ],
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+
+  const process = await command.spawn();
+  const { code } = await process.status;
+
+  if (code !== 0) {
+    console.log("Failed to install Rust.");
+    Deno.exit(1);
+  }
+}
+
+export async function setupFluentCIengine() {
+  Deno.env.set(
+    "PATH",
+    `${Deno.env.get("HOME")}/.local/bin:${Deno.env.get("PATH")}`
+  );
+  const target = Deno.build.target;
+  const command = new Deno.Command("bash", {
+    args: [
+      "-c",
+      `\
+    type fluentci-engine >/dev/null 2>&1 || wget https://github.com/fluentci-io/fluentci-engine/releases/download/v0.2.5/fluentci-engine_v0.2.5_${target}.tar.gz;
+    type fluentci-engine >/dev/null 2>&1 || tar xvf fluentci-engine_v0.2.5_${target}.tar.gz;
+    type fluentci-engine >/dev/null 2>&1 || rm fluentci-engine_v0.2.5_${target}.tar.gz;
+    mkdir -p $HOME/.local/bin;
+    type fluentci-engine >/dev/null 2>&1 || mv fluentci-engine $HOME/.local/bin;`,
+    ],
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+
+  const process = await command.spawn();
+  const { code } = await process.status;
+
+  if (code !== 0) {
+    console.log("Failed to install Fluent CI Engine.");
+    Deno.exit(1);
+  }
+}
+
+export async function fluentciPluginDirExists(): Promise<boolean> {
+  try {
+    const fluentciDir = await Deno.stat(".fluentci/plugin");
+    await Deno.stat(".fluentci/plugin/Cargo.toml");
+    return fluentciDir.isDirectory;
+  } catch (_) {
+    return false;
+  }
+}
