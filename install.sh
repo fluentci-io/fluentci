@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -e -o pipefail
+
 readonly MAGENTA="$(tput setaf 5 2>/dev/null || echo '')"
 readonly GREEN="$(tput setaf 2 2>/dev/null || echo '')"
 readonly CYAN="$(tput setaf 6 2>/dev/null || echo '')"
@@ -98,13 +100,9 @@ tar -xzf /tmp/$ASSET_NAME -C /tmp
 chmod +x /tmp/fluentci
 
 # Move the extracted binary to the installation directory
-# use sudo if OS is Linux
-if [ "$OS" = "Linux" ]; then
-    if command -v sudo >/dev/null 2>&1; then
-        sudo mv /tmp/fluentci $INSTALL_DIR
-    else
-        mv /tmp/fluentci $INSTALL_DIR
-    fi
+# use sudo if available
+if command -v sudo >/dev/null 2>&1; then
+    sudo mv /tmp/fluentci $INSTALL_DIR
 else
     mv /tmp/fluentci $INSTALL_DIR
 fi
