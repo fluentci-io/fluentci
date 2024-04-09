@@ -380,7 +380,7 @@ const saveRepositoryMetadata = async (id: string) => {
 };
 
 const runWasmPlugin = async (pipeline: string, job: string[]) => {
-  if (!(await fluentciPluginDirExists())) {
+  if (!(await fluentciPluginDirExists()) && pipeline === ".") {
     console.log("This directory does not contain a FluentCI plugin");
     Deno.exit(1);
   }
