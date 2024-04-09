@@ -432,8 +432,7 @@ const runWasmPlugin = async (pipeline: string, job: string[]) => {
   version =
     version === "latest" ? data.version || data.default_branch : version;
 
-  name = name.replaceAll("_pipeline", "");
-  const url = `https://mod.fluentci.io/${name}/${version}/${name}.wasm`;
+  const url = `https://pkg.fluentci.io/${name}@${version}?wasm=1`;
 
   const command = new Deno.Command("bash", {
     args: ["-c", `fluentci-engine call -m ${url} -- ` + job.join(" ")],
