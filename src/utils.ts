@@ -170,6 +170,26 @@ async function installDagger() {
   console.log("Dagger installed successfully");
 }
 
+export async function setupPkgx() {
+  Deno.env.set(
+    "PATH",
+    `${Deno.env.get("HOME")}/.local/bin:${Deno.env.get("PATH")}`
+  );
+  const command = new Deno.Command("bash", {
+    args: ["-c", `type pkgx >/dev/null 2>&1 || curl -Ssf https://pkgx.sh | sh`],
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+
+  const process = await command.spawn();
+  const { code } = await process.status;
+
+  if (code !== 0) {
+    console.log("Failed to install pkgx.");
+    Deno.exit(1);
+  }
+}
+
 export async function setupRust() {
   Deno.env.set(
     "PATH",
@@ -194,6 +214,14 @@ export async function setupRust() {
 }
 
 export async function setupFluentCIengine() {
+  await setupPkgx();
+  let FLUENTCI_ENGINE_VERSION =
+    Deno.env.get("FLUENTCI_ENGINE_VERSION") || "v0.2.5";
+
+  if (!FLUENTCI_ENGINE_VERSION.startsWith("v")) {
+    FLUENTCI_ENGINE_VERSION = `v${FLUENTCI_ENGINE_VERSION}`;
+  }
+
   Deno.env.set(
     "PATH",
     `${Deno.env.get("HOME")}/.local/bin:${Deno.env.get("PATH")}`
@@ -203,9 +231,10 @@ export async function setupFluentCIengine() {
     args: [
       "-c",
       `\
-    type fluentci-engine >/dev/null 2>&1 || wget https://github.com/fluentci-io/fluentci-engine/releases/download/v0.2.5/fluentci-engine_v0.2.5_${target}.tar.gz;
-    type fluentci-engine >/dev/null 2>&1 || tar xvf fluentci-engine_v0.2.5_${target}.tar.gz;
-    type fluentci-engine >/dev/null 2>&1 || rm fluentci-engine_v0.2.5_${target}.tar.gz;
+    [ -n "$FLUENTCI_ENGINE_VERSION" ] && type fluentci-engine >/dev/null 2>&1 && rm \`which fluentci-engine\`;
+    type fluentci-engine >/dev/null 2>&1 || pkgx wget https://github.com/fluentci-io/fluentci-engine/releases/download/${FLUENTCI_ENGINE_VERSION}/fluentci-engine_${FLUENTCI_ENGINE_VERSION}_${target}.tar.gz;
+    type fluentci-engine >/dev/null 2>&1 || pkgx tar xvf fluentci-engine_${FLUENTCI_ENGINE_VERSION}_${target}.tar.gz;
+    type fluentci-engine >/dev/null 2>&1 || rm fluentci-engine_${FLUENTCI_ENGINE_VERSION}_${target}.tar.gz;
     mkdir -p $HOME/.local/bin;
     type fluentci-engine >/dev/null 2>&1 || mv fluentci-engine $HOME/.local/bin;`,
     ],
