@@ -3,7 +3,7 @@
 [![FlakeHub](https://img.shields.io/endpoint?url=https://flakehub.com/f/fluentci-io/fluentci/badge)](https://flakehub.com/flake/fluentci-io/fluentci)
 [![flakestry.dev](https://flakestry.dev/api/badge/flake/github/fluentci-io/fluentci)](https://flakestry.dev/flake/github/fluentci-io/fluentci)
 [![deno module](https://shield.deno.dev/x/fluentci)](https://deno.land/x/fluentci)
-![deno compatibility](https://shield.deno.dev/deno/^1.37)
+![deno compatibility](https://shield.deno.dev/deno/^1.40)
 [![discord](https://img.shields.io/discord/1132020671262773358?label=discord&logo=discord&color=5865F2)](https://discord.gg/V4U6dPskKc)
 
 ![Made with VHS](https://vhs.charm.sh/vhs-f5jk3sceXQrc55XC4fW3c.gif)
