@@ -40,16 +40,32 @@ export async function main() {
     .arguments("[pipeline:string] [jobs...:string]")
     .option("-r, --reload", "Reload pipeline source cache")
     .option("-w, --wasm", "Run pipeline as WebAssembly Module")
-    .option("-*, --* <args:string>", "Pass arguments to pipeline")
+    .option("-*, --* [args:string]", "Pass arguments to pipeline")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
+      if (options.wasm) {
+        Deno.args.findIndex((arg) => arg === pipeline);
+        const args = Deno.args.slice(
+          Deno.args.findIndex((arg) => arg === pipeline) + 1
+        );
+        run(pipeline || ".", args, options);
+        return;
+      }
       run(pipeline || ".", jobs, options);
     })
     .command("run", "Run a pipeline")
     .arguments("<pipeline:string> [jobs...:string]")
     .option("-r, --reload", "Reload pipeline source cache")
     .option("-w, --wasm", "Run pipeline as WebAssembly Module")
-    .option("-*, --* <args:string>", "Pass arguments to pipeline")
+    .option("-*, --* [args:string]", "Pass arguments to pipeline")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
+      if (options.wasm) {
+        Deno.args.findIndex((arg) => arg === pipeline);
+        const args = Deno.args.slice(
+          Deno.args.findIndex((arg) => arg === pipeline) + 1
+        );
+        run(pipeline, args, options);
+        return;
+      }
       run(pipeline, jobs, options);
     })
     .command("init", "Initialize a new pipeline")
