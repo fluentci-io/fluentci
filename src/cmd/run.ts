@@ -415,7 +415,7 @@ const runWasmPlugin = async (pipeline: string, job: string[]) => {
     return;
   }
 
-  let name = pipeline.split("@")[0];
+  const name = pipeline.split("@")[0];
   let version = extractVersion(pipeline);
 
   const result = await fetch(`${BASE_URL}/pipeline/${name}`);
