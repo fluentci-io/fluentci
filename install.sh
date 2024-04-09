@@ -32,7 +32,7 @@ fi
 if ! command -v dagger >/dev/null 2>&1; then
     echo "Dagger is not installed."
     echo "Downloading and installing Dagger..."
-    curl -L https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=0.9.11 sh
+    curl -L https://dl.dagger.io/dagger/install.sh | DAGGER_VERSION=0.10.0 sh
     if ! command -v sudo >/dev/null 2>&1; then
         mv bin/dagger /usr/local/bin
     else
