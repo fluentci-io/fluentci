@@ -19,9 +19,11 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Setup Fluent CI
-        uses: fluentci-io/setup-fluentci@v4
-      - name: Publish flake
-        run: fluentci run . publish
+        uses: fluentci-io/setup-fluentci@v5
+        with:
+          wasm: true
+          pipeline: flakestry
+          args: publish
         env:
           VERSION: ${{ inputs.tag || github.ref_name }}
           GH_TOKEN: ${{ github.token }}
