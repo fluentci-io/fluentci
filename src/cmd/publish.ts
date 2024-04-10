@@ -37,7 +37,7 @@ const publish = async (
     Deno.exit(1);
   }
 
-  if (paths.length > 1000) {
+  if (paths.length > 1000 && !options.wasm) {
     console.error(
       `A FluentCI package can contain a maximum of ${brightGreen(
         "1000 files"
