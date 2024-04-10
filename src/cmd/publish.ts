@@ -150,7 +150,13 @@ const publishWasm = async () => {
   const spinner = wait("Publishing package...").start();
 
   const ls = new Deno.Command("bash", {
-    args: ["-c", "ls plugin/target/wasm32-unknown-unknown/release/*.wasm"],
+    args: [
+      "-c",
+      `ls plugin/target/wasm32-unknown-unknown/release/${cargoToml.package.name.replaceAll(
+        "-",
+        "_"
+      )}.wasm`,
+    ],
     stderr: "piped",
     stdout: "piped",
   });
