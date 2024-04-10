@@ -1,4 +1,12 @@
-import { BlobWriter, green, load, walk, ZipWriter, dayjs } from "../../deps.ts";
+import {
+  BlobWriter,
+  green,
+  load,
+  walk,
+  ZipWriter,
+  dayjs,
+  toml,
+} from "../../deps.ts";
 import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
 import { getCommitInfos } from "../git.ts";
 import {
@@ -402,11 +410,18 @@ const runWasmPlugin = async (pipeline: string, job: string[]) => {
     });
     await spawnCommand(build);
 
+    const cargoToml = toml.parse(
+      Deno.readTextFileSync(".fluentci/plugin/Cargo.toml")
+      // deno-lint-ignore no-explicit-any
+    ) as Record<string, any>;
+
     const command = new Deno.Command("bash", {
       args: [
         "-c",
-        "fluentci-engine call -m .fluentci/plugin/target/wasm32-unknown-unknown/release/*.wasm -- " +
-          job.join(" "),
+        `fluentci-engine call -m .fluentci/plugin/target/wasm32-unknown-unknown/release/${cargoToml.package.name.replaceAll(
+          "-",
+          "_"
+        )}.wasm -- ` + job.join(" "),
       ],
       stdout: "inherit",
       stderr: "inherit",
