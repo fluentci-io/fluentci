@@ -58,6 +58,10 @@ export async function main() {
     .option("-w, --wasm", "Run pipeline as WebAssembly Module")
     .option("-*, --* [args:string]", "Pass arguments to pipeline")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
+      if (pipeline.endsWith(".wasm") || pipeline.endsWith("?wasm=1")) {
+        options.wasm = true;
+      }
+
       if (options.wasm) {
         Deno.args.findIndex((arg) => arg === pipeline);
         const args = Deno.args.slice(

@@ -388,6 +388,16 @@ const saveRepositoryMetadata = async (id: string) => {
 };
 
 const runWasmPlugin = async (pipeline: string, job: string[]) => {
+  if (pipeline.endsWith(".wasm") || pipeline.endsWith("?wasm=1")) {
+    const command = new Deno.Command("bash", {
+      args: ["-c", `fluentci-engine call -m ${pipeline} -- ` + job.join(" ")],
+      stdout: "inherit",
+      stderr: "inherit",
+    });
+    await spawnCommand(command);
+    return;
+  }
+
   if (!(await fluentciPluginDirExists()) && pipeline === ".") {
     console.log("This directory does not contain a FluentCI plugin");
     Deno.exit(1);
