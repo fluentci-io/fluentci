@@ -198,7 +198,7 @@ export async function setupRust() {
   const command = new Deno.Command("bash", {
     args: [
       "-c",
-      `type rustup >/dev/null 2>&1 || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -- -y`,
+      `type rustup >/dev/null 2>&1 || curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y`,
     ],
     stdout: "inherit",
     stderr: "inherit",
