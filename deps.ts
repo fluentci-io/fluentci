@@ -36,7 +36,7 @@ export {
 } from "https://deno.land/x/zipjs@v2.7.32/index.js";
 import introspect, {
   Metadata,
-} from "https://cdn.jsdelivr.net/gh/fluentci-io/daggerverse@main/deno-sdk/sdk/src/mod/introspect.ts";
+} from "https://cdn.jsdelivr.net/gh/fluentci-io/daggerverse@ecfeba3/deno-sdk/sdk/src/mod/introspect.ts";
 export { introspect };
 export type { Metadata };
 export { wait } from "https://deno.land/x/wait@0.1.13/mod.ts";

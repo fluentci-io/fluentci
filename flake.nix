@@ -2,6 +2,7 @@
   description = "FluentCI CLI - FluentCI Command Line Tool 💻 🚀✨";
 
   inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     utils.url = "github:numtide/flake-utils";
     deno2nix = {
       url = "github:tsirysndr/deno2nix";
