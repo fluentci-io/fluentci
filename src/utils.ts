@@ -85,6 +85,16 @@ export async function fluentciDirExists(): Promise<boolean> {
   }
 }
 
+export async function currentPluginDirExists(): Promise<boolean> {
+  try {
+    const fluentciDir = await Deno.stat("plugin");
+    await Deno.stat("plugin/Cargo.toml");
+    return fluentciDir.isDirectory;
+  } catch (_) {
+    return false;
+  }
+}
+
 export async function verifyRequiredDependencies(
   dependencies = ["deno", "dagger", "docker"]
 ) {
