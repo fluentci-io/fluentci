@@ -1,5 +1,6 @@
 import { readAllSync, toml } from "../../deps.ts";
 import { walk, ZipWriter, BlobWriter, brightGreen, wait } from "../../deps.ts";
+import { currentPluginDirExists } from "../utils.ts";
 import { isLogged, getAccessToken, setupRust } from "../utils.ts";
 import { validatePackage, validateConfigFiles } from "../validate.ts";
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
@@ -32,7 +33,7 @@ const publish = async (
     });
   }
 
-  if (paths.length === 0) {
+  if (paths.length === 0 && !options.wasm) {
     console.error("No files found in the current directory");
     Deno.exit(1);
   }
@@ -46,7 +47,7 @@ const publish = async (
     Deno.exit(1);
   }
 
-  if (!validatePackage(paths.map((x) => x.path))) {
+  if (!validatePackage(paths.map((x) => x.path)) && !options.wasm) {
     console.error(
       `A valid FluentCI package must contain ${brightGreen(
         "mod.ts"
@@ -55,7 +56,9 @@ const publish = async (
     Deno.exit(1);
   }
 
-  validateConfigFiles();
+  if (!options.wasm) {
+    validateConfigFiles();
+  }
 
   if (options.wasm) {
     await publishWasm();
@@ -125,6 +128,11 @@ const parseIgnoredFiles = () => {
 };
 
 const publishWasm = async () => {
+  let pluginDir = ".";
+  if (await currentPluginDirExists()) {
+    pluginDir = "plugin";
+  }
+
   await setupRust();
 
   const wasm32 = new Deno.Command("rustup", {
@@ -138,12 +146,12 @@ const publishWasm = async () => {
     args: ["-c", "cargo build --target wasm32-unknown-unknown --release"],
     stderr: "inherit",
     stdout: "inherit",
-    cwd: "plugin",
+    cwd: pluginDir,
   });
   await spawnCommand(build);
 
   const cargoToml = toml.parse(
-    Deno.readTextFileSync("plugin/Cargo.toml")
+    Deno.readTextFileSync(`${pluginDir}/Cargo.toml`)
     // deno-lint-ignore no-explicit-any
   ) as Record<string, any>;
 
@@ -152,7 +160,7 @@ const publishWasm = async () => {
   const ls = new Deno.Command("bash", {
     args: [
       "-c",
-      `ls plugin/target/wasm32-unknown-unknown/release/${cargoToml.package.name.replaceAll(
+      `ls ${pluginDir}/target/wasm32-unknown-unknown/release/${cargoToml.package.name.replaceAll(
         "-",
         "_"
       )}.wasm`,
