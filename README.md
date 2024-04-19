@@ -29,7 +29,7 @@ deno install -A -r https://cli.fluentci.io -n fluentci
 using Bash (Linux/macOS) :
 
 ```bash
-curl -fsSL https://cli.fluentci.io | sh
+curl -fsSL https://cli.fluentci.io | bash
 ```
 
 using [Homebrew](https://brew.sh) :
