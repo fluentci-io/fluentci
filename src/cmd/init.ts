@@ -8,7 +8,10 @@ import {
   SpinnerTypes,
   green,
   _,
+  toml,
+  tomlify,
 } from "../../deps.ts";
+import { directoryExists } from "../utils.ts";
 import { extractVersion } from "../utils.ts";
 import { existsSync } from "node:fs";
 
@@ -23,45 +26,46 @@ const BASE_URL = "https://api.fluentci.io/v1";
  * @returns {Promise<void>}
  */
 async function init(
-  { template, standalone }: { template?: string; standalone?: boolean } = {},
+  {
+    template,
+    standalone,
+    wasm,
+  }: { template?: string; standalone?: boolean; wasm?: boolean } = {},
   name?: string
 ) {
   const infos = await promptPackageDetails(standalone, name);
   let version = extractVersion(template || "base_pipeline");
   template = template?.split("@")[0] || "base_pipeline";
 
-  let result = await fetch(`${BASE_URL}/pipeline/${template}`);
-  let data = await result.json();
+  const result = await fetch(`${BASE_URL}/pipeline/${template}`);
+  const data = await result.json();
 
   if (data.version) {
     version =
       version === "latest" ? data.version || data.default_branch : version;
-    if (await downloadTemplateFromRegistry(template, version, standalone)) {
-      if (standalone === true) {
-        await overrideDaggerJson(infos, ".");
+    if (
+      await downloadTemplateFromRegistry(template, version, standalone, wasm)
+    ) {
+      if (wasm) {
+        await overrideCargoToml(infos, standalone ? "." : ".fluentci");
         return;
       }
-      await overrideDaggerJson(infos, ".fluentci");
+
+      await overrideDaggerJson(infos, standalone ? "." : ".fluentci");
       return;
     }
   }
-
-  if (!template.endsWith("_pipeline")) {
-    template += "_pipeline";
-  }
-
-  result = await fetch(`${BASE_URL}/pipeline/${template}`);
-  data = await result.json();
 
   if (data.github_url) {
     version =
       version === "latest" ? data.version || data.default_branch : version;
-    await downloadTemplateFromGithub(data, template, version, standalone);
-    if (standalone === true) {
-      await overrideDaggerJson(infos, ".");
+    await downloadTemplateFromGithub(data, template, version, standalone, wasm);
+    if (wasm) {
+      await overrideCargoToml(infos, standalone ? "." : ".fluentci");
       return;
     }
-    await overrideDaggerJson(infos, ".fluentci");
+
+    await overrideDaggerJson(infos, standalone ? "." : ".fluentci");
     return;
   }
 
@@ -152,7 +156,8 @@ async function downloadTemplateFromGithub(
   },
   template: string,
   version: string,
-  standalone?: boolean
+  standalone?: boolean,
+  wasm?: boolean
 ) {
   const archiveUrl =
     data.version && data.version.startsWith("v")
@@ -176,6 +181,12 @@ async function downloadTemplateFromGithub(
     outputDir = `${data.owner}-${outputDir}`;
   }
 
+  if (wasm) {
+    if (await directoryExists(`${outputDir}/plugin`)) {
+      outputDir += "/plugin";
+    }
+  }
+
   await copyDir(outputDir, standalone ? "." : ".fluentci");
 
   if (!standalone) {
@@ -186,7 +197,7 @@ async function downloadTemplateFromGithub(
     outputDir = outputDir.split("/")[0];
   }
 
-  await Deno.remove(outputDir, { recursive: true });
+  await Deno.remove(outputDir.replace("/plugin", ""), { recursive: true });
 
   if (!standalone) {
     await setupDevbox();
@@ -196,7 +207,8 @@ async function downloadTemplateFromGithub(
 async function downloadTemplateFromRegistry(
   template: string,
   version: string,
-  standalone?: boolean
+  standalone?: boolean,
+  wasm?: boolean
 ) {
   const status = await fetch(
     `https://pkg.fluentci.io/${template}@${version}`
@@ -204,7 +216,14 @@ async function downloadTemplateFromRegistry(
   if (status === 200) {
     await download(`https://pkg.fluentci.io/${template}@${version}`, template);
 
-    const outputDir = `${template}/${version}`;
+    let outputDir = `${template}/${version}`;
+
+    if (wasm) {
+      if (await directoryExists(`${outputDir}/plugin`)) {
+        outputDir += "/plugin";
+      }
+    }
+
     await copyDir(outputDir, standalone ? "." : ".fluentci");
 
     if (!standalone) {
@@ -334,4 +353,23 @@ async function overrideDaggerJson(infos: Record<string, unknown>, path = ".") {
     await Deno.copyFile(".fluentci/dagger.json", "dagger.json");
   }
 }
+
+async function overrideCargoToml(infos: Record<string, unknown>, path = ".") {
+  const cargoToml = await Deno.readFile(`${path}/Cargo.toml`);
+  const config = toml.parse(new TextDecoder().decode(cargoToml));
+  _.set(config, "package.name", _.get(infos, "name"));
+  _.set(config, "package.version", _.get(infos, "version").replace("v", ""));
+  _.set(config, "package.description", _.get(infos, "description"));
+  _.set(config, "package.license", _.get(infos, "license"));
+
+  if (_.get(infos, "author")) {
+    _.set(config, "package.authors", [_.get(infos, "author")]);
+  }
+
+  await Deno.writeFile(
+    `${path}/Cargo.toml`,
+    new TextEncoder().encode(tomlify.toToml(config, { space: 2 }))
+  );
+}
+
 export default init;

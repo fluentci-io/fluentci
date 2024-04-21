@@ -398,9 +398,14 @@ const runWasmPlugin = async (pipeline: string, job: string[]) => {
     return;
   }
 
-  if (!(await fluentciPluginDirExists()) && pipeline === ".") {
-    console.log("This directory does not contain a FluentCI plugin");
-    Deno.exit(1);
+  const pluginDirExists = await fluentciPluginDirExists();
+  if (!pluginDirExists && pipeline === ".") {
+    try {
+      await Deno.stat(".fluentci/Cargo.toml");
+    } catch (_) {
+      console.log("This directory does not contain a FluentCI plugin");
+      Deno.exit(1);
+    }
   }
   await setupRust();
   await setupFluentCIengine();
@@ -416,19 +421,23 @@ const runWasmPlugin = async (pipeline: string, job: string[]) => {
       args: ["build", "--release", "--target", "wasm32-unknown-unknown"],
       stdout: "inherit",
       stderr: "inherit",
-      cwd: ".fluentci/plugin",
+      cwd: pluginDirExists ? ".fluentci/plugin" : ".fluentci",
     });
     await spawnCommand(build);
 
     const cargoToml = toml.parse(
-      Deno.readTextFileSync(".fluentci/plugin/Cargo.toml")
+      Deno.readTextFileSync(
+        pluginDirExists ? ".fluentci/plugin/Cargo.toml" : ".fluentci/Cargo.toml"
+      )
       // deno-lint-ignore no-explicit-any
     ) as Record<string, any>;
 
     const command = new Deno.Command("bash", {
       args: [
         "-c",
-        `fluentci-engine call -m .fluentci/plugin/target/wasm32-unknown-unknown/release/${cargoToml.package.name.replaceAll(
+        `fluentci-engine call -m ${
+          pluginDirExists ? ".fluentci/plugin" : ".fluentci"
+        }/target/wasm32-unknown-unknown/release/${cargoToml.package.name.replaceAll(
           "-",
           "_"
         )}.wasm -- ` + job.join(" "),

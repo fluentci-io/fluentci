@@ -270,3 +270,12 @@ export async function fluentciPluginDirExists(): Promise<boolean> {
     return false;
   }
 }
+
+export async function directoryExists(path: string): Promise<boolean> {
+  try {
+    const fluentciDir = await Deno.stat(path);
+    return fluentciDir.isDirectory;
+  } catch (_) {
+    return false;
+  }
+}

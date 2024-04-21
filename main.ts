@@ -77,8 +77,9 @@ export async function main() {
     .option("-t, --template <template>", "Initialize pipeline from template")
     .option(
       "-s, --standalone",
-      "Initialize pipeline as standalone project, so it can be reused in other projects"
+      "Initialize pipeline as standalone project, so it can be published and reused in other projects"
     )
+    .option("-w, --wasm", "Initialize pipeline as WebAssembly Module")
     .action(async function (options, pipeline) {
       await init(options, pipeline);
     })
