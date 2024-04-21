@@ -26,7 +26,7 @@
 
         packages.default = pkgs.deno2nix.mkExecutable {
           pname = "fluentci";
-          version = "0.12.9";
+          version = "0.13.0";
 
           src = ./.;
           lockfile = "./deno.lock";
