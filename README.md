@@ -8,7 +8,7 @@
 
 ![Made with VHS](https://vhs.charm.sh/vhs-f5jk3sceXQrc55XC4fW3c.gif)
 
-Fluent CI is a CI/CD tool that allows you to build, test, and deploy your code. It is a self-hosted solution built on top of [Dagger](https://dagger.io) and [Deno](https://deno.com/), can be run locally or on a server, and is completely free and open-source.
+Fluent CI is a CI/CD tool that allows you to build, test, and deploy your code. It is a self-hosted solution built on top of [Dagger](https://dagger.io), [Wasm](https://webassembly.org/) and [Deno](https://deno.com/), can be run locally or on a server, and is completely free and open-source.
 
 It is also a registry of pre-built pipelines. This means you don't have to write your CI/CD configuration from scratch. You can simply search for and use pipelines that others have already built for frameworks like Django, React, Node, etc.
 
