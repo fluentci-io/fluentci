@@ -28,6 +28,7 @@ async function upgrade() {
       "-n",
       "fluentci",
       "-f",
+      "-g"
     ],
   });
 

@@ -23,7 +23,7 @@ It is also a registry of pre-built pipelines. This means you don't have to write
 using [Deno](https://deno.com) (recommended) :
 
 ```bash
-deno install -A -r https://cli.fluentci.io -n fluentci
+deno install -A -g -r https://cli.fluentci.io -n fluentci
 ```
 
 using Bash (Linux/macOS) :
