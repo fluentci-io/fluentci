@@ -225,8 +225,24 @@ export async function setupRust() {
 
 export async function setupFluentCIengine() {
   await setupPkgx();
-  let FLUENTCI_ENGINE_VERSION =
-    Deno.env.get("FLUENTCI_ENGINE_VERSION") || "v0.2.5";
+  let FLUENTCI_ENGINE_VERSION = Deno.env.get("FLUENTCI_ENGINE_VERSION");
+
+  if (!FLUENTCI_ENGINE_VERSION) {
+    FLUENTCI_ENGINE_VERSION = await fetch(
+      "https://api.github.com/repos/fluentci-io/fluentci-engine/releases/latest"
+    )
+      .then((res) => res.json())
+      .then((data) => data.tag_name)
+      .catch(() => {
+        console.error("Failed to fetch latest release.");
+        Deno.exit(1);
+      });
+  }
+
+  if (!FLUENTCI_ENGINE_VERSION) {
+    console.error("Failed to fetch latest release.");
+    Deno.exit(1);
+  }
 
   if (!FLUENTCI_ENGINE_VERSION.startsWith("v")) {
     FLUENTCI_ENGINE_VERSION = `v${FLUENTCI_ENGINE_VERSION}`;
@@ -241,7 +257,7 @@ export async function setupFluentCIengine() {
     args: [
       "-c",
       `\
-    [ -n "$FLUENTCI_ENGINE_VERSION" ] && type fluentci-engine >/dev/null 2>&1 && rm \`which fluentci-engine\`;
+    [ -n "$FORCE_FLUENTCI_ENGINE_INSTALL" ] && type fluentci-engine >/dev/null 2>&1 && rm \`which fluentci-engine\`;
     type fluentci-engine >/dev/null 2>&1 || pkgx wget https://github.com/fluentci-io/fluentci-engine/releases/download/${FLUENTCI_ENGINE_VERSION}/fluentci-engine_${FLUENTCI_ENGINE_VERSION}_${target}.tar.gz;
     type fluentci-engine >/dev/null 2>&1 || pkgx tar xvf fluentci-engine_${FLUENTCI_ENGINE_VERSION}_${target}.tar.gz;
     type fluentci-engine >/dev/null 2>&1 || rm fluentci-engine_${FLUENTCI_ENGINE_VERSION}_${target}.tar.gz;
