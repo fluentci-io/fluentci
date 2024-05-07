@@ -1,3 +1,6 @@
+![Cover](./.github/assets/fluentci-ui.png)
+
+
 # Fluent CI CLI
 
 [![FlakeHub](https://img.shields.io/endpoint?url=https://flakehub.com/f/fluentci-io/fluentci/badge)](https://flakehub.com/flake/fluentci-io/fluentci)
