@@ -1,44 +1,24 @@
+// deno-lint-ignore-file no-unused-vars no-explicit-any
 import { Context } from "../../context.ts";
-import { Log } from "../../objects/log.ts";
 import { Project } from "../../objects/project.ts";
-import { logs } from "../log/mock.ts";
 
 export async function getProjects(
   root: any,
   args: any,
   ctx: Context
 ): Promise<Project[]> {
-  return [
-    new Project({
-      id: "1",
-      path: "/home/tsirysndr/Documents/github/gleam",
-      name: "gleam",
-      createdAt: new Date().toISOString(),
-      logs: new Log({
-        id: "1",
-        jobId: "3",
-        message: logs,
-        createdAt: new Date().toISOString(),
-      }),
-    }),
-  ];
+  const { projects, cursor } = await ctx.kv.projects.list({
+    limit: args.limit,
+    cursor: args.cursor,
+  });
+  return projects.map((x) => ({ ...x, cursor }));
 }
 
 export async function getProject(
   root: any,
   args: any,
   ctx: Context
-): Promise<Project> {
-  return new Project({
-    id: "1",
-    path: "/home/tsirysndr/Documents/github/fluentci",
-    name: "fluentci",
-    createdAt: new Date().toISOString(),
-    logs: new Log({
-      id: "1",
-      jobId: "3",
-      message: logs,
-      createdAt: new Date().toISOString(),
-    }),
-  });
+): Promise<Project | null> {
+  const project = await ctx.kv.projects.get(args.id);
+  return project;
 }

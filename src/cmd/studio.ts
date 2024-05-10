@@ -1,12 +1,124 @@
-import { createYoga } from "../../deps.ts";
+import {
+  createYoga,
+  open,
+  createId,
+  green,
+  cyan,
+  dockernames,
+} from "../../deps.ts";
 import { schema } from "../server/graphql/schema.ts";
+import * as actions from "../server/kv/actions.ts";
+import * as projects from "../server/kv/projects.ts";
+import * as runs from "../server/kv/runs.ts";
 
-function studio({ port }: { port?: number }) {
+async function studio({ port }: { port?: number }) {
+  let socket: WebSocket | undefined;
+
   const yoga = createYoga({
     schema,
+    context: () => {
+      return {
+        socket,
+        kv: {
+          actions,
+          projects,
+          runs,
+        },
+      };
+    },
+  });
+  let projectId = createId();
+  const project = await projects.at(Deno.cwd());
+
+  if (!project) {
+    let name = dockernames.getRandomName().replaceAll("_", "-");
+    let suffix = 1;
+
+    do {
+      const project = await projects.byName(name);
+      if (!project) {
+        break;
+      }
+      name = `${name}-${suffix}`;
+      suffix++;
+    } while (true);
+
+    await projects.save({
+      id: projectId,
+      path: Deno.cwd(),
+      name,
+      createdAt: new Date().toISOString(),
+    });
+  } else {
+    projectId = project.id;
+  }
+
+  const FLUENTCI_STUDIO_PORT = Deno.env.get("FLUENTCI_STUDIO_PORT") || "6077";
+  const child = new Deno.Command("fluentci-studio", {
+    stdout: "inherit",
+    stderr: "inherit",
+    env: {
+      FLUENTCI_STUDIO_PORT,
+    },
+  }).spawn();
+
+  child.status.then(({ code }) => {
+    if (code !== 0) {
+      console.error("Failed to start FluentCI Studio");
+      Deno.exit(1);
+    }
   });
 
-  Deno.serve({ port: port || 5090 }, yoga);
+  Deno.serve(
+    {
+      port: port || 6076,
+      onListen: () => {
+        const PORT = port || 6076;
+        console.log(
+          `${green("FluentCI Studio")} is up and running on ${cyan(
+            `http://localhost:${PORT}`
+          )}`
+        );
+        open(`http://localhost:${PORT}/project/${projectId}`).catch((err) => {
+          console.error(err);
+        });
+      },
+    },
+    async (req) => {
+      const upgrade = req.headers.get("upgrade") || "";
+      if (upgrade.toLowerCase() === "websocket") {
+        const ws = Deno.upgradeWebSocket(req);
+        socket = socket || ws.socket;
+
+        socket.onopen = () => console.log("socket opened");
+        socket.onmessage = (e) => {
+          console.log("socket message:", e.data);
+          socket?.send(new Date().toString());
+        };
+        socket.onerror = (e) => console.log("socket errored:", e);
+        socket.onclose = () => console.log("socket closed");
+
+        return ws.response;
+      }
+
+      const url = new URL(req.url);
+      if (
+        url.pathname.endsWith("/graphql") ||
+        url.pathname.endsWith("/graphiql")
+      ) {
+        return yoga(req);
+      }
+      url.protocol = "http";
+      url.hostname = "127.0.0.1";
+      url.port = FLUENTCI_STUDIO_PORT;
+
+      return await fetch(url.href, {
+        headers: req.headers,
+        method: req.method,
+        body: req.body,
+      });
+    }
+  );
 }
 
 export default studio;

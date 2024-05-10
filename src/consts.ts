@@ -18,3 +18,5 @@ export const FLUENTCI_EVENTS_URL = "https://events.fluentci.io";
 export const RUNNER_URL = "https://whole-dove-21.deno.dev";
 
 export const BUILD_DIR = `${dir("home")}/.fluentci/builds`;
+
+export const FLUENTCI_KV_PREFIX = "fluentci";

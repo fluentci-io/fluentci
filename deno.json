@@ -1,4 +1,7 @@
 {
+  "unstable": [
+    "kv"
+  ],
   "importMap": "import_map.json",
   "tasks": {
     "dev": "deno run -A --watch main.ts",

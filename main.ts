@@ -253,8 +253,8 @@ export async function main() {
     })
     .command("studio", "Start FluentCI Studio, a web-based user interface")
     .option("--port <port:number>", "Port to run FluentCI Studio")
-    .action(function (options) {
-      studio(options);
+    .action(async function (options) {
+      await studio(options);
     })
     .globalOption("--check-update <checkUpdate:boolean>", "check for update", {
       default: true,

@@ -6,9 +6,16 @@ import { getJobs, getJob } from "./resolvers/job/queries.ts";
 import { getLog, getLogs } from "./resolvers/log/queries.ts";
 import { getProject, getProjects } from "./resolvers/project/queries.ts";
 import { runJob } from "./resolvers/job/mutations.ts";
-import { createProject, runPipeline } from "./resolvers/project/mutations.ts";
+import { createProject } from "./resolvers/project/mutations.ts";
+import { runPipeline } from "./resolvers/run/mutations.ts";
+import { getRun, getRuns } from "./resolvers/run/queries.ts";
+import { Run } from "./objects/run.ts";
+import { Action } from "./objects/action.ts";
+import { getActions } from "./resolvers/action/queries.ts";
+import { saveActions } from "./resolvers/action/mutations.ts";
+import { Context } from "./context.ts";
 
-const builder = new SchemaBuilder({});
+const builder = new SchemaBuilder<{ Context: Context }>({});
 
 builder.objectType(Job, {
   name: "Job",
@@ -40,7 +47,7 @@ builder.objectType(Log, {
 
 builder.objectType(Project, {
   name: "Project",
-  description: "A project is a collection of jobs.",
+  description: "A project is a collection of actions.",
   fields: (t) => ({
     id: t.exposeID("id"),
     path: t.exposeString("path"),
@@ -51,6 +58,52 @@ builder.objectType(Project, {
       nullable: true,
       resolve: (root) => root.logs,
     }),
+    cursor: t.exposeString("cursor", { nullable: true }),
+  }),
+});
+
+builder.objectType(Run, {
+  name: "Run",
+  description: "A Pipeline execution",
+  fields: (t) => ({
+    id: t.exposeID("id"),
+    name: t.exposeString("name"),
+    title: t.exposeString("title"),
+    message: t.exposeString("message", { nullable: true }),
+    commit: t.exposeString("commit", { nullable: true }),
+    branch: t.exposeString("branch", { nullable: true }),
+    duration: t.exposeInt("duration"),
+    date: t.exposeString("date"),
+    jobs: t.field({
+      type: [Job],
+      resolve: (root) => root.jobs,
+    }),
+    cursor: t.exposeString("cursor", { nullable: true }),
+  }),
+});
+
+builder.objectType(Action, {
+  name: "Action",
+  description: "An action is a command that is run in a job.",
+  fields: (t) => ({
+    id: t.exposeID("id", { nullable: true }),
+    name: t.exposeString("name"),
+    commands: t.exposeString("commands"),
+    enabled: t.exposeBoolean("enabled"),
+    plugin: t.exposeString("plugin"),
+    useWasm: t.exposeBoolean("useWasm"),
+    logo: t.exposeString("logo"),
+  }),
+});
+
+export const ActionInput = builder.inputType("ActionInput", {
+  fields: (t) => ({
+    name: t.string({ required: true }),
+    commands: t.string({ required: true }),
+    enabled: t.boolean({ required: true }),
+    plugin: t.string({ required: true }),
+    useWasm: t.boolean({ required: true }),
+    logo: t.string({ required: true }),
   }),
 });
 
@@ -58,6 +111,10 @@ builder.queryType({
   fields: (t) => ({
     projects: t.field({
       type: [Project],
+      args: {
+        limit: t.arg.int(),
+        cursor: t.arg.string(),
+      },
       resolve: getProjects,
     }),
     project: t.field({
@@ -93,6 +150,33 @@ builder.queryType({
       },
       resolve: getLogs,
     }),
+    getRun: t.field({
+      type: Run,
+      nullable: true,
+      args: {
+        projectId: t.arg.id({ required: true }),
+        id: t.arg.id({ required: true }),
+      },
+      resolve: getRun,
+    }),
+    getRuns: t.field({
+      type: [Run],
+      nullable: true,
+      args: {
+        projectId: t.arg.id({ required: true }),
+        limit: t.arg.int(),
+        cursor: t.arg.string(),
+      },
+      resolve: getRuns,
+    }),
+    actions: t.field({
+      type: [Action],
+      args: {
+        projectId: t.arg.id({ required: true }),
+      },
+      nullable: true,
+      resolve: getActions,
+    }),
   }),
 });
 
@@ -103,7 +187,7 @@ builder.mutationType({
       resolve: createProject,
     }),
     runPipeline: t.field({
-      type: Project,
+      type: Run,
       args: {
         projectId: t.arg.id(),
       },
@@ -116,6 +200,17 @@ builder.mutationType({
         jobName: t.arg.string(),
       },
       resolve: runJob,
+    }),
+    saveActions: t.field({
+      type: [Action],
+      args: {
+        projectId: t.arg.id({ required: true }),
+        actions: t.arg({
+          type: [ActionInput],
+          required: true,
+        }),
+      },
+      resolve: saveActions,
     }),
   }),
 });
