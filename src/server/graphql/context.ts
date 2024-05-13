@@ -28,6 +28,6 @@ export type KV = {
 };
 
 export type Context = {
-  socket?: WebSocket;
+  sockets: WebSocket[];
   kv: KV;
 };

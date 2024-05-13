@@ -25,6 +25,7 @@ builder.objectType(Job, {
     name: t.exposeString("name"),
     status: t.exposeString("status"),
     createdAt: t.exposeString("createdAt"),
+    startedAt: t.exposeString("startedAt", { nullable: true }),
     duration: t.exposeInt("duration", { nullable: true }),
     logs: t.field({
       type: [Log],

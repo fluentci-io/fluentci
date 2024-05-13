@@ -304,3 +304,11 @@ export async function directoryExists(path: string): Promise<boolean> {
     return false;
   }
 }
+
+export function sendSocketMessage(socket: WebSocket, message: string) {
+  try {
+    socket.send(message);
+  } catch (e) {
+    console.error(e);
+  }
+}

@@ -12,13 +12,13 @@ import * as projects from "../server/kv/projects.ts";
 import * as runs from "../server/kv/runs.ts";
 
 async function studio({ port }: { port?: number }) {
-  let socket: WebSocket | undefined;
+  const sockets: WebSocket[] = [];
 
   const yoga = createYoga({
     schema,
     context: () => {
       return {
-        socket,
+        sockets,
         kv: {
           actions,
           projects,
@@ -88,15 +88,19 @@ async function studio({ port }: { port?: number }) {
       const upgrade = req.headers.get("upgrade") || "";
       if (upgrade.toLowerCase() === "websocket") {
         const ws = Deno.upgradeWebSocket(req);
-        socket = socket || ws.socket;
+        sockets.push(ws.socket);
+        const id = sockets.length - 1;
 
-        socket.onopen = () => console.log("socket opened");
-        socket.onmessage = (e) => {
+        sockets[id].onopen = () => console.log("socket opened");
+        sockets[id].onmessage = (e) => {
           console.log("socket message:", e.data);
-          socket?.send(new Date().toString());
+          sockets[id]?.send(new Date().toString());
         };
-        socket.onerror = (e) => console.log("socket errored:", e);
-        socket.onclose = () => console.log("socket closed");
+        sockets[id].onerror = (e) => console.log("socket errored:", e);
+        sockets[id].onclose = () => {
+          console.log("socket closed");
+          sockets.splice(id, 1);
+        };
 
         return ws.response;
       }
