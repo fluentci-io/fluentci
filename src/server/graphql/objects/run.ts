@@ -3,6 +3,8 @@ import { Job } from "./job.ts";
 export class Run {
   id: string;
   name: string;
+  project: string;
+  projectId: string;
   title: string;
   message?: string;
   commit?: string;
@@ -12,10 +14,13 @@ export class Run {
   date: string;
   jobs: Job[];
   cursor?: string;
+  status?: string;
 
   constructor({
     id,
     name,
+    project,
+    projectId,
     title,
     message,
     commit,
@@ -25,9 +30,12 @@ export class Run {
     date,
     jobs,
     cursor,
+    status,
   }: Run) {
     this.id = id;
     this.name = name;
+    this.project = project;
+    this.projectId = projectId;
     this.title = title;
     this.message = message;
     this.commit = commit;
@@ -37,5 +45,6 @@ export class Run {
     this.date = date;
     this.jobs = jobs;
     this.cursor = cursor;
+    this.status = status;
   }
 }

@@ -18,11 +18,12 @@ export type KV = {
   };
   runs: {
     save: (project: string, data: Run) => Promise<void>;
-    get: (project: string, id: string) => Promise<Run | null>;
+    get: (id: string) => Promise<Run | null>;
     list: (
       project: string,
       options?: Pagination
     ) => Promise<{ runs: Run[]; cursor: string }>;
+    count: (project: string) => Promise<number>;
   };
 };
 

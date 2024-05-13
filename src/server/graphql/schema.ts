@@ -22,12 +22,12 @@ builder.objectType(Job, {
   description: "A job is a task that is run in a project.",
   fields: (t) => ({
     id: t.exposeID("id"),
-    projectId: t.exposeID("projectId"),
     name: t.exposeString("name"),
     status: t.exposeString("status"),
     createdAt: t.exposeString("createdAt"),
+    duration: t.exposeInt("duration", { nullable: true }),
     logs: t.field({
-      type: Log,
+      type: [Log],
       nullable: true,
       resolve: (root) => root.logs,
     }),
@@ -39,7 +39,7 @@ builder.objectType(Log, {
   description: "A log is a message that is created during a job.",
   fields: (t) => ({
     id: t.exposeID("id"),
-    jobId: t.exposeID("jobId"),
+    jobId: t.exposeID("jobId", { nullable: true }),
     message: t.exposeString("message"),
     createdAt: t.exposeString("createdAt"),
   }),
@@ -70,6 +70,9 @@ builder.objectType(Run, {
     name: t.exposeString("name"),
     title: t.exposeString("title"),
     message: t.exposeString("message", { nullable: true }),
+    project: t.exposeString("project"),
+    projectId: t.exposeString("projectId"),
+    author: t.exposeString("author", { nullable: true }),
     commit: t.exposeString("commit", { nullable: true }),
     branch: t.exposeString("branch", { nullable: true }),
     duration: t.exposeInt("duration"),
@@ -79,6 +82,7 @@ builder.objectType(Run, {
       resolve: (root) => root.jobs,
     }),
     cursor: t.exposeString("cursor", { nullable: true }),
+    status: t.exposeString("status", { nullable: true }),
   }),
 });
 
@@ -92,7 +96,7 @@ builder.objectType(Action, {
     enabled: t.exposeBoolean("enabled"),
     plugin: t.exposeString("plugin"),
     useWasm: t.exposeBoolean("useWasm"),
-    logo: t.exposeString("logo"),
+    logo: t.exposeString("logo", { nullable: true }),
   }),
 });
 
@@ -103,7 +107,7 @@ export const ActionInput = builder.inputType("ActionInput", {
     enabled: t.boolean({ required: true }),
     plugin: t.string({ required: true }),
     useWasm: t.boolean({ required: true }),
-    logo: t.string({ required: true }),
+    logo: t.string({ required: false }),
   }),
 });
 
@@ -154,7 +158,6 @@ builder.queryType({
       type: Run,
       nullable: true,
       args: {
-        projectId: t.arg.id({ required: true }),
         id: t.arg.id({ required: true }),
       },
       resolve: getRun,

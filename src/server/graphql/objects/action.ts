@@ -5,7 +5,7 @@ export class Action {
   enabled: boolean;
   plugin: string;
   useWasm: boolean;
-  logo: string;
+  logo?: string | null;
 
   constructor({ id, name, commands, enabled, plugin, useWasm, logo }: Action) {
     this.id = id;

@@ -19,5 +19,5 @@ export function getRun(
   args: any,
   ctx: Context
 ): Promise<Run | null> {
-  return ctx.kv.runs.get(args.projectId, args.id);
+  return ctx.kv.runs.get(args.id);
 }
