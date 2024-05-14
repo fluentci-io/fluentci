@@ -12,7 +12,7 @@ import * as projects from "../server/kv/projects.ts";
 import * as runs from "../server/kv/runs.ts";
 
 async function studio({ port }: { port?: number }) {
-  const sockets: WebSocket[] = [];
+  const sockets: Record<string, WebSocket> = {};
 
   const yoga = createYoga({
     schema,
@@ -88,19 +88,17 @@ async function studio({ port }: { port?: number }) {
       const upgrade = req.headers.get("upgrade") || "";
       if (upgrade.toLowerCase() === "websocket") {
         const ws = Deno.upgradeWebSocket(req);
-        sockets.push(ws.socket);
-        const id = sockets.length - 1;
+        const id = createId();
+        sockets[id] = ws.socket;
 
-        sockets[id].onopen = () => console.log("socket opened");
         sockets[id].onmessage = (e) => {
-          console.log("socket message:", e.data);
+          if (e.data !== "ping") {
+            console.log("> socket message:", e.data);
+          }
           sockets[id]?.send(new Date().toString());
         };
         sockets[id].onerror = (e) => console.log("socket errored:", e);
-        sockets[id].onclose = () => {
-          console.log("socket closed");
-          sockets.splice(id, 1);
-        };
+        sockets[id].onclose = () => delete sockets[id];
 
         return ws.response;
       }

@@ -306,9 +306,9 @@ export async function directoryExists(path: string): Promise<boolean> {
 }
 
 export function sendSocketMessage(socket: WebSocket, message: string) {
-  try {
-    socket.send(message);
-  } catch (e) {
-    console.error(e);
+  if (socket.readyState === WebSocket.CLOSED) {
+    console.log("socket closed");
+    return;
   }
+  socket.send(message);
 }

@@ -10,7 +10,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
   const runStart = dayjs();
   let jobs = [...data.jobs];
 
-  ctx.sockets.forEach((s) =>
+  Object.values(ctx.sockets).forEach((s) =>
     sendSocketMessage(
       s,
       JSON.stringify({
@@ -44,7 +44,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
       status: currentActionIndex === j ? "RUNNING" : job.status,
     }));
 
-    ctx.sockets.forEach((s) =>
+    Object.values(ctx.sockets).forEach((s) =>
       sendSocketMessage(
         s,
         JSON.stringify({
@@ -75,7 +75,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
       logs.push(...result.logs);
 
       if (result.code !== 0) {
-        ctx.sockets.forEach((s) =>
+        Object.values(ctx.sockets).forEach((s) =>
           sendSocketMessage(
             s,
             JSON.stringify({
@@ -139,7 +139,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
     duration,
   });
 
-  ctx.sockets.map((s) =>
+  Object.values(ctx.sockets).forEach((s) =>
     sendSocketMessage(
       s,
       JSON.stringify({
@@ -172,7 +172,7 @@ async function spawn(ctx: Context, cmd: string, jobId?: string) {
         createdAt: new Date().toISOString(),
       });
       logs.push(log);
-      ctx.sockets.forEach((s) =>
+      Object.values(ctx.sockets).forEach((s) =>
         sendSocketMessage(
           s,
           JSON.stringify({ channel: "logs", data: { text, jobId } })
