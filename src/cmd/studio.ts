@@ -1,4 +1,5 @@
 import {
+  _,
   createYoga,
   open,
   createId,
@@ -10,6 +11,7 @@ import { schema } from "../server/graphql/schema.ts";
 import * as actions from "../server/kv/actions.ts";
 import * as projects from "../server/kv/projects.ts";
 import * as runs from "../server/kv/runs.ts";
+import icons from "../server/icons.ts";
 
 async function studio({ port }: { port?: number }) {
   const sockets: Record<string, WebSocket> = {};
@@ -43,11 +45,14 @@ async function studio({ port }: { port?: number }) {
       suffix++;
     } while (true);
 
+    const icon = _.sample(icons);
+
     await projects.save({
       id: projectId,
       path: Deno.cwd(),
       name,
       createdAt: new Date().toISOString(),
+      picture: `https://img.icons8.com/parakeet/96/${icon}.png`,
     });
   } else {
     projectId = project.id;

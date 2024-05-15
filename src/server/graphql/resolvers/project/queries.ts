@@ -25,6 +25,7 @@ export async function getProjects(
   const { projects, cursor } = await ctx.kv.projects.list({
     limit: args.limit,
     cursor: args.cursor,
+    reverse: _.get(args, "reverse", true),
   });
   return projects.map((x) => ({ ...x, cursor }));
 }

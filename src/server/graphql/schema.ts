@@ -64,6 +64,7 @@ builder.objectType(Project, {
       resolve: (root) => root.logs,
     }),
     cursor: t.exposeString("cursor", { nullable: true }),
+    picture: t.exposeString("picture"),
   }),
 });
 
@@ -124,6 +125,7 @@ builder.queryType({
         skip: t.arg.int(),
         limit: t.arg.int(),
         cursor: t.arg.string(),
+        reverse: t.arg.boolean(),
       },
       resolve: getProjects,
     }),
