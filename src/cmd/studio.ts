@@ -97,7 +97,8 @@ async function studio({ port }: { port?: number }) {
           }
           sockets[id]?.send(new Date().toString());
         };
-        sockets[id].onerror = (e) => console.log("socket errored:", e);
+        sockets[id].onerror = (e) =>
+          console.log("socket errored:", (e as unknown as Error).message);
         sockets[id].onclose = () => delete sockets[id];
 
         return ws.response;

@@ -4,8 +4,15 @@ import { Run } from "../graphql/objects/run.ts";
 import kv, { Pagination } from "../kv.ts";
 
 export async function save(project: string, data: Run) {
-  await kv.set([FLUENTCI_KV_PREFIX, "runs", project, data.id], data);
-  await kv.set([FLUENTCI_KV_PREFIX, "runs", data.id], data);
+  await kv
+    .atomic()
+    .set([FLUENTCI_KV_PREFIX, "runs", project, data.id], data)
+    .set([FLUENTCI_KV_PREFIX, "runs", data.id], data)
+    .set(
+      [FLUENTCI_KV_PREFIX, "runs_by_date", project, dayjs(data.date).unix()],
+      data
+    )
+    .commit();
 }
 
 export async function get(id: string) {
@@ -15,17 +22,19 @@ export async function get(id: string) {
 
 export async function list(
   project: string,
-  { limit, cursor }: Pagination = {
+  { limit, cursor, reverse }: Pagination = {
     limit: 100,
+    reverse: true,
   }
 ) {
   const iter = kv.list<Run>(
     {
-      prefix: [FLUENTCI_KV_PREFIX, "runs", project],
+      prefix: [FLUENTCI_KV_PREFIX, "runs_by_date", project],
     },
     {
       limit,
       cursor,
+      reverse,
     }
   );
   const runs = [];

@@ -4,11 +4,15 @@ import { Log } from "./objects/log.ts";
 import { Project } from "./objects/project.ts";
 import { getJobs, getJob } from "./resolvers/job/queries.ts";
 import { getLog, getLogs } from "./resolvers/log/queries.ts";
-import { getProject, getProjects } from "./resolvers/project/queries.ts";
+import {
+  countProjects,
+  getProject,
+  getProjects,
+} from "./resolvers/project/queries.ts";
 import { runJob } from "./resolvers/job/mutations.ts";
 import { createProject } from "./resolvers/project/mutations.ts";
 import { runPipeline } from "./resolvers/run/mutations.ts";
-import { getRun, getRuns } from "./resolvers/run/queries.ts";
+import { countRuns, getRun, getRuns } from "./resolvers/run/queries.ts";
 import { Run } from "./objects/run.ts";
 import { Action } from "./objects/action.ts";
 import { getActions } from "./resolvers/action/queries.ts";
@@ -117,6 +121,7 @@ builder.queryType({
     projects: t.field({
       type: [Project],
       args: {
+        skip: t.arg.int(),
         limit: t.arg.int(),
         cursor: t.arg.string(),
       },
@@ -168,8 +173,10 @@ builder.queryType({
       nullable: true,
       args: {
         projectId: t.arg.id({ required: true }),
+        skip: t.arg.int(),
         limit: t.arg.int(),
         cursor: t.arg.string(),
+        reverse: t.arg.boolean(),
       },
       resolve: getRuns,
     }),
@@ -180,6 +187,17 @@ builder.queryType({
       },
       nullable: true,
       resolve: getActions,
+    }),
+    countRuns: t.field({
+      type: "Int",
+      args: {
+        projectId: t.arg.id({ required: true }),
+      },
+      resolve: countRuns,
+    }),
+    countProjects: t.field({
+      type: "Int",
+      resolve: countProjects,
     }),
   }),
 });
