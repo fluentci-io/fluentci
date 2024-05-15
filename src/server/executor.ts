@@ -10,6 +10,8 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
   const runStart = dayjs();
   let jobs = [...data.jobs];
 
+  const project = await ctx.kv.projects.get(data.projectId);
+
   Object.values(ctx.sockets).forEach((s) =>
     sendSocketMessage(
       s,
@@ -69,6 +71,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
         `fluentci run ${action.useWasm ? "--wasm" : ""} ${
           action.plugin
         } ${cmd}`,
+        project?.path,
         jobs[currentActionIndex].id
       );
 
@@ -154,12 +157,18 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
   );
 }
 
-async function spawn(ctx: Context, cmd: string, jobId?: string) {
+async function spawn(
+  ctx: Context,
+  cmd: string,
+  cwd = Deno.cwd(),
+  jobId?: string
+) {
   const logs: Log[] = [];
   const child = new Deno.Command("bash", {
     args: ["-c", cmd],
     stdout: "piped",
     stderr: "piped",
+    cwd,
   }).spawn();
 
   const writable = new WritableStream({
