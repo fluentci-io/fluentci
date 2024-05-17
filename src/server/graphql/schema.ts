@@ -65,6 +65,14 @@ builder.objectType(Project, {
     }),
     cursor: t.exposeString("cursor", { nullable: true }),
     picture: t.exposeString("picture"),
+    speed: t.exposeFloat("speed", { nullable: true }),
+    reliability: t.exposeFloat("reliability", { nullable: true }),
+    buildsPerWeek: t.exposeInt("buildsPerWeek", { nullable: true }),
+    recentRuns: t.field({
+      type: [Run],
+      nullable: true,
+      resolve: (root) => root.recentRuns,
+    }),
   }),
 });
 
@@ -81,7 +89,7 @@ builder.objectType(Run, {
     author: t.exposeString("author", { nullable: true }),
     commit: t.exposeString("commit", { nullable: true }),
     branch: t.exposeString("branch", { nullable: true }),
-    duration: t.exposeInt("duration"),
+    duration: t.exposeInt("duration", { nullable: true }),
     date: t.exposeString("date"),
     jobs: t.field({
       type: [Job],

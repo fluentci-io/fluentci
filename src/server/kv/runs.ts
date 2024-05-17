@@ -12,6 +12,16 @@ export async function save(project: string, data: Run) {
       [FLUENTCI_KV_PREFIX, "runs_by_date", project, dayjs(data.date).unix()],
       data
     )
+    .set(
+      [
+        FLUENTCI_KV_PREFIX,
+        "runs_by_week",
+        project,
+        dayjs().startOf("week").add(1, "day").unix(),
+        data.id,
+      ],
+      data
+    )
     .commit();
 }
 

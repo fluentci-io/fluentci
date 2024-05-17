@@ -112,6 +112,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
           status: "FAILURE",
           duration,
         });
+        await ctx.kv.projects.updateStats(data.projectId);
         return;
       }
     }
@@ -143,6 +144,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
     status: "SUCCESS",
     duration,
   });
+  await ctx.kv.projects.updateStats(data.projectId);
 
   Object.values(ctx.sockets).forEach((s) =>
     sendSocketMessage(

@@ -16,6 +16,7 @@ export type KV = {
       options?: Pagination
     ) => Promise<{ projects: Project[]; cursor: string }>;
     count: () => Promise<number>;
+    updateStats: (id: string) => Promise<void>;
   };
   runs: {
     save: (project: string, data: Run) => Promise<void>;

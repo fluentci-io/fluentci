@@ -2,6 +2,7 @@ import { FLUENTCI_KV_PREFIX } from "../../consts.ts";
 import { Project } from "../graphql/objects/project.ts";
 import kv, { Pagination } from "../kv.ts";
 import { dayjs } from "../../../deps.ts";
+import { Run } from "../graphql/objects/run.ts";
 
 export async function save(data: Project) {
   await kv
@@ -14,6 +15,49 @@ export async function save(data: Project) {
       data
     )
     .commit();
+}
+
+export async function updateStats(id: string) {
+  const project = await get(id);
+  if (!project) return;
+  const iter = await kv.list<Run>(
+    {
+      prefix: [FLUENTCI_KV_PREFIX, "runs_by_date", id],
+    },
+    {
+      limit: 18,
+      reverse: true,
+    }
+  );
+  const recentRuns = [];
+  for await (const run of iter) recentRuns.push(run.value);
+  recentRuns.reverse();
+  const speed =
+    recentRuns.reduce((acc, run) => acc + (run.duration || 0), 0) /
+    recentRuns.length;
+  const reliability =
+    (recentRuns.filter((run) => run.status === "SUCCESS").length /
+      recentRuns.length) *
+    100;
+
+  const buildsByWeekIter = await kv.list<Run>({
+    prefix: [
+      FLUENTCI_KV_PREFIX,
+      "runs_by_week",
+      id,
+      dayjs().startOf("week").add(1, "day").unix(),
+    ],
+  });
+  let buildsPerWeek = 0;
+  for await (const _ of buildsByWeekIter) buildsPerWeek++;
+
+  await save({
+    ...project,
+    speed,
+    reliability,
+    buildsPerWeek,
+    recentRuns,
+  });
 }
 
 export async function get(id: string) {
