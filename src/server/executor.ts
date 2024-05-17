@@ -105,10 +105,12 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
               ? [...(job.logs || []), ...result.logs]
               : job.logs,
         }));
+        const duration = dayjs().diff(runStart, "milliseconds");
         await ctx.kv.runs.save(data.projectId, {
           ...data,
           jobs,
           status: "FAILURE",
+          duration,
         });
         return;
       }
