@@ -85,7 +85,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
               channel: "job",
               data: {
                 ...jobs[currentActionIndex],
-                status: "FAILED",
+                status: "FAILURE",
                 duration: dayjs().diff(start, "milliseconds"),
                 logs: [...(jobs[currentActionIndex].logs || []), ...logs],
               },
@@ -95,7 +95,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
 
         jobs = jobs.map((job, j) => ({
           ...job,
-          status: currentActionIndex === j ? "FAILED" : job.status,
+          status: currentActionIndex === j ? "FAILURE" : job.status,
           duration:
             currentActionIndex === j
               ? dayjs().diff(start, "milliseconds")
@@ -108,7 +108,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
         await ctx.kv.runs.save(data.projectId, {
           ...data,
           jobs,
-          status: "FAILED",
+          status: "FAILURE",
         });
         return;
       }
