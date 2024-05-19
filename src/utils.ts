@@ -228,8 +228,17 @@ export async function setupFluentCIengine() {
   let FLUENTCI_ENGINE_VERSION = Deno.env.get("FLUENTCI_ENGINE_VERSION");
 
   if (!FLUENTCI_ENGINE_VERSION) {
+    const headers: Record<string, string> = {};
+
+    if (Deno.env.has("GITHUB_ACCESS_TOKEN")) {
+      headers["Authorization"] = `token ${Deno.env.get("GITHUB_ACCESS_TOKEN")}`;
+    }
+
     FLUENTCI_ENGINE_VERSION = await fetch(
-      "https://api.github.com/repos/fluentci-io/fluentci-engine/releases/latest"
+      "https://api.github.com/repos/fluentci-io/fluentci-engine/releases/latest",
+      {
+        headers,
+      }
     )
       .then((res) => res.json())
       .then((data) => data.tag_name)

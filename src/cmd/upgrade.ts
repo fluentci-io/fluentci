@@ -28,7 +28,7 @@ async function upgrade() {
       "-n",
       "fluentci",
       "-f",
-      "-g"
+      "-g",
     ],
   });
 
@@ -45,8 +45,17 @@ export async function checkForUpdate(options: { checkUpdate: boolean }) {
   }
 
   try {
+    const headers: Record<string, string> = {};
+
+    if (Deno.env.has("GITHUB_ACCESS_TOKEN")) {
+      headers["Authorization"] = `token ${Deno.env.get("GITHUB_ACCESS_TOKEN")}`;
+    }
+
     const result = await fetch(
-      "https://api.github.com/repos/fluentci-io/fluentci/releases/latest"
+      "https://api.github.com/repos/fluentci-io/fluentci/releases/latest",
+      {
+        headers
+      }
     );
     const releaseInfo = await result.json();
 

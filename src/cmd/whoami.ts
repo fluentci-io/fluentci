@@ -7,15 +7,28 @@ async function whoami() {
     Deno.exit(1);
   }
 
+  const headers: Record<string, string> = {};
+
+  if (Deno.env.has("GITHUB_ACCESS_TOKEN")) {
+    headers["Authorization"] = `token ${Deno.env.get("GITHUB_ACCESS_TOKEN")}`;
+  }
+
   const accessToken =
     Deno.env.get("FLUENTCI_ACCESS_TOKEN") ||
     Deno.readTextFileSync(`${Deno.env.get("HOME")}/.fluentci/access-token`);
   const id = await fetch(
-    `https://api.fluentci.io/validate?token=${accessToken}`
+    `https://api.fluentci.io/validate?token=${accessToken}`,
+    {
+      headers,
+    }
   ).then((res) => res.text());
-  const { login, name } = await fetch(`https://api.github.com/user/${id}`).then(
-    (res) => res.json()
-  );
+
+  if (Deno.env.has("GITHUB_ACCESS_TOKEN")) {
+    headers["Authorization"] = `token ${Deno.env.get("GITHUB_ACCESS_TOKEN")}`;
+  }
+  const { login, name } = await fetch(`https://api.github.com/user/${id}`, {
+    headers,
+  }).then((res) => res.json());
   console.log(`You are logged in as ${login} (${name})`);
 }
 
