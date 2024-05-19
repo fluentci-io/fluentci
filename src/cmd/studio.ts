@@ -52,7 +52,7 @@ async function studio({ port }: { port?: number }) {
       path: Deno.cwd(),
       name,
       createdAt: new Date().toISOString(),
-      picture: `https://img.icons8.com/parakeet/96/${icon}.png`,
+      picture: `https://img.icons8.com/color-glass/96/${icon}.png`,
     });
   } else {
     projectId = project.id;

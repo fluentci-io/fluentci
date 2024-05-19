@@ -1,6 +1,6 @@
 export class Log {
   id: string;
-  jobId?: string;
+  jobId: string;
   message: string;
   createdAt: string;
 

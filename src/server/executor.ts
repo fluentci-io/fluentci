@@ -26,7 +26,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
     )
   );
 
-  ctx.kv.runs.save(data.projectId, {
+  await ctx.kv.runs.save(data.projectId, {
     ...data,
     date: new Date().toISOString(),
   });
@@ -175,12 +175,13 @@ async function spawn(
     cwd,
   }).spawn();
 
-  const writable = new WritableStream({
+  const writableStdoutStream = new WritableStream({
     write: (chunk) => {
       const text = new TextDecoder().decode(chunk);
       console.log(text);
       const log = new Log({
         id: createId(),
+        jobId: jobId!,
         message: text,
         createdAt: new Date().toISOString(),
       });
@@ -194,8 +195,29 @@ async function spawn(
     },
   });
 
-  const [_, { code }] = await Promise.all([
-    child.stdout.pipeTo(writable),
+  const writableStderrStream = new WritableStream({
+    write: (chunk) => {
+      const text = new TextDecoder().decode(chunk);
+      console.log(text);
+      const log = new Log({
+        id: createId(),
+        jobId: jobId!,
+        message: text,
+        createdAt: new Date().toISOString(),
+      });
+      logs.push(log);
+      Object.values(ctx.sockets).forEach((s) =>
+        sendSocketMessage(
+          s,
+          JSON.stringify({ channel: "logs", data: { text, jobId } })
+        )
+      );
+    },
+  });
+
+  const [_stdout, _stderr, { code }] = await Promise.all([
+    child.stdout.pipeTo(writableStdoutStream),
+    child.stderr.pipeTo(writableStderrStream),
     child.status,
   ]);
 

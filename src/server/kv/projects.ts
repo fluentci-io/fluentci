@@ -8,7 +8,7 @@ export async function save(data: Project) {
   await kv
     .atomic()
     .set([FLUENTCI_KV_PREFIX, "projects", data.id], data)
-    .set([FLUENTCI_KV_PREFIX, "path", data.path], data)
+    .set([FLUENTCI_KV_PREFIX, "path", data.path || "empty"], data)
     .set([FLUENTCI_KV_PREFIX, "projects_by_name", data.name], data)
     .set(
       [FLUENTCI_KV_PREFIX, "projects_by_date", dayjs(data.createdAt).unix()],

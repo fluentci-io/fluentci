@@ -63,7 +63,7 @@ export default [
   "swift",
   "php",
   "program",
-  "sofware-installer",
+  "software-installer",
   "bird",
   "duck",
   "falcon",
