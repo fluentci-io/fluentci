@@ -222,6 +222,7 @@ builder.mutationType({
       type: Run,
       args: {
         projectId: t.arg.id(),
+        wait: t.arg.boolean({ required: false }),
       },
       resolve: runPipeline,
     }),

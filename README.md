@@ -1,4 +1,4 @@
-![Cover](./.github/assets/fluentci-ui.png)
+![Cover](./.github/assets/fluentci-studio.png)
 
 
 # Fluent CI CLI

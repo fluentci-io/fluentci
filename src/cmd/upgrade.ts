@@ -54,7 +54,7 @@ export async function checkForUpdate(options: { checkUpdate: boolean }) {
     const result = await fetch(
       "https://api.github.com/repos/fluentci-io/fluentci/releases/latest",
       {
-        headers
+        headers,
       }
     );
     const releaseInfo = await result.json();
@@ -62,7 +62,7 @@ export async function checkForUpdate(options: { checkUpdate: boolean }) {
     const latestVersion = semver.parse(releaseInfo.tag_name);
     const currentVersion = semver.parse(VERSION);
 
-    if (semver.gt(latestVersion, currentVersion)) {
+    if (semver.greaterThan(latestVersion, currentVersion)) {
       console.log(
         `${green("A new release of fluentci is available:")} ${VERSION} → ${
           releaseInfo.tag_name

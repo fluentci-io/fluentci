@@ -70,10 +70,14 @@ export async function at(path: string) {
   return value;
 }
 
+export async function deleteAt(path: string) {
+  await kv.delete([FLUENTCI_KV_PREFIX, "path", path]);
+}
+
 export async function byName(name: string) {
   const { value } = await kv.get<Project>([
     FLUENTCI_KV_PREFIX,
-    "by_name",
+    "projects_by_name",
     name,
   ]);
   return value;

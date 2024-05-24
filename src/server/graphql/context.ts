@@ -6,12 +6,13 @@ import { Run } from "./objects/run.ts";
 export type KV = {
   actions: {
     save: (project: string, data: Action[]) => Promise<void>;
-    get: (project: string) => Promise<Action[]>;
+    get: (project: string) => Promise<Action[] | null>;
   };
   projects: {
     save: (data: Project) => Promise<void>;
     get: (id: string) => Promise<Project | null>;
     at: (path: string) => Promise<Project | null>;
+    deleteAt: (path: string) => Promise<void>;
     list: (
       options?: Pagination
     ) => Promise<{ projects: Project[]; cursor: string }>;

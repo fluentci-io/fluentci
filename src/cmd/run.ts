@@ -6,8 +6,11 @@ import {
   ZipWriter,
   dayjs,
   toml,
+  gql,
+  resolve,
 } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
+import detect from "../detect.ts";
 import { getCommitInfos } from "../git.ts";
 import {
   setupFluentCIengine,
@@ -20,6 +23,8 @@ import {
   extractVersion,
   verifyRequiredDependencies,
 } from "../utils.ts";
+import client from "../client.ts";
+import * as projects from "../server/kv/projects.ts";
 
 /**
  * Runs a Fluent CI pipeline.
@@ -62,7 +67,56 @@ async function run(
     }
 
     if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
-      await runPipelineRemotely(pipeline, jobs);
+      if (options.remoteExec) {
+        await runPipelineRemotely(pipeline, jobs);
+        return;
+      }
+      await detect(".");
+
+      const query = gql`
+        mutation Run($projectId: ID!, $wait: Boolean) {
+          runPipeline(projectId: $projectId, wait: $wait) {
+            id
+          }
+        }
+      `;
+      const project = await projects.byName(
+        Deno.env.get("FLUENTCI_PROJECT_ID")!
+      );
+
+      if (!project) {
+        console.error(
+          `Project ${Deno.env.get("FLUENTCI_PROJECT_ID")} not found`
+        );
+        Deno.exit(1);
+      }
+
+      await projects.save({
+        ...project,
+        path: resolve("."),
+      });
+
+      await projects.deleteAt("empty");
+
+      const ws = new WebSocket("ws://localhost:6076");
+
+      // deno-lint-ignore no-unused-vars
+      new Promise((resolve, reject) => {
+        try {
+          ws.onmessage = (m) => {
+            const { channel, data } = JSON.parse(m.data);
+            if (channel === "logs") {
+              console.log(data.text);
+            }
+          };
+        } catch (e) {
+          console.error("Failed to connect to server", e);
+        }
+      });
+
+      await client.request(query, { projectId: project?.id, wait: true });
+      ws.close();
+
       return;
     }
 

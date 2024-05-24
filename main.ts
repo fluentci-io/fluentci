@@ -41,6 +41,7 @@ export async function main() {
     .arguments("[pipeline:string] [jobs...:string]")
     .option("-r, --reload", "Reload pipeline source cache")
     .option("-w, --wasm", "Run pipeline as WebAssembly Module")
+    .option("--remote-exec", "Run pipeline on remote agent")
     .option("-*, --* [args:string]", "Pass arguments to pipeline")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
       if (options.wasm) {
@@ -57,6 +58,7 @@ export async function main() {
     .arguments("<pipeline:string> [jobs...:string]")
     .option("-r, --reload", "Reload pipeline source cache")
     .option("-w, --wasm", "Run pipeline as WebAssembly Module")
+    .option("--remote-exec", "Run pipeline on remote agent")
     .option("-*, --* [args:string]", "Pass arguments to pipeline")
     .action(function (options, pipeline, ...jobs: [string, ...Array<string>]) {
       if (pipeline.endsWith(".wasm") || pipeline.endsWith("?wasm=1")) {

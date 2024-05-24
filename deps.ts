@@ -1,4 +1,4 @@
-import * as semver from "https://deno.land/std@0.212.0/semver/mod.ts";
+import * as semver from "jsr:@std/semver@0.224.0";
 export { semver };
 export {
   bold,
@@ -10,11 +10,11 @@ export {
   magenta,
   red,
   yellow,
-} from "https://deno.land/std@0.192.0/fmt/colors.ts";
+} from "jsr:@std/fmt@0.224.0/colors";
 export { z } from "https://deno.land/x/zod@v3.22.2/mod.ts";
 export { decompress } from "https://deno.land/x/zip@v1.2.5/mod.ts";
-export { existsSync } from "https://deno.land/std@0.203.0/fs/exists.ts";
-export { load } from "https://deno.land/std@0.205.0/dotenv/mod.ts";
+export { existsSync } from "jsr:@std/fs@0.224.0/exists";
+export { load } from "jsr:@std/dotenv@0.224.0";
 export { Secret } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/secret.ts";
 export {
   Confirm,
@@ -23,8 +23,8 @@ export {
 } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/mod.ts";
 import dir from "https://deno.land/x/dir@1.5.2/mod.ts";
 export { dir };
-export { walk, walkSync } from "https://deno.land/std@0.210.0/fs/walk.ts";
-export type { WalkEntry } from "https://deno.land/std@0.208.0/fs/walk.ts";
+export { walk, walkSync } from "jsr:@std/fs@0.224.0/walk";
+export type { WalkEntry } from "jsr:@std/fs@0.224.0/walk";
 export {
   BlobReader,
   BlobWriter,
@@ -51,7 +51,7 @@ dayjs.extend(relativeTime);
 export { dayjs };
 import { Buffer } from "npm:buffer";
 export { Buffer };
-export { mergeReadableStreams } from "https://deno.land/std@0.211.0/streams/merge_readable_streams.ts";
+export { mergeReadableStreams } from "jsr:@std/streams@0.224.0";
 export {
   Cell,
   Table,
@@ -60,12 +60,12 @@ export {
   TerminalSpinner,
   SpinnerTypes,
 } from "https://deno.land/x/spinners@v1.1.2/mod.ts";
-export { readAllSync } from "https://deno.land/std@0.221.0/io/read_all.ts";
+export { readAllSync } from "jsr:@std/io@0.224.0";
 import * as toml from "npm:toml@3.0.0";
 export { toml };
 import tomlify from "npm:tomlify-j0.4@3.0.0";
 export { tomlify };
-export { serve } from "https://deno.land/std@0.214.0/http/server.ts";
+export { serve } from "jsr:@std/http@0.224.0/server";
 export { createYoga } from "https://esm.sh/graphql-yoga@5.1.1?external=graphql";
 import SchemaBuilder from "https://esm.sh/*@pothos/core@3.41.1";
 export { SchemaBuilder };
@@ -73,3 +73,10 @@ export { createId } from "npm:@paralleldrive/cuid2";
 export { open } from "https://deno.land/x/open@v0.0.6/index.ts";
 import dockernames from "npm:docker-names-ts";
 export { dockernames };
+export { resolve } from "jsr:@std/path@0.224.0";
+export * as FluentGitlabCI from "jsr:@tsirysndr/fluent-gitlab-ci@0.5";
+export * as FluentGithubActions from "jsr:@tsirysndr/fluent-gh-actions@0.3";
+export * as FluentCircleCI from "jsr:@tsirysndr/fluent-circleci@0.3";
+export * as FluentAzurePipelines from "jsr:@tsirysndr/fluent-az-pipelines@0.3";
+export * as FluentAWSCodePipeline from "jsr:@tsirysndr/fluent-codepipeline@0.3";
+export { ClientError, GraphQLClient, gql } from "npm:graphql-request@6.1.0";
