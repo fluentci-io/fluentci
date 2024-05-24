@@ -122,6 +122,7 @@ Commands:
   agent                                - Start FluentCI Runner Agent 
   whoami                               - Show current logged in user
   repl           [pipelines...]        - Start FluentCI REPL   
+  studio                               - Start FluentCI Studio, a web-based user interface 
 ```
 
 ## 📚 Documentation
