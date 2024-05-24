@@ -111,6 +111,7 @@ builder.objectType(Action, {
     plugin: t.exposeString("plugin"),
     useWasm: t.exposeBoolean("useWasm"),
     logo: t.exposeString("logo", { nullable: true }),
+    githubUrl: t.exposeString("githubUrl", { nullable: true }),
   }),
 });
 
@@ -122,6 +123,7 @@ export const ActionInput = builder.inputType("ActionInput", {
     plugin: t.string({ required: true }),
     useWasm: t.boolean({ required: true }),
     logo: t.string({ required: false }),
+    githubUrl: t.string({ required: false }),
   }),
 });
 

@@ -6,8 +6,18 @@ export class Action {
   plugin: string;
   useWasm: boolean;
   logo?: string | null;
+  githubUrl?: string | null;
 
-  constructor({ id, name, commands, enabled, plugin, useWasm, logo }: Action) {
+  constructor({
+    id,
+    name,
+    commands,
+    enabled,
+    plugin,
+    useWasm,
+    logo,
+    githubUrl,
+  }: Action) {
     this.id = id;
     this.name = name;
     this.commands = commands;
@@ -15,5 +25,6 @@ export class Action {
     this.plugin = plugin;
     this.useWasm = useWasm;
     this.logo = logo;
+    this.githubUrl = githubUrl;
   }
 }

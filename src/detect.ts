@@ -36,6 +36,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "rust",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/rust-plain.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/zig-pipeline",
       },
       {
         id: createId(),
@@ -45,6 +46,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "rust",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/rust-plain.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/rust-pipeline",
       },
     ]);
     return;
@@ -60,6 +62,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "go",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/go-original-wordmark.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/go-pipeline",
       },
       {
         id: createId(),
@@ -69,6 +72,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "go",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/go-original-wordmark.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/go-pipeline",
       },
     ]);
     return;
@@ -87,6 +91,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "bun",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/bun.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/bun-pipeline",
       },
     ]);
     return;
@@ -102,6 +107,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "bun",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/bun.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/bun-pipeline",
       },
     ]);
     return;
@@ -120,6 +126,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "deno",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/deno.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/deno-pipeline",
       },
       {
         id: createId(),
@@ -129,6 +136,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "deno",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/deno.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/deno-pipeline",
       },
       {
         id: createId(),
@@ -138,6 +146,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "deno",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/deno.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/deno-pipeline",
       },
     ]);
     return;
@@ -153,6 +162,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "gleam",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/gleam.png",
+        githubUrl: "https://github.com/fluent-ci-templates/gleam-pipeline",
       },
       {
         id: createId(),
@@ -162,6 +172,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "gleam",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/gleam.png",
+        githubUrl: "https://github.com/fluent-ci-templates/gleam-pipeline",
       },
     ]);
     return;
@@ -177,6 +188,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "zig",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/zig-original.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/zig-pipeline",
       },
       {
         id: createId(),
@@ -186,6 +198,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "zig",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/zig-original.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/zig-pipeline",
       },
     ]);
     return;
@@ -201,6 +214,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "elixir",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/elixir.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/elixir-pipeline",
       },
       {
         id: createId(),
@@ -210,6 +224,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "elixir",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/elixir.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/elixir-pipeline",
       },
     ]);
     return;
@@ -225,6 +240,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "php",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/php-plain.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/php-pipeline",
       },
       {
         id: createId(),
@@ -234,6 +250,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "php",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/php-plain.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/php-pipeline",
       },
     ]);
     return;
@@ -252,6 +269,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "flutter",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/flutter-original.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/flutter-pipeline",
       },
       {
         id: createId(),
@@ -261,6 +279,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "flutter",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/flutter-original.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/flutter-pipeline",
       },
     ]);
     return;
@@ -276,6 +295,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "ruby",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/ruby-original.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/ruby-pipeline",
       },
       {
         id: createId(),
@@ -285,6 +305,7 @@ export default async function detect(src: string): Promise<void> {
         plugin: "ruby",
         useWasm: true,
         logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/ruby-original.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/ruby-pipeline",
       },
     ]);
     return;
@@ -299,7 +320,8 @@ export default async function detect(src: string): Promise<void> {
         enabled: true,
         plugin: "clojure",
         useWasm: true,
-        logo: "",
+        logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/clojure.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/clojure-pipeline",
       },
       {
         id: createId(),
@@ -308,7 +330,8 @@ export default async function detect(src: string): Promise<void> {
         enabled: true,
         plugin: "clojure",
         useWasm: true,
-        logo: "",
+        logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/clojure.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/clojure-pipeline",
       },
     ]);
     return;
@@ -323,7 +346,7 @@ export default async function detect(src: string): Promise<void> {
         enabled: true,
         plugin: "maven",
         useWasm: true,
-        logo: "",
+        githubUrl: "https://github.com/fluentci-io/maven-plugin",
       },
       {
         id: createId(),
@@ -332,7 +355,7 @@ export default async function detect(src: string): Promise<void> {
         enabled: true,
         plugin: "maven",
         useWasm: true,
-        logo: "",
+        githubUrl: "https://github.com/fluentci-io/maven-plugin",
       },
     ]);
     return;
@@ -347,7 +370,7 @@ export default async function detect(src: string): Promise<void> {
         enabled: true,
         plugin: "sbt",
         useWasm: true,
-        logo: "",
+        githubUrl: "https://github.com/fluentci-io/sbt-plugin",
       },
       {
         id: createId(),
@@ -356,7 +379,7 @@ export default async function detect(src: string): Promise<void> {
         enabled: true,
         plugin: "sbt",
         useWasm: true,
-        logo: "",
+        githubUrl: "https://github.com/fluentci-io/sbt-plugin",
       },
     ]);
 
@@ -371,7 +394,7 @@ export default async function detect(src: string): Promise<void> {
       enabled: true,
       plugin: "base",
       useWasm: true,
-      logo: "",
+      githubUrl: "https://github.com/fluent-ci-templates/base-pipeline",
     },
   ]);
 }
