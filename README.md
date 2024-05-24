@@ -124,13 +124,6 @@ Commands:
   repl           [pipelines...]        - Start FluentCI REPL   
 ```
 
-## 🧑‍💻 FluentCI REPL
-
-<img src="https://vhs.charm.sh/vhs-1MJWuxoyaLKEOUIHPJwCRT.gif" alt="Made with VHS">
-<a href="https://vhs.charm.sh">
-  <img src="https://stuff.charm.sh/vhs/badge.svg">
-</a>
-
 ## 📚 Documentation
 
 [View the full documentation](https://docs.fluentci.io)
