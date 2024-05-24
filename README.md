@@ -64,8 +64,8 @@ docker run --privileged \
 Or download the binary from the [releases page](https://github.com/fluentci-io/fluentci/releases) and add it to your PATH.
 
 Requirements:
-- [Deno](https://deno.com) 1.37 or higher. See [Deno Installation](https://deno.land/manual/getting_started/installation) for more information.
-- [Dagger](https://dagger.io) 0.9.7 or higher. See [Dagger Installation](https://docs.dagger.io/cli/465058/install) for more information.
+- [Deno](https://deno.com) 1.42 or higher. See [Deno Installation](https://deno.land/manual/getting_started/installation) for more information.
+- [Dagger](https://dagger.io) 0.10.0 or higher. See [Dagger Installation](https://docs.dagger.io/cli/465058/install) for more information.
 
 
 ## ✨ Quick Start
