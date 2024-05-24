@@ -7,7 +7,7 @@ export async function saveActions(
   _root: any,
   args: { projectId: string | number; actions: Action[] },
   ctx: Context
-): Promise<Action[]> {
+): Promise<Action[] | null> {
   await ctx.kv.actions.save(
     args.projectId.toString(),
     args.actions.map((x) => ({ ...x, id: createId() }))

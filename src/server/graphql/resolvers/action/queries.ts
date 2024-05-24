@@ -6,6 +6,6 @@ export function getActions(
   root: any,
   args: any,
   ctx: Context
-): Promise<Action[]> {
+): Promise<Action[] | null> {
   return ctx.kv.actions.get(args.projectId);
 }

@@ -236,6 +236,7 @@ builder.mutationType({
     }),
     saveActions: t.field({
       type: [Action],
+      nullable: true,
       args: {
         projectId: t.arg.id({ required: true }),
         actions: t.arg({

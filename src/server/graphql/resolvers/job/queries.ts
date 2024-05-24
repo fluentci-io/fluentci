@@ -1,3 +1,4 @@
+// deno-lint-ignore-file require-await no-unused-vars no-explicit-any
 import { Context } from "../../context.ts";
 import { Job } from "../../objects/job.ts";
 import { Log } from "../../objects/log.ts";
@@ -11,36 +12,22 @@ export async function getJobs(
   return [
     new Job({
       id: "1",
-      projectId: "stupefied_kalam",
-      status: "running",
+      status: "RUNNING",
       name: "build",
       createdAt: new Date().toISOString(),
-      logs: new Log({
-        id: "1",
-        jobId: "2",
-        message: logs,
-        createdAt: new Date().toISOString(),
-      }),
+      logs: [],
     }),
     new Job({
       id: "2",
-      projectId: "stupefied_kalam",
-      status: "pending",
+      status: "PENDING",
       name: "test",
       createdAt: new Date().toISOString(),
     }),
     new Job({
       id: "3",
-      projectId: "stupefied_kalam",
-      status: "pending",
+      status: "PENDING",
       name: "deploy",
       createdAt: new Date().toISOString(),
-      logs: new Log({
-        id: "1",
-        jobId: "3",
-        message: logs,
-        createdAt: new Date().toISOString(),
-      }),
     }),
   ];
 }
@@ -48,15 +35,8 @@ export async function getJobs(
 export async function getJob(root: any, args: any, ctx: Context): Promise<Job> {
   return new Job({
     id: "1",
-    projectId: "stupefied_kalam",
-    status: "running",
+    status: "RUNNING",
     name: "build",
     createdAt: new Date().toISOString(),
-    logs: new Log({
-      id: "1",
-      jobId: "3",
-      message: logs,
-      createdAt: new Date().toISOString(),
-    }),
   });
 }
