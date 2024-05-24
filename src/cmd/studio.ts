@@ -12,8 +12,10 @@ import * as actions from "../server/kv/actions.ts";
 import * as projects from "../server/kv/projects.ts";
 import * as runs from "../server/kv/runs.ts";
 import icons from "../server/icons.ts";
+import { setupFluentCIStudio } from "../utils.ts";
 
 async function studio({ port }: { port?: number }) {
+  await setupFluentCIStudio();
   const sockets: Record<string, WebSocket> = {};
 
   const yoga = createYoga({

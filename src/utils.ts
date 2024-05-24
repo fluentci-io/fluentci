@@ -281,7 +281,46 @@ export async function setupFluentCIengine() {
   const { code } = await process.status;
 
   if (code !== 0) {
-    console.log("Failed to install Fluent CI Engine.");
+    console.log("Failed to install FluentCI Engine.");
+    Deno.exit(1);
+  }
+}
+
+export async function setupFluentCIStudio() {
+  await setupPkgx();
+  let FLUENTCI_STUDIO_VERSION =
+    Deno.env.get("FLUENTCI_STUDIO_VERSION") || "v0.1.0";
+
+  if (!FLUENTCI_STUDIO_VERSION.startsWith("v")) {
+    FLUENTCI_STUDIO_VERSION = `v${FLUENTCI_STUDIO_VERSION}`;
+  }
+
+  Deno.env.set(
+    "PATH",
+    `${Deno.env.get("HOME")}/.local/bin:${Deno.env.get("PATH")}`
+  );
+  const target = Deno.build.target;
+  const command = new Deno.Command("bash", {
+    args: [
+      "-c",
+      `\
+    [ -n "$FORCE_FLUENTCI_STUDIO_INSTALL" ] && type fluentci-studio >/dev/null 2>&1 && rm \`which fluentci-studio\`;
+    type fluentci-studio >/dev/null 2>&1 || pkgx wget https://dl.fluentci.io/fluentci-studio/${FLUENTCI_STUDIO_VERSION}/fluentci-studio_${FLUENTCI_STUDIO_VERSION}_${target}.tar.gz;
+    type fluentci-studio >/dev/null 2>&1 || pkgx tar xvf fluentci-studio_${FLUENTCI_STUDIO_VERSION}_${target}.tar.gz;
+    type fluentci-studio >/dev/null 2>&1 || rm fluentci-studio_${FLUENTCI_STUDIO_VERSION}_${target}.tar.gz;
+    mkdir -p $HOME/.local/bin;
+    type fluentci-studio >/dev/null 2>&1 || chmod a+x fluentci-studio
+    type fluentci-studio >/dev/null 2>&1 || mv fluentci-studio $HOME/.local/bin;`,
+    ],
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+
+  const process = await command.spawn();
+  const { code } = await process.status;
+
+  if (code !== 0) {
+    console.log("Failed to install FluentCI Studio.");
     Deno.exit(1);
   }
 }
