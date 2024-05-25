@@ -10,7 +10,11 @@ export async function saveActions(
 ): Promise<Action[] | null> {
   await ctx.kv.actions.save(
     args.projectId.toString(),
-    args.actions.map((x) => ({ ...x, id: createId() }))
+    args.actions.map((x) => ({
+      ...x,
+      id: createId(),
+      plugin: x.plugin.replace("_pipeline", ""),
+    }))
   );
   return ctx.kv.actions.get(args.projectId.toString());
 }
