@@ -2,16 +2,7 @@ import { green } from "../../deps.ts";
 import { BASE_URL } from "../consts.ts";
 import { verifyRequiredDependencies } from "../utils.ts";
 
-async function docs(
-  pipeline = ".",
-  options: {
-    gl?: unknown;
-    gh?: unknown;
-    cci?: unknown;
-    ap?: unknown;
-    ac?: unknown;
-  } = {}
-) {
+async function docs(pipeline = ".") {
   // verify if glow is installed
   await verifyRequiredDependencies(["glow"]);
 
@@ -28,7 +19,7 @@ async function docs(
     }
 
     const command = new Deno.Command("glow", {
-      args: [`.fluentci/${buildREADMEPath(options)}`, "-p"],
+      args: [`.fluentci/README.md`, "-p"],
       stdout: "inherit",
       stderr: "inherit",
     });
@@ -57,7 +48,7 @@ async function docs(
     args: [
       `https://pkg.fluentci.io/${pipeline}@${
         data.version || data.default_branch
-      }/${buildREADMEPath(options)}`,
+      }/README.md`,
       "-p",
     ],
     stdout: "inherit",
@@ -77,36 +68,6 @@ const displayErrorMessage = () => {
     )} to initialize a new pipeline.`
   );
   Deno.exit(1);
-};
-
-const buildREADMEPath = (options: {
-  gl?: unknown;
-  gh?: unknown;
-  cci?: unknown;
-  ap?: unknown;
-  ac?: unknown;
-}) => {
-  if (options.gl) {
-    return "src/gitlab/README.md";
-  }
-
-  if (options.gh) {
-    return "src/github/README.md";
-  }
-
-  if (options.cci) {
-    return "src/circleci/README.md";
-  }
-
-  if (options.ap) {
-    return "src/azure/README.md";
-  }
-
-  if (options.ac) {
-    return "src/aws/README.md";
-  }
-
-  return "README.md";
 };
 
 export default docs;

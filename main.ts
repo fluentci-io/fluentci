@@ -4,11 +4,6 @@ import init from "./src/cmd/init.ts";
 import search from "./src/cmd/search.ts";
 import upgrade, { checkForUpdate } from "./src/cmd/upgrade.ts";
 import listJobs from "./src/cmd/list.ts";
-import generateWorkflow from "./src/cmd/github.ts";
-import generateGitlabCIConfig from "./src/cmd/gitlab.ts";
-import generateAWSCodePipelineConfig from "./src/cmd/aws.ts";
-import generateAzurePipelinesConfig from "./src/cmd/azure.ts";
-import generateCircleCIConfig from "./src/cmd/circleci.ts";
 import docs from "./src/cmd/docs.ts";
 import cache from "./src/cmd/cache.ts";
 import doctor from "./src/cmd/doctor.ts";
@@ -21,6 +16,7 @@ import { brightGreen } from "./deps.ts";
 import { VERSION } from "./src/consts.ts";
 import repl from "./src/cmd/repl.ts";
 import studio from "./src/cmd/studio.ts";
+import * as projects from "./src/cmd/project.ts";
 
 export async function main() {
   await new Command()
@@ -113,100 +109,10 @@ export async function main() {
     .action(async (_, pipeline) => {
       await listJobs(pipeline);
     })
-    .command(
-      "gh, github",
-      new Command()
-        .command("init", "Initialize a new GitHub Actions workflow")
-        .option(
-          "-t, --template <template>",
-          "Initialize GitHub Action workflow from template"
-        )
-        .option("-r, --reload", "Reload pipeline source cache")
-        .action(async function ({ template, reload }) {
-          await generateWorkflow(template, reload);
-        })
-    )
-    .description("GitHub Actions integration")
-    .action(function () {
-      this.showHelp();
-    })
-    .command(
-      "gl, gitlab",
-      new Command()
-        .command("init", "Initialize a new GitLab CI configuration")
-        .option(
-          "-t, --template <template>",
-          "Initialize GitLab CI from template"
-        )
-        .option("-r, --reload", "Reload pipeline source cache")
-        .action(async function ({ template, reload }) {
-          await generateGitlabCIConfig(template, reload);
-        })
-    )
-    .description("GitLab CI integration")
-    .action(function () {
-      this.showHelp();
-    })
-    .command(
-      "cci, circleci",
-      new Command()
-        .command("init", "Initialize a new CircleCI configuration")
-        .option(
-          "-t, --template <template>",
-          "Initialize CircleCI from template"
-        )
-        .option("-r, --reload", "Reload pipeline source cache")
-        .action(async function ({ template, reload }) {
-          await generateCircleCIConfig(template, reload);
-        })
-    )
-    .description("CircleCI integration")
-    .action(function () {
-      this.showHelp();
-    })
-    .command(
-      "ap, azure",
-      new Command()
-        .command("init", "Initialize a new Azure Pipelines configuration")
-        .option(
-          "-t, --template <template>",
-          "Initialize Azure Pipelines from template"
-        )
-        .option("-r, --reload", "Reload pipeline source cache")
-        .action(async function ({ template, reload }) {
-          await generateAzurePipelinesConfig(template, reload);
-        })
-    )
-    .description("Azure Pipelines integration")
-    .action(function () {
-      this.showHelp();
-    })
-    .command(
-      "ac, aws",
-      new Command()
-        .command("init", "Initialize a new AWS CodePipeline configuration")
-        .option(
-          "-t, --template <template>",
-          "Initialize AWS CodePipeline from template"
-        )
-        .option("-r, --reload", "Reload pipeline source cache")
-        .action(async function ({ template, reload }) {
-          await generateAWSCodePipelineConfig(template, reload);
-        })
-    )
-    .description("AWS CodePipeline integration")
-    .action(function () {
-      this.showHelp();
-    })
     .command("docs, man", "Show documentation for a pipeline")
     .arguments("[pipeline:string]")
-    .option("--gl, --gitlab", "Show GitLab CI documentation")
-    .option("--gh, --github", "Show GitHub Actions documentation")
-    .option("--cci, --circleci", "Show CircleCI documentation")
-    .option("--ap, --azure", "Show Azure Pipelines documentation")
-    .option("--ac, --aws", "Show AWS CodePipeline documentation")
-    .action(async function (options, pipeline) {
-      await docs(pipeline, options);
+    .action(async function (_, pipeline) {
+      await docs(pipeline);
     })
     .command("doctor", "Check if FluentCI CLI is installed correctly")
     .action(async function () {
@@ -258,6 +164,34 @@ export async function main() {
     .action(async function (options) {
       await studio(options);
     })
+    .command(
+      "project",
+      new Command()
+        .command("create", "Create a new project")
+        .action(async function () {
+          await projects.create();
+        })
+        .command("list", "List all projects")
+        .action(async function () {
+          await projects.list();
+        })
+        .command("show", "Show a project")
+        .arguments("<name:string>")
+        .action(async function (_, name) {
+          await projects.show(name);
+        })
+        .command("export", "Export a project to a specific CI Provider")
+        .arguments("[name:string]")
+        .option("--github", "Export to GitHub Actions")
+        .option("--azure", "Export to Azure Pipelines")
+        .option("--gitlab", "Export to GitLab CI")
+        .option("--circleci", "Export to CircleCI")
+        .option("--aws", "Export to AWS CodePipeline")
+        .action(async function (options, project) {
+          await projects.exportActions(options, project);
+        })
+    )
+    .description("Manage projects")
     .globalOption("--check-update <checkUpdate:boolean>", "check for update", {
       default: true,
     })
