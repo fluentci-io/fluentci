@@ -21,6 +21,7 @@ async function upgrade() {
   const command = new Deno.Command("deno", {
     args: [
       "install",
+      "--unstable-kv",
       "-A",
       "-r",
       "--import-map=https://deno.land/x/fluentci/import_map.json",
