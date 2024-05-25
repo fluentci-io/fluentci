@@ -8,10 +8,7 @@ export default function generate(actions: Action[]): string {
     run: `\
     sudo apt-get update && sudo apt-get install -y curl unzip
     curl -fsSL https://cli.fluentci.io | bash
-    fluentci --version`
-      .split("\n")
-      .map((line) => line.trim())
-      .join("\n"),
+    fluentci --version`,
     name: "Setup FluentCI",
   };
 

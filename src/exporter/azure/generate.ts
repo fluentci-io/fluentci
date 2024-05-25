@@ -8,10 +8,7 @@ export default function generate(actions: Action[]): string {
     curl -fsSL https://cli.fluentci.io | bash
     fluentci --version
     echo "##vso[task.prependpath]\${HOME}/.deno/bin
-  `
-    .split("\n")
-    .map((line) => line.trim())
-    .join("\n");
+  `;
 
   const steps = [
     {

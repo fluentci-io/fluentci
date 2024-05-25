@@ -40,7 +40,7 @@ import introspect, {
 export { introspect };
 export type { Metadata };
 export { wait } from "https://deno.land/x/wait@0.1.13/mod.ts";
-import * as _ from "https://cdn.skypack.dev/lodash";
+import _ from "npm:lodash@4.17.21";
 export { _ };
 import Logger from "https://deno.land/x/logger@v1.1.3/logger.ts";
 export { Logger };
@@ -80,7 +80,7 @@ export type { JobSpec } from "jsr:@tsirysndr/fluent-gh-actions@0.3";
 export {
   CircleCI,
   Job as CircleCiJob,
-} from "jsr:@tsirysndr/fluent-circleci@0.3";
-export { AzurePipeline } from "jsr:@tsirysndr/fluent-az-pipelines@0.3";
+} from "jsr:@tsirysndr/fluent-circleci@0.3.1";
+export { AzurePipeline } from "jsr:@tsirysndr/fluent-az-pipelines@0.3.1";
 export { BuildSpec } from "jsr:@tsirysndr/fluent-codepipeline@0.3";
 export { ClientError, GraphQLClient, gql } from "npm:graphql-request@6.1.0";
