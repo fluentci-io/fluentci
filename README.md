@@ -1,12 +1,11 @@
 ![Cover](./.github/assets/fluentci-studio.png)
 
-
 # Fluent CI CLI
 
 [![FlakeHub](https://img.shields.io/endpoint?url=https://flakehub.com/f/fluentci-io/fluentci/badge)](https://flakehub.com/flake/fluentci-io/fluentci)
 [![flakestry.dev](https://flakestry.dev/api/badge/flake/github/fluentci-io/fluentci)](https://flakestry.dev/flake/github/fluentci-io/fluentci)
 [![deno module](https://shield.deno.dev/x/fluentci)](https://deno.land/x/fluentci)
-![deno compatibility](https://shield.deno.dev/deno/^1.40)
+![deno compatibility](https://shield.deno.dev/deno/^1.42)
 [![discord](https://img.shields.io/discord/1132020671262773358?label=discord&logo=discord&color=5865F2)](https://discord.gg/V4U6dPskKc)
 
 ![Made with VHS](https://vhs.charm.sh/vhs-f5jk3sceXQrc55XC4fW3c.gif)
@@ -67,7 +66,6 @@ Requirements:
 - [Deno](https://deno.com) 1.42 or higher. See [Deno Installation](https://deno.land/manual/getting_started/installation) for more information.
 - [Dagger](https://dagger.io) 0.10.0 or higher. See [Dagger Installation](https://docs.dagger.io/cli/465058/install) for more information.
 
-
 ## ✨ Quick Start
 
 Setup a new pipeline in your current directory and run it by using the following commands:
@@ -83,7 +81,7 @@ fluentci # Run the pipeline
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.13.2
+Version: 0.14.0                       
 
 Description:
 
@@ -97,32 +95,31 @@ Description:
 
 Options:
 
-  -h, --help     - Show this help.                            
-  -V, --version  - Show the version number for this program.  
-  -r, --reload   - Reload pipeline source cache               
+  -h, --help             - Show this help.                            
+  -V, --version          - Show the version number for this program.  
+  -r, --reload           - Reload pipeline source cache               
+  -w, --wasm             - Run pipeline as WebAssembly Module         
+  --remote-exec          - Run pipeline on remote agent               
+  -*, --*        [args]  - Pass arguments to pipeline                 
 
 Commands:
-  
-  run            <pipeline> [jobs...]  - Run a pipeline
-  init           [pipeline-name]       - Initialize a new pipeline                 
-  search         <query>               - Search for reusable pipelines             
-  upgrade                              - Upgrade FluentCI CLI to the latest version
-  cache          <pipeline>            - Cache and compile remote dependencies of a pipeline
-  ls, list       [pipeline]            - List all jobs in a pipeline               
-  gh, github                           - GitHub Actions integration                
-  gl, gitlab                           - GitLab CI integration                     
-  cci, circleci                        - CircleCI integration                      
-  ap, azure                            - Azure Pipelines integration               
-  ac, aws                              - AWS CodePipeline integration  
-  docs, man      [pipeline]            - Show documentation for a pipeline
-  doctor                               - Check if FluentCI CLI is installed correctly
-  env                                  - Show environment variables (read from .fluentci/.env file)
-  login                                - Login to FluentCI                                         
-  publish                              - Publish a pipeline to FluentCI Registry                   
-  agent                                - Start FluentCI Runner Agent 
-  whoami                               - Show current logged in user
-  repl           [pipelines...]        - Start FluentCI REPL   
-  studio                               - Start FluentCI Studio, a web-based user interface 
+
+  run        <pipeline> [jobs...]  - Run a pipeline                                            
+  init       [pipeline-name]       - Initialize a new pipeline                                 
+  search     <query>               - Search for reusable pipelines                             
+  upgrade                          - Upgrade FluentCI CLI to the latest version                
+  cache      [pipeline]            - Cache remote dependencies of a pipeline                   
+  ls, list   [pipeline]            - List all jobs in a pipeline                               
+  docs, man  [pipeline]            - Show documentation for a pipeline                         
+  doctor                           - Check if FluentCI CLI is installed correctly              
+  env                              - Show environment variables (read from .fluentci/.env file)
+  login                            - Login to FluentCI                                         
+  publish                          - Publish a pipeline to FluentCI Registry                   
+  agent                            - Start FluentCI Runner Agent                               
+  whoami                           - Show current logged in user                               
+  repl       [pipelines...]        - Start FluentCI REPL                                       
+  studio                           - Start FluentCI Studio, a web-based user interface         
+  project                          - Manage projects                                 
 ```
 
 ## 📚 Documentation
