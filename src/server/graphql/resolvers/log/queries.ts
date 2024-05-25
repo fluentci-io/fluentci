@@ -1,3 +1,4 @@
+// deno-lint-ignore-file no-unused-vars require-await no-explicit-any
 import { Context } from "../../context.ts";
 import { Log } from "../../objects/log.ts";
 import { logs } from "./mock.ts";
