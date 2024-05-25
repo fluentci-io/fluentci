@@ -15,7 +15,7 @@ import { runPipeline } from "./resolvers/run/mutations.ts";
 import { countRuns, getRun, getRuns } from "./resolvers/run/queries.ts";
 import { Run } from "./objects/run.ts";
 import { Action } from "./objects/action.ts";
-import { getActions } from "./resolvers/action/queries.ts";
+import { exportActions, getActions } from "./resolvers/action/queries.ts";
 import { saveActions } from "./resolvers/action/mutations.ts";
 import { Context } from "./context.ts";
 
@@ -210,6 +210,14 @@ builder.queryType({
     countProjects: t.field({
       type: "Int",
       resolve: countProjects,
+    }),
+    exportActions: t.field({
+      type: "String",
+      args: {
+        projectId: t.arg.id({ required: true }),
+        plateform: t.arg.string({ required: true }),
+      },
+      resolve: exportActions,
     }),
   }),
 });

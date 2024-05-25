@@ -7,19 +7,17 @@ import gitlab from "./gitlab/generate.ts";
 
 export type Platform = "aws" | "azure" | "circleci" | "github" | "gitlab";
 
-export default function (platform: Platform, actions: Action[]) {
-  switch (platform) {
-    case "aws":
-      return aws(actions);
-    case "azure":
-      return azure(actions);
-    case "circleci":
-      return circleci(actions);
-    case "github":
-      return github(actions);
-    case "gitlab":
-      return gitlab(actions);
-    default:
-      throw new Error(`Unsupported platform: ${platform}`);
+export const plateforms: Record<string, (actions: Action[]) => string> = {
+  aws,
+  azure,
+  circleci,
+  github,
+  gitlab,
+};
+
+export default function (name: Platform, actions: Action[]): string {
+  if (!plateforms[name]) {
+    throw new Error(`Unsupported platform: ${name}`);
   }
+  return plateforms[name](actions);
 }

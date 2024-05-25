@@ -74,9 +74,13 @@ export { open } from "https://deno.land/x/open@v0.0.6/index.ts";
 import dockernames from "npm:docker-names-ts";
 export { dockernames };
 export { resolve } from "jsr:@std/path@0.224.0";
-export * as FluentGitlabCI from "jsr:@tsirysndr/fluent-gitlab-ci@0.5";
-export * as FluentGithubActions from "jsr:@tsirysndr/fluent-gh-actions@0.3";
-export * as FluentCircleCI from "jsr:@tsirysndr/fluent-circleci@0.3";
-export * as FluentAzurePipelines from "jsr:@tsirysndr/fluent-az-pipelines@0.3";
-export * as FluentAWSCodePipeline from "jsr:@tsirysndr/fluent-codepipeline@0.3";
+export { GitlabCI, Job } from "jsr:@tsirysndr/fluent-gitlab-ci@0.5";
+export { Workflow } from "jsr:@tsirysndr/fluent-gh-actions@0.3";
+export type { JobSpec } from "jsr:@tsirysndr/fluent-gh-actions@0.3";
+export {
+  CircleCI,
+  Job as CircleCiJob,
+} from "jsr:@tsirysndr/fluent-circleci@0.3";
+export { AzurePipeline } from "jsr:@tsirysndr/fluent-az-pipelines@0.3";
+export { BuildSpec } from "jsr:@tsirysndr/fluent-codepipeline@0.3";
 export { ClientError, GraphQLClient, gql } from "npm:graphql-request@6.1.0";
