@@ -11,6 +11,7 @@ import {
 } from "../../deps.ts";
 import icons from "../server/icons.ts";
 import generate from "../exporter/generate.ts";
+import { bash, setupPkgx } from "../utils.ts";
 
 export async function create() {
   const projectId = createId();
@@ -66,7 +67,7 @@ export async function list() {
       x.name,
       x.path,
       dayjs(x.createdAt).fromNow(),
-      _.first(_.get(x, "recentRuns", [])).status,
+      _.get(_.first(_.get(x, "recentRuns", [])), "status", ""),
     ])
   );
 
@@ -114,37 +115,39 @@ export async function exportActions(
 
   const _actions = await actions.get(result?.id || "");
 
+  await setupPkgx();
+
   if (options.github) {
     const yaml = await generate("github", _actions || []);
-    console.log(yaml);
+    await bash`echo '${yaml}' | pkgx yq`;
     return;
   }
 
   if (options.azure) {
     const yaml = await generate("azure", _actions || []);
-    console.log(yaml);
+    await bash`echo '${yaml}' | pkgx yq`;
     return;
   }
 
   if (options.gitlab) {
     const yaml = await generate("gitlab", _actions || []);
-    console.log(yaml);
+    await bash`echo '${yaml}' | pkgx yq`;
     return;
   }
 
   if (options.circleci) {
     const yaml = await generate("circleci", _actions || []);
-    console.log(yaml);
+    await bash`echo '${yaml}' | pkgx yq`;
     return;
   }
 
   if (options.aws) {
     const yaml = await generate("aws", _actions || []);
-    console.log(yaml);
+    await bash`echo '${yaml}' | pkgx yq`;
     return;
   }
 
   const yaml = await generate("github", _actions || []);
-  console.log(yaml);
+  await bash`echo '${yaml}' | pkgx yq`;
   return;
 }

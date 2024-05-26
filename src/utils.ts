@@ -351,3 +351,29 @@ export function sendSocketMessage(socket: WebSocket, message: string) {
   }
   socket.send(message);
 }
+
+export async function bash(
+  strings: TemplateStringsArray,
+  ...values: (string | number)[]
+) {
+  let cmd = "";
+  strings.forEach((string, i) => {
+    cmd += string;
+    if (i < values.length) {
+      cmd += values[i];
+    }
+  });
+  const command = new Deno.Command("bash", {
+    args: ["-c", cmd],
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+
+  const process = await command.spawn();
+  const { code } = await process.status;
+
+  if (code !== 0) {
+    console.log(`Failed to run command: ${cmd}`);
+    Deno.exit(1);
+  }
+}
