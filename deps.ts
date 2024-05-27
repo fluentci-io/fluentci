@@ -74,6 +74,7 @@ export { open } from "https://deno.land/x/open@v0.0.6/index.ts";
 import dockernames from "npm:docker-names-ts";
 export { dockernames };
 export { resolve } from "jsr:@std/path@0.224.0";
+export { sleep } from "jsr:@jotsr/delayed@2.1.1";
 export { GitlabCI, Job } from "jsr:@tsirysndr/fluent-gitlab-ci@0.5";
 export { Workflow } from "jsr:@tsirysndr/fluent-gh-actions@0.3";
 export type { JobSpec } from "jsr:@tsirysndr/fluent-gh-actions@0.3";

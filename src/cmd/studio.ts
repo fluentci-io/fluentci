@@ -6,6 +6,7 @@ import {
   green,
   cyan,
   dockernames,
+  sleep,
 } from "../../deps.ts";
 import { schema } from "../server/graphql/schema.ts";
 import * as actions from "../server/kv/actions.ts";
@@ -75,6 +76,8 @@ async function studio({ port }: { port?: number }) {
       Deno.exit(1);
     }
   });
+
+  await sleep(1000); // wait for the studio to start
 
   Deno.serve(
     {

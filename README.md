@@ -81,7 +81,7 @@ fluentci # Run the pipeline
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.14.2                       
+Version: 0.14.3                       
 
 Description:
 
@@ -120,6 +120,7 @@ Commands:
   repl       [pipelines...]        - Start FluentCI REPL                                       
   studio                           - Start FluentCI Studio, a web-based user interface         
   project                          - Manage projects                                 
+  server                           - Start FluentCI GraphQL Server     
 ```
 
 ## 📚 Documentation

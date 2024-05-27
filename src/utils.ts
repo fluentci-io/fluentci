@@ -1,4 +1,4 @@
-import { dir, brightGreen } from "../deps.ts";
+import { dir, brightGreen, wait } from "../deps.ts";
 
 export async function isLogged(): Promise<boolean> {
   if (Deno.env.get("FLUENTCI_ACCESS_TOKEN")) {
@@ -181,14 +181,20 @@ async function installDagger() {
 }
 
 export async function setupPkgx() {
+  await Deno.mkdir(`${Deno.env.get("HOME")}/.local/bin`, { recursive: true });
   Deno.env.set(
     "PATH",
     `${Deno.env.get("HOME")}/.local/bin:${Deno.env.get("PATH")}`
   );
+  const spinner = wait("Setting up pkgx...").start();
   const command = new Deno.Command("bash", {
-    args: ["-c", `type pkgx >/dev/null 2>&1 || curl -Ssf https://pkgx.sh | sh`],
+    args: [
+      "-c",
+      `type pkgx >/dev/null 2>&1 || curl -Ssf https://pkgx.sh/$(uname)/$(uname -m).tgz | tar xz -C $HOME/.local/bin`,
+    ],
     stdout: "inherit",
     stderr: "inherit",
+    stdin: "inherit",
   });
 
   const process = await command.spawn();
@@ -198,6 +204,8 @@ export async function setupPkgx() {
     console.log("Failed to install pkgx.");
     Deno.exit(1);
   }
+
+  spinner.succeed("Pkgx setup complete");
 }
 
 export async function setupRust() {
@@ -257,10 +265,6 @@ export async function setupFluentCIengine() {
     FLUENTCI_ENGINE_VERSION = `v${FLUENTCI_ENGINE_VERSION}`;
   }
 
-  Deno.env.set(
-    "PATH",
-    `${Deno.env.get("HOME")}/.local/bin:${Deno.env.get("PATH")}`
-  );
   const target = Deno.build.target;
   const command = new Deno.Command("bash", {
     args: [
@@ -295,10 +299,6 @@ export async function setupFluentCIStudio() {
     FLUENTCI_STUDIO_VERSION = `v${FLUENTCI_STUDIO_VERSION}`;
   }
 
-  Deno.env.set(
-    "PATH",
-    `${Deno.env.get("HOME")}/.local/bin:${Deno.env.get("PATH")}`
-  );
   const target = Deno.build.target;
   const command = new Deno.Command("bash", {
     args: [
