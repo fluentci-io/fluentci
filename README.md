@@ -66,6 +66,18 @@ Requirements:
 - [Deno](https://deno.com) 1.42 or higher. See [Deno Installation](https://deno.land/manual/getting_started/installation) for more information.
 - [Dagger](https://dagger.io) 0.10.0 or higher. See [Dagger Installation](https://docs.dagger.io/cli/465058/install) for more information.
 
+## 📦 Downloads
+
+**Latest (Desktop):**
+
+- `Mac`: arm64: [fluentci-studio_v0.1.0_arm64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.0/fluentci-studio_v0.1.0_arm64.dmg) intel: [fluentci-studio_v0.1.0_x64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.0/fluentci-studio_v0.1.0_x64.dmg)
+- `Linux`: [fluentci-studio_v0.1.0.AppImage](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.0/fluentci-studio_v0.1.0.AppImage)
+
+**Latest (CLI):**
+
+- `Mac`: arm64: [fluentci_v0.14.3_aarch64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.3/fluentci_v0.14.3_aarch64-apple-darwin.tar.gz) intel: [fluentci_v0.14.3_x86_64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.3/fluentci_v0.14.3_x86_64-apple-darwin.tar.gz)
+- `Linux`: intel: [fluentci_v0.14.3_x86_64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.3/fluentci_v0.14.3_x86_64-unknown-linux-gnu.tar.gz) arm64: [fluentci_v0.14.3_aarch64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.3/fluentci_v0.14.3_aarch64-unknown-linux-gnu.tar.gz)
+
 ## ✨ Quick Start
 
 Setup a new pipeline in your current directory and run it by using the following commands:
