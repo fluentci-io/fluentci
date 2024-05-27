@@ -20,6 +20,11 @@ import * as projects from "./src/cmd/project.ts";
 import server from "./src/cmd/server.ts";
 
 export async function main() {
+  Deno.env.set(
+    "PATH",
+    `${Deno.env.get("HOME")}/.deno/bin:${Deno.env.get("PATH")}`
+  );
+
   await new Command()
     .name("fluentci")
     .version(VERSION)
