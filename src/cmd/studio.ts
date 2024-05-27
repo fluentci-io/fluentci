@@ -6,6 +6,7 @@ import {
   green,
   cyan,
   dockernames,
+  sleep,
 } from "../../deps.ts";
 import { schema } from "../server/graphql/schema.ts";
 import * as actions from "../server/kv/actions.ts";
@@ -69,66 +70,68 @@ async function studio({ port }: { port?: number }) {
     },
   }).spawn();
 
-  child.status.then(({ code }) => {
+  child.status.then(async ({ code }) => {
     if (code !== 0) {
       console.error("Failed to start FluentCI Studio");
       Deno.exit(1);
     }
-  });
 
-  Deno.serve(
-    {
-      port: port || 6076,
-      onListen: () => {
-        const PORT = port || 6076;
-        console.log(
-          `${green("FluentCI Studio")} is up and running on ${cyan(
-            `http://localhost:${PORT}`
-          )}`
-        );
-        open(`http://localhost:${PORT}/project/${projectId}`).catch((err) => {
-          console.error(err);
-        });
+    await sleep(1000); // wait for the studio to start
+
+    Deno.serve(
+      {
+        port: port || 6076,
+        onListen: () => {
+          const PORT = port || 6076;
+          console.log(
+            `${green("FluentCI Studio")} is up and running on ${cyan(
+              `http://localhost:${PORT}`
+            )}`
+          );
+          open(`http://localhost:${PORT}/project/${projectId}`).catch((err) => {
+            console.error(err);
+          });
+        },
       },
-    },
-    async (req) => {
-      const upgrade = req.headers.get("upgrade") || "";
-      if (upgrade.toLowerCase() === "websocket") {
-        const ws = Deno.upgradeWebSocket(req);
-        const id = createId();
-        sockets[id] = ws.socket;
+      async (req) => {
+        const upgrade = req.headers.get("upgrade") || "";
+        if (upgrade.toLowerCase() === "websocket") {
+          const ws = Deno.upgradeWebSocket(req);
+          const id = createId();
+          sockets[id] = ws.socket;
 
-        sockets[id].onmessage = (e) => {
-          if (e.data !== "ping") {
-            console.log("> socket message:", e.data);
-          }
-          sockets[id]?.send(new Date().toString());
-        };
-        sockets[id].onerror = (e) =>
-          console.log("socket errored:", (e as unknown as Error).message);
-        sockets[id].onclose = () => delete sockets[id];
+          sockets[id].onmessage = (e) => {
+            if (e.data !== "ping") {
+              console.log("> socket message:", e.data);
+            }
+            sockets[id]?.send(new Date().toString());
+          };
+          sockets[id].onerror = (e) =>
+            console.log("socket errored:", (e as unknown as Error).message);
+          sockets[id].onclose = () => delete sockets[id];
 
-        return ws.response;
+          return ws.response;
+        }
+
+        const url = new URL(req.url);
+        if (
+          url.pathname.endsWith("/graphql") ||
+          url.pathname.endsWith("/graphiql")
+        ) {
+          return yoga(req);
+        }
+        url.protocol = "http";
+        url.hostname = "127.0.0.1";
+        url.port = FLUENTCI_STUDIO_PORT;
+
+        return await fetch(url.href, {
+          headers: req.headers,
+          method: req.method,
+          body: req.body,
+        });
       }
-
-      const url = new URL(req.url);
-      if (
-        url.pathname.endsWith("/graphql") ||
-        url.pathname.endsWith("/graphiql")
-      ) {
-        return yoga(req);
-      }
-      url.protocol = "http";
-      url.hostname = "127.0.0.1";
-      url.port = FLUENTCI_STUDIO_PORT;
-
-      return await fetch(url.href, {
-        headers: req.headers,
-        method: req.method,
-        body: req.body,
-      });
-    }
-  );
+    );
+  });
 }
 
 export default studio;
