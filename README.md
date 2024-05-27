@@ -93,7 +93,7 @@ fluentci # Run the pipeline
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.14.3                       
+Version: 0.14.4                      
 
 Description:
 
