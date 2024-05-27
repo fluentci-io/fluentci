@@ -17,6 +17,7 @@ import { VERSION } from "./src/consts.ts";
 import repl from "./src/cmd/repl.ts";
 import studio from "./src/cmd/studio.ts";
 import * as projects from "./src/cmd/project.ts";
+import server from "./src/cmd/server.ts";
 
 export async function main() {
   await new Command()
@@ -192,6 +193,11 @@ export async function main() {
         })
     )
     .description("Manage projects")
+    .command("server", "Start FluentCI GraphQL Server")
+    .option("--port <port:number>", "Port to run FluentCI Server")
+    .action(function (options) {
+      server(options);
+    })
     .globalOption("--check-update <checkUpdate:boolean>", "check for update", {
       default: true,
     })
