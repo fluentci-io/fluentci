@@ -120,6 +120,7 @@ Commands:
   repl       [pipelines...]        - Start FluentCI REPL                                       
   studio                           - Start FluentCI Studio, a web-based user interface         
   project                          - Manage projects                                 
+  server                           - Start FluentCI GraphQL Server     
 ```
 
 ## 📚 Documentation
