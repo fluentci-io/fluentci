@@ -87,6 +87,12 @@ fluentci init # Initialize a new pipeline in the current directory
 fluentci # Run the pipeline
 ```
 
+Or start [FluentCI Studio](https://github.com/fluentci-io/fluentci-studio):
+
+```bash
+fluentci studio
+```
+
 ## 🚀 Usage
 
 ```bash
@@ -138,6 +144,12 @@ Commands:
 ## 📚 Documentation
 
 [View the full documentation](https://docs.fluentci.io)
+
+## ✍️ Feedback
+
+This repository is the central place to collect feedback and issues related to FluentCI CLI.
+
+Please [**open an issue**](https://github.com/fluentci-io/fluentci/issues/new) if you want to leave feedback. Feel free to also join our [**Discord server**](https://discord.gg/V4U6dPskKc)
 
 ## 🤝 Contributing
 
