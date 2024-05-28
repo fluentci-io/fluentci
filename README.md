@@ -20,6 +20,17 @@ It is also a registry of pre-built pipelines. This means you don't have to write
     <a href="https://devhunt.org/tool/fluent-ci" title="DevHunt - Tool of the Week" target="_blank"><img src="https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github@main/assets/images/tab_solid.png" width=225 alt="DevHunt - Tool of the Week" /></a>&nbsp;
 </p>
 
+## ✨ Features
+
+* __Single Command__: Manage your CI/CD pipeline locally with a single command.
+* __Runs everywhere__: Run your pipeline on any machine - whether it's local, remote, cloud-based, physical server, or a VM & any architecture x86 or ARM.
+* __Export to Your CI/CD__: Export your pipeline to any CI Provider like GitHub Actions, GitLab CI, Azure Pipelines, AWS CodePipeline etc.
+* __Web UI__: Manage your pipelines with a web-based user interface, see [FluentCI Studio](https://github.com/fluentci-io/fluentci-studio).
+* __Registry__: Search for reusable pipelines in the FluentCI Registry.
+* __Nix__: Run your pipeline in a Nix environment inside a Docker container.
+* __Extensibility__: Enable extensibility with plugin. Write your own plugin in TypeScript, Rust or any language that compiles to WebAssembly.
+* __Works on my Machine__: Never experience it again.
+
 ## 🚚 Installation
 
 using [Deno](https://deno.com) (recommended) :
