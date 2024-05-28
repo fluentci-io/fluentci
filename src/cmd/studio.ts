@@ -125,7 +125,7 @@ async function studio({ port }: { port?: number }) {
       url.hostname = "127.0.0.1";
       url.port = FLUENTCI_STUDIO_PORT;
 
-      return await fetch(url.href, {
+      return await fetch(url.href.replace("project/assets", "assets"), {
         headers: req.headers,
         method: req.method,
         body: req.body,
