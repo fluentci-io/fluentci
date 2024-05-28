@@ -24,7 +24,7 @@ It is also a registry of pre-built pipelines. This means you don't have to write
 
 * __Single Command__: Manage your CI/CD pipeline locally with a single command.
 * __Runs everywhere__: Run your pipeline on any machine - whether it's local, remote, cloud-based, physical server, or a VM & any architecture x86 or ARM.
-* __Export to Your CI/CD__: Export your pipeline to any CI Provider like GitHub Actions, GitLab CI, Azure Pipelines, AWS CodePipeline, CircleCI etc.
+* __Export to Your CI/CD__: Export your FluentCI pipeline to any CI Provider like GitHub Actions, GitLab CI, Azure Pipelines, AWS CodePipeline, CircleCI etc.
 * __Web UI__: Manage your pipelines with a web-based user interface, see [FluentCI Studio](https://github.com/fluentci-io/fluentci-studio).
 * __Registry__: Search for reusable pipelines in the FluentCI Registry.
 * __Nix__: Run your pipeline in a Nix environment instead of Docker.
