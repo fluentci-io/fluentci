@@ -27,7 +27,7 @@ It is also a registry of pre-built pipelines. This means you don't have to write
 * __Export to Your CI/CD__: Export your FluentCI pipeline to any CI Provider like GitHub Actions, GitLab CI, Azure Pipelines, AWS CodePipeline, CircleCI etc.
 * __Web UI__: Manage your pipelines with a web-based user interface, see [FluentCI Studio](https://github.com/fluentci-io/fluentci-studio).
 * __Registry__: Search for reusable pipelines in the FluentCI Registry.
-* __Nix__: Run your pipeline in a Nix environment instead of Docker.
+* __Nix__: Run your pipeline in a Nix environment instead of Docker (optional).
 * __Extensibility__: Enable extensibility with plugin. Write your own plugin in TypeScript, Rust or any language that compiles to WebAssembly.
 * __Works on my Machine__: Never experience it again.
 
