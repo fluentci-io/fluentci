@@ -30,6 +30,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
     ...data,
     date: new Date().toISOString(),
   });
+  let run = await ctx.kv.runs.get(data.id);
 
   for (const action of actions) {
     if (!action.enabled) {
@@ -61,7 +62,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
     );
 
     await ctx.kv.runs.save(data.projectId, {
-      ...data,
+      ...run!,
       jobs,
     });
 
@@ -107,7 +108,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
         }));
         const duration = dayjs().diff(runStart, "milliseconds");
         await ctx.kv.runs.save(data.projectId, {
-          ...data,
+          ...run!,
           jobs,
           status: "FAILURE",
           duration,
@@ -129,15 +130,14 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
     }));
 
     await ctx.kv.runs.save(data.projectId, {
-      ...data,
+      ...run!,
       jobs,
-      status: "SUCCESS",
     });
 
     currentActionIndex += 1;
   }
 
-  const run = await ctx.kv.runs.get(data.id);
+  run = await ctx.kv.runs.get(data.id);
   const duration = dayjs().diff(runStart, "milliseconds");
   await ctx.kv.runs.save(data.projectId, {
     ...run!,
