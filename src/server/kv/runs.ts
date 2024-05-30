@@ -11,15 +11,14 @@ export async function save(project: string, data: Run) {
   }
 
   const run = await get(data.id);
-  await kv.set(
-    [
-      FLUENTCI_KV_PREFIX,
-      "runs_by_date",
-      project,
-      dayjs(_.get(run, "date", data.date)).unix(),
-    ],
-    data
-  );
+
+  await kv.delete([
+    FLUENTCI_KV_PREFIX,
+    "runs_by_date",
+    project,
+    dayjs(_.get(run, "date", data.date)).unix(),
+  ]);
+
   await kv
     .atomic()
     .set([FLUENTCI_KV_PREFIX, "runs", project, data.id], data)
@@ -31,6 +30,15 @@ export async function save(project: string, data: Run) {
         project,
         dayjs().startOf("week").add(1, "day").unix(),
         data.id,
+      ],
+      data
+    )
+    .set(
+      [
+        FLUENTCI_KV_PREFIX,
+        "runs_by_date",
+        project,
+        dayjs(_.get(run, "date", data.date)).unix(),
       ],
       data
     )
