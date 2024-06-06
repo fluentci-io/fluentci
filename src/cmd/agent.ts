@@ -261,11 +261,18 @@ async function executeActions(
   const runStart = dayjs();
   const jobs = [...run.jobs];
 
+  // TODO: send update run status "RUNNING" + date
+
   for (const action of actions) {
     if (!action.enabled) {
       currentActionIndex += 1;
       continue;
     }
+
+    const start = dayjs();
+    const logs: Log[] = [];
+
+    // TODO: send update job status "RUNNING" + date
 
     for (const cmd of action.commands.split("\n")) {
       const result = await spawn(
@@ -275,8 +282,28 @@ async function executeActions(
         `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
         jobs[currentActionIndex].id
       );
+
+      logs.push(...result.logs);
+
+      if (result.code !== 0) {
+        dayjs().diff(start, "milliseconds");
+        // TODO: send update job status "FAILURE" + duration + logs
+        // TODO: send update run status "FAILURE" + duration
+        // TODO: send update project stats
+        return;
+      }
     }
+
+    dayjs().diff(start, "milliseconds");
+    // TODO: send update job status "SUCCESS" + duration + logs
+    // TODO: send update run jobs
+    currentActionIndex += 1;
   }
+
+  // deno-lint-ignore no-unused-vars
+  const duration = dayjs().diff(runStart, "milliseconds");
+  // TODO: update run status "SUCCESS" + duration
+  // TODO: update project stats
 }
 
 async function spawn(cmd: string, cwd = Deno.cwd(), jobId?: string) {
