@@ -204,10 +204,21 @@ async function spawnFluentCI(
         stdout: "piped",
         stderr: "piped",
       });
-  console.log(">> command", command);
   const process = command.spawn();
   let logs = "";
-  const writable = new WritableStream({
+  const writableStdoutStream = new WritableStream({
+    write: (chunk) => {
+      const text = new TextDecoder().decode(chunk);
+      logger.info(text);
+      logs = logs.concat(text);
+      fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+        method: "POST",
+        body: text,
+        headers,
+      }).catch((e) => logger.error(e.message));
+    },
+  });
+  const writableStderrStream = new WritableStream({
     write: (chunk) => {
       const text = new TextDecoder().decode(chunk);
       logger.info(text);
@@ -220,8 +231,11 @@ async function spawnFluentCI(
     },
   });
 
-  await process.stderr?.pipeTo(writable);
-  const { code } = await process.status;
+  const [_stdout, _stderr, { code }] = await Promise.all([
+    process.stdout?.pipeTo(writableStdoutStream),
+    process.stderr?.pipeTo(writableStderrStream),
+    process.status,
+  ]);
 
   Promise.all([
     fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
