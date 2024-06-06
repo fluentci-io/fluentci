@@ -48,7 +48,7 @@ async function run(
     export: true,
   });
 
-  if (options.wasm) {
+  if (options.wasm && !options.remoteExec) {
     Deno.env.set("WASM_ENABLED", "1");
     await runWasmPlugin(pipeline, jobs);
     Deno.exit(0);
@@ -68,7 +68,7 @@ async function run(
 
     if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
       if (options.remoteExec) {
-        await runPipelineRemotely(pipeline, jobs);
+        await runPipelineRemotely(pipeline, jobs, options);
         return;
       }
       await detect(".");
@@ -246,7 +246,7 @@ async function run(
   }
 
   if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
-    await runPipelineRemotely(pipeline, jobs, denoModule);
+    await runPipelineRemotely(pipeline, jobs, options, denoModule);
     return;
   }
 
@@ -289,6 +289,7 @@ const spawnCommand = async (command: Deno.Command) => {
 const runPipelineRemotely = async (
   pipeline: string,
   jobs: [string, ...Array<string>] | string[],
+  options: Record<string, string | number | boolean | undefined> = {},
   denoModule?: string[]
 ) => {
   if (!(await isLogged())) {
@@ -345,6 +346,7 @@ const runPipelineRemotely = async (
   const query = JSON.stringify({
     pipeline,
     jobs,
+    wasm: options.wasm,
     denoModule,
   });
 

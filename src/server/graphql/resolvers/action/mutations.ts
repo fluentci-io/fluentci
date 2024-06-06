@@ -13,7 +13,7 @@ export async function saveActions(
     args.actions.map((x) => ({
       ...x,
       id: createId(),
-      plugin: x.plugin.replace("_pipeline", ""),
+      plugin: x.useWasm ? x.plugin.replace("_pipeline", "") : x.plugin,
     }))
   );
   return ctx.kv.actions.get(args.projectId.toString());

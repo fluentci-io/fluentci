@@ -43,6 +43,51 @@ export const AgentSchema = z.object({
   startedAt: z.string(),
 });
 
+export const ActionSchema = z.object({
+  id: z.string().optional().nullable(),
+  name: z.string(),
+  commands: z.string(),
+  enabled: z.boolean(),
+  plugin: z.string(),
+  useWasm: z.boolean(),
+  logo: z.string().optional().nullable(),
+  githubUrl: z.string().optional().nullable(),
+});
+
+export const LogSchema = z.object({
+  id: z.string(),
+  jobId: z.string(),
+  message: z.string(),
+  createdAt: z.string(),
+});
+
+export const JobSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  status: z.string(),
+  createdAt: z.string(),
+  startedAt: z.string().optional().nullable(),
+  duration: z.number().optional().nullable(),
+  logs: z.array(LogSchema).optional().nullable(),
+});
+
+export const RunSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  project: z.string(),
+  projectId: z.string(),
+  title: z.string(),
+  message: z.string().optional().nullable(),
+  commit: z.string().optional().nullable(),
+  author: z.string().optional().nullable(),
+  branch: z.string().optional().nullable(),
+  duration: z.number(),
+  date: z.string(),
+  jobs: z.array(JobSchema),
+  cursor: z.string().optional().nullable(),
+  status: z.string().optional().nullable(),
+});
+
 export type Pipeline = z.infer<typeof PipelineSchema>;
 
 export type Label = z.infer<typeof LabelSchema>;
@@ -50,3 +95,11 @@ export type Label = z.infer<typeof LabelSchema>;
 export type LogEvent = z.infer<typeof LogEventSchema>;
 
 export type Agent = z.infer<typeof AgentSchema>;
+
+export type Action = z.infer<typeof ActionSchema>;
+
+export type Log = z.infer<typeof LogSchema>;
+
+export type Run = z.infer<typeof RunSchema>;
+
+export type Job = z.infer<typeof JobSchema>;

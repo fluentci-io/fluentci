@@ -7,6 +7,7 @@ import {
   BlobReader,
   Table,
   dayjs,
+  createId,
 } from "../../deps.ts";
 import {
   FLUENTCI_WS_URL,
@@ -22,7 +23,7 @@ import {
   isLogged,
 } from "../utils.ts";
 import { hostname, release, cpus, arch, totalmem, platform } from "node:os";
-import { Agent } from "../types.ts";
+import { Action, Agent, Log, Run } from "../types.ts";
 // import O from "https://esm.sh/v133/mimic-fn@4.0.0/denonext/mimic-fn.mjs";
 
 async function startAgent() {
@@ -72,8 +73,10 @@ async function startAgent() {
     try {
       logger.info(`Message from server ${event.data}`);
       const data = JSON.parse(event.data);
-      const { action, src, query, buildId } = JSON.parse(data.event);
-      const { jobs, pipeline } = JSON.parse(query);
+      const { action, src, query, buildId, actions, run } = JSON.parse(
+        data.event
+      );
+      const { jobs, pipeline, wasm } = JSON.parse(query);
 
       if (action === "build") {
         const project_id = src.split("/")[0];
@@ -91,7 +94,10 @@ async function startAgent() {
             sha256,
             pipeline,
             jobs,
-            buildId
+            buildId,
+            wasm,
+            actions,
+            run
           );
           return;
         }
@@ -110,7 +116,10 @@ async function startAgent() {
           sha256,
           pipeline,
           jobs,
-          buildId
+          buildId,
+          wasm,
+          actions,
+          run
         );
       }
     } catch (e) {
@@ -156,24 +165,46 @@ async function spawnFluentCI(
   sha256: string,
   pipeline: string,
   jobs: [string, ...Array<string>],
-  clientId: string
+  clientId: string,
+  wasm: boolean = false,
+  actions: Action[] = [],
+  run?: Run
 ) {
+  if (actions.length > 0) {
+    await executeActions(actions, project_id, sha256, run!);
+    return;
+  }
   const accessToken = await getAccessToken();
   const headers = {
     Authorization: `Bearer ${accessToken}`,
   };
-  const command = new Deno.Command("dagger", {
-    args: ["--progress", "plain", "run", "fluentci", "run", pipeline, ...jobs],
-    cwd: `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
-    stdout: "piped",
-    stderr: "piped",
-    env: {
-      _EXPERIMENTAL_DAGGER_CLOUD_URL: `https://events.fluentci.io?id=${
-        "build-" + clientId
-      }&project_id=${project_id}`,
-      DAGGER_CLOUD_TOKEN: Deno.env.get("DAGGER_CLOUD_TOKEN") || "123",
-    },
-  });
+  const command = wasm
+    ? new Deno.Command("fluentci", {
+        args: [
+          "run",
+          "--wasm",
+          pipeline,
+          ...jobs.filter((x) => x !== "--remote-exec"),
+        ],
+        cwd: `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
+        stdout: "piped",
+        stderr: "piped",
+      })
+    : new Deno.Command("dagger", {
+        args: [
+          "--progress",
+          "plain",
+          "run",
+          "fluentci",
+          "run",
+          pipeline,
+          ...jobs,
+        ],
+        cwd: `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
+        stdout: "piped",
+        stderr: "piped",
+      });
+  console.log(">> command", command);
   const process = command.spawn();
   let logs = "";
   const writable = new WritableStream({
@@ -204,6 +235,82 @@ async function spawnFluentCI(
       headers,
     }),
   ]).catch((e) => logger.error(e.message));
+}
+
+async function executeActions(
+  actions: Action[],
+  project_id: string,
+  sha256: string,
+  run: Run
+) {
+  let currentActionIndex = 0;
+  const runStart = dayjs();
+  const jobs = [...run.jobs];
+
+  for (const action of actions) {
+    if (!action.enabled) {
+      currentActionIndex += 1;
+      continue;
+    }
+
+    for (const cmd of action.commands.split("\n")) {
+      const result = await spawn(
+        `fluentci run ${action.useWasm ? "--wasm" : ""} ${
+          action.plugin
+        } ${cmd}`,
+        `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
+        jobs[currentActionIndex].id
+      );
+    }
+  }
+}
+
+async function spawn(cmd: string, cwd = Deno.cwd(), jobId?: string) {
+  const logs: Log[] = [];
+  const child = new Deno.Command("bash", {
+    args: ["-c", cmd],
+    stdout: "piped",
+    stderr: "piped",
+    cwd,
+  }).spawn();
+
+  const writableStdoutStream = new WritableStream({
+    write: (chunk) => {
+      const text = new TextDecoder().decode(chunk);
+      console.log(text);
+      const log: Log = {
+        id: createId(),
+        jobId: jobId!,
+        message: text,
+        createdAt: new Date().toISOString(),
+      };
+      logs.push(log);
+      // TODO: send logs to the client
+    },
+  });
+
+  const writableStderrStream = new WritableStream({
+    write: (chunk) => {
+      const text = new TextDecoder().decode(chunk);
+      console.log(text);
+      const log: Log = {
+        id: createId(),
+        jobId: jobId!,
+        message: text,
+        createdAt: new Date().toISOString(),
+      };
+      logs.push(log);
+      // TODO: send logs to the client
+    },
+  });
+
+  const [_stdout, _stderr, { code }] = await Promise.all([
+    child.stdout.pipeTo(writableStdoutStream),
+    child.stderr.pipeTo(writableStderrStream),
+    child.status,
+  ]);
+
+  return { logs, code };
 }
 
 async function getWebSocketUuid(agentId: string) {
