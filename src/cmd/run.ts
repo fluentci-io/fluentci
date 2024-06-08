@@ -10,7 +10,7 @@ import {
   resolve,
 } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
-import detect from "../detect.ts";
+import detect, { detectProjectType } from "../detect.ts";
 import { getCommitInfos } from "../git.ts";
 import {
   setupFluentCIengine,
@@ -322,6 +322,8 @@ const runPipelineRemotely = async (
     Deno.exit(1);
   }
 
+  const projectType = await detectProjectType(".");
+
   console.log("📦 Creating zip file ...");
 
   const blobWriter = new BlobWriter("application/zip");
@@ -348,6 +350,7 @@ const runPipelineRemotely = async (
     jobs,
     wasm: options.wasm,
     denoModule,
+    projectType,
   });
 
   const blob = await blobWriter.getData();
@@ -370,11 +373,9 @@ const runPipelineRemotely = async (
       Deno.exit(1);
     } else {
       console.log("✅ Context uploaded successfully");
-      const { buildId } = JSON.parse(xhr.response);
-      saveRepositoryMetadata(buildId);
-      const websocket = new WebSocket(
-        `${FLUENTCI_WS_URL}?client_id=${buildId}`
-      );
+      const { runId } = JSON.parse(xhr.response);
+      saveRepositoryMetadata(runId);
+      const websocket = new WebSocket(`${FLUENTCI_WS_URL}?client_id=${runId}`);
 
       websocket.addEventListener("message", (event) => {
         if (event.data === "fluentci_exit=0") {
@@ -421,7 +422,7 @@ const saveRepositoryMetadata = async (id: string) => {
   try {
     const { commit, sha, author, branch } = await getCommitInfos();
     console.log("📝 Saving repository metadata ...");
-    const status = await fetch(`${BASE_URL}/build/${id}/metadata`, {
+    const status = await fetch(`${BASE_URL}/run/${id}/metadata`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

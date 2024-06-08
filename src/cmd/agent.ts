@@ -24,7 +24,11 @@ import {
 } from "../utils.ts";
 import { hostname, release, cpus, arch, totalmem, platform } from "node:os";
 import { Action, Agent, Log, Run } from "../types.ts";
-// import O from "https://esm.sh/v133/mimic-fn@4.0.0/denonext/mimic-fn.mjs";
+
+const accessToken = await getAccessToken();
+const headers = {
+  Authorization: `Bearer ${accessToken}`,
+};
 
 async function startAgent() {
   console.log(`
@@ -73,7 +77,7 @@ async function startAgent() {
     try {
       logger.info(`Message from server ${event.data}`);
       const data = JSON.parse(event.data);
-      const { action, src, query, buildId, actions, run } = JSON.parse(
+      const { action, src, query, runId, actions, run } = JSON.parse(
         data.event
       );
       const { jobs, pipeline, wasm } = JSON.parse(query);
@@ -94,7 +98,7 @@ async function startAgent() {
             sha256,
             pipeline,
             jobs,
-            buildId,
+            runId,
             wasm,
             actions,
             run
@@ -116,7 +120,7 @@ async function startAgent() {
           sha256,
           pipeline,
           jobs,
-          buildId,
+          runId,
           wasm,
           actions,
           run
@@ -171,13 +175,10 @@ async function spawnFluentCI(
   run?: Run
 ) {
   if (actions.length > 0) {
-    await executeActions(actions, project_id, sha256, run!);
+    await executeActions(actions, project_id, sha256, run!, logger, clientId);
     return;
   }
-  const accessToken = await getAccessToken();
-  const headers = {
-    Authorization: `Bearer ${accessToken}`,
-  };
+
   const command = wasm
     ? new Deno.Command("fluentci", {
         args: [
@@ -198,7 +199,7 @@ async function spawnFluentCI(
           "fluentci",
           "run",
           pipeline,
-          ...jobs,
+          ...jobs.filter((x) => x !== "--remote-exec"),
         ],
         cwd: `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
         stdout: "piped",
@@ -255,13 +256,20 @@ async function executeActions(
   actions: Action[],
   project_id: string,
   sha256: string,
-  run: Run
+  run: Run,
+  logger: Logger,
+  clientId: string
 ) {
   let currentActionIndex = 0;
   const runStart = dayjs();
-  const jobs = [...run.jobs];
+  let jobs = [...run.jobs];
 
-  // TODO: send update run status "RUNNING" + date
+  // send update run status "RUNNING" + date
+  sendEvent(clientId, "run", {
+    ...run,
+    status: "RUNNING",
+    date: new Date().toISOString(),
+  }).catch((e) => logger.error(e.message));
 
   for (const action of actions) {
     if (!action.enabled) {
@@ -272,7 +280,18 @@ async function executeActions(
     const start = dayjs();
     const logs: Log[] = [];
 
-    // TODO: send update job status "RUNNING" + date
+    jobs = jobs.map((job, j) => ({
+      ...job,
+      startedAt: currentActionIndex === j ? start.toISOString() : job.startedAt,
+      status: currentActionIndex === j ? "RUNNING" : job.status,
+    }));
+
+    // send update job status "RUNNING" + date
+    sendEvent(clientId, "job", {
+      ...jobs[currentActionIndex],
+      startedAt: start.toISOString(),
+      status: "RUNNING",
+    }).catch((e) => logger.error(e.message));
 
     for (const cmd of action.commands.split("\n")) {
       const result = await spawn(
@@ -280,33 +299,102 @@ async function executeActions(
           action.plugin
         } ${cmd}`,
         `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
-        jobs[currentActionIndex].id
+        jobs[currentActionIndex].id,
+        logger,
+        clientId
       );
 
       logs.push(...result.logs);
 
       if (result.code !== 0) {
-        dayjs().diff(start, "milliseconds");
-        // TODO: send update job status "FAILURE" + duration + logs
-        // TODO: send update run status "FAILURE" + duration
-        // TODO: send update project stats
+        // send update job status "FAILURE" + duration + logs
+        sendEvent(clientId, "job", {
+          ...jobs[currentActionIndex],
+          status: "FAILURE",
+          duration: dayjs().diff(start, "milliseconds"),
+          logs: [...(jobs[currentActionIndex].logs || []), ...logs],
+        }).catch((e) => logger.error(e.message));
+
+        jobs = jobs.map((job, j) => ({
+          ...job,
+          status: currentActionIndex === j ? "FAILURE" : job.status,
+          duration:
+            currentActionIndex === j
+              ? dayjs().diff(start, "milliseconds")
+              : job.duration,
+          logs:
+            currentActionIndex === j
+              ? [...(job.logs || []), ...result.logs]
+              : job.logs,
+        }));
+        const duration = dayjs().diff(runStart, "milliseconds");
+        // send update run status "FAILURE" + duration
+        sendEvent(clientId, "run", {
+          ...run!,
+          jobs,
+          status: "FAILURE",
+          duration,
+        }).catch((e) => logger.error(e.message));
+
+        // send update project stats
+        sendEvent(clientId, "update-stats", {}).catch((e) =>
+          logger.error(e.message)
+        );
+
+        fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+          method: "POST",
+          body: `fluentci_exit=1`,
+          headers,
+        }).catch((e) => logger.error(e.message));
         return;
       }
     }
 
+    jobs = jobs.map((job, j) => ({
+      ...job,
+      status: currentActionIndex === j ? "SUCCESS" : job.status,
+      duration:
+        currentActionIndex === j
+          ? dayjs().diff(start, "milliseconds")
+          : job.duration,
+      logs:
+        currentActionIndex === j ? [...(job.logs || []), ...logs] : job.logs,
+    }));
+
     dayjs().diff(start, "milliseconds");
-    // TODO: send update job status "SUCCESS" + duration + logs
-    // TODO: send update run jobs
+    // send update run jobs
+    sendEvent(clientId, "run", {
+      ...run!,
+      jobs,
+    });
     currentActionIndex += 1;
   }
 
-  // deno-lint-ignore no-unused-vars
+  // update run status "SUCCESS" + duration
   const duration = dayjs().diff(runStart, "milliseconds");
-  // TODO: update run status "SUCCESS" + duration
-  // TODO: update project stats
+  sendEvent(clientId, "run", {
+    ...run!,
+    status: "SUCCESS",
+    duration,
+  }).catch((e) => logger.error(e.message));
+
+  // update project stats
+  sendEvent(clientId, "update-stats", {}).catch((e) => logger.error(e.message));
+
+  fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+    method: "POST",
+    body: `fluentci_exit=0`,
+    headers,
+  }).catch((e) => logger.error(e.message));
 }
 
-async function spawn(cmd: string, cwd = Deno.cwd(), jobId?: string) {
+async function spawn(
+  cmd: string,
+  cwd = Deno.cwd(),
+  jobId: string,
+  logger: Logger,
+  clientId: string
+) {
   const logs: Log[] = [];
   const child = new Deno.Command("bash", {
     args: ["-c", cmd],
@@ -319,14 +407,24 @@ async function spawn(cmd: string, cwd = Deno.cwd(), jobId?: string) {
     write: (chunk) => {
       const text = new TextDecoder().decode(chunk);
       console.log(text);
+
+      fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+        method: "POST",
+        body: text,
+        headers,
+      }).catch((e) => logger.error(e.message));
+
       const log: Log = {
         id: createId(),
-        jobId: jobId!,
+        jobId,
         message: text,
         createdAt: new Date().toISOString(),
       };
       logs.push(log);
-      // TODO: send logs to the client
+      // send logs to the client
+      sendEvent(clientId, "logs", { text, jobId }).catch((e) =>
+        logger.error(e.message)
+      );
     },
   });
 
@@ -334,6 +432,13 @@ async function spawn(cmd: string, cwd = Deno.cwd(), jobId?: string) {
     write: (chunk) => {
       const text = new TextDecoder().decode(chunk);
       console.log(text);
+
+      fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+        method: "POST",
+        body: text,
+        headers,
+      }).catch((e) => logger.error(e.message));
+
       const log: Log = {
         id: createId(),
         jobId: jobId!,
@@ -341,7 +446,10 @@ async function spawn(cmd: string, cwd = Deno.cwd(), jobId?: string) {
         createdAt: new Date().toISOString(),
       };
       logs.push(log);
-      // TODO: send logs to the client
+      // send logs to the client
+      sendEvent(clientId, "logs", { text, jobId }).catch((e) =>
+        logger.error(e.message)
+      );
     },
   });
 
@@ -418,5 +526,19 @@ export async function listAgents() {
 
   table.render();
 }
+
+// deno-lint-ignore no-explicit-any
+const sendEvent = (clientId: string, channel: string, data: any) =>
+  fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+    method: "POST",
+    body: JSON.stringify({
+      channel,
+      data,
+    }),
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+  });
 
 export default startAgent;
