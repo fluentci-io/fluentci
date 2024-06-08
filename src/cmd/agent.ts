@@ -282,7 +282,8 @@ async function executeActions(
 
     jobs = jobs.map((job, j) => ({
       ...job,
-      startedAt: currentActionIndex === j ? start.toISOString() : job.startedAt,
+      startedAt:
+        currentActionIndex === j ? start.toISOString() : job.started_at,
       status: currentActionIndex === j ? "RUNNING" : job.status,
     }));
 
@@ -295,7 +296,7 @@ async function executeActions(
 
     for (const cmd of action.commands.split("\n")) {
       const result = await spawn(
-        `fluentci run ${action.useWasm ? "--wasm" : ""} ${
+        `fluentci run ${action.use_wasm ? "--wasm" : ""} ${
           action.plugin
         } ${cmd}`,
         `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,

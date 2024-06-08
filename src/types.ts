@@ -49,9 +49,9 @@ export const ActionSchema = z.object({
   commands: z.string(),
   enabled: z.boolean(),
   plugin: z.string(),
-  useWasm: z.boolean(),
+  use_wasm: z.boolean(),
   logo: z.string().optional().nullable(),
-  githubUrl: z.string().optional().nullable(),
+  github_url: z.string().optional().nullable(),
 });
 
 export const LogSchema = z.object({
@@ -65,8 +65,8 @@ export const JobSchema = z.object({
   id: z.string(),
   name: z.string(),
   status: z.string(),
-  createdAt: z.string(),
-  startedAt: z.string().optional().nullable(),
+  created_at: z.string(),
+  started_at: z.string().optional().nullable(),
   duration: z.number().optional().nullable(),
   logs: z.array(LogSchema).optional().nullable(),
 });
