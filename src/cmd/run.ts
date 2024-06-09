@@ -55,25 +55,26 @@ async function run(
       );
       Deno.exit(1);
     }
-    Deno.chdir(options.workDir as string);
   }
 
   if (options.wasm && !options.remoteExec) {
     Deno.env.set("WASM_ENABLED", "1");
-    await runWasmPlugin(pipeline, jobs);
+    await runWasmPlugin(pipeline, jobs, options.workDir as string);
     Deno.exit(0);
   }
 
   if (pipeline === ".") {
-    try {
-      // verify if .fluentci directory exists
-      const fluentciDir = await Deno.stat(".fluentci");
-      await Deno.stat(".fluentci/mod.ts");
-      if (!fluentciDir.isDirectory) {
+    if (!Deno.env.has("FLUENTCI_PROJECT_ID")) {
+      try {
+        // verify if .fluentci directory exists
+        const fluentciDir = await Deno.stat(".fluentci");
+        await Deno.stat(".fluentci/mod.ts");
+        if (!fluentciDir.isDirectory) {
+          displayErrorMessage();
+        }
+      } catch (_) {
         displayErrorMessage();
       }
-    } catch (_) {
-      displayErrorMessage();
     }
 
     if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
@@ -81,7 +82,7 @@ async function run(
         await runPipelineRemotely(pipeline, jobs, options);
         return;
       }
-      await detect(".");
+      await detect((options.workDir as string) || ".");
 
       const query = gql`
         mutation Run($projectId: ID!, $wait: Boolean) {
@@ -103,7 +104,7 @@ async function run(
 
       await projects.save({
         ...project,
-        path: resolve("."),
+        path: resolve((options.workDir as string) || "."),
       });
 
       await projects.deleteAt("empty");
@@ -143,6 +144,7 @@ async function run(
       ],
       stdout: "inherit",
       stderr: "inherit",
+      cwd: (options.workDir as string) || ".",
     });
 
     if (
@@ -164,6 +166,7 @@ async function run(
         ],
         stdout: "inherit",
         stderr: "inherit",
+        cwd: (options.workDir as string) || ".",
       });
     }
 
@@ -171,7 +174,9 @@ async function run(
     const commands = [];
     for (const job of jobs) {
       try {
-        const jobFile = await Deno.stat(`.fluentci/${job}.ts`);
+        const jobFile = await Deno.stat(
+          `${(options.workDir as string) || "."}/.fluentci/${job}.ts`
+        );
         if (jobFile.isFile) {
           jobFileExists = true;
           commands.push(
@@ -188,6 +193,7 @@ async function run(
               ],
               stdout: "inherit",
               stderr: "inherit",
+              cwd: (options.workDir as string) || ".",
             })
           );
           break;
@@ -211,6 +217,7 @@ async function run(
           ],
           stdout: "inherit",
           stderr: "inherit",
+          cwd: (options.workDir as string) || ".",
         })
       );
     }
@@ -264,6 +271,7 @@ async function run(
     args: ["run", "-A", ...denoModule],
     stdout: "inherit",
     stderr: "inherit",
+    cwd: (options.workDir as string) || ".",
   });
 
   if (
@@ -274,6 +282,7 @@ async function run(
       args: ["run", "deno", "run", "-A", ...denoModule],
       stdout: "inherit",
       stderr: "inherit",
+      cwd: (options.workDir as string) || ".",
     });
   }
 
@@ -332,7 +341,9 @@ const runPipelineRemotely = async (
     Deno.exit(1);
   }
 
-  const projectType = await detectProjectType(".");
+  const projectType = await detectProjectType(
+    (options.workDir as string) || "."
+  );
 
   console.log("📦 Creating zip file ...");
 
@@ -361,6 +372,7 @@ const runPipelineRemotely = async (
     wasm: options.wasm,
     denoModule,
     projectType,
+    workDir: options.workDir,
   });
 
   const blob = await blobWriter.getData();
@@ -454,12 +466,13 @@ const saveRepositoryMetadata = async (id: string) => {
   }
 };
 
-const runWasmPlugin = async (pipeline: string, job: string[]) => {
+const runWasmPlugin = async (pipeline: string, job: string[], cwd = ".") => {
   if (pipeline.endsWith(".wasm") || pipeline.endsWith("?wasm=1")) {
     const command = new Deno.Command("bash", {
       args: ["-c", `fluentci-engine call -m ${pipeline} -- ` + job.join(" ")],
       stdout: "inherit",
       stderr: "inherit",
+      cwd,
     });
     await spawnCommand(command);
     return;
@@ -511,6 +524,7 @@ const runWasmPlugin = async (pipeline: string, job: string[]) => {
       ],
       stdout: "inherit",
       stderr: "inherit",
+      cwd,
     });
     await spawnCommand(command);
     return;
@@ -539,6 +553,7 @@ const runWasmPlugin = async (pipeline: string, job: string[]) => {
     args: ["-c", `fluentci-engine call -m ${url} -- ` + job.join(" ")],
     stdout: "inherit",
     stderr: "inherit",
+    cwd,
   });
   await spawnCommand(command);
 };

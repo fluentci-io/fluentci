@@ -80,7 +80,7 @@ async function startAgent() {
       const { action, src, query, runId, actions, run } = JSON.parse(
         data.event
       );
-      const { jobs, pipeline, wasm } = JSON.parse(query);
+      const { jobs, pipeline, wasm, workDir } = JSON.parse(query);
 
       if (action === "build") {
         const project_id = src.split("/")[0];
@@ -101,7 +101,8 @@ async function startAgent() {
             runId,
             wasm,
             actions,
-            run
+            run,
+            workDir
           );
           return;
         }
@@ -123,7 +124,8 @@ async function startAgent() {
           runId,
           wasm,
           actions,
-          run
+          run,
+          workDir
         );
       }
     } catch (e) {
@@ -172,7 +174,8 @@ async function spawnFluentCI(
   clientId: string,
   wasm: boolean = false,
   actions: Action[] = [],
-  run?: Run
+  run?: Run,
+  workDir = "."
 ) {
   if (actions.length > 0) {
     await executeActions(actions, project_id, sha256, run!, logger, clientId);
@@ -187,7 +190,9 @@ async function spawnFluentCI(
           pipeline,
           ...jobs.filter((x) => x !== "--remote-exec"),
         ],
-        cwd: `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
+        cwd: `${dir(
+          "home"
+        )}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
         stdout: "piped",
         stderr: "piped",
       })
@@ -201,7 +206,9 @@ async function spawnFluentCI(
           pipeline,
           ...jobs.filter((x) => x !== "--remote-exec"),
         ],
-        cwd: `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
+        cwd: `${dir(
+          "home"
+        )}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
         stdout: "piped",
         stderr: "piped",
       });
