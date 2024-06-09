@@ -398,7 +398,7 @@ async function executeActions(
     currentActionIndex += 1;
   }
 
-  await sleep(500);
+  await sleep(100);
 
   // update run status "SUCCESS" + duration
   const duration = dayjs().diff(runStart, "milliseconds");
