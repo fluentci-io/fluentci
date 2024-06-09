@@ -63,6 +63,7 @@ export const LogSchema = z.object({
 
 export const JobSchema = z.object({
   id: z.string(),
+  job_id: z.string(),
   name: z.string(),
   status: z.string(),
   created_at: z.string(),

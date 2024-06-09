@@ -8,6 +8,7 @@ import {
   Table,
   dayjs,
   createId,
+  sleep,
 } from "../../deps.ts";
 import {
   FLUENTCI_WS_URL,
@@ -317,7 +318,7 @@ async function executeActions(
           action.plugin
         } ${cmd}`,
         `${dir("home")}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
-        jobs[currentActionIndex].id,
+        jobs[currentActionIndex].job_id,
         logger,
         clientId
       );
@@ -369,6 +370,13 @@ async function executeActions(
       }
     }
 
+    sendEvent(clientId, "job", {
+      ...jobs[currentActionIndex],
+      status: "SUCCESS",
+      duration: dayjs().diff(start, "milliseconds"),
+      logs: [...(jobs[currentActionIndex].logs || []), ...logs],
+    }).catch((e) => logger.error(e.message));
+
     jobs = jobs.map((job, j) => ({
       ...job,
       status: currentActionIndex === j ? "SUCCESS" : job.status,
@@ -386,18 +394,20 @@ async function executeActions(
       ...run!,
       jobs,
       date,
-    });
+    }).catch((e) => logger.error(e.message));
     currentActionIndex += 1;
   }
 
+  await sleep(500);
+
   // update run status "SUCCESS" + duration
   const duration = dayjs().diff(runStart, "milliseconds");
-  sendEvent(clientId, "run", {
+  await sendEvent(clientId, "run", {
     ...run!,
     status: "SUCCESS",
     duration,
     date,
-  }).catch((e) => logger.error(e.message));
+  });
 
   // update project stats
   sendEvent(clientId, "update-stats", {}).catch((e) => logger.error(e.message));
