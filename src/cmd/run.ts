@@ -10,7 +10,7 @@ import {
   resolve,
 } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
-import detect, { detectProjectType } from "../detect.ts";
+import detect, { detectProjectType, dirExists } from "../detect.ts";
 import { getCommitInfos } from "../git.ts";
 import {
   setupFluentCIengine,
@@ -47,6 +47,16 @@ async function run(
     examplePath: ".fluentci/.env_required",
     export: true,
   });
+
+  if (options.workDir) {
+    if (!(await dirExists(options.workDir as string))) {
+      console.error(
+        `Directory ${green(options.workDir as string)} does not exist`
+      );
+      Deno.exit(1);
+    }
+    Deno.chdir(options.workDir as string);
+  }
 
   if (options.wasm && !options.remoteExec) {
     Deno.env.set("WASM_ENABLED", "1");
