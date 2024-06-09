@@ -350,6 +350,8 @@ const runPipelineRemotely = async (
 
   const accessToken = getAccessToken();
 
+  console.log(parseIgnoredFiles());
+
   const entries = walk(".", {
     skip: parseIgnoredFiles(),
   });
@@ -440,7 +442,7 @@ const runPipelineRemotely = async (
   xhr.send(blob);
 };
 
-const parseIgnoredFiles = () => {
+const parseIgnoredFiles = (): RegExp[] => {
   let ignoredFilesArray: RegExp[] = [];
   try {
     // verify if .fluentciignore exists
@@ -449,6 +451,7 @@ const parseIgnoredFiles = () => {
       ignoredFilesArray = ignoredFilesArray.concat(
         ignoredFiles
           .split("\n")
+          .filter((x) => x.trim().length)
           .map((file) => new RegExp(file.replace(".", "\\.")))
       );
     }
@@ -459,7 +462,10 @@ const parseIgnoredFiles = () => {
   try {
     const ignoredFiles = Deno.readTextFileSync(".gitignore");
     return ignoredFilesArray.concat(
-      ignoredFiles.split("\n").map((file: string) => new RegExp(file))
+      ignoredFiles
+        .split("\n")
+        .filter((x) => x.trim().length)
+        .map((file: string) => new RegExp(file))
     );
   } catch (_e) {
     return ignoredFilesArray;
