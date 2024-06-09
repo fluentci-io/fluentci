@@ -67,8 +67,10 @@ async function run(
     if (!Deno.env.has("FLUENTCI_PROJECT_ID")) {
       try {
         // verify if .fluentci directory exists
-        const fluentciDir = await Deno.stat(".fluentci");
-        await Deno.stat(".fluentci/mod.ts");
+        const fluentciDir = await Deno.stat(
+          `${options.workDir || "."}/.fluentci`
+        );
+        await Deno.stat(`${options.workDir || "."}/.fluentci/mod.ts`);
         if (!fluentciDir.isDirectory) {
           displayErrorMessage();
         }
@@ -139,7 +141,13 @@ async function run(
         ".fluentci/src/dagger/runner.ts",
         ...jobs,
         ...Object.keys(options)
-          .filter((key) => key !== "reload" && key !== "wasm")
+          .filter(
+            (key) =>
+              key !== "reload" &&
+              key !== "wasm" &&
+              key !== "remoteExec" &&
+              key !== "workDir"
+          )
           .map((key) => `--${key}=${options[key]}`),
       ],
       stdout: "inherit",
@@ -161,7 +169,13 @@ async function run(
           ".fluentci/src/dagger/runner.ts",
           ...jobs,
           ...Object.keys(options)
-            .filter((key) => key !== "reload" && key !== "wasm")
+            .filter(
+              (key) =>
+                key !== "reload" &&
+                key !== "wasm" &&
+                key !== "remoteExec" &&
+                key !== "workDir"
+            )
             .map((key) => `--${key}=${options[key]}`),
         ],
         stdout: "inherit",
@@ -188,7 +202,13 @@ async function run(
                 "-A",
                 `.fluentci/${job}.ts`,
                 ...Object.keys(options)
-                  .filter((key) => key !== "reload" && key !== "wasm")
+                  .filter(
+                    (key) =>
+                      key !== "reload" &&
+                      key !== "wasm" &&
+                      key !== "remoteExec" &&
+                      key !== "workDir"
+                  )
                   .map((key) => `--${key}=${options[key]}`),
               ],
               stdout: "inherit",
@@ -211,7 +231,13 @@ async function run(
             "-A",
             `.fluentci/${job}.ts`,
             ...Object.keys(options)
-              .filter((key) => key !== "reload" && key !== "wasm")
+              .filter(
+                (key) =>
+                  key !== "reload" &&
+                  key !== "wasm" &&
+                  key !== "remoteExec" &&
+                  key !== "workDir"
+              )
               .map((key) => `--${key}=${options[key]}`)
               .join(" "),
           ],
@@ -478,10 +504,10 @@ const runWasmPlugin = async (pipeline: string, job: string[], cwd = ".") => {
     return;
   }
 
-  const pluginDirExists = await fluentciPluginDirExists();
+  const pluginDirExists = await fluentciPluginDirExists(cwd);
   if (!pluginDirExists && pipeline === ".") {
     try {
-      await Deno.stat(".fluentci/Cargo.toml");
+      await Deno.stat(`${cwd}/.fluentci/Cargo.toml`);
     } catch (_) {
       console.log("This directory does not contain a FluentCI plugin");
       Deno.exit(1);
@@ -501,13 +527,15 @@ const runWasmPlugin = async (pipeline: string, job: string[], cwd = ".") => {
       args: ["build", "--release", "--target", "wasm32-unknown-unknown"],
       stdout: "inherit",
       stderr: "inherit",
-      cwd: pluginDirExists ? ".fluentci/plugin" : ".fluentci",
+      cwd: pluginDirExists ? `${cwd}/.fluentci/plugin` : `${cwd}/.fluentci`,
     });
     await spawnCommand(build);
 
     const cargoToml = toml.parse(
       Deno.readTextFileSync(
-        pluginDirExists ? ".fluentci/plugin/Cargo.toml" : ".fluentci/Cargo.toml"
+        pluginDirExists
+          ? `${cwd}/.fluentci/plugin/Cargo.toml`
+          : `${cwd}/.fluentci/Cargo.toml`
       )
       // deno-lint-ignore no-explicit-any
     ) as Record<string, any>;

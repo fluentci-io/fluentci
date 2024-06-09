@@ -325,10 +325,10 @@ export async function setupFluentCIStudio() {
   }
 }
 
-export async function fluentciPluginDirExists(): Promise<boolean> {
+export async function fluentciPluginDirExists(cwd = "."): Promise<boolean> {
   try {
-    const fluentciDir = await Deno.stat(".fluentci/plugin");
-    await Deno.stat(".fluentci/plugin/Cargo.toml");
+    const fluentciDir = await Deno.stat(`${cwd}/.fluentci/plugin`);
+    await Deno.stat(`${cwd}/.fluentci/plugin/Cargo.toml`);
     return fluentciDir.isDirectory;
   } catch (_) {
     return false;
