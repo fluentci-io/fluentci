@@ -279,12 +279,13 @@ async function executeActions(
   let currentActionIndex = 0;
   const runStart = dayjs();
   let jobs = [...run.jobs];
+  const date = new Date().toISOString();
 
   // send update run status "RUNNING" + date
   sendEvent(clientId, "run", {
     ...run,
     status: "RUNNING",
-    date: new Date().toISOString(),
+    date,
   }).catch((e) => logger.error(e.message));
 
   for (const action of actions) {
@@ -351,6 +352,7 @@ async function executeActions(
           jobs,
           status: "FAILURE",
           duration,
+          date,
         }).catch((e) => logger.error(e.message));
 
         // send update project stats
@@ -383,6 +385,7 @@ async function executeActions(
     sendEvent(clientId, "run", {
       ...run!,
       jobs,
+      date,
     });
     currentActionIndex += 1;
   }
@@ -393,6 +396,7 @@ async function executeActions(
     ...run!,
     status: "SUCCESS",
     duration,
+    date,
   }).catch((e) => logger.error(e.message));
 
   // update project stats
