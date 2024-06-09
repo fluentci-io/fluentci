@@ -401,7 +401,7 @@ async function executeActions(
   await sleep(100);
 
   // update run status "SUCCESS" + duration
-  const duration = dayjs().diff(runStart, "milliseconds");
+  const duration = dayjs().diff(runStart, "milliseconds") - 100;
   await sendEvent(clientId, "run", {
     ...run!,
     status: "SUCCESS",
