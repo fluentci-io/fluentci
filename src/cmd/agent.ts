@@ -178,7 +178,15 @@ async function spawnFluentCI(
   workDir = "."
 ) {
   if (actions.length > 0) {
-    await executeActions(actions, project_id, sha256, run!, logger, clientId);
+    await executeActions(
+      actions,
+      project_id,
+      sha256,
+      run!,
+      logger,
+      clientId,
+      workDir
+    );
     return;
   }
 
@@ -265,7 +273,8 @@ async function executeActions(
   sha256: string,
   run: Run,
   logger: Logger,
-  clientId: string
+  clientId: string,
+  workDir = "."
 ) {
   let currentActionIndex = 0;
   const runStart = dayjs();
@@ -306,7 +315,7 @@ async function executeActions(
         `fluentci run ${action.use_wasm ? "--wasm" : ""} ${
           action.plugin
         } ${cmd}`,
-        `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
+        `${dir("home")}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
         jobs[currentActionIndex].id,
         logger,
         clientId
