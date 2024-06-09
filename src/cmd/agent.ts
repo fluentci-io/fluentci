@@ -298,7 +298,7 @@ async function executeActions(
 
     jobs = jobs.map((job, j) => ({
       ...job,
-      startedAt:
+      started_at:
         currentActionIndex === j ? start.toISOString() : job.started_at,
       status: currentActionIndex === j ? "RUNNING" : job.status,
     }));
@@ -306,7 +306,7 @@ async function executeActions(
     // send update job status "RUNNING" + date
     sendEvent(clientId, "job", {
       ...jobs[currentActionIndex],
-      startedAt: start.toISOString(),
+      started_at: start.toISOString(),
       status: "RUNNING",
     }).catch((e) => logger.error(e.message));
 

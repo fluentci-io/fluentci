@@ -350,8 +350,6 @@ const runPipelineRemotely = async (
 
   const accessToken = getAccessToken();
 
-  console.log(parseIgnoredFiles());
-
   const entries = walk(".", {
     skip: parseIgnoredFiles(),
   });
