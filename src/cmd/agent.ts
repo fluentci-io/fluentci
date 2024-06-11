@@ -357,9 +357,9 @@ async function executeActions(
         }).catch((e) => logger.error(e.message));
 
         // send update project stats
-        sendEvent(clientId, "update-stats", {}).catch((e) =>
-          logger.error(e.message)
-        );
+        sendEvent(clientId, "update-stats", {
+          projectId: run.project_id,
+        }).catch((e) => logger.error(e.message));
 
         fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
           method: "POST",
@@ -410,7 +410,9 @@ async function executeActions(
   });
 
   // update project stats
-  sendEvent(clientId, "update-stats", {}).catch((e) => logger.error(e.message));
+  sendEvent(clientId, "update-stats", { projectId: run.project_id }).catch(
+    (e) => logger.error(e.message)
+  );
 
   fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
     method: "POST",
