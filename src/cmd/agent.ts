@@ -7,6 +7,8 @@ import {
   BlobReader,
   Table,
   dayjs,
+  createId,
+  sleep,
 } from "../../deps.ts";
 import {
   FLUENTCI_WS_URL,
@@ -22,8 +24,12 @@ import {
   isLogged,
 } from "../utils.ts";
 import { hostname, release, cpus, arch, totalmem, platform } from "node:os";
-import { Agent } from "../types.ts";
-// import O from "https://esm.sh/v133/mimic-fn@4.0.0/denonext/mimic-fn.mjs";
+import { Action, Agent, Log, Run } from "../types.ts";
+
+const accessToken = await getAccessToken();
+const headers = {
+  Authorization: `Bearer ${accessToken}`,
+};
 
 async function startAgent() {
   console.log(`
@@ -72,8 +78,10 @@ async function startAgent() {
     try {
       logger.info(`Message from server ${event.data}`);
       const data = JSON.parse(event.data);
-      const { action, src, query, buildId } = JSON.parse(data.event);
-      const { jobs, pipeline } = JSON.parse(query);
+      const { action, src, query, runId, actions, run } = JSON.parse(
+        data.event
+      );
+      const { jobs, pipeline, wasm, workDir } = JSON.parse(query);
 
       if (action === "build") {
         const project_id = src.split("/")[0];
@@ -91,7 +99,11 @@ async function startAgent() {
             sha256,
             pipeline,
             jobs,
-            buildId
+            runId,
+            wasm,
+            actions,
+            run,
+            workDir
           );
           return;
         }
@@ -110,7 +122,11 @@ async function startAgent() {
           sha256,
           pipeline,
           jobs,
-          buildId
+          runId,
+          wasm,
+          actions,
+          run,
+          workDir
         );
       }
     } catch (e) {
@@ -156,27 +172,70 @@ async function spawnFluentCI(
   sha256: string,
   pipeline: string,
   jobs: [string, ...Array<string>],
-  clientId: string
+  clientId: string,
+  wasm: boolean = false,
+  actions: Action[] = [],
+  run?: Run,
+  workDir = "."
 ) {
-  const accessToken = await getAccessToken();
-  const headers = {
-    Authorization: `Bearer ${accessToken}`,
-  };
-  const command = new Deno.Command("dagger", {
-    args: ["--progress", "plain", "run", "fluentci", "run", pipeline, ...jobs],
-    cwd: `${dir("home")}/.fluentci/builds/${project_id}/${sha256}`,
-    stdout: "piped",
-    stderr: "piped",
-    env: {
-      _EXPERIMENTAL_DAGGER_CLOUD_URL: `https://events.fluentci.io?id=${
-        "build-" + clientId
-      }&project_id=${project_id}`,
-      DAGGER_CLOUD_TOKEN: Deno.env.get("DAGGER_CLOUD_TOKEN") || "123",
-    },
-  });
+  if (actions.length > 0) {
+    await executeActions(
+      actions,
+      project_id,
+      sha256,
+      run!,
+      logger,
+      clientId,
+      workDir
+    );
+    return;
+  }
+
+  const command = wasm
+    ? new Deno.Command("fluentci", {
+        args: [
+          "run",
+          "--wasm",
+          pipeline,
+          ...jobs.filter((x) => x !== "--remote-exec"),
+        ],
+        cwd: `${dir(
+          "home"
+        )}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
+        stdout: "piped",
+        stderr: "piped",
+      })
+    : new Deno.Command("dagger", {
+        args: [
+          "--progress",
+          "plain",
+          "run",
+          "fluentci",
+          "run",
+          pipeline,
+          ...jobs.filter((x) => x !== "--remote-exec"),
+        ],
+        cwd: `${dir(
+          "home"
+        )}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
+        stdout: "piped",
+        stderr: "piped",
+      });
   const process = command.spawn();
   let logs = "";
-  const writable = new WritableStream({
+  const writableStdoutStream = new WritableStream({
+    write: (chunk) => {
+      const text = new TextDecoder().decode(chunk);
+      logger.info(text);
+      logs = logs.concat(text);
+      fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+        method: "POST",
+        body: text,
+        headers,
+      }).catch((e) => logger.error(e.message));
+    },
+  });
+  const writableStderrStream = new WritableStream({
     write: (chunk) => {
       const text = new TextDecoder().decode(chunk);
       logger.info(text);
@@ -189,8 +248,11 @@ async function spawnFluentCI(
     },
   });
 
-  await process.stderr?.pipeTo(writable);
-  const { code } = await process.status;
+  const [_stdout, _stderr, { code }] = await Promise.all([
+    process.stdout?.pipeTo(writableStdoutStream),
+    process.stderr?.pipeTo(writableStderrStream),
+    process.status,
+  ]);
 
   Promise.all([
     fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
@@ -204,6 +266,233 @@ async function spawnFluentCI(
       headers,
     }),
   ]).catch((e) => logger.error(e.message));
+}
+
+async function executeActions(
+  actions: Action[],
+  project_id: string,
+  sha256: string,
+  run: Run,
+  logger: Logger,
+  clientId: string,
+  workDir = "."
+) {
+  let currentActionIndex = 0;
+  const runStart = dayjs();
+  let jobs = [...run.jobs];
+  const date = new Date().toISOString();
+
+  // send update run status "RUNNING" + date
+  sendEvent(clientId, "run", {
+    ...run,
+    status: "RUNNING",
+    date,
+  }).catch((e) => logger.error(e.message));
+
+  for (const action of actions) {
+    if (!action.enabled) {
+      currentActionIndex += 1;
+      continue;
+    }
+
+    const start = dayjs();
+    const logs: Log[] = [];
+
+    jobs = jobs.map((job, j) => ({
+      ...job,
+      started_at:
+        currentActionIndex === j ? start.toISOString() : job.started_at,
+      status: currentActionIndex === j ? "RUNNING" : job.status,
+    }));
+
+    // send update job status "RUNNING" + date
+    sendEvent(clientId, "job", {
+      ...jobs[currentActionIndex],
+      started_at: start.toISOString(),
+      status: "RUNNING",
+    }).catch((e) => logger.error(e.message));
+
+    for (const cmd of action.commands.split("\n")) {
+      const result = await spawn(
+        `fluentci run ${action.use_wasm ? "--wasm" : ""} ${
+          action.plugin
+        } ${cmd}`,
+        `${dir("home")}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
+        jobs[currentActionIndex].job_id,
+        logger,
+        clientId
+      );
+
+      logs.push(...result.logs);
+
+      if (result.code !== 0) {
+        // send update job status "FAILURE" + duration + logs
+        sendEvent(clientId, "job", {
+          ...jobs[currentActionIndex],
+          status: "FAILURE",
+          duration: dayjs().diff(start, "milliseconds"),
+          logs: [...(jobs[currentActionIndex].logs || []), ...logs],
+        }).catch((e) => logger.error(e.message));
+
+        jobs = jobs.map((job, j) => ({
+          ...job,
+          status: currentActionIndex === j ? "FAILURE" : job.status,
+          duration:
+            currentActionIndex === j
+              ? dayjs().diff(start, "milliseconds")
+              : job.duration,
+          logs:
+            currentActionIndex === j
+              ? [...(job.logs || []), ...result.logs]
+              : job.logs,
+        }));
+        const duration = dayjs().diff(runStart, "milliseconds");
+        // send update run status "FAILURE" + duration
+        sendEvent(clientId, "run", {
+          ...run!,
+          jobs,
+          status: "FAILURE",
+          duration,
+          date,
+        }).catch((e) => logger.error(e.message));
+
+        // send update project stats
+        sendEvent(clientId, "update-stats", {
+          projectId: run.project_id,
+        }).catch((e) => logger.error(e.message));
+
+        fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+          method: "POST",
+          body: `fluentci_exit=1`,
+          headers,
+        }).catch((e) => logger.error(e.message));
+        return;
+      }
+    }
+
+    sendEvent(clientId, "job", {
+      ...jobs[currentActionIndex],
+      status: "SUCCESS",
+      duration: dayjs().diff(start, "milliseconds"),
+      logs: [...(jobs[currentActionIndex].logs || []), ...logs],
+    }).catch((e) => logger.error(e.message));
+
+    jobs = jobs.map((job, j) => ({
+      ...job,
+      status: currentActionIndex === j ? "SUCCESS" : job.status,
+      duration:
+        currentActionIndex === j
+          ? dayjs().diff(start, "milliseconds")
+          : job.duration,
+      logs:
+        currentActionIndex === j ? [...(job.logs || []), ...logs] : job.logs,
+    }));
+
+    dayjs().diff(start, "milliseconds");
+    // send update run jobs
+    sendEvent(clientId, "run", {
+      ...run!,
+      jobs,
+      date,
+    }).catch((e) => logger.error(e.message));
+    currentActionIndex += 1;
+  }
+
+  await sleep(100);
+
+  // update run status "SUCCESS" + duration
+  const duration = dayjs().diff(runStart, "milliseconds") - 100;
+  await sendEvent(clientId, "run", {
+    ...run!,
+    status: "SUCCESS",
+    duration,
+    date,
+  });
+
+  // update project stats
+  sendEvent(clientId, "update-stats", { projectId: run.project_id }).catch(
+    (e) => logger.error(e.message)
+  );
+
+  fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+    method: "POST",
+    body: `fluentci_exit=0`,
+    headers,
+  }).catch((e) => logger.error(e.message));
+}
+
+async function spawn(
+  cmd: string,
+  cwd = Deno.cwd(),
+  jobId: string,
+  logger: Logger,
+  clientId: string
+) {
+  const logs: Log[] = [];
+  const child = new Deno.Command("bash", {
+    args: ["-c", cmd],
+    stdout: "piped",
+    stderr: "piped",
+    cwd,
+  }).spawn();
+
+  const writableStdoutStream = new WritableStream({
+    write: (chunk) => {
+      const text = new TextDecoder().decode(chunk);
+      console.log(text);
+
+      fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+        method: "POST",
+        body: text,
+        headers,
+      }).catch((e) => logger.error(e.message));
+
+      const log: Log = {
+        id: createId(),
+        jobId,
+        message: text,
+        createdAt: new Date().toISOString(),
+      };
+      logs.push(log);
+      // send logs to the client
+      sendEvent(clientId, "logs", { text, jobId }).catch((e) =>
+        logger.error(e.message)
+      );
+    },
+  });
+
+  const writableStderrStream = new WritableStream({
+    write: (chunk) => {
+      const text = new TextDecoder().decode(chunk);
+      console.log(text);
+
+      fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+        method: "POST",
+        body: text,
+        headers,
+      }).catch((e) => logger.error(e.message));
+
+      const log: Log = {
+        id: createId(),
+        jobId: jobId!,
+        message: text,
+        createdAt: new Date().toISOString(),
+      };
+      logs.push(log);
+      // send logs to the client
+      sendEvent(clientId, "logs", { text, jobId }).catch((e) =>
+        logger.error(e.message)
+      );
+    },
+  });
+
+  const [_stdout, _stderr, { code }] = await Promise.all([
+    child.stdout.pipeTo(writableStdoutStream),
+    child.stderr.pipeTo(writableStderrStream),
+    child.status,
+  ]);
+
+  return { logs, code };
 }
 
 async function getWebSocketUuid(agentId: string) {
@@ -270,5 +559,19 @@ export async function listAgents() {
 
   table.render();
 }
+
+// deno-lint-ignore no-explicit-any
+const sendEvent = (clientId: string, channel: string, data: any) =>
+  fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
+    method: "POST",
+    body: JSON.stringify({
+      channel,
+      data,
+    }),
+    headers: {
+      ...headers,
+      "Content-Type": "application/json",
+    },
+  });
 
 export default startAgent;

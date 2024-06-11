@@ -10,7 +10,7 @@ import {
   resolve,
 } from "../../deps.ts";
 import { BASE_URL, FLUENTCI_WS_URL, RUNNER_URL } from "../consts.ts";
-import detect from "../detect.ts";
+import detect, { detectProjectType, dirExists } from "../detect.ts";
 import { getCommitInfos } from "../git.ts";
 import {
   setupFluentCIengine,
@@ -48,30 +48,43 @@ async function run(
     export: true,
   });
 
-  if (options.wasm) {
+  if (options.workDir) {
+    if (!(await dirExists(options.workDir as string))) {
+      console.error(
+        `Directory ${green(options.workDir as string)} does not exist`
+      );
+      Deno.exit(1);
+    }
+  }
+
+  if (options.wasm && !options.remoteExec) {
     Deno.env.set("WASM_ENABLED", "1");
-    await runWasmPlugin(pipeline, jobs);
+    await runWasmPlugin(pipeline, jobs, options.workDir as string);
     Deno.exit(0);
   }
 
   if (pipeline === ".") {
-    try {
-      // verify if .fluentci directory exists
-      const fluentciDir = await Deno.stat(".fluentci");
-      await Deno.stat(".fluentci/mod.ts");
-      if (!fluentciDir.isDirectory) {
+    if (!Deno.env.has("FLUENTCI_PROJECT_ID")) {
+      try {
+        // verify if .fluentci directory exists
+        const fluentciDir = await Deno.stat(
+          `${options.workDir || "."}/.fluentci`
+        );
+        await Deno.stat(`${options.workDir || "."}/.fluentci/mod.ts`);
+        if (!fluentciDir.isDirectory) {
+          displayErrorMessage();
+        }
+      } catch (_) {
         displayErrorMessage();
       }
-    } catch (_) {
-      displayErrorMessage();
     }
 
     if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
       if (options.remoteExec) {
-        await runPipelineRemotely(pipeline, jobs);
+        await runPipelineRemotely(pipeline, jobs, options);
         return;
       }
-      await detect(".");
+      await detect((options.workDir as string) || ".");
 
       const query = gql`
         mutation Run($projectId: ID!, $wait: Boolean) {
@@ -93,7 +106,7 @@ async function run(
 
       await projects.save({
         ...project,
-        path: resolve("."),
+        path: resolve((options.workDir as string) || "."),
       });
 
       await projects.deleteAt("empty");
@@ -128,11 +141,18 @@ async function run(
         ".fluentci/src/dagger/runner.ts",
         ...jobs,
         ...Object.keys(options)
-          .filter((key) => key !== "reload" && key !== "wasm")
+          .filter(
+            (key) =>
+              key !== "reload" &&
+              key !== "wasm" &&
+              key !== "remoteExec" &&
+              key !== "workDir"
+          )
           .map((key) => `--${key}=${options[key]}`),
       ],
       stdout: "inherit",
       stderr: "inherit",
+      cwd: (options.workDir as string) || ".",
     });
 
     if (
@@ -149,11 +169,18 @@ async function run(
           ".fluentci/src/dagger/runner.ts",
           ...jobs,
           ...Object.keys(options)
-            .filter((key) => key !== "reload" && key !== "wasm")
+            .filter(
+              (key) =>
+                key !== "reload" &&
+                key !== "wasm" &&
+                key !== "remoteExec" &&
+                key !== "workDir"
+            )
             .map((key) => `--${key}=${options[key]}`),
         ],
         stdout: "inherit",
         stderr: "inherit",
+        cwd: (options.workDir as string) || ".",
       });
     }
 
@@ -161,7 +188,9 @@ async function run(
     const commands = [];
     for (const job of jobs) {
       try {
-        const jobFile = await Deno.stat(`.fluentci/${job}.ts`);
+        const jobFile = await Deno.stat(
+          `${(options.workDir as string) || "."}/.fluentci/${job}.ts`
+        );
         if (jobFile.isFile) {
           jobFileExists = true;
           commands.push(
@@ -173,11 +202,18 @@ async function run(
                 "-A",
                 `.fluentci/${job}.ts`,
                 ...Object.keys(options)
-                  .filter((key) => key !== "reload" && key !== "wasm")
+                  .filter(
+                    (key) =>
+                      key !== "reload" &&
+                      key !== "wasm" &&
+                      key !== "remoteExec" &&
+                      key !== "workDir"
+                  )
                   .map((key) => `--${key}=${options[key]}`),
               ],
               stdout: "inherit",
               stderr: "inherit",
+              cwd: (options.workDir as string) || ".",
             })
           );
           break;
@@ -195,12 +231,19 @@ async function run(
             "-A",
             `.fluentci/${job}.ts`,
             ...Object.keys(options)
-              .filter((key) => key !== "reload" && key !== "wasm")
+              .filter(
+                (key) =>
+                  key !== "reload" &&
+                  key !== "wasm" &&
+                  key !== "remoteExec" &&
+                  key !== "workDir"
+              )
               .map((key) => `--${key}=${options[key]}`)
               .join(" "),
           ],
           stdout: "inherit",
           stderr: "inherit",
+          cwd: (options.workDir as string) || ".",
         })
       );
     }
@@ -246,7 +289,7 @@ async function run(
   }
 
   if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
-    await runPipelineRemotely(pipeline, jobs, denoModule);
+    await runPipelineRemotely(pipeline, jobs, options, denoModule);
     return;
   }
 
@@ -254,6 +297,7 @@ async function run(
     args: ["run", "-A", ...denoModule],
     stdout: "inherit",
     stderr: "inherit",
+    cwd: (options.workDir as string) || ".",
   });
 
   if (
@@ -264,6 +308,7 @@ async function run(
       args: ["run", "deno", "run", "-A", ...denoModule],
       stdout: "inherit",
       stderr: "inherit",
+      cwd: (options.workDir as string) || ".",
     });
   }
 
@@ -289,6 +334,7 @@ const spawnCommand = async (command: Deno.Command) => {
 const runPipelineRemotely = async (
   pipeline: string,
   jobs: [string, ...Array<string>] | string[],
+  options: Record<string, string | number | boolean | undefined> = {},
   denoModule?: string[]
 ) => {
   if (!(await isLogged())) {
@@ -321,6 +367,10 @@ const runPipelineRemotely = async (
     Deno.exit(1);
   }
 
+  const projectType = await detectProjectType(
+    (options.workDir as string) || "."
+  );
+
   console.log("📦 Creating zip file ...");
 
   const blobWriter = new BlobWriter("application/zip");
@@ -345,7 +395,10 @@ const runPipelineRemotely = async (
   const query = JSON.stringify({
     pipeline,
     jobs,
+    wasm: options.wasm,
     denoModule,
+    projectType,
+    workDir: options.workDir,
   });
 
   const blob = await blobWriter.getData();
@@ -368,11 +421,9 @@ const runPipelineRemotely = async (
       Deno.exit(1);
     } else {
       console.log("✅ Context uploaded successfully");
-      const { buildId } = JSON.parse(xhr.response);
-      saveRepositoryMetadata(buildId);
-      const websocket = new WebSocket(
-        `${FLUENTCI_WS_URL}?client_id=${buildId}`
-      );
+      const { runId } = JSON.parse(xhr.response);
+      saveRepositoryMetadata(runId);
+      const websocket = new WebSocket(`${FLUENTCI_WS_URL}?client_id=${runId}`);
 
       websocket.addEventListener("message", (event) => {
         if (event.data === "fluentci_exit=0") {
@@ -389,7 +440,7 @@ const runPipelineRemotely = async (
   xhr.send(blob);
 };
 
-const parseIgnoredFiles = () => {
+const parseIgnoredFiles = (): RegExp[] => {
   let ignoredFilesArray: RegExp[] = [];
   try {
     // verify if .fluentciignore exists
@@ -398,6 +449,7 @@ const parseIgnoredFiles = () => {
       ignoredFilesArray = ignoredFilesArray.concat(
         ignoredFiles
           .split("\n")
+          .filter((x) => x.trim().length)
           .map((file) => new RegExp(file.replace(".", "\\.")))
       );
     }
@@ -408,7 +460,10 @@ const parseIgnoredFiles = () => {
   try {
     const ignoredFiles = Deno.readTextFileSync(".gitignore");
     return ignoredFilesArray.concat(
-      ignoredFiles.split("\n").map((file: string) => new RegExp(file))
+      ignoredFiles
+        .split("\n")
+        .filter((x) => x.trim().length)
+        .map((file: string) => new RegExp(file))
     );
   } catch (_e) {
     return ignoredFilesArray;
@@ -419,7 +474,7 @@ const saveRepositoryMetadata = async (id: string) => {
   try {
     const { commit, sha, author, branch } = await getCommitInfos();
     console.log("📝 Saving repository metadata ...");
-    const status = await fetch(`${BASE_URL}/build/${id}/metadata`, {
+    const status = await fetch(`${BASE_URL}/run/${id}/metadata`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -441,21 +496,22 @@ const saveRepositoryMetadata = async (id: string) => {
   }
 };
 
-const runWasmPlugin = async (pipeline: string, job: string[]) => {
+const runWasmPlugin = async (pipeline: string, job: string[], cwd = ".") => {
   if (pipeline.endsWith(".wasm") || pipeline.endsWith("?wasm=1")) {
     const command = new Deno.Command("bash", {
       args: ["-c", `fluentci-engine call -m ${pipeline} -- ` + job.join(" ")],
       stdout: "inherit",
       stderr: "inherit",
+      cwd,
     });
     await spawnCommand(command);
     return;
   }
 
-  const pluginDirExists = await fluentciPluginDirExists();
+  const pluginDirExists = await fluentciPluginDirExists(cwd);
   if (!pluginDirExists && pipeline === ".") {
     try {
-      await Deno.stat(".fluentci/Cargo.toml");
+      await Deno.stat(`${cwd}/.fluentci/Cargo.toml`);
     } catch (_) {
       console.log("This directory does not contain a FluentCI plugin");
       Deno.exit(1);
@@ -475,13 +531,15 @@ const runWasmPlugin = async (pipeline: string, job: string[]) => {
       args: ["build", "--release", "--target", "wasm32-unknown-unknown"],
       stdout: "inherit",
       stderr: "inherit",
-      cwd: pluginDirExists ? ".fluentci/plugin" : ".fluentci",
+      cwd: pluginDirExists ? `${cwd}/.fluentci/plugin` : `${cwd}/.fluentci`,
     });
     await spawnCommand(build);
 
     const cargoToml = toml.parse(
       Deno.readTextFileSync(
-        pluginDirExists ? ".fluentci/plugin/Cargo.toml" : ".fluentci/Cargo.toml"
+        pluginDirExists
+          ? `${cwd}/.fluentci/plugin/Cargo.toml`
+          : `${cwd}/.fluentci/Cargo.toml`
       )
       // deno-lint-ignore no-explicit-any
     ) as Record<string, any>;
@@ -498,6 +556,7 @@ const runWasmPlugin = async (pipeline: string, job: string[]) => {
       ],
       stdout: "inherit",
       stderr: "inherit",
+      cwd,
     });
     await spawnCommand(command);
     return;
@@ -526,6 +585,7 @@ const runWasmPlugin = async (pipeline: string, job: string[]) => {
     args: ["-c", `fluentci-engine call -m ${url} -- ` + job.join(" ")],
     stdout: "inherit",
     stderr: "inherit",
+    cwd,
   });
   await spawnCommand(command);
 };

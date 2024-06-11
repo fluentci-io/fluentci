@@ -2,7 +2,7 @@ import * as projects from "./server/kv/projects.ts";
 import * as actions from "./server/kv/actions.ts";
 import { createId } from "../deps.ts";
 
-async function fileExists(path: string): Promise<boolean> {
+export async function fileExists(path: string): Promise<boolean> {
   try {
     const { isFile } = await Deno.stat(path);
     return isFile;
@@ -11,7 +11,7 @@ async function fileExists(path: string): Promise<boolean> {
   }
 }
 
-async function dirExists(path: string): Promise<boolean> {
+export async function dirExists(path: string): Promise<boolean> {
   try {
     const { isDirectory } = await Deno.stat(path);
     return isDirectory;
@@ -106,8 +106,8 @@ export default async function detect(src: string): Promise<void> {
         enabled: true,
         plugin: "bun",
         useWasm: true,
-        logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/bun.svg",
-        githubUrl: "https://github.com/fluent-ci-templates/bun-pipeline",
+        logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/nodejs.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/nodejs-pipeline",
       },
     ]);
     return;
@@ -397,4 +397,73 @@ export default async function detect(src: string): Promise<void> {
       githubUrl: "https://github.com/fluent-ci-templates/base-pipeline",
     },
   ]);
+}
+
+export async function detectProjectType(src: string): Promise<string> {
+  if (await fileExists(`${src}/Cargo.toml`)) {
+    return "rust";
+  }
+
+  if (await fileExists(`${src}/go.mod`)) {
+    return "go";
+  }
+
+  if (
+    (await fileExists(`${src}/package.json`)) &&
+    (await fileExists(`${src}/bun.lockb`))
+  ) {
+    return "bun";
+  }
+
+  if (await fileExists(`${src}/package.json`)) {
+    return "node";
+  }
+
+  if (
+    (await fileExists(`${src}/deno.json`)) ||
+    (await fileExists(`${src}/deno.jsonc`))
+  ) {
+    return "deno";
+  }
+
+  if (await fileExists(`${src}/gleam.toml`)) {
+    return "gleam";
+  }
+
+  if (await fileExists(`${src}/build.zig`)) {
+    return "zig";
+  }
+
+  if (await fileExists(`${src}/mix.exs`)) {
+    return "elixir";
+  }
+
+  if (await fileExists(`${src}/composer.json`)) {
+    return "php";
+  }
+
+  if (
+    (await fileExists(`${src}/pubspec.yaml`)) &&
+    (await dirExists(`${src}/android`))
+  ) {
+    return "flutter";
+  }
+
+  if (await fileExists(`${src}/Gemfile`)) {
+    return "ruby";
+  }
+
+  if (await fileExists(`${src}/project.clj`)) {
+    return "clojure";
+  }
+
+  if (await fileExists(`${src}/pom.xml`)) {
+    return "maven";
+  }
+
+  if (await fileExists(`${src}/build.sbt`)) {
+    return "sbt";
+  }
+
+  return "base";
 }

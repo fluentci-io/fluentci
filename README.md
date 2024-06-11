@@ -81,13 +81,13 @@ Requirements:
 
 **Latest (Desktop):**
 
-- `Mac`: arm64: [fluentci-studio_v0.1.0_arm64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.0/fluentci-studio_v0.1.0_arm64.dmg) intel: [fluentci-studio_v0.1.0_x64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.0/fluentci-studio_v0.1.0_x64.dmg)
-- `Linux`: [fluentci-studio_v0.1.0.AppImage](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.0/fluentci-studio_v0.1.0.AppImage)
+- `Mac`: arm64: [fluentci-studio_v0.1.1_arm64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.1/fluentci-studio_v0.1.1_arm64.dmg) intel: [fluentci-studio_v0.1.1_x64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.1/fluentci-studio_v0.1.1_x64.dmg)
+- `Linux`: [fluentci-studio_v0.1.1.AppImage](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.1/fluentci-studio_v0.1.1.AppImage)
 
 **Latest (CLI):**
 
-- `Mac`: arm64: [fluentci_v0.14.6_aarch64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.6/fluentci_v0.14.6_aarch64-apple-darwin.tar.gz) intel: [fluentci_v0.14.6_x86_64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.6/fluentci_v0.14.6_x86_64-apple-darwin.tar.gz)
-- `Linux`: intel: [fluentci_v0.14.6_x86_64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.6/fluentci_v0.14.6_x86_64-unknown-linux-gnu.tar.gz) arm64: [fluentci_v0.14.6_aarch64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.6/fluentci_v0.14.6_aarch64-unknown-linux-gnu.tar.gz)
+- `Mac`: arm64: [fluentci_v0.14.7_aarch64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.7/fluentci_v0.14.7_aarch64-apple-darwin.tar.gz) intel: [fluentci_v0.14.7_x86_64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.7/fluentci_v0.14.7_x86_64-apple-darwin.tar.gz)
+- `Linux`: intel: [fluentci_v0.14.7_x86_64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.7/fluentci_v0.14.7_x86_64-unknown-linux-gnu.tar.gz) arm64: [fluentci_v0.14.7_aarch64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.7/fluentci_v0.14.7_aarch64-unknown-linux-gnu.tar.gz)
 
 ## ✨ Quick Start
 
@@ -110,7 +110,7 @@ fluentci studio
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.14.6                      
+Version: 0.14.7                      
 
 Description:
 

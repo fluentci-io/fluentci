@@ -293,7 +293,7 @@ export async function setupFluentCIengine() {
 export async function setupFluentCIStudio() {
   await setupPkgx();
   let FLUENTCI_STUDIO_VERSION =
-    Deno.env.get("FLUENTCI_STUDIO_VERSION") || "v0.1.0";
+    Deno.env.get("FLUENTCI_STUDIO_VERSION") || "v0.1.1";
 
   if (!FLUENTCI_STUDIO_VERSION.startsWith("v")) {
     FLUENTCI_STUDIO_VERSION = `v${FLUENTCI_STUDIO_VERSION}`;
@@ -325,10 +325,10 @@ export async function setupFluentCIStudio() {
   }
 }
 
-export async function fluentciPluginDirExists(): Promise<boolean> {
+export async function fluentciPluginDirExists(cwd = "."): Promise<boolean> {
   try {
-    const fluentciDir = await Deno.stat(".fluentci/plugin");
-    await Deno.stat(".fluentci/plugin/Cargo.toml");
+    const fluentciDir = await Deno.stat(`${cwd}/.fluentci/plugin`);
+    await Deno.stat(`${cwd}/.fluentci/plugin/Cargo.toml`);
     return fluentciDir.isDirectory;
   } catch (_) {
     return false;

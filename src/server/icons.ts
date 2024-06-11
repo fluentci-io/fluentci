@@ -224,7 +224,7 @@ export default [
   "first-quarter",
   "full-moon",
   "last-quarter",
-  "moon-phase",
+  "moon",
   "moon-stars",
   "new-moon",
   "waning-crescent",
