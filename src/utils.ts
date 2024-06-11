@@ -293,7 +293,7 @@ export async function setupFluentCIengine() {
 export async function setupFluentCIStudio() {
   await setupPkgx();
   let FLUENTCI_STUDIO_VERSION =
-    Deno.env.get("FLUENTCI_STUDIO_VERSION") || "v0.1.0";
+    Deno.env.get("FLUENTCI_STUDIO_VERSION") || "v0.1.1";
 
   if (!FLUENTCI_STUDIO_VERSION.startsWith("v")) {
     FLUENTCI_STUDIO_VERSION = `v${FLUENTCI_STUDIO_VERSION}`;
