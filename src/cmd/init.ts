@@ -46,6 +46,7 @@ async function init(
     if (
       await downloadTemplateFromRegistry(template, version, standalone, wasm)
     ) {
+      await overrideFluentciToml(infos, standalone ? "." : ".fluentci");
       if (wasm) {
         await overrideCargoToml(infos, standalone ? "." : ".fluentci");
         return;
@@ -60,6 +61,7 @@ async function init(
     version =
       version === "latest" ? data.version || data.default_branch : version;
     await downloadTemplateFromGithub(data, template, version, standalone, wasm);
+    await overrideFluentciToml(infos, standalone ? "." : ".fluentci");
     if (wasm) {
       await overrideCargoToml(infos, standalone ? "." : ".fluentci");
       return;
@@ -336,22 +338,25 @@ async function promptPackageDetails(standalone?: boolean, name?: string) {
 }
 
 async function overrideDaggerJson(infos: Record<string, unknown>, path = ".") {
-  const dagger = await Deno.readFile(`${path}/dagger.json`);
-  // deno-lint-ignore no-explicit-any
-  const daggerJson: Record<string, any> = JSON.parse(
-    new TextDecoder().decode(dagger)
-  );
-  for (const key of Object.keys(infos)) {
-    daggerJson[key] = _.get(infos, key);
-  }
-  await Deno.writeFile(
-    `${path}/dagger.json`,
-    new TextEncoder().encode(JSON.stringify(daggerJson, null, 2))
-  );
+  try {
+    const dagger = await Deno.readFile(`${path}/dagger.json`);
+    // deno-lint-ignore no-explicit-any
+    const daggerJson: Record<string, any> = JSON.parse(
+      new TextDecoder().decode(dagger)
+    );
+    for (const key of Object.keys(infos)) {
+      daggerJson[key] = _.get(infos, key);
+    }
+    await Deno.writeFile(
+      `${path}/dagger.json`,
+      new TextEncoder().encode(JSON.stringify(daggerJson, null, 2))
+    );
 
-  if (_.isEqual(path, ".fluentci")) {
-    await Deno.copyFile(".fluentci/dagger.json", "dagger.json");
-  }
+    if (_.isEqual(path, ".fluentci")) {
+      await Deno.copyFile(".fluentci/dagger.json", "dagger.json");
+    }
+    // deno-lint-ignore no-empty no-unused-vars
+  } catch (e) {}
 }
 
 async function overrideCargoToml(infos: Record<string, unknown>, path = ".") {
@@ -368,6 +373,33 @@ async function overrideCargoToml(infos: Record<string, unknown>, path = ".") {
 
   await Deno.writeFile(
     `${path}/Cargo.toml`,
+    new TextEncoder().encode(tomlify.toToml(config, { space: 2 }))
+  );
+}
+
+async function overrideFluentciToml(
+  infos: Record<string, unknown>,
+  path = "."
+) {
+  let config = {};
+  try {
+    const fluentciToml = await Deno.readFile(`${path}/fluentci.toml`);
+    config = toml.parse(new TextDecoder().decode(fluentciToml));
+    // deno-lint-ignore no-unused-vars no-empty
+  } catch (e) {}
+
+  _.set(config, "package.name", _.get(infos, "name"));
+  _.set(config, "package.version", _.get(infos, "version").replace("v", ""));
+  _.set(config, "package.description", _.get(infos, "description"));
+  _.set(config, "package.license", _.get(infos, "license"));
+  _.set(config, "package.keywords", _.get(infos, "keywords"));
+
+  if (_.get(infos, "author")) {
+    _.set(config, "package.authors", [_.get(infos, "author")]);
+  }
+
+  await Deno.writeFile(
+    `${path}/fluentci.toml`,
     new TextEncoder().encode(tomlify.toToml(config, { space: 2 }))
   );
 }
