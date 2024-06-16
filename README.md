@@ -75,7 +75,7 @@ Or download the binary from the [releases page](https://github.com/fluentci-io/f
 
 Requirements:
 - [Deno](https://deno.com) 1.42 or higher. See [Deno Installation](https://deno.land/manual/getting_started/installation) for more information.
-- [Dagger](https://dagger.io) 0.10.0 or higher. See [Dagger Installation](https://docs.dagger.io/cli/465058/install) for more information.
+- [Dagger](https://dagger.io) 0.11.7 or higher. See [Dagger Installation](https://docs.dagger.io/cli/465058/install) for more information.
 
 ## 📦 Downloads
 
