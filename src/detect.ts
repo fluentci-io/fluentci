@@ -386,6 +386,33 @@ export default async function detect(src: string): Promise<void> {
     return;
   }
 
+  if (await fileExists(`${src}/Package.swift`)) {
+    await actions.save(project.id, [
+      {
+        id: createId(),
+        name: "tests",
+        commands: "test",
+        enabled: true,
+        plugin: "swift",
+        useWasm: true,
+        logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/swift.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/swift-pipeline",
+      },
+      {
+        id: createId(),
+        name: "build",
+        commands: "build",
+        enabled: true,
+        plugin: "swift",
+        useWasm: true,
+        logo: "https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/swift.svg",
+        githubUrl: "https://github.com/fluent-ci-templates/swift-pipeline",
+      },
+    ]);
+
+    return;
+  }
+
   await actions.save(project.id, [
     {
       id: createId(),
@@ -463,6 +490,10 @@ export async function detectProjectType(src: string): Promise<string> {
 
   if (await fileExists(`${src}/build.sbt`)) {
     return "sbt";
+  }
+
+  if (await fileExists(`${src}/Package.swift`)) {
+    return "swift";
   }
 
   return "base";
