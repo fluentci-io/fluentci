@@ -31,12 +31,22 @@ async function upgrade() {
       "-f",
       "-g",
     ],
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
   });
 
-  const { stdout, stderr } = await command.output();
+  const { status } = await command.spawn();
 
-  console.log(new TextDecoder().decode(stdout));
-  console.log(new TextDecoder().decode(stderr));
+  if ((await status).success) {
+    console.log(
+      `${green(
+        "fluentci has been successfully upgraded to the latest version."
+      )}`
+    );
+    return;
+  }
+  Deno.exit(1);
 }
 
 export async function checkForUpdate(options: { checkUpdate: boolean }) {
@@ -74,7 +84,7 @@ export async function checkForUpdate(options: { checkUpdate: boolean }) {
     }
   } catch (e) {
     console.log(`
-      ${yellow("WARNING: ")} checking for udpate failed ${e}
+      ${yellow("WARNING: ")} checking for update failed ${e}
     `);
   }
   return false;
