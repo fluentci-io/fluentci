@@ -70,17 +70,29 @@ async function run(
         const fluentciDir = await Deno.stat(
           `${options.workDir || "."}/.fluentci`
         );
-        await Deno.stat(`${options.workDir || "."}/.fluentci/mod.ts`);
         if (!fluentciDir.isDirectory) {
           displayErrorMessage();
         }
       } catch (_) {
         displayErrorMessage();
       }
+      try {
+        await Deno.stat(`${options.workDir || "."}/.fluentci/mod.ts`);
+      } catch (_) {
+        Deno.env.set("WASM_ENABLED", "1");
+        await runWasmPlugin(pipeline, jobs, options.workDir as string);
+        Deno.exit(0);
+      }
     }
 
     if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
       if (options.remoteExec) {
+        try {
+          await Deno.stat(`${options.workDir || "."}/.fluentci/mod.ts`);
+        } catch (_) {
+          await runPipelineRemotely(pipeline, jobs, { ...options, wasm: true });
+          return;
+        }
         await runPipelineRemotely(pipeline, jobs, options);
         return;
       }
@@ -131,6 +143,14 @@ async function run(
       ws.close();
 
       return;
+    }
+
+    try {
+      await Deno.stat(`${options.workDir || "."}/.fluentci/mod.ts`);
+    } catch (_) {
+      Deno.env.set("WASM_ENABLED", "1");
+      await runWasmPlugin(pipeline, jobs, options.workDir as string);
+      Deno.exit(0);
     }
 
     let command = new Deno.Command("deno", {
@@ -275,6 +295,20 @@ async function run(
   }
   version =
     version === "latest" ? data.version || data.default_branch : version;
+
+  const status = await fetch(
+    `https://pkg.fluentci.io/${name}@${version}/import_map.json`
+  ).then((res) => res.status);
+  if (status == 404) {
+    if (Deno.env.get("FLUENTCI_PROJECT_ID")) {
+      await runPipelineRemotely(pipeline, jobs, { ...options, wasm: true });
+      return;
+    }
+    Deno.env.set("WASM_ENABLED", "1");
+    await runWasmPlugin(pipeline, jobs, options.workDir as string);
+    Deno.exit(0);
+  }
+
   let denoModule = [
     `--import-map=https://pkg.fluentci.io/${name}@${version}/import_map.json`,
     `https://pkg.fluentci.io/${name}@${version}/src/dagger/runner.ts`,
