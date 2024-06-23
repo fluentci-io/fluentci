@@ -409,7 +409,61 @@ export default async function detect(src: string): Promise<void> {
         githubUrl: "https://github.com/fluent-ci-templates/swift-pipeline",
       },
     ]);
+    return;
+  }
 
+  if (await fileExists(`${src}/cabal.project`)) {
+    await actions.save(project.id, [
+      {
+        id: createId(),
+        name: "tests",
+        commands: "test",
+        enabled: true,
+        plugin: "haskell",
+        useWasm: true,
+        logo: "https://upload.wikimedia.org/wikipedia/commons/1/1c/Haskell-Logo.svg",
+        githubUrl: "https://github.com/fluentci-io/haskell-plugin",
+      },
+      {
+        id: createId(),
+        name: "build",
+        commands: "build",
+        enabled: true,
+        plugin: "haskell",
+        useWasm: true,
+        logo: "https://upload.wikimedia.org/wikipedia/commons/1/1c/Haskell-Logo.svg",
+        githubUrl: "https://github.com/fluentci-io/haskell-plugin",
+      },
+    ]);
+    return;
+  }
+
+  if (
+    (await fileExists(`${src}/spago.yaml`)) ||
+    (await fileExists(`${src}/spago.dhall`))
+  ) {
+    await actions.save(project.id, [
+      {
+        id: createId(),
+        name: "tests",
+        commands: "test",
+        enabled: true,
+        plugin: "purescript",
+        useWasm: true,
+        logo: "https://upload.wikimedia.org/wikipedia/commons/6/64/PureScript_Logo.png",
+        githubUrl: "https://github.com/fluentci-io/purescipt-plugin",
+      },
+      {
+        id: createId(),
+        name: "build",
+        commands: "build",
+        enabled: true,
+        plugin: "purescript",
+        useWasm: true,
+        logo: "https://upload.wikimedia.org/wikipedia/commons/6/64/PureScript_Logo.png",
+        githubUrl: "https://github.com/fluentci-io/purescript-plugin",
+      },
+    ]);
     return;
   }
 
@@ -494,6 +548,17 @@ export async function detectProjectType(src: string): Promise<string> {
 
   if (await fileExists(`${src}/Package.swift`)) {
     return "swift";
+  }
+
+  if (await fileExists(`${src}/cabal.project`)) {
+    return "haskell";
+  }
+
+  if (
+    (await fileExists(`${src}/spago.yaml`)) ||
+    (await fileExists(`${src}/spago.dhall`))
+  ) {
+    return "purescript";
   }
 
   return "base";
