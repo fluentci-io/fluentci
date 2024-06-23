@@ -79,6 +79,35 @@ export default async function detect(src: string): Promise<void> {
   }
 
   if (
+    (await fileExists(`${src}/spago.yaml`)) ||
+    (await fileExists(`${src}/spago.dhall`))
+  ) {
+    await actions.save(project.id, [
+      {
+        id: createId(),
+        name: "tests",
+        commands: "test",
+        enabled: true,
+        plugin: "purescript",
+        useWasm: true,
+        logo: "https://upload.wikimedia.org/wikipedia/commons/6/64/PureScript_Logo.png",
+        githubUrl: "https://github.com/fluentci-io/purescipt-plugin",
+      },
+      {
+        id: createId(),
+        name: "build",
+        commands: "build",
+        enabled: true,
+        plugin: "purescript",
+        useWasm: true,
+        logo: "https://upload.wikimedia.org/wikipedia/commons/6/64/PureScript_Logo.png",
+        githubUrl: "https://github.com/fluentci-io/purescript-plugin",
+      },
+    ]);
+    return;
+  }
+
+  if (
     (await fileExists(`${src}/package.json`)) &&
     (await fileExists(`${src}/bun.lockb`))
   ) {
@@ -438,35 +467,6 @@ export default async function detect(src: string): Promise<void> {
     return;
   }
 
-  if (
-    (await fileExists(`${src}/spago.yaml`)) ||
-    (await fileExists(`${src}/spago.dhall`))
-  ) {
-    await actions.save(project.id, [
-      {
-        id: createId(),
-        name: "tests",
-        commands: "test",
-        enabled: true,
-        plugin: "purescript",
-        useWasm: true,
-        logo: "https://upload.wikimedia.org/wikipedia/commons/6/64/PureScript_Logo.png",
-        githubUrl: "https://github.com/fluentci-io/purescipt-plugin",
-      },
-      {
-        id: createId(),
-        name: "build",
-        commands: "build",
-        enabled: true,
-        plugin: "purescript",
-        useWasm: true,
-        logo: "https://upload.wikimedia.org/wikipedia/commons/6/64/PureScript_Logo.png",
-        githubUrl: "https://github.com/fluentci-io/purescript-plugin",
-      },
-    ]);
-    return;
-  }
-
   await actions.save(project.id, [
     {
       id: createId(),
@@ -487,6 +487,13 @@ export async function detectProjectType(src: string): Promise<string> {
 
   if (await fileExists(`${src}/go.mod`)) {
     return "go";
+  }
+
+  if (
+    (await fileExists(`${src}/spago.yaml`)) ||
+    (await fileExists(`${src}/spago.dhall`))
+  ) {
+    return "purescript";
   }
 
   if (
@@ -552,13 +559,6 @@ export async function detectProjectType(src: string): Promise<string> {
 
   if (await fileExists(`${src}/cabal.project`)) {
     return "haskell";
-  }
-
-  if (
-    (await fileExists(`${src}/spago.yaml`)) ||
-    (await fileExists(`${src}/spago.dhall`))
-  ) {
-    return "purescript";
   }
 
   return "base";
