@@ -25,6 +25,7 @@ import {
 } from "../utils.ts";
 import { hostname, release, cpus, arch, totalmem, platform } from "node:os";
 import { Action, Agent, Log, Run } from "../types.ts";
+import { setupPkgx } from "../utils.ts";
 
 const accessToken = await getAccessToken();
 const headers = {
@@ -78,12 +79,38 @@ async function startAgent() {
     try {
       logger.info(`Message from server ${event.data}`);
       const data = JSON.parse(event.data);
-      const { action, src, query, runId, actions, run } = JSON.parse(
+      const { action, src, query, runId, actions, run, repoUrl } = JSON.parse(
         data.event
       );
       const { jobs, pipeline, wasm, workDir } = JSON.parse(query);
 
       if (action === "build") {
+        if (repoUrl) {
+          logger.info(
+            `Cloning ${brightGreen("https://" + repoUrl.split("@")[1])} ...`
+          );
+          const id = createId();
+          await gitClone(repoUrl, id);
+
+          await spawnFluentCI(
+            logger,
+            `${dir("home")}/.fluentci/builds/${id}/${repoUrl
+              .split("/")
+              .pop()}/${workDir || "."}`,
+            pipeline,
+            jobs,
+            runId,
+            wasm,
+            actions,
+            run
+          );
+
+          await Deno.remove(`${dir("home")}/.fluentci/builds/${id}`, {
+            recursive: true,
+          });
+
+          return;
+        }
         const project_id = src.split("/")[0];
         const sha256 = src.split("/")[1].replace(".zip", "");
 
@@ -95,15 +122,15 @@ async function startAgent() {
           );
           await spawnFluentCI(
             logger,
-            project_id,
-            sha256,
+            `${dir(
+              "home"
+            )}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
             pipeline,
             jobs,
             runId,
             wasm,
             actions,
-            run,
-            workDir
+            run
           );
           return;
         }
@@ -118,15 +145,13 @@ async function startAgent() {
         await extractZipBlob(blob, project_id, sha256);
         await spawnFluentCI(
           logger,
-          project_id,
-          sha256,
+          `${dir("home")}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
           pipeline,
           jobs,
           runId,
           wasm,
           actions,
-          run,
-          workDir
+          run
         );
       }
     } catch (e) {
@@ -166,28 +191,32 @@ async function extractZipBlob(blob: Blob, project_id: string, sha256: string) {
   }
 }
 
+async function gitClone(url: string, id: string, branch?: string) {
+  await Deno.mkdir(`${dir("home")}/.fluentci/builds/${id}`, {
+    recursive: true,
+  });
+  await setupPkgx();
+  const git = new Deno.Command("pkgx", {
+    args: ["git", "clone", url],
+    cwd: `${dir("home")}/.fluentci/builds/${id}`,
+    stdout: "inherit",
+    stderr: "inherit",
+  });
+  await git.spawn().status;
+}
+
 async function spawnFluentCI(
   logger: Logger,
-  project_id: string,
-  sha256: string,
+  cwd: string,
   pipeline: string,
   jobs: [string, ...Array<string>],
   clientId: string,
   wasm: boolean = false,
   actions: Action[] = [],
-  run?: Run,
-  workDir = "."
+  run?: Run
 ) {
   if (actions.length > 0) {
-    await executeActions(
-      actions,
-      project_id,
-      sha256,
-      run!,
-      logger,
-      clientId,
-      workDir
-    );
+    await executeActions(actions, cwd, run!, logger, clientId);
     return;
   }
 
@@ -199,9 +228,11 @@ async function spawnFluentCI(
           pipeline,
           ...jobs.filter((x) => x !== "--remote-exec"),
         ],
-        cwd: `${dir(
+        /* cwd: `${dir(
           "home"
         )}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
+        */
+        cwd,
         stdout: "piped",
         stderr: "piped",
       })
@@ -215,9 +246,12 @@ async function spawnFluentCI(
           pipeline,
           ...jobs.filter((x) => x !== "--remote-exec"),
         ],
+        /*
         cwd: `${dir(
           "home"
         )}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
+        */
+        cwd,
         stdout: "piped",
         stderr: "piped",
       });
@@ -270,12 +304,10 @@ async function spawnFluentCI(
 
 async function executeActions(
   actions: Action[],
-  project_id: string,
-  sha256: string,
+  cwd: string,
   run: Run,
   logger: Logger,
-  clientId: string,
-  workDir = "."
+  clientId: string
 ) {
   let currentActionIndex = 0;
   const runStart = dayjs();
@@ -317,7 +349,10 @@ async function executeActions(
         `fluentci run ${action.use_wasm ? "--wasm" : ""} ${
           action.plugin
         } ${cmd}`,
-        `${dir("home")}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
+        /*
+        `${dir("home")}/.fluentci/builds/${project_id}/${sha256}/${workDir}`
+        */
+        cwd,
         jobs[currentActionIndex].job_id,
         logger,
         clientId
