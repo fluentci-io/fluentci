@@ -202,6 +202,16 @@ async function gitClone(url: string, id: string, branch?: string) {
     stdout: "inherit",
     stderr: "inherit",
   });
+
+  if (branch) {
+    await new Deno.Command("pkgx", {
+      args: ["git", "checkout", branch],
+      cwd: `${dir("home")}/.fluentci/builds/${id}/${url.split("/").pop()}`,
+      stdout: "inherit",
+      stderr: "inherit",
+    }).spawn().status;
+  }
+
   await git.spawn().status;
 }
 
