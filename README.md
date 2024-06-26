@@ -110,7 +110,7 @@ fluentci studio
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.14.9                      
+Version: 0.15.0                      
 
 Description:
 
@@ -120,7 +120,7 @@ Description:
     / _// / // / -_) _ \/ __/ /___/ /                                                  
    /_/ /_/\_,_/\__/_//_/\__/\___/___/                                                  
                                                                                        
-  FluentCI CLI - An Open Source CI/CD tool written in TypeScript (Deno) based on Dagger
+  FluentCI CLI - An Open Source CI/CD tool written in TypeScript (Deno) based on Wasm Plugins and Dagger
 
 Options:
 
