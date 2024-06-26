@@ -292,8 +292,34 @@ export async function setupFluentCIengine() {
 
 export async function setupFluentCIStudio() {
   await setupPkgx();
-  let FLUENTCI_STUDIO_VERSION =
-    Deno.env.get("FLUENTCI_STUDIO_VERSION") || "v0.1.1";
+
+  let FLUENTCI_STUDIO_VERSION = Deno.env.get("FLUENTCI_STUDIO_VERSION");
+
+  const headers: Record<string, string> = {};
+
+  if (Deno.env.has("GITHUB_ACCESS_TOKEN")) {
+    headers["Authorization"] = `token ${Deno.env.get("GITHUB_ACCESS_TOKEN")}`;
+  }
+
+  if (!FLUENTCI_STUDIO_VERSION) {
+    FLUENTCI_STUDIO_VERSION = await fetch(
+      "https://api.github.com/repos/fluentci-io/fluentci-studio/releases/latest",
+      {
+        headers,
+      }
+    )
+      .then((res) => res.json())
+      .then((data) => data.tag_name)
+      .catch(() => {
+        console.error("Failed to fetch latest release.");
+        Deno.exit(1);
+      });
+  }
+
+  if (!FLUENTCI_STUDIO_VERSION) {
+    console.error("Failed to fetch latest release.");
+    Deno.exit(1);
+  }
 
   if (!FLUENTCI_STUDIO_VERSION.startsWith("v")) {
     FLUENTCI_STUDIO_VERSION = `v${FLUENTCI_STUDIO_VERSION}`;
