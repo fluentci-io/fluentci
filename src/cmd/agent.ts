@@ -228,10 +228,6 @@ async function spawnFluentCI(
           pipeline,
           ...jobs.filter((x) => x !== "--remote-exec"),
         ],
-        /* cwd: `${dir(
-          "home"
-        )}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
-        */
         cwd,
         stdout: "piped",
         stderr: "piped",
@@ -246,11 +242,6 @@ async function spawnFluentCI(
           pipeline,
           ...jobs.filter((x) => x !== "--remote-exec"),
         ],
-        /*
-        cwd: `${dir(
-          "home"
-        )}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
-        */
         cwd,
         stdout: "piped",
         stderr: "piped",
@@ -349,9 +340,6 @@ async function executeActions(
         `fluentci run ${action.use_wasm ? "--wasm" : ""} ${
           action.plugin
         } ${cmd}`,
-        /*
-        `${dir("home")}/.fluentci/builds/${project_id}/${sha256}/${workDir}`
-        */
         cwd,
         jobs[currentActionIndex].job_id,
         logger,
