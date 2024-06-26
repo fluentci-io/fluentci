@@ -86,8 +86,8 @@ Requirements:
 
 **Latest (CLI):**
 
-- `Mac`: arm64: [fluentci_v0.14.9_aarch64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.9/fluentci_v0.14.9_aarch64-apple-darwin.tar.gz) intel: [fluentci_v0.14.9_x86_64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.9/fluentci_v0.14.9_x86_64-apple-darwin.tar.gz)
-- `Linux`: intel: [fluentci_v0.14.9_x86_64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.9/fluentci_v0.14.9_x86_64-unknown-linux-gnu.tar.gz) arm64: [fluentci_v0.14.9_aarch64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.14.9/fluentci_v0.14.9_aarch64-unknown-linux-gnu.tar.gz)
+- `Mac`: arm64: [fluentci_v0.15.0_aarch64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.0/fluentci_v0.15.0_aarch64-apple-darwin.tar.gz) intel: [fluentci_v0.15.0_x86_64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.0/fluentci_v0.15.0_x86_64-apple-darwin.tar.gz)
+- `Linux`: intel: [fluentci_v0.15.0_x86_64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.0/fluentci_v0.15.0_x86_64-unknown-linux-gnu.tar.gz) arm64: [fluentci_v0.15.0_aarch64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.0/fluentci_v0.15.0_aarch64-unknown-linux-gnu.tar.gz)
 
 ## ✨ Quick Start
 
