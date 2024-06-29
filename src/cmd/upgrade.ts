@@ -1,5 +1,6 @@
 import { VERSION } from "../consts.ts";
 import { gray, green, semver, yellow } from "../../deps.ts";
+import { setupFluentCIStudio, setupFluentCIengine } from "../utils.ts";
 
 /**
  * Upgrades FluentCI by installing the latest version from the Deno registry.
@@ -17,6 +18,11 @@ async function upgrade() {
     );
     return;
   }
+
+  Deno.env.set("FORCE_FLUENTCI_STUDIO_INSTALL", "1");
+  Deno.env.set("FORCE_FLUENTCI_ENGINE_INSTALL", "1");
+  await setupFluentCIengine();
+  await setupFluentCIStudio();
 
   const command = new Deno.Command("deno", {
     args: [
