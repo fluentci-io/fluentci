@@ -44,3 +44,28 @@ export async function createProject(
     picture: `https://img.icons8.com/color-glass/96/${icon}.png`,
   });
 }
+
+export async function updateProject(
+  root: any,
+  args: any,
+  ctx: Context
+): Promise<Project | null> {
+  const project = await ctx.kv.projects.get(args.id);
+
+  if (!project) {
+    return null;
+  }
+
+  const tags = _.get(args, "tags", "")
+    .split(",")
+    .map((x: string) => x.trim());
+
+  await ctx.kv.projects.save({
+    ...project,
+    displayName: args.name,
+    description: args.description,
+    tags,
+  });
+
+  return ctx.kv.projects.get(args.id);
+}

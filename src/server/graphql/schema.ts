@@ -10,7 +10,7 @@ import {
   getProjects,
 } from "./resolvers/project/queries.ts";
 import { runJob } from "./resolvers/job/mutations.ts";
-import { createProject } from "./resolvers/project/mutations.ts";
+import { createProject, updateProject } from "./resolvers/project/mutations.ts";
 import { runPipeline } from "./resolvers/run/mutations.ts";
 import { countRuns, getRun, getRuns } from "./resolvers/run/queries.ts";
 import { Run } from "./objects/run.ts";
@@ -52,11 +52,14 @@ builder.objectType(Log, {
 
 builder.objectType(Project, {
   name: "Project",
-  description: "A project is a collection of actions.",
+  description: "A project is a collection of projects.",
   fields: (t) => ({
     id: t.exposeID("id"),
-    path: t.exposeString("path"),
+    path: t.exposeString("path", { nullable: true }),
     name: t.exposeString("name"),
+    displayName: t.exposeString("displayName", { nullable: true }),
+    description: t.exposeString("description", { nullable: true }),
+    tags: t.exposeStringList("tags", { nullable: true }),
     createdAt: t.exposeString("createdAt"),
     logs: t.field({
       type: Log,
@@ -227,6 +230,17 @@ builder.mutationType({
     createProject: t.field({
       type: Project,
       resolve: createProject,
+    }),
+    updateProject: t.field({
+      type: Project,
+      nullable: true,
+      args: {
+        id: t.arg.id({ required: true }),
+        name: t.arg.string({ required: false }),
+        description: t.arg.string({ required: false }),
+        tags: t.arg.string({ required: false }),
+      },
+      resolve: updateProject,
     }),
     runPipeline: t.field({
       type: Run,

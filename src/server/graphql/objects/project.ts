@@ -5,6 +5,9 @@ export class Project {
   id: string;
   path: string;
   name: string;
+  displayName?: string | null;
+  description?: string | null;
+  tags?: string[] | null;
   createdAt: string;
   logs?: Log;
   cursor?: string;
@@ -19,6 +22,9 @@ export class Project {
     id,
     path,
     name,
+    displayName,
+    description,
+    tags,
     createdAt,
     logs,
     cursor,
@@ -32,6 +38,9 @@ export class Project {
     this.id = id;
     this.path = path;
     this.name = name;
+    this.displayName = displayName;
+    this.description = description;
+    this.tags = tags;
     this.createdAt = createdAt;
     this.logs = logs;
     this.cursor = cursor;
