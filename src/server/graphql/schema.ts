@@ -10,7 +10,13 @@ import {
   getProjects,
 } from "./resolvers/project/queries.ts";
 import { runJob } from "./resolvers/job/mutations.ts";
-import { createProject, updateProject } from "./resolvers/project/mutations.ts";
+import {
+  archiveProject,
+  createProject,
+  deleteProject,
+  unarchiveProject,
+  updateProject,
+} from "./resolvers/project/mutations.ts";
 import { runPipeline } from "./resolvers/run/mutations.ts";
 import { countRuns, getRun, getRuns } from "./resolvers/run/queries.ts";
 import { Run } from "./objects/run.ts";
@@ -76,6 +82,9 @@ builder.objectType(Project, {
       nullable: true,
       resolve: (root) => root.recentRuns,
     }),
+    isPrivate: t.exposeBoolean("isPrivate", { nullable: true }),
+    owner: t.exposeString("owner", { nullable: true }),
+    archived: t.exposeBoolean("archived", { nullable: true }),
   }),
 });
 
@@ -130,6 +139,15 @@ export const ActionInput = builder.inputType("ActionInput", {
   }),
 });
 
+const ProjectFilters = builder.inputType("ProjectFilters", {
+  fields: (t) => ({
+    org: t.string({ required: false }),
+    user: t.string({ required: false }),
+    archived: t.boolean({ required: false }),
+    tags: t.stringList({ required: false }),
+  }),
+});
+
 builder.queryType({
   fields: (t) => ({
     projects: t.field({
@@ -139,6 +157,7 @@ builder.queryType({
         limit: t.arg.int(),
         cursor: t.arg.string(),
         reverse: t.arg.boolean(),
+        filters: t.arg({ type: ProjectFilters, required: false }),
       },
       resolve: getProjects,
     }),
@@ -269,6 +288,29 @@ builder.mutationType({
         }),
       },
       resolve: saveActions,
+    }),
+    archiveProject: t.field({
+      type: Project,
+      nullable: true,
+      args: {
+        id: t.arg.id({ required: true }),
+      },
+      resolve: archiveProject,
+    }),
+    unarchiveProject: t.field({
+      type: Project,
+      nullable: true,
+      args: {
+        id: t.arg.id({ required: true }),
+      },
+      resolve: unarchiveProject,
+    }),
+    deleteProject: t.field({
+      type: "Boolean",
+      args: {
+        id: t.arg.id({ required: true }),
+      },
+      resolve: deleteProject,
     }),
   }),
 });

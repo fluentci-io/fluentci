@@ -69,3 +69,57 @@ export async function updateProject(
 
   return ctx.kv.projects.get(args.id);
 }
+
+export async function deleteProject(
+  root: any,
+  args: any,
+  ctx: Context
+): Promise<boolean> {
+  const project = await ctx.kv.projects.get(args.id);
+
+  if (!project) {
+    return false;
+  }
+
+  await ctx.kv.projects.remove(args.id);
+
+  return true;
+}
+
+export async function archiveProject(
+  root: any,
+  args: any,
+  ctx: Context
+): Promise<Project | null> {
+  const project = await ctx.kv.projects.get(args.id);
+
+  if (!project) {
+    return null;
+  }
+
+  await ctx.kv.projects.save({
+    ...project,
+    archived: true,
+  });
+
+  return ctx.kv.projects.get(args.id);
+}
+
+export async function unarchiveProject(
+  root: any,
+  args: any,
+  ctx: Context
+): Promise<Project | null> {
+  const project = await ctx.kv.projects.get(args.id);
+
+  if (!project) {
+    return null;
+  }
+
+  await ctx.kv.projects.save({
+    ...project,
+    archived: false,
+  });
+
+  return ctx.kv.projects.get(args.id);
+}

@@ -131,3 +131,19 @@ export async function count() {
   for await (const _ of iter) n++;
   return n;
 }
+
+export async function remove(id: string) {
+  const project = await get(id);
+  if (!project) return;
+  await kv
+    .atomic()
+    .delete([FLUENTCI_KV_PREFIX, "projects", id])
+    .delete([FLUENTCI_KV_PREFIX, "path", project.path || "empty"])
+    .delete([FLUENTCI_KV_PREFIX, "projects_by_name", project.name])
+    .delete([
+      FLUENTCI_KV_PREFIX,
+      "projects_by_date",
+      dayjs(project.createdAt).unix(),
+    ])
+    .commit();
+}

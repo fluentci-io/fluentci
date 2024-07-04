@@ -17,6 +17,9 @@ export class Project {
   reliability?: number;
   buildsPerWeek?: number;
   recentRuns?: Run[];
+  isPrivate?: boolean;
+  owner?: string;
+  archived?: boolean;
 
   constructor({
     id,
@@ -34,6 +37,9 @@ export class Project {
     reliability,
     buildsPerWeek,
     recentRuns,
+    isPrivate,
+    owner,
+    archived,
   }: Project) {
     this.id = id;
     this.path = path;
@@ -50,5 +56,8 @@ export class Project {
     this.reliability = reliability;
     this.buildsPerWeek = buildsPerWeek;
     this.recentRuns = recentRuns;
+    this.isPrivate = isPrivate;
+    this.owner = owner;
+    this.archived = archived;
   }
 }
