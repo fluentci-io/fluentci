@@ -19,6 +19,7 @@ export type KV = {
     count: () => Promise<number>;
     updateStats: (id: string) => Promise<void>;
     byName: (name: string) => Promise<Project | null>;
+    remove: (id: string) => Promise<void>;
   };
   runs: {
     save: (project: string, data: Run) => Promise<void>;
