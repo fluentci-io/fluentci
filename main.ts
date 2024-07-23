@@ -18,6 +18,13 @@ import repl from "./src/cmd/repl.ts";
 import studio from "./src/cmd/studio.ts";
 import * as projects from "./src/cmd/project.ts";
 import server from "./src/cmd/server.ts";
+import down from "./src/cmd/down.ts";
+import up from "./src/cmd/up.ts";
+import listServices from "./src/cmd/ps.ts";
+import status from "./src/cmd/status.ts";
+import restart from "./src/cmd/restart.ts";
+import stop from "./src/cmd/stop.ts";
+import echo from "./src/cmd/echo.ts";
 
 export async function main() {
   Deno.env.set(
@@ -204,6 +211,43 @@ export async function main() {
     .option("--port <port:number>", "Port to run FluentCI Server")
     .action(function (options) {
       server(options);
+    })
+    .command("up", "Start services")
+    .action(async function () {
+      await up();
+    })
+    .command("down", "Stop services")
+    .action(async function () {
+      await down();
+    })
+    .command("ps", "List services")
+    .action(async function () {
+      await listServices();
+    })
+    .command("status", "Show status of a service")
+    .arguments("<service:string>")
+    .action(async function (_, service) {
+      await status(service);
+    })
+    .command("start", "Start a service")
+    .arguments("<service:string>")
+    .action(async function (_, service) {
+      await restart(service);
+    })
+    .command("restart", "Restart a service")
+    .arguments("<service:string>")
+    .action(async function (_, service) {
+      await restart(service);
+    })
+    .command("stop", "Stop a service")
+    .arguments("<service:string>")
+    .action(async function (_, service) {
+      await stop(service);
+    })
+    .command("echo", "Stream logs of a service")
+    .arguments("<service:string>")
+    .action(async function (_, service) {
+      await echo(service);
     })
     .globalOption("--check-update <checkUpdate:boolean>", "check for update", {
       default: true,

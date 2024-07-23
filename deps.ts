@@ -1,5 +1,7 @@
 import * as semver from "jsr:@std/semver@0.224.0";
 export { semver };
+import procfile from "npm:procfile";
+export { procfile };
 export {
   bold,
   brightGreen,
