@@ -22,6 +22,9 @@ import down from "./src/cmd/down.ts";
 import up from "./src/cmd/up.ts";
 import listServices from "./src/cmd/ps.ts";
 import status from "./src/cmd/status.ts";
+import restart from "./src/cmd/restart.ts";
+import stop from "./src/cmd/stop.ts";
+import echo from "./src/cmd/echo.ts";
 
 export async function main() {
   Deno.env.set(
@@ -225,6 +228,26 @@ export async function main() {
     .arguments("<service:string>")
     .action(async function (_, service) {
       await status(service);
+    })
+    .command("start", "Start a service")
+    .arguments("<service:string>")
+    .action(async function (_, service) {
+      await restart(service);
+    })
+    .command("restart", "Restart a service")
+    .arguments("<service:string>")
+    .action(async function (_, service) {
+      await restart(service);
+    })
+    .command("stop", "Stop a service")
+    .arguments("<service:string>")
+    .action(async function (_, service) {
+      await stop(service);
+    })
+    .command("echo", "Stream logs of a service")
+    .arguments("<service:string>")
+    .action(async function (_, service) {
+      await echo(service);
     })
     .globalOption("--check-update <checkUpdate:boolean>", "check for update", {
       default: true,

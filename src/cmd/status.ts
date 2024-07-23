@@ -1,4 +1,5 @@
 import { brightGreen, gray, bold, procfile, Table, Cell } from "../../deps.ts";
+import { getServicePid } from "../utils.ts";
 
 export default async function status(name: string) {
   const command = new Deno.Command("bash", {
@@ -47,13 +48,16 @@ export default async function status(name: string) {
   }
 
   if (!infos[name]) {
-    console.log("Service not found");
+    console.log("Service not found in Procfile");
     Deno.exit(1);
   }
+
+  const pid = await getServicePid(name, infos[name].socket);
 
   console.log(
     `${infos[name].status === "Up" ? brightGreen("●") : "○"} ${name}`
   );
+
   const table = new Table().body([
     [
       new Cell("Procfile:").align("right"),
@@ -68,7 +72,7 @@ export default async function status(name: string) {
         : "inactive (dead)",
     ],
     [new Cell("Socket:").align("right"), infos[name].socket],
-    [new Cell("Main PID:").align("right"), "1234"],
+    [new Cell("Main PID:").align("right"), pid],
     [
       new Cell("WorkDir:").align("right"),
       infos[name].socket.replace("/.overmind.sock", ""),

@@ -1,7 +1,7 @@
 import { green, procfile } from "../../deps.ts";
 import { getProcfiles } from "../utils.ts";
 
-export default async function down() {
+export default async function restart(name: string) {
   const files = await getProcfiles();
   const services = [];
   // deno-lint-ignore no-explicit-any
@@ -18,17 +18,24 @@ export default async function down() {
     for (const service of Object.keys(manifest)) {
       const socket = file.replace("Procfile", ".overmind.sock");
       infos[service].socket = socket;
-      const command = new Deno.Command("sh", {
-        args: ["-c", `echo stop  | nc -U -w 1 ${socket}`],
-        stdout: "piped",
-      });
-      const process = await command.spawn();
-      const { success } = await process.output();
-      if (!success) {
-        console.log(`Failed to stop ${green(service)}`);
-        continue;
-      }
-      console.log(`Successfully stopped ${green(service)}`);
     }
   }
+
+  if (!infos[name]) {
+    console.log("Service not found in Procfile");
+    Deno.exit(1);
+  }
+
+  const socket = infos[name].socket;
+  const command = new Deno.Command("sh", {
+    args: ["-c", `echo restart | nc -U -w 1 ${socket}`],
+    stdout: "piped",
+  });
+  const process = await command.spawn();
+  const { success } = await process.output();
+  if (!success) {
+    console.log(`Failed to restart ${green(name)}`);
+    return;
+  }
+  console.log(`Successfully restarted ${green(name)}`);
 }

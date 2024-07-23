@@ -1,18 +1,8 @@
 import { green, procfile } from "../../deps.ts";
+import { getProcfiles } from "../utils.ts";
 
 export default async function up() {
-  const command = new Deno.Command("bash", {
-    args: ["-c", "ls .fluentci/*/Procfile"],
-    stdout: "piped",
-  });
-  const process = await command.spawn();
-  const { stdout, success } = await process.output();
-  if (!success) {
-    console.log("No services running");
-    Deno.exit(0);
-  }
-  const decoder = new TextDecoder();
-  const files = decoder.decode(stdout).trim().split("\n");
+  const files = await getProcfiles();
   const services = [];
   // deno-lint-ignore no-explicit-any
   let infos: Record<string, any> = {};
@@ -27,6 +17,7 @@ export default async function up() {
 
     for (const service of Object.keys(manifest)) {
       const socket = file.replace("Procfile", ".overmind.sock");
+
       infos[service].socket = socket;
       const command = new Deno.Command("sh", {
         args: ["-c", `echo restart | nc -U -w 1 ${socket}`],

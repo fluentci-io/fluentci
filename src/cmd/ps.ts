@@ -1,18 +1,8 @@
 import { procfile, Table } from "../../deps.ts";
+import { getProcfiles, getServicePid } from "../utils.ts";
 
 export default async function listServices() {
-  const command = new Deno.Command("bash", {
-    args: ["-c", "ls .fluentci/*/Procfile"],
-    stdout: "piped",
-  });
-  const process = await command.spawn();
-  const { stdout, success } = await process.output();
-  if (!success) {
-    console.log("No services running");
-    Deno.exit(0);
-  }
-  const decoder = new TextDecoder();
-  const files = decoder.decode(stdout).trim().split("\n");
+  const files = await getProcfiles();
   const services = [];
   // deno-lint-ignore no-explicit-any
   let infos: Record<string, any> = {};
@@ -48,10 +38,12 @@ export default async function listServices() {
   services.sort();
 
   const table = new Table();
-  table.header(["PROCESS", "STATUS", "COMMAND"]);
+  table.header(["PROCESS", "PID", "STATUS", "COMMAND"]);
   for (const service of services) {
+    const pid = await getServicePid(service, infos[service].socket);
     table.push([
       service,
+      pid,
       infos[service].status,
       infos[service].command + " " + infos[service].options.join(" "),
     ]);

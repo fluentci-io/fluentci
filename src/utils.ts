@@ -403,3 +403,54 @@ export async function bash(
     Deno.exit(1);
   }
 }
+
+export async function getProcfiles() {
+  const command = new Deno.Command("bash", {
+    args: ["-c", "ls .fluentci/*/Procfile"],
+    stdout: "piped",
+  });
+  const process = await command.spawn();
+  const { stdout, success } = await process.output();
+  if (!success) {
+    console.log("No services running");
+    Deno.exit(0);
+  }
+
+  const decoder = new TextDecoder();
+  return decoder.decode(stdout).trim().split("\n");
+}
+
+export async function getServicePid(name: string, socket: string) {
+  const command = new Deno.Command("sh", {
+    args: ["-c", `echo status  | nc -U -w 1 ${socket}`],
+    stdout: "piped",
+  });
+  const process = await command.spawn();
+  const { stdout } = await process.output();
+  const decoder = new TextDecoder();
+  const lines = decoder.decode(stdout).trim().split("\n");
+  return lines
+    .find((line) => line.startsWith(name + " "))
+    ?.split(" ")
+    ?.filter((x) => x)[1];
+}
+
+export async function startOvermind(cwd: string) {
+  const command = new Deno.Command("sh", {
+    args: [
+      "-c",
+      `[ -S .overmind.sock ] || overmind start -f Procfile --daemonize`,
+    ],
+    stdout: "inherit",
+    stderr: "inherit",
+    cwd,
+  });
+
+  const process = await command.spawn();
+  const { code } = await process.status;
+
+  if (code !== 0) {
+    console.log("Failed to start Overmind.");
+    Deno.exit(1);
+  }
+}
