@@ -81,8 +81,8 @@ Requirements:
 
 **Latest (Desktop):**
 
-- `Mac`: arm64: [fluentci-studio_v0.1.6_arm64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.6/fluentci-studio_v0.1.6_arm64.dmg) intel: [fluentci-studio_v0.1.6_x64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.6/fluentci-studio_v0.1.6_x64.dmg)
-- `Linux`: [fluentci-studio_v0.1.6.AppImage](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.6/fluentci-studio_v0.1.6.AppImage)
+- `Mac`: arm64: [fluentci-studio_v0.1.7_arm64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.7/fluentci-studio_v0.1.7_arm64.dmg) intel: [fluentci-studio_v0.1.7_x64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.7/fluentci-studio_v0.1.7_x64.dmg)
+- `Linux`: [fluentci-studio_v0.1.7.AppImage](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.7/fluentci-studio_v0.1.7.AppImage)
 
 **Latest (CLI):**
 
@@ -110,7 +110,7 @@ fluentci studio
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.15.2                      
+Version: 0.15.3                      
 
 Description:
 
@@ -148,8 +148,16 @@ Commands:
   whoami                           - Show current logged in user                               
   repl       [pipelines...]        - Start FluentCI REPL                                       
   studio                           - Start FluentCI Studio, a web-based user interface         
-  project                          - Manage projects                                 
-  server                           - Start FluentCI GraphQL Server     
+  project                          - Manage projects                                           
+  server                           - Start FluentCI GraphQL Server                             
+  up                               - Start services                                            
+  down                             - Stop services                                             
+  ps                               - List services                                             
+  status     <service>             - Show status of a service                                  
+  start      <service>             - Start a service                                           
+  restart    <service>             - Restart a service                                         
+  stop       <service>             - Stop a service                                            
+  echo       <service>             - Stream logs of a service           
 ```
 
 ## 📚 Documentation
