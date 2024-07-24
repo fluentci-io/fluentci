@@ -1,5 +1,5 @@
 import { green, procfile } from "../../deps.ts";
-import { getProcfiles } from "../utils.ts";
+import { getProcfiles, writeToSocket } from "../utils.ts";
 
 export default async function echo(name: string) {
   const files = await getProcfiles();
@@ -27,14 +27,9 @@ export default async function echo(name: string) {
   }
 
   const socket = infos[name].socket;
-  const command = new Deno.Command("sh", {
-    args: ["-c", `echo echo | nc -U ${socket}`],
-    stdout: "inherit",
-    stderr: "inherit",
-  });
-  const process = await command.spawn();
-  const { success } = await process.output();
-  if (!success) {
+  try {
+    await writeToSocket(socket, "echo\n", true);
+  } catch (_e) {
     console.log(`Failed to stream logs for ${green(name)}`);
     Deno.exit(1);
   }
