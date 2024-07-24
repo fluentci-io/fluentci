@@ -1,5 +1,5 @@
 import { green, procfile } from "../../deps.ts";
-import { getProcfiles } from "../utils.ts";
+import { getProcfiles, writeToSocket } from "../utils.ts";
 
 export default async function down() {
   const files = await getProcfiles();
@@ -18,16 +18,14 @@ export default async function down() {
     for (const service of Object.keys(manifest)) {
       const socket = file.replace("Procfile", ".overmind.sock");
       infos[service].socket = socket;
-      const command = new Deno.Command("sh", {
-        args: ["-c", `echo stop  | nc -U -w 1 ${socket}`],
-        stdout: "piped",
-      });
-      const process = await command.spawn();
-      const { success } = await process.output();
-      if (!success) {
+
+      try {
+        await writeToSocket(socket, "stop\n");
+      } catch (_e) {
         console.log(`Failed to stop ${green(service)}`);
         continue;
       }
+
       console.log(`Successfully stopped ${green(service)}`);
     }
   }

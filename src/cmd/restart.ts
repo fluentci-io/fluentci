@@ -1,5 +1,5 @@
 import { green, procfile } from "../../deps.ts";
-import { getProcfiles } from "../utils.ts";
+import { getProcfiles, writeToSocket } from "../utils.ts";
 
 export default async function restart(name: string) {
   const files = await getProcfiles();
@@ -27,13 +27,9 @@ export default async function restart(name: string) {
   }
 
   const socket = infos[name].socket;
-  const command = new Deno.Command("sh", {
-    args: ["-c", `echo restart | nc -U -w 1 ${socket}`],
-    stdout: "piped",
-  });
-  const process = await command.spawn();
-  const { success } = await process.output();
-  if (!success) {
+  try {
+    await writeToSocket(socket, "restart\n");
+  } catch (_e) {
     console.log(`Failed to restart ${green(name)}`);
     return;
   }

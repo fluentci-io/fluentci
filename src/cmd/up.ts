@@ -1,5 +1,5 @@
 import { green, procfile } from "../../deps.ts";
-import { getProcfiles } from "../utils.ts";
+import { getProcfiles, writeToSocket } from "../utils.ts";
 
 export default async function up() {
   const files = await getProcfiles();
@@ -19,13 +19,9 @@ export default async function up() {
       const socket = file.replace("Procfile", ".overmind.sock");
 
       infos[service].socket = socket;
-      const command = new Deno.Command("sh", {
-        args: ["-c", `echo restart | nc -U -w 1 ${socket}`],
-        stdout: "piped",
-      });
-      const process = await command.spawn();
-      const { success } = await process.output();
-      if (!success) {
+      try {
+        await writeToSocket(socket, "restart\n");
+      } catch (_e) {
         console.log(`Failed to start ${green(service)}`);
         continue;
       }

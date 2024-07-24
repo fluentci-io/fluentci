@@ -421,36 +421,49 @@ export async function getProcfiles() {
 }
 
 export async function getServicePid(name: string, socket: string) {
-  const command = new Deno.Command("sh", {
-    args: ["-c", `echo status  | nc -U -w 1 ${socket}`],
-    stdout: "piped",
-  });
-  const process = await command.spawn();
-  const { stdout } = await process.output();
-  const decoder = new TextDecoder();
-  const lines = decoder.decode(stdout).trim().split("\n");
-  return lines
-    .find((line) => line.startsWith(name + " "))
-    ?.split(" ")
-    ?.filter((x) => x)[1];
+  try {
+    const response = await writeToSocket(socket, "status\n");
+    const lines = response.replaceAll("\x00", "").trim().split("\n");
+    return lines
+      .find((line) => line.startsWith(name + " "))
+      ?.split(" ")
+      ?.filter((x) => x)[1];
+  } catch (_e) {
+    return "";
+  }
 }
 
-export async function startOvermind(cwd: string) {
-  const command = new Deno.Command("sh", {
-    args: [
-      "-c",
-      `[ -S .overmind.sock ] || overmind start -f Procfile --daemonize`,
-    ],
-    stdout: "inherit",
-    stderr: "inherit",
-    cwd,
-  });
+export async function writeToSocket(
+  socket: string,
+  message: string,
+  stream = false
+): Promise<string> {
+  const conn = await Deno.connect({ transport: "unix", path: socket });
+  await conn.write(new TextEncoder().encode(message));
 
-  const process = await command.spawn();
-  const { code } = await process.status;
-
-  if (code !== 0) {
-    console.log("Failed to start Overmind.");
-    Deno.exit(1);
+  if (["stop", "restart"].includes(message.trim())) {
+    conn.close();
+    return "";
   }
+
+  if (stream) {
+    while (true) {
+      const buf = new Uint8Array(1024);
+      const bytesRead = await conn.read(buf);
+      if (bytesRead === null) break;
+      console.log(new TextDecoder().decode(buf));
+    }
+    conn.close();
+    return "";
+  }
+
+  let data = "";
+  while (true) {
+    const buf = new Uint8Array(1024);
+    const bytesRead = await conn.read(buf);
+    if (bytesRead === null) break;
+    data += new TextDecoder().decode(buf);
+  }
+  conn.close();
+  return data;
 }

@@ -1,5 +1,5 @@
 import { brightGreen, gray, bold, procfile, Table, Cell } from "../../deps.ts";
-import { getServicePid } from "../utils.ts";
+import { getServicePid, writeToSocket } from "../utils.ts";
 
 export default async function status(name: string) {
   const command = new Deno.Command("bash", {
@@ -30,20 +30,16 @@ export default async function status(name: string) {
       infos[service].procfile = file;
       const socket = file.replace("Procfile", ".overmind.sock");
       infos[service].socket = socket;
-      const command = new Deno.Command("sh", {
-        args: ["-c", `echo status  | nc -U -w 1 ${socket}`],
-        stdout: "piped",
-      });
-      const process = await command.spawn();
-      const { stdout, success } = await process.output();
-      if (!success) {
+      try {
+        const response = await writeToSocket(socket, "status\n");
+        if (!response.includes("running")) {
+          infos[service].status = "Stopped";
+          continue;
+        }
+      } catch (_e) {
         infos[service].status = "Stopped";
-        continue;
       }
-      const decoder = new TextDecoder();
-      infos[service].status = decoder.decode(stdout).includes("running")
-        ? "Up"
-        : "Stopped";
+      infos[service].status = "Up";
     }
   }
 
