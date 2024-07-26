@@ -531,7 +531,13 @@ const saveRepositoryMetadata = async (id: string) => {
 };
 
 const runWasmPlugin = async (pipeline: string, job: string[], cwd = ".") => {
-  if (pipeline.endsWith(".wasm") || pipeline.endsWith("?wasm=1")) {
+  if (
+    pipeline.endsWith(".wasm") ||
+    pipeline.endsWith("?wasm=1") ||
+    pipeline.startsWith("azurecr.io/") ||
+    pipeline.startsWith("ghcr.io/") ||
+    pipeline.startsWith("gcr.io/")
+  ) {
     const command = new Deno.Command("bash", {
       args: ["-c", `fluentci-engine call -m ${pipeline} -- ` + job.join(" ")],
       stdout: "inherit",
