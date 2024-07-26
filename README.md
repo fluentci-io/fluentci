@@ -157,7 +157,8 @@ Commands:
   start      <service>             - Start a service                                           
   restart    <service>             - Restart a service                                         
   stop       <service>             - Stop a service                                            
-  echo       <service>             - Stream logs of a service           
+  echo       <service>             - Stream logs of a service  
+  community                        - Join our community Discord to chat with us            
 ```
 
 ## 📚 Documentation
