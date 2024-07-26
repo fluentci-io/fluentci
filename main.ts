@@ -25,6 +25,7 @@ import status from "./src/cmd/status.ts";
 import restart from "./src/cmd/restart.ts";
 import stop from "./src/cmd/stop.ts";
 import echo from "./src/cmd/echo.ts";
+import community from "./src/cmd/community.ts";
 
 export async function main() {
   Deno.env.set(
@@ -248,6 +249,10 @@ export async function main() {
     .arguments("<service:string>")
     .action(async function (_, service) {
       await echo(service);
+    })
+    .command("community", "Join our community Discord to chat with us")
+    .action(async function () {
+      await community();
     })
     .globalOption("--check-update <checkUpdate:boolean>", "check for update", {
       default: true,
