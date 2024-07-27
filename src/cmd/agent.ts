@@ -318,6 +318,13 @@ async function executeActions(
   let jobs = [...run.jobs];
   const date = new Date().toISOString();
 
+  const rmOvermindSocket = new Deno.Command("bash", {
+    args: ["-c", `rm -f ${cwd}/.fluentci/*/.overmind.sock`],
+    stdout: "piped",
+    stderr: "piped",
+  }).spawn();
+  await rmOvermindSocket.status;
+
   // send update run status "RUNNING" + date
   sendEvent(clientId, "run", {
     ...run,
