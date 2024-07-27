@@ -22,6 +22,7 @@ import {
   getAccessToken,
   getDaggerVersion,
   isLogged,
+  stopServices,
 } from "../utils.ts";
 import { hostname, release, cpus, arch, totalmem, platform } from "node:os";
 import { Action, Agent, Log, Run } from "../types.ts";
@@ -399,6 +400,11 @@ async function executeActions(
           body: `fluentci_exit=1`,
           headers,
         }).catch((e) => logger.error(e.message));
+
+        if (actions.some((x) => x.use_wasm)) {
+          await stopServices(cwd);
+        }
+
         return;
       }
     }
@@ -446,6 +452,10 @@ async function executeActions(
   sendEvent(clientId, "update-stats", { projectId: run.project_id }).catch(
     (e) => logger.error(e.message)
   );
+
+  if (actions.some((x) => x.use_wasm)) {
+    await stopServices(cwd);
+  }
 
   fetch(`${FLUENTCI_EVENTS_URL}?client_id=${clientId}`, {
     method: "POST",

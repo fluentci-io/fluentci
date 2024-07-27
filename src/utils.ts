@@ -1,4 +1,4 @@
-import { dir, brightGreen, wait } from "../deps.ts";
+import { dir, brightGreen, wait, green, procfile } from "../deps.ts";
 
 export async function isLogged(): Promise<boolean> {
   if (Deno.env.get("FLUENTCI_ACCESS_TOKEN")) {
@@ -404,23 +404,28 @@ export async function bash(
   }
 }
 
-export async function getProcfiles() {
+export async function getProcfiles(cwd = ".", exit = true): Promise<string[]> {
   const command = new Deno.Command("bash", {
-    args: ["-c", "ls .fluentci/*/Procfile"],
+    args: ["-c", "ls .fluentci/*/Procfile 2> /dev/null"],
     stdout: "piped",
+    cwd,
   });
   const process = await command.spawn();
   const { stdout, success } = await process.output();
   if (!success) {
     console.log("No services running");
-    Deno.exit(0);
+    if (exit) Deno.exit(0);
+    return [];
   }
 
   const decoder = new TextDecoder();
   return decoder.decode(stdout).trim().split("\n");
 }
 
-export async function getServicePid(name: string, socket: string) {
+export async function getServicePid(
+  name: string,
+  socket: string
+): Promise<string | undefined> {
   try {
     const response = await writeToSocket(socket, "status\n");
     const lines = response.replaceAll("\x00", "").trim().split("\n");
@@ -466,4 +471,33 @@ export async function writeToSocket(
   }
   conn.close();
   return data;
+}
+
+export async function stopServices(cwd: string) {
+  const files = await getProcfiles(cwd, false);
+  const services = [];
+  // deno-lint-ignore no-explicit-any
+  let infos: Record<string, any> = {};
+
+  for (const file of files) {
+    const manifest = procfile.parse(Deno.readTextFileSync(file));
+    services.push(...Object.keys(manifest));
+    infos = {
+      ...infos,
+      ...manifest,
+    };
+
+    for (const service of Object.keys(manifest)) {
+      const socket = file.replace("Procfile", ".overmind.sock");
+
+      try {
+        await writeToSocket(cwd + "/" + socket, "stop\n");
+      } catch (_e) {
+        console.log(`Failed to stop ${green(service)}`);
+        continue;
+      }
+
+      console.log(`Successfully stopped ${green(service)}`);
+    }
+  }
 }

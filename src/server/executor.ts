@@ -3,7 +3,7 @@ import { Action } from "./graphql/objects/action.ts";
 import { Run } from "./graphql/objects/run.ts";
 import { createId, dayjs } from "../../deps.ts";
 import { Log } from "./graphql/objects/log.ts";
-import { sendSocketMessage } from "../utils.ts";
+import { sendSocketMessage, stopServices } from "../utils.ts";
 
 export default async function run(ctx: Context, actions: Action[], data: Run) {
   let currentActionIndex = 0;
@@ -114,6 +114,11 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
           duration,
         });
         await ctx.kv.projects.updateStats(data.projectId);
+
+        if (actions.some((x) => x.useWasm)) {
+          await stopServices(project?.path!);
+        }
+
         return;
       }
     }
@@ -159,6 +164,10 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
       })
     )
   );
+
+  if (actions.some((x) => x.useWasm)) {
+    await stopServices(project?.path!);
+  }
 }
 
 async function spawn(
