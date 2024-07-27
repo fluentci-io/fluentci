@@ -81,23 +81,13 @@ Requirements:
 
 **Latest (Desktop):**
 
-<<<<<<< HEAD
 - `Mac`: arm64: [fluentci-studio_v0.1.7_arm64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.7/fluentci-studio_v0.1.7_arm64.dmg) intel: [fluentci-studio_v0.1.7_x64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.7/fluentci-studio_v0.1.7_x64.dmg)
 - `Linux`: [fluentci-studio_v0.1.7.AppImage](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.7/fluentci-studio_v0.1.7.AppImage)
-=======
-- `Mac`: arm64: [fluentci-studio_v0.1.4_arm64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.4/fluentci-studio_v0.1.4_arm64.dmg) intel: [fluentci-studio_v0.1.4_x64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.4/fluentci-studio_v0.1.4_x64.dmg)
-- `Linux`: [fluentci-studio_v0.1.4.AppImage](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.4/fluentci-studio_v0.1.4.AppImage)
->>>>>>> d90fd0a (update README.md)
 
 **Latest (CLI):**
 
-<<<<<<< HEAD
 - `Mac`: arm64: [fluentci_v0.15.5_aarch64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.5/fluentci_v0.15.5_aarch64-apple-darwin.tar.gz) intel: [fluentci_v0.15.5_x86_64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.5/fluentci_v0.15.5_x86_64-apple-darwin.tar.gz)
 - `Linux`: intel: [fluentci_v0.15.5_x86_64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.5/fluentci_v0.15.5_x86_64-unknown-linux-gnu.tar.gz) arm64: [fluentci_v0.15.5_aarch64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.5/fluentci_v0.15.5_aarch64-unknown-linux-gnu.tar.gz)
-=======
-- `Mac`: arm64: [fluentci_v0.15.0_aarch64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.0/fluentci_v0.15.0_aarch64-apple-darwin.tar.gz) intel: [fluentci_v0.15.0_x86_64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.0/fluentci_v0.15.0_x86_64-apple-darwin.tar.gz)
-- `Linux`: intel: [fluentci_v0.15.0_x86_64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.0/fluentci_v0.15.0_x86_64-unknown-linux-gnu.tar.gz) arm64: [fluentci_v0.15.0_aarch64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci/releases/download/v0.15.0/fluentci_v0.15.0_aarch64-unknown-linux-gnu.tar.gz)
->>>>>>> 49808a9 (update README.md)
 
 ## ✨ Quick Start
 
