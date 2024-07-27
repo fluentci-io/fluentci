@@ -492,8 +492,10 @@ export async function stopServices(cwd: string) {
 
       try {
         await writeToSocket(cwd + "/" + socket, "stop\n");
-      } catch (_e) {
+      } catch (e) {
         console.log(`Failed to stop ${green(service)}`);
+        console.log(e);
+        console.log(cwd, socket);
         continue;
       }
 
