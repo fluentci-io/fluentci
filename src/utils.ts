@@ -1,3 +1,4 @@
+import { createId } from "../deps.ts";
 import { dir, brightGreen, wait, green, procfile } from "../deps.ts";
 
 export async function isLogged(): Promise<boolean> {
@@ -478,6 +479,18 @@ export async function stopServices(cwd: string) {
   const services = [];
   // deno-lint-ignore no-explicit-any
   let infos: Record<string, any> = {};
+  const id = createId();
+
+  if (cwd.length > 64) {
+    const ln = new Deno.Command("bash", {
+      args: ["-c", `ln -s ${cwd} $HOME/${id}`],
+      stdout: "inherit",
+      stderr: "inherit",
+    }).spawn();
+    await ln.status;
+  }
+
+  const home = Deno.env.get("HOME")!;
 
   for (const file of files) {
     const manifest = procfile.parse(Deno.readTextFileSync(cwd + "/" + file));
@@ -491,15 +504,27 @@ export async function stopServices(cwd: string) {
       const socket = file.replace("Procfile", ".overmind.sock");
 
       try {
-        await writeToSocket(cwd + "/" + socket, "stop\n");
+        await writeToSocket(
+          (cwd.length > 64 ? `${home}/${id}` : cwd) + "/" + socket,
+          "stop\n"
+        );
       } catch (e) {
         console.log(`Failed to stop ${green(service)}`);
         console.log(e);
-        console.log(cwd, socket);
+        console.log((cwd.length > 64 ? `${home}/${id}` : cwd) + "/" + socket);
         continue;
       }
 
       console.log(`Successfully stopped ${green(service)}`);
     }
+  }
+
+  if (cwd.length > 64) {
+    const rm = new Deno.Command("bash", {
+      args: ["-c", `rm $HOME/${id}`],
+      stdout: "inherit",
+      stderr: "inherit",
+    }).spawn();
+    await rm.status;
   }
 }
