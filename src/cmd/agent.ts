@@ -123,9 +123,9 @@ async function startAgent() {
           );
           await spawnFluentCI(
             logger,
-            `${dir(
-              "home"
-            )}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
+            `${dir("home")}/.fluentci/builds/${project_id}/${sha256}/${
+              workDir || "."
+            }`,
             pipeline,
             jobs,
             runId,
@@ -146,7 +146,9 @@ async function startAgent() {
         await extractZipBlob(blob, project_id, sha256);
         await spawnFluentCI(
           logger,
-          `${dir("home")}/.fluentci/builds/${project_id}/${sha256}/${workDir}`,
+          `${dir("home")}/.fluentci/builds/${project_id}/${sha256}/${
+            workDir || "."
+          }`,
           pipeline,
           jobs,
           runId,
