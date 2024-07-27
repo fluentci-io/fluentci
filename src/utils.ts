@@ -480,7 +480,7 @@ export async function stopServices(cwd: string) {
   let infos: Record<string, any> = {};
 
   for (const file of files) {
-    const manifest = procfile.parse(Deno.readTextFileSync(file));
+    const manifest = procfile.parse(Deno.readTextFileSync(cwd + "/" + file));
     services.push(...Object.keys(manifest));
     infos = {
       ...infos,
