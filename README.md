@@ -81,8 +81,8 @@ Requirements:
 
 **Latest (Desktop):**
 
-- `Mac`: arm64: [fluentci-studio_v0.1.8_arm64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.8/fluentci-studio_v0.1.8_arm64.dmg) intel: [fluentci-studio_v0.1.8_x64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.8/fluentci-studio_v0.1.8_x64.dmg)
-- `Linux`: [fluentci-studio_v0.1.8.AppImage](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.8/fluentci-studio_v0.1.8.AppImage)
+- `Mac`: arm64: [fluentci-studio_v0.1.9_arm64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.9/fluentci-studio_v0.1.9_arm64.dmg) intel: [fluentci-studio_v0.1.9_x64.dmg](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.9/fluentci-studio_v0.1.9_x64.dmg)
+- `Linux`: [fluentci-studio_v0.1.9.AppImage](https://github.com/fluentci-io/fluentci-studio/releases/download/v0.1.9/fluentci-studio_v0.1.9.AppImage)
 
 **Latest (CLI):**
 
