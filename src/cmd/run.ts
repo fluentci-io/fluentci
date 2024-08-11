@@ -153,12 +153,22 @@ async function run(
       Deno.exit(0);
     }
 
+    let entrypoint = ".fluentci/src/dagger/runner.ts";
+
+    try {
+      if (Deno.statSync(".fluentci/src/runner.ts").isFile) {
+        entrypoint = ".fluentci/src/runner.ts";
+      }
+    } catch (_e) {
+      // do nothing
+    }
+
     let command = new Deno.Command("deno", {
       args: [
         "run",
         "-A",
         "--import-map=.fluentci/import_map.json",
-        ".fluentci/src/dagger/runner.ts",
+        entrypoint,
         ...jobs,
         ...Object.keys(options)
           .filter(
@@ -186,7 +196,7 @@ async function run(
           "run",
           "-A",
           "--import-map=.fluentci/import_map.json",
-          ".fluentci/src/dagger/runner.ts",
+          entrypoint,
           ...jobs,
           ...Object.keys(options)
             .filter(
@@ -296,7 +306,7 @@ async function run(
   version =
     version === "latest" ? data.version || data.default_branch : version;
 
-  const status = await fetch(
+  let status = await fetch(
     `https://pkg.fluentci.io/${name}@${version}/import_map.json`
   ).then((res) => res.status);
   if (status == 404) {
@@ -309,9 +319,15 @@ async function run(
     Deno.exit(0);
   }
 
+  let entrypoint = `https://pkg.fluentci.io/${name}@${version}/src/dagger/runner.ts`;
+  status = await fetch(entrypoint).then((res) => res.status);
+  if (status === 404) {
+    entrypoint = `https://pkg.fluentci.io/${name}@${version}/src/runner.ts`;
+  }
+
   let denoModule = [
     `--import-map=https://pkg.fluentci.io/${name}@${version}/import_map.json`,
-    `https://pkg.fluentci.io/${name}@${version}/src/dagger/runner.ts`,
+    entrypoint,
     ...jobs,
     ...Object.keys(options)
       .filter((key) => key !== "reload" && key !== "wasm")
