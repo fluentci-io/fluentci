@@ -72,8 +72,15 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
         `fluentci run ${action.useWasm ? "--wasm" : ""} ${
           action.plugin
         } ${cmd}`,
-        project?.path,
-        jobs[currentActionIndex].id
+        action.workingDirectory
+          ? project
+            ? `${project?.path}/${action.workingDirectory}`
+            : undefined
+          : project?.path,
+        jobs[currentActionIndex].id,
+        action.env
+          ? Object.fromEntries(action.env.map((x) => x.split("=")))
+          : undefined
       );
 
       logs.push(...result.logs);
@@ -174,7 +181,8 @@ async function spawn(
   ctx: Context,
   cmd: string,
   cwd = Deno.cwd(),
-  jobId?: string
+  jobId?: string,
+  env?: Record<string, string>
 ) {
   const logs: Log[] = [];
   const child = new Deno.Command("bash", {
@@ -182,6 +190,7 @@ async function spawn(
     stdout: "piped",
     stderr: "piped",
     cwd,
+    env,
   }).spawn();
 
   const writableStdoutStream = new WritableStream({
