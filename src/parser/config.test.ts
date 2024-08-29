@@ -69,8 +69,8 @@ Deno.test("config - cmake.fluentci.toml", () => {
     {
       name: "Run tests",
       commands:
-        "bash fluentci run --wasm cmake generate\n" +
-        "bash fluentci run --wasm make test",
+        'bash "fluentci run --wasm cmake generate"\n' +
+        'bash "fluentci run --wasm make test"',
       enabled: true,
       plugin: "shell",
       use_wasm: true,
@@ -78,8 +78,8 @@ Deno.test("config - cmake.fluentci.toml", () => {
     {
       name: "Build",
       commands:
-        "bash fluentci run --wasm cmake generate\n" +
-        "bash fluentci run --wasm cmake make",
+        'bash "fluentci run --wasm cmake generate"\n' +
+        'bash "fluentci run --wasm cmake make"',
       enabled: true,
       plugin: "shell",
       use_wasm: true,
@@ -102,9 +102,9 @@ Deno.test("config - cypress.fluentci.toml", () => {
     {
       name: "Run e2e tests",
       commands:
-        "bash fluentci run --wasm cypress verify\n" +
-        "bash fluentci run --wasm cypress info\n" +
-        "bash fluentci run --wasm bun run test:ci",
+        'bash "fluentci run --wasm cypress verify"\n' +
+        'bash "fluentci run --wasm cypress info"\n' +
+        'bash "fluentci run --wasm bun run test:ci"',
       enabled: true,
       plugin: "shell",
       use_wasm: true,
@@ -118,8 +118,8 @@ Deno.test("config - deno.fluentci.toml", () => {
   assertEquals(config, [
     {
       commands:
-        "bash fluentci run --wasm postgres start\n" +
-        "bash fluentci run --wasm deno task test",
+        'bash "fluentci run --wasm postgres start"\n' +
+        'bash "fluentci run --wasm deno task test"',
       enabled: true,
       env: { POSTGRES_USER: "postgres", POSTGRES_DB: "demo" },
       name: "Run tests",
@@ -157,8 +157,8 @@ Deno.test("config - elixir-phoenix.fluentci.toml", () => {
     },
     {
       commands:
-        "bash fluentci run --wasm elixir test\n" +
-        "bash fluentci run --wasm elixir compile",
+        'bash "fluentci run --wasm elixir test"\n' +
+        'bash "fluentci run --wasm elixir compile"',
       enabled: true,
       env: {
         MYSQL_DATABASE: "example_test",
@@ -186,8 +186,8 @@ Deno.test("config - fastlane.fluentci.toml", () => {
     },
     {
       commands:
-        "bash fluentci run --wasm bun install\n" +
-        "bash fluentci run --wasm fastlane android buildRelease",
+        'bash "fluentci run --wasm bun install"\n' +
+        'bash "fluentci run --wasm fastlane android buildRelease"',
       enabled: true,
       name: "Build",
       plugin: "shell",
@@ -202,8 +202,8 @@ Deno.test("config - flutter.fluentci.toml", () => {
   assertEquals(config, [
     {
       commands:
-        "bash fluentci run --wasm flutter code_quality\n" +
-        "bash fluentci run --wasm flutter test",
+        'bash "fluentci run --wasm flutter code_quality"\n' +
+        'bash "fluentci run --wasm flutter test"',
       enabled: true,
       name: "Run tests",
       plugin: "shell",
@@ -255,14 +255,14 @@ Deno.test("config - go.fluentci.toml", () => {
       use_wasm: true,
     },
     {
-      commands: "bash go get\nbash go build -o ./bin/main",
+      commands: 'bash "go get"\nbash "go build -o ./bin/main"',
       enabled: true,
       name: "go get & build",
       plugin: "shell",
       use_wasm: true,
     },
     {
-      commands: "bash gofmt main.go | diff --ignore-tab-expansion main.go -",
+      commands: 'bash "gofmt main.go | diff --ignore-tab-expansion main.go -"',
       enabled: true,
       name: "Check code style",
       plugin: "shell",
@@ -270,9 +270,9 @@ Deno.test("config - go.fluentci.toml", () => {
     },
     {
       commands:
-        "bash fluentci run --wasm postgres start\n" +
-        "bash go install gotest.tools/gotestsum@latest\n" +
-        "bash PATH=$HOME/go/bin:$PATH gotestsum --junitfile junit.xml ./...",
+        'bash "fluentci run --wasm postgres start"\n' +
+        'bash "go install gotest.tools/gotestsum@latest"\n' +
+        'bash "PATH=$HOME/go/bin:$PATH gotestsum --junitfile junit.xml ./..."',
       enabled: true,
       env: {
         POSTGRES_DB: "s2",
@@ -284,8 +284,8 @@ Deno.test("config - go.fluentci.toml", () => {
     },
     {
       commands:
-        "bash ./bin/main 8001 &\n" +
-        'bash curl --silent localhost:8001/time | grep "The current time is"',
+        'bash "./bin/main 8001 &"\n' +
+        "bash \"curl --silent localhost:8001/time | grep 'The current time is'\"",
       enabled: true,
       name: "Test web server",
       plugin: "shell",
@@ -313,7 +313,7 @@ Deno.test("config - java-spring.fluentci.toml", () => {
       use_wasm: true,
     },
     {
-      commands: "bash mvn -q package jmeter:configure -Dmaven.test.skip-true",
+      commands: 'bash "mvn -q package jmeter:configure -Dmaven.test.skip-true"',
       enabled: true,
       env: {
         JAVA_HOME: "$HOME/.local/share/mise/installs/java/zulu-17.46.16",
@@ -324,7 +324,7 @@ Deno.test("config - java-spring.fluentci.toml", () => {
     },
     {
       commands:
-        "bash java -version\nbash mvn -q test-compile -Dmaven.test.skip=true",
+        'bash "java -version"\nbash "mvn -q test-compile -Dmaven.test.skip=true"',
       enabled: true,
       env: {
         JAVA_HOME: "$HOME/.local/share/mise/installs/java/zulu-17.46.16",
@@ -335,11 +335,11 @@ Deno.test("config - java-spring.fluentci.toml", () => {
     },
     {
       commands:
-        "bash java -version\n" +
-        "bash java -jar target/spring-pipeline-demo.jar > /dev/null &\n" +
-        "bash sleep 20\n" +
-        "bash mvn -q jmeter:jmeter\n" +
-        "bash mvn jmeter:results",
+        'bash "java -version"\n' +
+        'bash "java -jar target/spring-pipeline-demo.jar > /dev/null &"\n' +
+        'bash "sleep 20"\n' +
+        'bash "mvn -q jmeter:jmeter"\n' +
+        'bash "mvn jmeter:results"',
       enabled: true,
       env: {
         JAVA_HOME: "$HOME/.local/share/mise/installs/java/zulu-17.46.16",
@@ -401,7 +401,7 @@ Deno.test("config - javascript.fluentci.toml", () => {
     },
     {
       commands:
-        "bash cd src/client && fluentci run --wasm cypress install && cd ../.. && fluentci run --wasm . e2e",
+        'bash "cd src/client && fluentci run --wasm cypress install && cd ../.. && fluentci run --wasm . e2e"',
       enabled: true,
       name: "End to End Tests",
       plugin: "shell",
@@ -409,9 +409,9 @@ Deno.test("config - javascript.fluentci.toml", () => {
     },
     {
       commands:
-        "bash fluentci run --wasm postgres start\n" +
-        "bash pkgx psql ---host=localhost -d postgres -U `whoami` -c 'CREATE DATABASE test;'\n" +
-        "bash fluentci run --wasm . server_e2e",
+        'bash "fluentci run --wasm postgres start"\n' +
+        "bash \"pkgx psql ---host=localhost -d postgres -U `whoami` -c 'CREATE DATABASE test;'\"\n" +
+        'bash "fluentci run --wasm . server_e2e"',
       enabled: true,
       name: "End to End Tests (Server)",
       plugin: "shell",
@@ -482,8 +482,8 @@ Deno.test("config - php.fluentci.toml", () => {
   assertEquals(config, [
     {
       commands:
-        "bash fluentci run --wasm php composer_install --no-interaction\n" +
-        "bash fluentci run --wasm php test",
+        'bash "fluentci run --wasm php composer_install --no-interaction"\n' +
+        'bash "fluentci run --wasm php test"',
       enabled: true,
       name: "Run tests",
       plugin: "shell",
@@ -506,8 +506,8 @@ Deno.test("config - playwright.fluentci.toml", () => {
     },
     {
       commands:
-        "bash fluentci run --wasm playwright install --with-deps\n" +
-        "bash fluentci run --wasm playwright test -j $(nproc)",
+        'bash "fluentci run --wasm playwright install --with-deps"\n' +
+        'bash "fluentci run --wasm playwright test -j $(nproc)"',
       enabled: true,
       env: {
         CI: "true",
@@ -568,10 +568,10 @@ Deno.test("config - python-flask.fluentci.toml", () => {
     },
     {
       commands:
-        "bash fluentci run --wasm devbox run pip install -r requirements.txt\n" +
-        "bash fluentci run --wasm devbox run python run.py &\n" +
-        "bash sleep 2\n" +
-        "bash fluentci run --wasm devbox run python -m unittest",
+        'bash "fluentci run --wasm devbox run pip install -r requirements.txt"\n' +
+        'bash "fluentci run --wasm devbox run python run.py &"\n' +
+        'bash "sleep 2"\n' +
+        'bash "fluentci run --wasm devbox run python -m unittest"',
       enabled: true,
       env: {
         DB: "mongodb://localhost:27017/tasks",
@@ -637,10 +637,10 @@ Deno.test("config - ruby-on-rails.fluentci.toml", () => {
     },
     {
       commands:
-        "bash fluentci run --wasm ruby bundle_exec rails db:migrate\n" +
-        "bash fluentci run --wasm ruby bundle_exec rails db:seed\n" +
-        "bash fluentci run --wasm ruby bundle_exec rails test\n" +
-        "bash fluentci run --wasm ruby bundle_exec rails spec",
+        'bash "fluentci run --wasm ruby bundle_exec rails db:migrate"\n' +
+        'bash "fluentci run --wasm ruby bundle_exec rails db:seed"\n' +
+        'bash "fluentci run --wasm ruby bundle_exec rails test"\n' +
+        'bash "fluentci run --wasm ruby bundle_exec rails spec"',
       enabled: true,
       env: {
         RAILS_ENV: "test",
@@ -681,12 +681,12 @@ Deno.test("config - rust.fluentci.toml", () => {
     },
     {
       commands:
-        "bash fluentci run --wasm postgres start\n" +
-        "bash curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash\n" +
-        "bash cargo-binstall sqlx-cli -y\n" +
-        "bash sqlx migrate run\n" +
-        "bash cargo sqlx prepare\n" +
-        "bash cargo test",
+        'bash "fluentci run --wasm postgres start"\n' +
+        "bash \"curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash\"\n" +
+        'bash "cargo-binstall sqlx-cli -y"\n' +
+        'bash "sqlx migrate run"\n' +
+        'bash "cargo sqlx prepare"\n' +
+        'bash "cargo test"',
       enabled: true,
       env: {
         DATABASE_URL: "postgres://postgres@localhost/demo",
@@ -740,13 +740,13 @@ Deno.test("config - symfony.fluentci.toml", () => {
   assertEquals(config, [
     {
       commands:
-        "bash fluentci run --wasm symfony container_lint\n" +
-        "bash fluentci run --wasm symfony doctrine_lint\n" +
-        "bash fluentci run --wasm symfony phpstan\n" +
-        "bash fluentci run --wasm symfony phpunit\n" +
-        "bash fluentci run --wasm symfony twig_lint\n" +
-        "bash fluentci run --wasm symfony xliff_lint\n" +
-        "bash fluentci run --wasm symfony yaml_lint",
+        'bash "fluentci run --wasm symfony container_lint"\n' +
+        'bash "fluentci run --wasm symfony doctrine_lint"\n' +
+        'bash "fluentci run --wasm symfony phpstan"\n' +
+        'bash "fluentci run --wasm symfony phpunit"\n' +
+        'bash "fluentci run --wasm symfony twig_lint"\n' +
+        'bash "fluentci run --wasm symfony xliff_lint"\n' +
+        'bash "fluentci run --wasm symfony yaml_lint"',
       enabled: true,
       name: "Run lint checks and tests",
       plugin: "shell",

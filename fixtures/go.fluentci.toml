@@ -22,6 +22,6 @@ name = "Run tests"
 [[steps]]
 command = [
   "./bin/main 8001 &",
-  "curl --silent localhost:8001/time | grep \"The current time is\"",
+  "curl --silent localhost:8001/time | grep 'The current time is'",
 ]
 name = "Test web server"
