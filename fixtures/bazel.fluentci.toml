@@ -1,0 +1,7 @@
+[[steps]]
+command = "fluentci run --wasm bazel test //..."
+name = "Run tests"
+
+[[steps]]
+command = "fluentci run --wasm bazel build //..."
+name = "Build"

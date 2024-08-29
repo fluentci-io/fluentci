@@ -1,0 +1,27 @@
+[[steps]]
+command = ["fluentci run --wasm pkgx install go"]
+name = "Setup go"
+
+[[steps]]
+command = ["go get", "go build -o ./bin/main"]
+name = "go get & build"
+
+[[steps]]
+command = ["gofmt main.go | diff --ignore-tab-expansion main.go -"]
+name = "Check code style"
+
+[[steps]]
+command = [
+  "fluentci run --wasm postgres start",
+  "go install gotest.tools/gotestsum@latest",
+  "PATH=$HOME/go/bin:$PATH gotestsum --junitfile junit.xml ./...",
+]
+env = ["POSTGRES_USER=postgres", "POSTGRES_DB=s2"]
+name = "Run tests"
+
+[[steps]]
+command = [
+  "./bin/main 8001 &",
+  "curl --silent localhost:8001/time | grep \"The current time is\"",
+]
+name = "Test web server"

@@ -1,0 +1,19 @@
+[[steps]]
+command = ["fluentci run --wasm postgres start"]
+env = ["POSTGRES_USER=postgres", "POSTGRES_DB=demo_rails_test"]
+name = "Start Postgres"
+
+[[steps]]
+command = ["fluentci run --wasm ruby bundle_exec rubocop"]
+env = ["RUBY_VERSION=3.1.4"]
+name = "Check style + security"
+
+[[steps]]
+command = [
+  "fluentci run --wasm ruby bundle_exec rails db:migrate",
+  "fluentci run --wasm ruby bundle_exec rails db:seed",
+  "fluentci run --wasm ruby bundle_exec rails test",
+  "fluentci run --wasm ruby bundle_exec rails spec",
+]
+env = ["RAILS_ENV=test"]
+name = "Run tests"

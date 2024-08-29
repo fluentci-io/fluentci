@@ -23,7 +23,8 @@
   },
   "test": {
     "exclude": [
-      ".fluentci/"
+      ".fluentci/",
+      "demo*"
     ]
   }
 }

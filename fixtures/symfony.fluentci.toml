@@ -1,0 +1,11 @@
+[[steps]]
+command = [
+  "fluentci run --wasm symfony container_lint",
+  "fluentci run --wasm symfony doctrine_lint",
+  "fluentci run --wasm symfony phpstan",
+  "fluentci run --wasm symfony phpunit",
+  "fluentci run --wasm symfony twig_lint",
+  "fluentci run --wasm symfony xliff_lint",
+  "fluentci run --wasm symfony yaml_lint",
+]
+name = "Run lint checks and tests"

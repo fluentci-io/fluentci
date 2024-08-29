@@ -1,0 +1,10 @@
+[[steps]]
+command = [
+  "fluentci run --wasm flutter code_quality",
+  "fluentci run --wasm flutter test",
+]
+name = "Run tests"
+
+[[steps]]
+command = ["fluentci run --wasm flutter build apk --release"]
+name = "Build"

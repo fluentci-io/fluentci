@@ -1,0 +1,28 @@
+[[steps]]
+command = ["fluentci run --wasm java setup zulu-17.46.16"]
+name = "Setup Java"
+
+[[steps]]
+command = ["fluentci run --wasm maven setup"]
+name = "Setup maven"
+
+[[steps]]
+command = ["mvn -q package jmeter:configure -Dmaven.test.skip-true"]
+env = ["JAVA_HOME=$HOME/.local/share/mise/installs/java/zulu-17.46.16"]
+name = "Build"
+
+[[steps]]
+command = ["java -version", "mvn -q test-compile -Dmaven.test.skip=true"]
+env = ["JAVA_HOME=$HOME/.local/share/mise/installs/java/zulu-17.46.16"]
+name = "Run tests"
+
+[[steps]]
+command = [
+  "java -version",
+  "java -jar target/spring-pipeline-demo.jar > /dev/null &",
+  "sleep 20",
+  "mvn -q jmeter:jmeter",
+  "mvn jmeter:results",
+]
+env = ["JAVA_HOME=$HOME/.local/share/mise/installs/java/zulu-17.46.16"]
+name = "Performance tests"

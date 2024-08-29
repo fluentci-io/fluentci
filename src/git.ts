@@ -30,3 +30,17 @@ export async function getCommitInfos(cwd = Deno.cwd()) {
     author: new TextDecoder().decode(author).trim(),
   };
 }
+
+export async function cloneRepository(
+  url: string,
+  cwd = Deno.cwd()
+): Promise<boolean> {
+  const status = await new Deno.Command("git", {
+    args: ["clone", url],
+    stdin: "inherit",
+    stdout: "inherit",
+    stderr: "inherit",
+    cwd,
+  }).spawn().status;
+  return status.success;
+}

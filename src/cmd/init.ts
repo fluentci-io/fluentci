@@ -9,7 +9,6 @@ import {
   green,
   _,
   toml,
-  tomlify,
 } from "../../deps.ts";
 import { directoryExists } from "../utils.ts";
 import { extractVersion } from "../utils.ts";
@@ -373,7 +372,7 @@ async function overrideCargoToml(infos: Record<string, unknown>, path = ".") {
 
   await Deno.writeFile(
     `${path}/Cargo.toml`,
-    new TextEncoder().encode(tomlify.toToml(config, { space: 2 }))
+    new TextEncoder().encode(toml.stringify(config))
   );
 }
 
@@ -400,7 +399,7 @@ async function overrideFluentciToml(
 
   await Deno.writeFile(
     `${path}/fluentci.toml`,
-    new TextEncoder().encode(tomlify.toToml(config, { space: 2 }))
+    new TextEncoder().encode(toml.stringify(config))
   );
 }
 

@@ -168,7 +168,6 @@ export default [
   "solar-panel",
   "wind-turbine",
   "automatic",
-  "automation",
   "bot",
   "engineering",
   "microscope",

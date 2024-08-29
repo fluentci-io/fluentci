@@ -1,0 +1,11 @@
+[[steps]]
+command = ["fluentci run --wasm bun install"]
+name = "Install dependencies"
+
+[[steps]]
+command = [
+  "fluentci run --wasm playwright install --with-deps",
+  "fluentci run --wasm playwright test -j $(nproc)",
+]
+env = ["CI=true"]
+name = "Run playwright tests"

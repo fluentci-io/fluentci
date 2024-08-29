@@ -7,6 +7,8 @@ export class Action {
   useWasm: boolean;
   logo?: string | null;
   githubUrl?: string | null;
+  env?: string[] | null;
+  workingDirectory?: string | null;
 
   constructor({
     id,
@@ -17,6 +19,8 @@ export class Action {
     useWasm,
     logo,
     githubUrl,
+    env,
+    workingDirectory,
   }: Action) {
     this.id = id;
     this.name = name;
@@ -26,5 +30,7 @@ export class Action {
     this.useWasm = useWasm;
     this.logo = logo;
     this.githubUrl = githubUrl;
+    this.env = env;
+    this.workingDirectory = workingDirectory;
   }
 }

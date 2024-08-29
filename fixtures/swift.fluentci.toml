@@ -1,0 +1,7 @@
+[[steps]]
+command = ["fluentci run --wasm swift test"]
+name = "Run tests"
+
+[[steps]]
+command = ["fluentci run --wasm swift build"]
+name = "Build"

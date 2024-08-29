@@ -1,0 +1,7 @@
+[[steps]]
+command = ["fluentci run --wasm zig test"]
+name = "test"
+
+[[steps]]
+command = ["fluentci run --wasm zig build"]
+name = "build"

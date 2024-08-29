@@ -124,6 +124,8 @@ builder.objectType(Action, {
     useWasm: t.exposeBoolean("useWasm"),
     logo: t.exposeString("logo", { nullable: true }),
     githubUrl: t.exposeString("githubUrl", { nullable: true }),
+    env: t.exposeStringList("env", { nullable: true }),
+    workingDirectory: t.exposeString("workingDirectory", { nullable: true }),
   }),
 });
 
@@ -249,6 +251,9 @@ builder.mutationType({
     createProject: t.field({
       type: Project,
       resolve: createProject,
+      args: {
+        fromRepository: t.arg.string({ required: false }),
+      },
     }),
     updateProject: t.field({
       type: Project,

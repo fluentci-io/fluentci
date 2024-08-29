@@ -17,12 +17,8 @@ export { z } from "https://deno.land/x/zod@v3.22.2/mod.ts";
 export { decompress } from "https://deno.land/x/zip@v1.2.5/mod.ts";
 export { existsSync } from "jsr:@std/fs@0.224.0/exists";
 export { load } from "jsr:@std/dotenv@0.224.0";
-export { Secret } from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/secret.ts";
-export {
-  Confirm,
-  Input,
-  prompt,
-} from "https://deno.land/x/cliffy@v1.0.0-rc.3/prompt/mod.ts";
+export { Secret } from "jsr:@cliffy/prompt@1.0.0-rc.5/secret";
+export { Confirm, Input, prompt } from "jsr:@cliffy/prompt@1.0.0-rc.5";
 import dir from "https://deno.land/x/dir@1.5.2/mod.ts";
 export { dir };
 export { walk, walkSync } from "jsr:@std/fs@0.224.0/walk";
@@ -54,19 +50,12 @@ export { dayjs };
 import { Buffer } from "npm:buffer";
 export { Buffer };
 export { mergeReadableStreams } from "jsr:@std/streams@0.224.0";
-export {
-  Cell,
-  Table,
-} from "https://deno.land/x/cliffy@v1.0.0-rc.3/table/mod.ts";
+export { Cell, Table } from "jsr:@cliffy/table@1.0.0-rc.5";
 export {
   TerminalSpinner,
   SpinnerTypes,
 } from "https://deno.land/x/spinners@v1.1.2/mod.ts";
 export { readAllSync } from "jsr:@std/io@0.224.0";
-import * as toml from "npm:toml@3.0.0";
-export { toml };
-import tomlify from "npm:tomlify-j0.4@3.0.0";
-export { tomlify };
 export { serve } from "jsr:@std/http@0.224.0/server";
 export { createYoga } from "https://esm.sh/graphql-yoga@5.1.1?external=graphql";
 import SchemaBuilder from "https://esm.sh/*@pothos/core@3.41.1";
@@ -87,3 +76,6 @@ export {
 export { AzurePipeline } from "jsr:@tsirysndr/fluent-az-pipelines@0.3.1";
 export { BuildSpec } from "jsr:@tsirysndr/fluent-codepipeline@0.3";
 export { ClientError, GraphQLClient, gql } from "npm:graphql-request@6.1.0";
+import * as toml from "jsr:@std/toml";
+export { toml };
+export { assertEquals, assertObjectMatch } from "jsr:@std/assert";
