@@ -517,6 +517,7 @@ export async function stopServices(cwd: string) {
           args: ["-c", `fluentci run --wasm ${service} stop`],
           stdout: "inherit",
           stderr: "inherit",
+          cwd
         }).spawn().status;
 
         if (!status.success) {
