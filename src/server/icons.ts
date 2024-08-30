@@ -260,7 +260,6 @@ export default [
   "evergreen",
   "field",
   "flower",
-  "flower-bouquet",
   "lotus",
   "mushroom",
   "olive",
