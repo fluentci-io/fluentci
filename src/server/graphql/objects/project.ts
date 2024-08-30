@@ -20,6 +20,7 @@ export class Project {
   isPrivate?: boolean;
   owner?: string;
   archived?: boolean;
+  repositoryUrl?: string;
 
   constructor({
     id,
@@ -40,6 +41,7 @@ export class Project {
     isPrivate,
     owner,
     archived,
+    repositoryUrl,
   }: Project) {
     this.id = id;
     this.path = path;
@@ -59,5 +61,6 @@ export class Project {
     this.isPrivate = isPrivate;
     this.owner = owner;
     this.archived = archived;
+    this.repositoryUrl = repositoryUrl;
   }
 }

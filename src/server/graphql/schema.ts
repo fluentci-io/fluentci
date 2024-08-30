@@ -17,7 +17,7 @@ import {
   unarchiveProject,
   updateProject,
 } from "./resolvers/project/mutations.ts";
-import { runPipeline } from "./resolvers/run/mutations.ts";
+import { cancelRun, runPipeline } from "./resolvers/run/mutations.ts";
 import { countRuns, getRun, getRuns } from "./resolvers/run/queries.ts";
 import { Run } from "./objects/run.ts";
 import { Action } from "./objects/action.ts";
@@ -85,6 +85,7 @@ builder.objectType(Project, {
     isPrivate: t.exposeBoolean("isPrivate", { nullable: true }),
     owner: t.exposeString("owner", { nullable: true }),
     archived: t.exposeBoolean("archived", { nullable: true }),
+    repositoryUrl: t.exposeString("repositoryUrl", { nullable: true }),
   }),
 });
 
@@ -138,6 +139,8 @@ export const ActionInput = builder.inputType("ActionInput", {
     useWasm: t.boolean({ required: true }),
     logo: t.string({ required: false }),
     githubUrl: t.string({ required: false }),
+    env: t.stringList({ required: false }),
+    workingDirectory: t.string({ required: false }),
   }),
 });
 
@@ -273,6 +276,13 @@ builder.mutationType({
         wait: t.arg.boolean({ required: false }),
       },
       resolve: runPipeline,
+    }),
+    cancelRun: t.field({
+      type: Run,
+      args: {
+        id: t.arg.id(),
+      },
+      resolve: cancelRun,
     }),
     runJob: t.field({
       type: Job,

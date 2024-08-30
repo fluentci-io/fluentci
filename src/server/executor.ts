@@ -31,6 +31,7 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
     date: new Date().toISOString(),
   });
   let run = await ctx.kv.runs.get(data.id);
+  ctx.runs.set(data.id, run!);
 
   for (const action of actions) {
     if (!action.enabled) {
@@ -78,12 +79,36 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
             : undefined
           : project?.path,
         jobs[currentActionIndex].id,
+        data.id,
         action.env
           ? Object.fromEntries(action.env.map((x) => x.split("=")))
           : undefined
       );
 
       logs.push(...result.logs);
+
+      if (result.cancelled) {
+        jobs = jobs.map((job, j) => ({
+          ...job,
+          status: currentActionIndex === j ? "CANCELLED" : job.status,
+          duration:
+            currentActionIndex === j
+              ? dayjs().diff(start, "milliseconds")
+              : job.duration,
+          logs:
+            currentActionIndex === j
+              ? [...(job.logs || []), ...result.logs]
+              : job.logs,
+        }));
+
+        await ctx.kv.runs.save(data.projectId, {
+          ...run!,
+          jobs,
+          status: "CANCELLED",
+        });
+
+        return;
+      }
 
       if (result.code !== 0) {
         Object.values(ctx.sockets).forEach((s) =>
@@ -125,6 +150,8 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
         if (actions.some((x) => x.useWasm)) {
           await stopServices(project?.path!);
         }
+
+        ctx.runs.delete(data.id);
 
         return;
       }
@@ -175,15 +202,19 @@ export default async function run(ctx: Context, actions: Action[], data: Run) {
   if (actions.some((x) => x.useWasm)) {
     await stopServices(project?.path!);
   }
+
+  ctx.runs.delete(data.id);
 }
 
 async function spawn(
   ctx: Context,
   cmd: string,
   cwd = Deno.cwd(),
-  jobId?: string,
+  jobId: string,
+  runId: string,
   env?: Record<string, string>
 ) {
+  const cancelled = ctx.runs.get(runId) ? false : true;
   const logs: Log[] = [];
   const child = new Deno.Command("bash", {
     args: ["-c", cmd],
@@ -239,5 +270,5 @@ async function spawn(
     child.status,
   ]);
 
-  return { logs, code };
+  return { logs, code, cancelled };
 }

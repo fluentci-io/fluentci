@@ -79,3 +79,4 @@ export { ClientError, GraphQLClient, gql } from "npm:graphql-request@6.1.0";
 import * as toml from "jsr:@std/toml";
 export { toml };
 export { assertEquals, assertObjectMatch } from "jsr:@std/assert";
+export { EventEmitter } from "jsr:@denosaurs/event";

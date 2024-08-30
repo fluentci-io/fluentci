@@ -7,6 +7,7 @@
       "jsr:@cliffy/keycode@1.0.0-rc.5": "jsr:@cliffy/keycode@1.0.0-rc.5",
       "jsr:@cliffy/prompt@1.0.0-rc.5": "jsr:@cliffy/prompt@1.0.0-rc.5",
       "jsr:@cliffy/table@1.0.0-rc.5": "jsr:@cliffy/table@1.0.0-rc.5",
+      "jsr:@denosaurs/event": "jsr:@denosaurs/event@2.0.2",
       "jsr:@jotsr/delayed@2.1.1": "jsr:@jotsr/delayed@2.1.1",
       "jsr:@std/assert": "jsr:@std/assert@1.0.3",
       "jsr:@std/assert@1.0.0-rc.2": "jsr:@std/assert@1.0.0-rc.2",
@@ -89,6 +90,9 @@
           "jsr:@std/cli@1.0.0-rc.2",
           "jsr:@std/fmt@~0.225.4"
         ]
+      },
+      "@denosaurs/event@2.0.2": {
+        "integrity": "3310ba1a9e94dd60ccb09c6084fc818cc1cd50e543c56ef0c6199f1b89073392"
       },
       "@jotsr/delayed@2.1.1": {
         "integrity": "b636cc1ae8a2843412738f40c1cf5f117d909bf6986dbce7af945afd363b65b7"
