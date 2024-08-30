@@ -19,6 +19,22 @@ export default async function down() {
       const socket = file.replace("Procfile", ".overmind.sock");
       infos[service].socket = socket;
 
+      if (["mysql", "mariadb"].includes(service)) {
+        const status = await new Deno.Command("fluentci", {
+          args: ["run", "--wasm", service, "stop"],
+          stdout: "inherit",
+          stderr: "inherit",
+        }).spawn().status;
+
+        if (!status.success) {
+          console.log(`Failed to stop ${green(service)}`);
+          continue;
+        }
+
+        console.log(`Successfully stopped ${green(service)}`);
+        continue;
+      }
+
       try {
         await writeToSocket(socket, "stop\n");
       } catch (_e) {

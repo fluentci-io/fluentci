@@ -512,6 +512,22 @@ export async function stopServices(cwd: string) {
     for (const service of Object.keys(manifest)) {
       const socket = file.replace("Procfile", ".overmind.sock");
 
+      if (["mysql", "mariadb"].includes(service)) {
+        const status = await new Deno.Command("sh", {
+          args: ["-c", `fluentci run --wasm ${service} stop`],
+          stdout: "inherit",
+          stderr: "inherit",
+        }).spawn().status;
+
+        if (!status.success) {
+          console.log(`Failed to stop ${green(service)}`);
+          continue;
+        }
+
+        console.log(`Successfully stopped ${green(service)}`);
+        continue;
+      }
+
       try {
         await writeToSocket(
           (cwd.length > 64 ? `${home}/${id}` : cwd) + "/" + socket,
