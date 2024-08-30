@@ -182,7 +182,6 @@ export default [
   "aircraft",
   "airport",
   "helicopter",
-  "plane",
   "rocket",
   "bicycle",
   "motorbike-helmet",
