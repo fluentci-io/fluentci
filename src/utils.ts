@@ -364,8 +364,17 @@ export async function fluentciPluginDirExists(cwd = "."): Promise<boolean> {
 
 export async function directoryExists(path: string): Promise<boolean> {
   try {
-    const fluentciDir = await Deno.stat(path);
-    return fluentciDir.isDirectory;
+    const dir = await Deno.stat(path);
+    return dir.isDirectory;
+  } catch (_) {
+    return false;
+  }
+}
+
+export async function fileExists(path: string): Promise<boolean> {
+  try {
+    const file = await Deno.stat(path);
+    return file.isFile;
   } catch (_) {
     return false;
   }

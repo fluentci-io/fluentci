@@ -1,5 +1,10 @@
 // deno-lint-ignore-file no-unused-vars no-explicit-any
 import { createId, dockernames, _ } from "../../../../../deps.ts";
+import { cloneRepository } from "../../../../git.ts";
+import { parseConfig } from "../../../../parser/config.ts";
+import run from "../../../../shared/run.ts";
+import { Actions } from "../../../../types.ts";
+import { directoryExists, fileExists } from "../../../../utils.ts";
 import icons from "../../../icons.ts";
 import { Context } from "../../context.ts";
 import { Project } from "../../objects/project.ts";
@@ -13,12 +18,6 @@ export async function createProject(
   let name = dockernames.getRandomName().replaceAll("_", "-");
   let suffix = 1;
 
-  const project = await ctx.kv.projects.at("empty");
-
-  if (project) {
-    return project;
-  }
-
   do {
     const project = await ctx.kv.projects.byName(name);
     if (!project) {
@@ -28,17 +27,124 @@ export async function createProject(
     suffix++;
   } while (true);
 
+  const project = await ctx.kv.projects.at("empty");
   const icon = _.sample(icons);
+  let actions: Actions = [];
+
+  if (args.fromRepository) {
+    const cacheDir = `${Deno.env.get(
+      "HOME"
+    )}/.fluentci/cache/${args.fromRepository
+      .replace("https://", "")
+      .replace("http://", "")
+      .replace(".git", "")
+      .split("/")
+      .slice(0, -1)
+      .join("/")}`;
+    await Deno.mkdir(cacheDir, { recursive: true });
+    const repoPath = `${cacheDir}/${args.fromRepository
+      .split("/")
+      .pop()
+      .replace(".git", "")}`;
+    if (!(await directoryExists(repoPath))) {
+      await cloneRepository(args.fromRepository, cacheDir);
+    }
+
+    if (await fileExists(`${repoPath}/.fluentci/fluentci.toml`)) {
+      const content = await Deno.readTextFile(
+        `${repoPath}/.fluentci/fluentci.toml`
+      );
+      actions = parseConfig(content);
+    }
+
+    await new Deno.Command("cp", {
+      args: [
+        "-r",
+        repoPath,
+        `${Deno.env.get("HOME")}/.fluentci/workspace/${
+          project ? project.name : name
+        }`,
+      ],
+    }).spawn().status;
+  }
+
+  if (project) {
+    if (args.fromRepository) {
+      await ctx.kv.projects.save({
+        ...project,
+        path: `${Deno.env.get("HOME")}/.fluentci/workspace/${project.name}`,
+      });
+      await ctx.kv.projects.remove(project.path);
+
+      await ctx.kv.actions.save(
+        project.id,
+        actions.map((action) => ({
+          commands: action.commands,
+          enabled: action.enabled,
+          githubUrl: action.github_url,
+          logo: action.logo,
+          name: action.name,
+          plugin: action.plugin,
+          useWasm: action.use_wasm,
+          env: action.env
+            ? Object.entries(action.env).map(
+                ([key, value]) => `${key}=${value}`
+              )
+            : [],
+          workingDirectory: action.working_directory,
+        }))
+      );
+
+      run(
+        ctx,
+        {
+          ...project,
+          path: `${Deno.env.get("HOME")}/.fluentci/workspace/${project.name}`,
+        },
+        true
+      );
+    }
+    return project;
+  }
+
+  if (args.fromRepository) {
+    await ctx.kv.actions.save(
+      projectId,
+      actions.map((action) => ({
+        commands: action.commands,
+        enabled: action.enabled,
+        githubUrl: action.github_url,
+        logo: action.logo,
+        name: action.name,
+        plugin: action.plugin,
+        useWasm: action.use_wasm,
+        env: action.env
+          ? Object.entries(action.env).map(([key, value]) => `${key}=${value}`)
+          : [],
+        workingDirectory: action.working_directory,
+      }))
+    );
+  }
+
   await ctx.kv.projects.save({
     id: projectId,
-    path: "empty",
+    path: args.fromRepository
+      ? `${Deno.env.get("HOME")}/.fluentci/workspace/${name}`
+      : "empty",
     name,
     createdAt: new Date().toISOString(),
     picture: `https://img.icons8.com/color-glass/96/${icon}.png`,
   });
+
+  if (args.fromRepository) {
+    run(ctx, (await ctx.kv.projects.get(projectId))!, true);
+  }
+
   return new Project({
     id: projectId,
-    path: Deno.cwd(),
+    path: args.fromRepository
+      ? `${Deno.env.get("HOME")}/.fluentci/workspace/${name}`
+      : Deno.cwd(),
     name,
     createdAt: new Date().toISOString(),
     picture: `https://img.icons8.com/color-glass/96/${icon}.png`,

@@ -6,7 +6,7 @@ import {
   LogEventSchema,
   Label,
 } from "../src/types.ts";
-import { assertEquals } from "https://deno.land/std@0.206.0/assert/mod.ts";
+import { assertEquals } from "../deps.ts";
 
 Deno.test("LabelSchema", () => {
   const label: Label = {

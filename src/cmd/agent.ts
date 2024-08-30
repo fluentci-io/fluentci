@@ -360,10 +360,11 @@ async function executeActions(
         `fluentci run ${action.use_wasm ? "--wasm" : ""} ${
           action.plugin
         } ${cmd}`,
-        cwd,
+        action.working_directory ? `${cwd}/${action.working_directory}` : cwd,
         jobs[currentActionIndex].job_id,
         logger,
-        clientId
+        clientId,
+        action.env === null ? undefined : action.env
       );
 
       logs.push(...result.logs);
@@ -478,7 +479,8 @@ async function spawn(
   cwd = Deno.cwd(),
   jobId: string,
   logger: Logger,
-  clientId: string
+  clientId: string,
+  env?: Record<string, string>
 ) {
   const logs: Log[] = [];
   const child = new Deno.Command("bash", {
@@ -486,6 +488,7 @@ async function spawn(
     stdout: "piped",
     stderr: "piped",
     cwd,
+    env,
   }).spawn();
 
   const writableStdoutStream = new WritableStream({

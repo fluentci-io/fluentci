@@ -15,3 +15,16 @@ export async function runPipeline(
   }
   return run(ctx, project, args.wait);
 }
+
+export async function cancelRun(
+  _root: any,
+  args: any,
+  ctx: Context
+): Promise<Run> {
+  const run = await ctx.kv.runs.get(args.id);
+  if (!run) {
+    throw new GraphQLError(`no run found with id ${args.id}`);
+  }
+  ctx.runs.delete(args.id);
+  return run;
+}

@@ -1,0 +1,13 @@
+[[steps]]
+command = [
+  "fluentci run --wasm cmake generate",
+  "fluentci run --wasm make test",
+]
+name = "Run tests"
+
+[[steps]]
+command = [
+  "fluentci run --wasm cmake generate",
+  "fluentci run --wasm cmake make",
+]
+name = "Build"

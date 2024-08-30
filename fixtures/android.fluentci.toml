@@ -1,0 +1,3 @@
+[[steps]]
+command = "fluentci run --wasm android assemble_release"
+name = "Run gradle build"

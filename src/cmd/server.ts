@@ -17,6 +17,7 @@ function server({ port }: { port?: number }) {
           projects,
           runs,
         },
+        runs: new Map(),
       };
     },
   });

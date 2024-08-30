@@ -1,0 +1,24 @@
+[[steps]]
+command = ["fluentci run --wasm rust setup"]
+name = "Setup Rust"
+
+[[steps]]
+command = [
+  "fluentci run --wasm postgres start",
+  "curl -L --proto '=https' --tlsv1.2 -sSf https://raw.githubusercontent.com/cargo-bins/cargo-binstall/main/install-from-binstall-release.sh | bash",
+  "cargo-binstall sqlx-cli -y",
+  "sqlx migrate run",
+  "cargo sqlx prepare",
+  "cargo test",
+]
+env = [
+  "POSTGRES_USER=postgres",
+  "POSTGRES_DB=demo",
+  "DATABASE_URL=postgres://postgres@localhost/demo",
+]
+name = "Run tests"
+
+[[steps]]
+command = ["fluentci run --wasm rust build"]
+env = ["DATABASE_URL=postgres://postgres@localhost/demo"]
+name = "Run build"

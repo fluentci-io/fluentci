@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std@0.206.0/assert/mod.ts";
+import { assertEquals } from "../deps.ts";
 import { FLUENTCI_API_URL, FLUENTCI_WS_URL } from "../src/consts.ts";
 
 Deno.test("FLUENTCI_API_URL", () => {

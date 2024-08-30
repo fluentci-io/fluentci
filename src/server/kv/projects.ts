@@ -133,6 +133,9 @@ export async function count() {
 }
 
 export async function remove(id: string) {
+  if (await kv.get([FLUENTCI_KV_PREFIX, "path", id])) {
+    await kv.delete([FLUENTCI_KV_PREFIX, "path", id]);
+  }
   const project = await get(id);
   if (!project) return;
   await kv

@@ -1,4 +1,5 @@
 import { Pagination } from "../kv.ts";
+import { ExecutionEvent } from "./event.ts";
 import { Action } from "./objects/action.ts";
 import { Project } from "./objects/project.ts";
 import { Run } from "./objects/run.ts";
@@ -35,4 +36,5 @@ export type KV = {
 export type Context = {
   sockets: Record<string, WebSocket>;
   kv: KV;
+  runs: Map<string, Run>;
 };

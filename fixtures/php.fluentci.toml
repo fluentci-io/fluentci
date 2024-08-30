@@ -1,0 +1,6 @@
+[[steps]]
+command = [
+  "fluentci run --wasm php composer_install --no-interaction",
+  "fluentci run --wasm php test",
+]
+name = "Run tests"

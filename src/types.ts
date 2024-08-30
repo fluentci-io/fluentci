@@ -1,4 +1,4 @@
-import { z } from "https://deno.land/x/zod@v3.22.2/mod.ts";
+import { z } from "../deps.ts";
 
 export const LabelSchema = z.object({
   name: z.string(),
@@ -52,7 +52,11 @@ export const ActionSchema = z.object({
   use_wasm: z.boolean(),
   logo: z.string().optional().nullable(),
   github_url: z.string().optional().nullable(),
+  env: z.record(z.string()).optional().nullable(),
+  working_directory: z.string().optional().nullable(),
 });
+
+export const ActionsSchema = z.array(ActionSchema);
 
 export const LogSchema = z.object({
   id: z.string(),
@@ -90,6 +94,28 @@ export const RunSchema = z.object({
   status: z.string().optional().nullable(),
 });
 
+export const ConfigSchema = z.object({
+  steps: z
+    .array(
+      z.object({
+        command: z.union([z.string(), z.array(z.string())]),
+        name: z.string(),
+        env: z.array(z.string()).optional(),
+        working_directory: z.string().optional(),
+      })
+    )
+    .optional(),
+  package: z
+    .object({
+      name: z.string(),
+      version: z.string(),
+      description: z.string().optional(),
+      license: z.string().optional(),
+      authors: z.array(z.string()).optional(),
+    })
+    .optional(),
+});
+
 export type Pipeline = z.infer<typeof PipelineSchema>;
 
 export type Label = z.infer<typeof LabelSchema>;
@@ -100,8 +126,12 @@ export type Agent = z.infer<typeof AgentSchema>;
 
 export type Action = z.infer<typeof ActionSchema>;
 
+export type Actions = z.infer<typeof ActionsSchema>;
+
 export type Log = z.infer<typeof LogSchema>;
 
 export type Run = z.infer<typeof RunSchema>;
 
 export type Job = z.infer<typeof JobSchema>;
+
+export type Config = z.infer<typeof ConfigSchema>;

@@ -29,6 +29,7 @@ async function studio({ port }: { port?: number }) {
           projects,
           runs,
         },
+        runs: new Map(),
       };
     },
   });
