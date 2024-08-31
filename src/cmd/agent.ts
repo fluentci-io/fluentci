@@ -95,9 +95,7 @@ async function startAgent() {
 
           await spawnFluentCI(
             logger,
-            `${dir("home")}/.fluentci/builds/${id}/${repoUrl
-              .split("/")
-              .pop()}/${workDir || "."}`,
+            `${dir("home")}/.fluentci/builds/${id}/${workDir || "."}`,
             pipeline,
             jobs,
             runId,
@@ -195,13 +193,10 @@ async function extractZipBlob(blob: Blob, project_id: string, sha256: string) {
 }
 
 async function gitClone(url: string, id: string, branch?: string) {
-  await Deno.mkdir(`${dir("home")}/.fluentci/builds/${id}`, {
-    recursive: true,
-  });
   await setupPkgx();
   const git = new Deno.Command("pkgx", {
-    args: ["git", "clone", url],
-    cwd: `${dir("home")}/.fluentci/builds/${id}`,
+    args: ["git", "clone", url, id],
+    cwd: `${dir("home")}/.fluentci/builds`,
     stdout: "inherit",
     stderr: "inherit",
   });
@@ -209,7 +204,7 @@ async function gitClone(url: string, id: string, branch?: string) {
   if (branch) {
     await new Deno.Command("pkgx", {
       args: ["git", "checkout", branch],
-      cwd: `${dir("home")}/.fluentci/builds/${id}/${url.split("/").pop()}`,
+      cwd: `${dir("home")}/.fluentci/builds/${id}`,
       stdout: "inherit",
       stderr: "inherit",
     }).spawn().status;
