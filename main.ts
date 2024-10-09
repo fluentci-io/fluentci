@@ -1,4 +1,4 @@
-import { Command } from "cliffy/command";
+import { Command } from "./deps.ts";
 import run from "./src/cmd/run.ts";
 import init from "./src/cmd/init.ts";
 import search from "./src/cmd/search.ts";
