@@ -17,8 +17,9 @@ export { z } from "https://deno.land/x/zod@v3.22.2/mod.ts";
 export { decompress } from "https://deno.land/x/zip@v1.2.5/mod.ts";
 export { existsSync } from "jsr:@std/fs@0.224.0/exists";
 export { load } from "jsr:@std/dotenv@0.224.0";
-export { Secret } from "jsr:@cliffy/prompt@1.0.0-rc.5/secret";
-export { Confirm, Input, prompt } from "jsr:@cliffy/prompt@1.0.0-rc.5";
+export { Secret } from "jsr:@cliffy/prompt@1.0.0-rc.7/secret";
+export { Command } from "jsr:@cliffy/command@1.0.0-rc.7";
+export { Confirm, Input, prompt } from "jsr:@cliffy/prompt@1.0.0-rc.7";
 import dir from "https://deno.land/x/dir@1.5.2/mod.ts";
 export { dir };
 export { walk, walkSync } from "jsr:@std/fs@0.224.0/walk";
@@ -50,7 +51,7 @@ export { dayjs };
 import { Buffer } from "npm:buffer";
 export { Buffer };
 export { mergeReadableStreams } from "jsr:@std/streams@0.224.0";
-export { Cell, Table } from "jsr:@cliffy/table@1.0.0-rc.5";
+export { Cell, Table } from "jsr:@cliffy/table@1.0.0-rc.7";
 export {
   TerminalSpinner,
   SpinnerTypes,
