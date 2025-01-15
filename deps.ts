@@ -13,7 +13,7 @@ export {
   red,
   yellow,
 } from "jsr:@std/fmt@0.224.0/colors";
-export { z } from "https://deno.land/x/zod@v3.22.2/mod.ts";
+export { z } from "npm:zod@3.22.2";
 export { decompress } from "https://deno.land/x/zip@v1.2.5/mod.ts";
 export { existsSync } from "jsr:@std/fs@0.224.0/exists";
 export { load } from "jsr:@std/dotenv@0.224.0";
@@ -58,8 +58,8 @@ export {
 } from "https://deno.land/x/spinners@v1.1.2/mod.ts";
 export { readAllSync } from "jsr:@std/io@0.224.0";
 export { serve } from "jsr:@std/http@0.224.0/server";
-export { createYoga } from "https://esm.sh/graphql-yoga@5.1.1?external=graphql";
-import SchemaBuilder from "https://esm.sh/*@pothos/core@3.41.1";
+export { createYoga } from "npm:graphql-yoga@5.1.1";
+import SchemaBuilder from "npm:@pothos/core@3.41.1";
 export { SchemaBuilder };
 export { createId } from "npm:@paralleldrive/cuid2";
 export { open } from "https://deno.land/x/open@v0.0.6/index.ts";
