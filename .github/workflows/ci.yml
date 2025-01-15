@@ -12,14 +12,13 @@ jobs:
       - uses: actions/checkout@v2
       - name: Setup Fluent CI
         uses: fluentci-io/setup-fluentci@v5
-        with:
-          wasm: true
-          pipeline: deno
-          args: |
-            fmt
-            lint
-            test
-            coverage
+      - name: Run tests
+        run: |
+            deno install -A -g -f -r https://github.com/fluentci-io/fluentci/raw/refs/heads/main/main.ts -n fluentci
+            fluentci run --wasm fmt
+            fluentci run --wasm lint
+            fluentci run --wasm test
+            fluentci run --wasm coverage
       - name: Upload to Codecov
         run: fluentci run --wasm codecov upload
         env:
