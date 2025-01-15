@@ -6,7 +6,7 @@ on:
 jobs:
   build:
     name: release
-    runs-on: macos-latest
+    runs-on: macos-13
     strategy:
       matrix:
         target:
