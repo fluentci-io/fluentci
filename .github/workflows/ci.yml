@@ -14,7 +14,7 @@ jobs:
         uses: fluentci-io/setup-fluentci@v5
       - name: Run tests
         run: |
-            deno install -A -g -f -r https://github.com/fluentci-io/fluentci/raw/refs/heads/main/main.ts -n fluentci
+            deno install -A -g -f -r --unstable-kv https://github.com/fluentci-io/fluentci/raw/refs/heads/main/main.ts -n fluentci
             fluentci run --wasm fmt
             fluentci run --wasm lint
             fluentci run --wasm test
