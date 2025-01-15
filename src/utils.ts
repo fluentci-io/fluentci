@@ -191,7 +191,7 @@ export async function setupPkgx() {
   const command = new Deno.Command("bash", {
     args: [
       "-c",
-      `type pkgx >/dev/null 2>&1 || curl -Ssf https://pkgx.sh/$(uname)/$(uname -m).tgz | tar xz -C $HOME/.local/bin`,
+      `type pkgx >/dev/null 2>&1 || curl -Ssf https://pkgx.sh | sh`,
     ],
     stdout: "inherit",
     stderr: "inherit",
