@@ -15,10 +15,10 @@ jobs:
       - name: Run tests
         run: |
             deno install -A -g -f -r --unstable-kv https://github.com/fluentci-io/fluentci/raw/refs/heads/main/main.ts -n fluentci
-            fluentci run --wasm fmt
-            fluentci run --wasm lint
-            fluentci run --wasm test
-            fluentci run --wasm coverage
+            fluentci run --wasm deno fmt
+            fluentci run --wasm deno lint
+            fluentci run --wasm deno test
+            fluentci run --wasm deno coverage
       - name: Upload to Codecov
         run: fluentci run --wasm codecov upload
         env:
