@@ -272,7 +272,7 @@ export async function setupFluentCIengine() {
       "-c",
       `\
     [ -n "$FORCE_FLUENTCI_ENGINE_INSTALL" ] && type fluentci-engine >/dev/null 2>&1 && rm \`which fluentci-engine\`;
-    type fluentci-engine >/dev/null 2>&1 || pkgx wget https://github.com/fluentci-io/fluentci-engine/releases/download/${FLUENTCI_ENGINE_VERSION}/fluentci-engine_${FLUENTCI_ENGINE_VERSION}_${target}.tar.gz;
+    type fluentci-engine >/dev/null 2>&1 || pkgx wget@1.21.4 https://github.com/fluentci-io/fluentci-engine/releases/download/${FLUENTCI_ENGINE_VERSION}/fluentci-engine_${FLUENTCI_ENGINE_VERSION}_${target}.tar.gz;
     type fluentci-engine >/dev/null 2>&1 || pkgx tar xvf fluentci-engine_${FLUENTCI_ENGINE_VERSION}_${target}.tar.gz;
     type fluentci-engine >/dev/null 2>&1 || rm fluentci-engine_${FLUENTCI_ENGINE_VERSION}_${target}.tar.gz;
     mkdir -p $HOME/.local/bin;
@@ -332,7 +332,7 @@ export async function setupFluentCIStudio() {
       "-c",
       `\
     [ -n "$FORCE_FLUENTCI_STUDIO_INSTALL" ] && type fluentci-studio >/dev/null 2>&1 && rm \`which fluentci-studio\`;
-    type fluentci-studio >/dev/null 2>&1 || pkgx wget https://dl.fluentci.io/fluentci-studio/${FLUENTCI_STUDIO_VERSION}/fluentci-studio_${FLUENTCI_STUDIO_VERSION}_${target}.tar.gz;
+    type fluentci-studio >/dev/null 2>&1 || pkgx wget@1.21.4 https://dl.fluentci.io/fluentci-studio/${FLUENTCI_STUDIO_VERSION}/fluentci-studio_${FLUENTCI_STUDIO_VERSION}_${target}.tar.gz;
     type fluentci-studio >/dev/null 2>&1 || pkgx tar xvf fluentci-studio_${FLUENTCI_STUDIO_VERSION}_${target}.tar.gz;
     type fluentci-studio >/dev/null 2>&1 || rm fluentci-studio_${FLUENTCI_STUDIO_VERSION}_${target}.tar.gz;
     mkdir -p $HOME/.local/bin;
