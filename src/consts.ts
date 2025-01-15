@@ -1,5 +1,5 @@
 import { dir } from "../deps.ts";
-export const VERSION = "0.16.5";
+export const VERSION = "0.16.6";
 
 export const BASE_URL = "https://api.fluentci.io/v1";
 
