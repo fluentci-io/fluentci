@@ -19,7 +19,7 @@ jobs:
             fluentci run --wasm deno lint
             fluentci run --wasm deno test
             fluentci run --wasm deno coverage
-      - name: Upload to Codecov
-        run: fluentci run --wasm codecov upload
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      # - name: Upload to Codecov
+      #  run: fluentci run --wasm codecov upload
+      #  env:
+      # CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
