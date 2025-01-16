@@ -35,7 +35,7 @@ jobs:
           mkdir -p r2/fluentci/${{ env.RELEASE_VERSION }}
           cp fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz r2/fluentci/${{ env.RELEASE_VERSION }}
           cp fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz.sha256 r2/fluentci/${{ env.RELEASE_VERSION }}
-          cd r2 && fluentci run --wasm r2-sync upload --endpoint-url https://$ACCOUNT_ID.r2.cloudflarestorage.com s3://assets
+          cd r2 && fluentci run --wasm r2-sync upload --endpoint-url https://$ACCOUNT_ID.r2.cloudflarestorage.com s3://assets || exit 0
         env:
           TAG: ${{ env.RELEASE_VERSION }}
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
