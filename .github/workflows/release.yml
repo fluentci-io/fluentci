@@ -22,6 +22,7 @@ jobs:
           GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Compile
         run: |
+            rm deno.lock
             deno install -A -g -f -r --unstable-kv https://github.com/fluentci-io/fluentci/raw/refs/heads/main/main.ts -n fluentci
             deno compile -A --no-check --output fluentci --target ${{ matrix.target }} main.ts
       - name: Set env
