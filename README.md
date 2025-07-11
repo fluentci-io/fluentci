@@ -110,7 +110,7 @@ fluentci studio
 fluentci --help
 
 Usage:   fluentci [pipeline] [jobs...]
-Version: 0.16.7                      
+Version: 0.16.8                      
 
 Description:
 
