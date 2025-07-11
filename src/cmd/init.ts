@@ -1,13 +1,13 @@
 import {
-  decompress,
-  prompt,
-  Input,
+  _,
   brightGreen,
   Confirm,
-  TerminalSpinner,
-  SpinnerTypes,
+  decompress,
   green,
-  _,
+  Input,
+  prompt,
+  SpinnerTypes,
+  TerminalSpinner,
   toml,
 } from "../../deps.ts";
 import { directoryExists } from "../utils.ts";
@@ -30,7 +30,7 @@ async function init(
     standalone,
     wasm,
   }: { template?: string; standalone?: boolean; wasm?: boolean } = {},
-  name?: string
+  name?: string,
 ) {
   const infos = await promptPackageDetails(standalone, name);
   let version = extractVersion(template || "base_pipeline");
@@ -40,8 +40,9 @@ async function init(
   const data = await result.json();
 
   if (data.version) {
-    version =
-      version === "latest" ? data.version || data.default_branch : version;
+    version = version === "latest"
+      ? data.version || data.default_branch
+      : version;
     if (
       await downloadTemplateFromRegistry(template, version, standalone, wasm)
     ) {
@@ -57,8 +58,9 @@ async function init(
   }
 
   if (data.github_url) {
-    version =
-      version === "latest" ? data.version || data.default_branch : version;
+    version = version === "latest"
+      ? data.version || data.default_branch
+      : version;
     await downloadTemplateFromGithub(data, template, version, standalone, wasm);
     await overrideFluentciToml(infos, standalone ? "." : ".fluentci");
     if (wasm) {
@@ -71,9 +73,11 @@ async function init(
   }
 
   console.log(
-    `Pipeline template ${green('"')}${green(template)}${green(
-      '"'
-    )} not found in Fluent CI registry`
+    `Pipeline template ${green('"')}${green(template)}${
+      green(
+        '"',
+      )
+    } not found in Fluent CI registry`,
   );
   Deno.exit(1);
 }
@@ -119,9 +123,9 @@ async function download(url: string, template: string) {
 
   terminalSpinner.succeed("Downloaded template");
 
-  Deno.writeFile(tempFilePath, new Uint8Array(value));
+  await Deno.writeFile(tempFilePath, new Uint8Array(value));
 
-  await decompress(tempFilePath, ".");
+  const io = await decompress(tempFilePath, ".", { overwrite: true });
 
   // Cleanup the temp file
   await Deno.remove(tempFilePath);
@@ -158,18 +162,21 @@ async function downloadTemplateFromGithub(
   template: string,
   version: string,
   standalone?: boolean,
-  wasm?: boolean
+  wasm?: boolean,
 ) {
-  const archiveUrl =
-    data.version && data.version.startsWith("v")
-      ? `${data.github_url.replace(
-          "https://github.com",
-          "https://codeload.github.com"
-        )}/zip/refs/tags/${version}`
-      : `${data.github_url.replace(
-          "https://github.com",
-          "https://api.github.com/repos"
-        )}/zipball/${version}`;
+  const archiveUrl = data.version && data.version.startsWith("v")
+    ? `${
+      data.github_url.replace(
+        "https://github.com",
+        "https://codeload.github.com",
+      )
+    }/zip/refs/tags/${version}`
+    : `${
+      data.github_url.replace(
+        "https://github.com",
+        "https://api.github.com/repos",
+      )
+    }/zipball/${version}`;
 
   await download(archiveUrl, template);
 
@@ -209,10 +216,10 @@ async function downloadTemplateFromRegistry(
   template: string,
   version: string,
   standalone?: boolean,
-  wasm?: boolean
+  wasm?: boolean,
 ) {
   const status = await fetch(
-    `https://pkg.fluentci.io/${template}@${version}`
+    `https://pkg.fluentci.io/${template}@${version}`,
   ).then((res) => res.status);
   if (status === 200) {
     await download(`https://pkg.fluentci.io/${template}@${version}`, template);
@@ -257,14 +264,18 @@ async function promptPackageDetails(standalone?: boolean, name?: string) {
   console.log(`👋 Welcome to ${brightGreen("Fluent CI")}!\n`);
   console.log(`This utility will walk you through creating a new pipeline.`);
   console.log(
-    `It only covers the most common items, and tries to guess sensible defaults.\n`
+    `It only covers the most common items, and tries to guess sensible defaults.\n`,
   );
   console.log(
-    `Use ${brightGreen(
-      "`fluentci run <pkg>`"
-    )} to run a published pipeline, or ${brightGreen(
-      "`fluentci publish`"
-    )} to publish one.\n`
+    `Use ${
+      brightGreen(
+        "`fluentci run <pkg>`",
+      )
+    } to run a published pipeline, or ${
+      brightGreen(
+        "`fluentci publish`",
+      )
+    } to publish one.\n`,
   );
   console.log(`See ${brightGreen("`fluentci help`")} for more information.\n`);
   console.log(`Press ${brightGreen("CTRL+C")} at any time to quit.\n`);
@@ -305,9 +316,9 @@ async function promptPackageDetails(standalone?: boolean, name?: string) {
   ]);
 
   console.log(
-    `\n✨ About to create a new${
-      standalone ? " reusable " : " "
-    }pipeline in ${brightGreen(Deno.cwd())}\n`
+    `\n✨ About to create a new${standalone ? " reusable " : " "}pipeline in ${
+      brightGreen(Deno.cwd())
+    }\n`,
   );
 
   console.log("📦 Package details:\n");
@@ -341,14 +352,14 @@ async function overrideDaggerJson(infos: Record<string, unknown>, path = ".") {
     const dagger = await Deno.readFile(`${path}/dagger.json`);
     // deno-lint-ignore no-explicit-any
     const daggerJson: Record<string, any> = JSON.parse(
-      new TextDecoder().decode(dagger)
+      new TextDecoder().decode(dagger),
     );
     for (const key of Object.keys(infos)) {
       daggerJson[key] = _.get(infos, key);
     }
     await Deno.writeFile(
       `${path}/dagger.json`,
-      new TextEncoder().encode(JSON.stringify(daggerJson, null, 2))
+      new TextEncoder().encode(JSON.stringify(daggerJson, null, 2)),
     );
 
     if (_.isEqual(path, ".fluentci")) {
@@ -372,13 +383,13 @@ async function overrideCargoToml(infos: Record<string, unknown>, path = ".") {
 
   await Deno.writeFile(
     `${path}/Cargo.toml`,
-    new TextEncoder().encode(toml.stringify(config))
+    new TextEncoder().encode(toml.stringify(config)),
   );
 }
 
 async function overrideFluentciToml(
   infos: Record<string, unknown>,
-  path = "."
+  path = ".",
 ) {
   let config = {};
   try {
@@ -399,7 +410,7 @@ async function overrideFluentciToml(
 
   await Deno.writeFile(
     `${path}/fluentci.toml`,
-    new TextEncoder().encode(toml.stringify(config))
+    new TextEncoder().encode(toml.stringify(config)),
   );
 }
 

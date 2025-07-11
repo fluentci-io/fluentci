@@ -1,5 +1,5 @@
 {
-  "version": "4",
+  "version": "5",
   "specifiers": {
     "jsr:@cliffy/ansi@1.0.0-rc.7": "1.0.0-rc.7",
     "jsr:@cliffy/command@1.0.0-rc.7": "1.0.0-rc.7",
@@ -20,12 +20,14 @@
     "jsr:@std/collections@^1.0.9": "1.0.9",
     "jsr:@std/dotenv@0.224.0": "0.224.0",
     "jsr:@std/encoding@~1.0.5": "1.0.6",
+    "jsr:@std/fmt@*": "1.0.4",
     "jsr:@std/fmt@0.217": "0.217.0",
     "jsr:@std/fmt@0.224.0": "0.224.0",
     "jsr:@std/fmt@~1.0.2": "1.0.4",
     "jsr:@std/fs@0.224.0": "0.224.0",
     "jsr:@std/http@0.224.0": "0.224.0",
     "jsr:@std/internal@^1.0.5": "1.0.5",
+    "jsr:@std/io@*": "0.224.9",
     "jsr:@std/io@0.224": "0.224.9",
     "jsr:@std/io@0.224.0": "0.224.0",
     "jsr:@std/io@~0.224.9": "0.224.9",
@@ -510,7 +512,8 @@
       "integrity": "sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ=="
     },
     "nanoid@3.1.32": {
-      "integrity": "sha512-F8mf7R3iT9bvThBoW4tGXhXFHCctyCiUUPrWF8WaTqa3h96d9QybkSeba43XVOOE3oiLfkVDe4bT8MeGmkrTxw=="
+      "integrity": "sha512-F8mf7R3iT9bvThBoW4tGXhXFHCctyCiUUPrWF8WaTqa3h96d9QybkSeba43XVOOE3oiLfkVDe4bT8MeGmkrTxw==",
+      "bin": true
     },
     "node-color-log@11.0.2": {
       "integrity": "sha512-+gD5pQpVpEkEA3He9STku4VL1EO9SaOW3HElumCd3xWorulnfr2053NCSVwPCXrkwI5ihPYucQxSCSOuS1q+Eg=="
@@ -519,6 +522,9 @@
       "integrity": "sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==",
       "dependencies": [
         "whatwg-url"
+      ],
+      "optionalPeers": [
+        "encoding@^0.1.0"
       ]
     },
     "procfile@0.1.1": {
@@ -534,7 +540,8 @@
       "integrity": "sha512-oJFu94HQb+KVduSUQL7wnpmqnfmLsOA/nAh6b6EH0wCEoK0/mPeXU6c3wKDV83MkOuHPRHtSXKKU99IBazS/2w=="
     },
     "typescript@5.7.3": {
-      "integrity": "sha512-84MVSjMEHP+FQRPy3pX9sTVV/INIex71s9TL2Gm5FG/WG1SqXeKyZ0k7/blY/4FdOzI12CBy1vGc4og/eus0fw=="
+      "integrity": "sha512-84MVSjMEHP+FQRPy3pX9sTVV/INIex71s9TL2Gm5FG/WG1SqXeKyZ0k7/blY/4FdOzI12CBy1vGc4og/eus0fw==",
+      "bin": true
     },
     "undici-types@6.19.8": {
       "integrity": "sha512-ve2KP6f/JnbPBFyobGHuerC9g1FYGn/F8n1LWTwNxCEzd6IfqTwUQcNXgEtmmQ6DlRrC1hrSrBnCZPokRrDHjw=="
@@ -586,6 +593,20 @@
     "https://cdn.jsdelivr.net/gh/fluentci-io/daggerverse@a6c4ea/deno-sdk/sdk/src/common/errors/types.ts": "48d9fa372934f60816f0bf440716a82c20b148249537aff09e72757d5324a1af",
     "https://cdn.jsdelivr.net/gh/fluentci-io/daggerverse@a6c4ea/deno-sdk/sdk/src/common/utils.ts": "8bb47e146a37a166f67f5332db0a82bd84c90ad8d87eca3c2160c7c2a7413843",
     "https://cdn.jsdelivr.net/gh/fluentci-io/daggerverse@a6c4ea/deno-sdk/sdk/src/mod/introspect.ts": "648991ff50cba373c44cfe3a0b7895497a4d6a4f4f96ca7d2be6a84bcfbe629a",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/deno-zip@6b4dc84/compress.ts": "ca6cfbaa6007372f4fed2fef64ff14437c55f5beb9a8549ed63b79a387e94212",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/deno-zip@6b4dc84/decompress.ts": "6ca5327fa28c365198460a740caf7ea55029afa7627c9c533d8c2aef0d081f4f",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/deno-zip@6b4dc84/deps.ts": "79548387594b3ae1efaaa870b5a507c4d6bedede13dbd5d4ad42f6cda0aeef86",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/deno-zip@6b4dc84/mod.ts": "28eecbc3e1e5adf564f4aa465e64268713a05653104bacdcb04561533f8caf57",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/deno-zip@6b4dc84/utils.ts": "43c323f2b79f9db1976c5739bbb1f9cced20e8077ca7e7e703f9d01d4330bd9d",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/deno-zip@main/compress.ts": "ca6cfbaa6007372f4fed2fef64ff14437c55f5beb9a8549ed63b79a387e94212",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/deno-zip@main/decompress.ts": "7f768124b09d352dac2c5f818239514f0bad2fb849b887f0ce0ca688c58f8248",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/deno-zip@main/deps.ts": "79548387594b3ae1efaaa870b5a507c4d6bedede13dbd5d4ad42f6cda0aeef86",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/deno-zip@main/mod.ts": "28eecbc3e1e5adf564f4aa465e64268713a05653104bacdcb04561533f8caf57",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/deno-zip@main/utils.ts": "43c323f2b79f9db1976c5739bbb1f9cced20e8077ca7e7e703f9d01d4330bd9d",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/spinners@master/mod.ts": "ed5b3562d4ea6c6887bc7e9844612b08a3bc3a3678ca77cc7dfdf461c362751e",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/spinners@master/spinner-types.ts": "c67e6962a0c738aa57b4d3ad9fe06c8c0131f93360acbf95456f2ba200fd8826",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/spinners@master/terminal-spinner.ts": "aa2fcf87060caf79fbd26f741c2d8e0093f196b891aca9ffd0a709aba11a1620",
+    "https://cdn.jsdelivr.net/gh/tsirysndr/spinners@master/util.ts": "22c7cafa1d1138c0009ddafe6c3fd1e0c335a92b53bb3a42d9e4d38727108251",
     "https://deno.land/std@0.106.0/path/_constants.ts": "1247fee4a79b70c89f23499691ef169b41b6ccf01887a0abd131009c5581b853",
     "https://deno.land/std@0.106.0/path/_interface.ts": "1fa73b02aaa24867e481a48492b44f2598cd9dfa513c7b34001437007d3642e4",
     "https://deno.land/std@0.106.0/path/_util.ts": "2e06a3b9e79beaf62687196bd4b60a4c391d862cfa007a20fc3a39f778ba073b",

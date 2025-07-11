@@ -14,7 +14,7 @@ export {
   yellow,
 } from "jsr:@std/fmt@0.224.0/colors";
 export { z } from "npm:zod@3.22.2";
-export { decompress } from "https://deno.land/x/zip@v1.2.5/mod.ts";
+export { decompress } from "https://cdn.jsdelivr.net/gh/tsirysndr/deno-zip@7f47a98/mod.ts";
 export { existsSync } from "jsr:@std/fs@0.224.0/exists";
 export { load } from "jsr:@std/dotenv@0.224.0";
 export { Secret } from "jsr:@cliffy/prompt@1.0.0-rc.7/secret";
@@ -53,9 +53,9 @@ export { Buffer };
 export { mergeReadableStreams } from "jsr:@std/streams@0.224.0";
 export { Cell, Table } from "jsr:@cliffy/table@1.0.0-rc.7";
 export {
-  TerminalSpinner,
   SpinnerTypes,
-} from "https://deno.land/x/spinners@v1.1.2/mod.ts";
+  TerminalSpinner,
+} from "https://cdn.jsdelivr.net/gh/tsirysndr/spinners@master/mod.ts";
 export { readAllSync } from "jsr:@std/io@0.224.0";
 export { serve } from "jsr:@std/http@0.224.0/server";
 export { createYoga } from "npm:graphql-yoga@5.1.1";
@@ -76,7 +76,7 @@ export {
 } from "jsr:@tsirysndr/fluent-circleci@0.3.1";
 export { AzurePipeline } from "jsr:@tsirysndr/fluent-az-pipelines@0.3.1";
 export { BuildSpec } from "jsr:@tsirysndr/fluent-codepipeline@0.3";
-export { ClientError, GraphQLClient, gql } from "npm:graphql-request@6.1.0";
+export { ClientError, gql, GraphQLClient } from "npm:graphql-request@6.1.0";
 import * as toml from "jsr:@std/toml";
 export { toml };
 export { assertEquals, assertObjectMatch } from "jsr:@std/assert";
