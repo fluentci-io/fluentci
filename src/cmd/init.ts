@@ -123,6 +123,8 @@ async function download(url: string, template: string) {
 
   await Deno.writeFile(tempFilePath, new Uint8Array(value));
 
+  await decompress(tempFilePath, ".", { overwrite: true });
+
   // Cleanup the temp file
   await Deno.remove(tempFilePath);
 }
