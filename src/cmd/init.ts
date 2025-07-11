@@ -108,8 +108,6 @@ async function copyDir(src: string, dest: string) {
  * @param template The name of the template being downloaded.
  */
 async function download(url: string, template: string) {
-  console.log("template:", url);
-
   const terminalSpinner = new TerminalSpinner({
     text: `Downloading ${green(template)} template ...`,
     spinner: SpinnerTypes.dots,
@@ -124,8 +122,6 @@ async function download(url: string, template: string) {
   terminalSpinner.succeed("Downloaded template");
 
   await Deno.writeFile(tempFilePath, new Uint8Array(value));
-
-  const io = await decompress(tempFilePath, ".", { overwrite: true });
 
   // Cleanup the temp file
   await Deno.remove(tempFilePath);
