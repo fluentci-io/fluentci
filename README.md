@@ -173,6 +173,6 @@ Please [**open an issue**](https://github.com/fluentci-io/fluentci/issues/new) i
 
 ## 🤝 Contributing
 
-We would love to hear your feedback or suggestions. The best way to reach us is on [Discord](https://discord.gg/H7M28d9dRk).
+We would love to hear your feedback or suggestions. The best way to reach us is on [Discord](https://discord.gg/V4U6dPskKc).
 
 We also welcome pull requests into this repo. See [CONTRIBUTING.md](CONTRIBUTING.md) for information on setting up this repo locally.
