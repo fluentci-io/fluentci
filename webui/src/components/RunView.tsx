@@ -4,21 +4,21 @@ import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAtom } from "jotai";
 import { useSearchParams } from "react-router-dom";
 import {
-  ArrowDown,
-  ArrowUp,
-  ChevronDown,
-  ChevronsDownUp,
-  ChevronsUpDown,
-  Clock3,
-  Download,
-  GitBranch,
-  Hash,
-  Pause,
-  Radio,
-  Search,
-  Terminal,
-  X,
-} from "lucide-react";
+  IconArrowDown as ArrowDown,
+  IconArrowUp as ArrowUp,
+  IconChevronDown as ChevronDown,
+  IconArrowsMinimize as ChevronsDownUp,
+  IconArrowsMaximize as ChevronsUpDown,
+  IconClock as Clock3,
+  IconDownload as Download,
+  IconGitBranch as GitBranch,
+  IconHash as Hash,
+  IconPlayerPause as Pause,
+  IconBroadcast as Radio,
+  IconSearch as Search,
+  IconTerminal2 as Terminal,
+  IconX as X,
+} from "@tabler/icons-react";
 import Ansi from "ansi-to-react";
 import { graphql, isActive, mergeLogs } from "../api";
 import { followLogsAtom, logSearchAtom, timestampsAtom } from "../state";

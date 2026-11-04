@@ -3,19 +3,20 @@
 @theme {
   --font-sans: "Geist Variable", -apple-system, BlinkMacSystemFont, sans-serif;
   --font-mono: "Geist Mono Variable", ui-monospace, monospace;
-  --color-canvas: #101214;
-  --color-sidebar: #121517;
-  --color-panel: #171b1e;
-  --color-elevated: #20262a;
-  --color-terminal: #0c0f11;
-  --color-line: #293035;
-  --color-text: #e1e7e8;
-  --color-muted: #89969c;
-  --color-accent: #72ddc3;
-  --color-success: #65c897;
-  --color-danger: #ed7c83;
-  --color-warning: #dfbb78;
-  --color-log: #bfccd2;
+  /* bsdkrun’s default Night Rider palette. */
+  --color-canvas: #1e1c3f;
+  --color-sidebar: #201e42;
+  --color-panel: #222246;
+  --color-elevated: #2d2b55;
+  --color-terminal: #1a1837;
+  --color-line: #38356a;
+  --color-text: #ecedee;
+  --color-muted: #a5a2cc;
+  --color-accent: #a68ae1;
+  --color-success: #55f0d7;
+  --color-danger: #ff709d;
+  --color-warning: #ffdb7f;
+  --color-log: #c9cbdb;
 }
 
 @layer base {
@@ -52,7 +53,7 @@
   }
   * {
     scrollbar-width: thin;
-    scrollbar-color: #354149 transparent;
+    scrollbar-color: #454180 transparent;
   }
   kbd {
     @apply rounded border border-line bg-canvas px-1.5 py-0.5 font-mono text-[10px] text-muted;
@@ -101,7 +102,7 @@
     @apply flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs text-muted transition-colors hover:bg-panel hover:text-text;
   }
   .nav-active {
-    @apply bg-accent/[.075] text-accent hover:bg-accent/10 hover:text-accent;
+    @apply bg-accent/15 text-text ring-1 ring-inset ring-accent/25 hover:bg-accent/20 hover:text-text;
   }
   .modal {
     @apply fixed inset-0 m-auto max-h-[85vh] w-[calc(100%-2rem)] rounded-xl border border-line bg-panel p-0 text-text shadow-2xl;

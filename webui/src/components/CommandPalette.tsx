@@ -2,14 +2,14 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import {
-  ArrowDown,
-  ArrowUp,
-  CornerDownLeft,
-  Folder,
-  Search,
-  Terminal,
-  X,
-} from "lucide-react";
+  IconArrowDown as ArrowDown,
+  IconArrowUp as ArrowUp,
+  IconCornerDownLeft as CornerDownLeft,
+  IconFolder as Folder,
+  IconSearch as Search,
+  IconTerminal2 as Terminal,
+  IconX as X,
+} from "@tabler/icons-react";
 import type { Project, Run, SearchResult } from "../types";
 import { graphql, isActive } from "../api";
 import { date, statusLabel } from "./ui";

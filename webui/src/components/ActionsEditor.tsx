@@ -2,14 +2,14 @@ import { useState } from "react";
 import { useAtom } from "jotai";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowDown,
-  ArrowUp,
-  Check,
-  Code2,
-  Plus,
-  Save,
-  Trash2,
-} from "lucide-react";
+  IconArrowDown as ArrowDown,
+  IconArrowUp as ArrowUp,
+  IconCheck as Check,
+  IconCode as Code2,
+  IconPlus as Plus,
+  IconDeviceFloppy as Save,
+  IconTrash as Trash2,
+} from "@tabler/icons-react";
 import { actionFields, graphql, useActions } from "../api";
 import type { Action } from "../types";
 import { actionDraftsAtom } from "../state";

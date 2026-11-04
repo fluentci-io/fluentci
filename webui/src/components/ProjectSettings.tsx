@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Archive, Download, Save, Trash2 } from "lucide-react";
+import {
+  IconArchive as Archive,
+  IconDownload as Download,
+  IconDeviceFloppy as Save,
+  IconTrash as Trash2,
+} from "@tabler/icons-react";
 import { graphql } from "../api";
 import type { Project } from "../types";
 import { CopyButton, download, ErrorNotice, Loading, Modal } from "./ui";

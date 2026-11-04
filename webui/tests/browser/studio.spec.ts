@@ -98,3 +98,53 @@ test("large logs stay virtualized while search covers every line", async ({
     ),
   ).toBe(true);
 });
+
+test("left panel toggles while preserving project bars and stats", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  await expect(
+    page.getByRole("heading", { name: "Workspace overview" }),
+  ).toBeVisible();
+  const sidebar = page.getByRole("complementary", {
+    name: "Workspace navigation",
+  });
+  if (testInfo.project.name === "desktop") {
+    await page.getByRole("button", { name: "Hide left panel" }).click();
+    await expect(sidebar).not.toBeVisible();
+    await page.reload();
+    await expect(
+      page.getByRole("button", { name: "Show left panel" }),
+    ).toBeVisible();
+  }
+  await page.getByRole("button", { name: "Show left panel" }).click();
+  await expect(sidebar).toBeVisible();
+  await expect(
+    page.getByRole("button", { name: "Hide left panel" }),
+  ).toHaveAttribute("aria-expanded", "true");
+  if (testInfo.project.name === "mobile") {
+    await page.keyboard.press("Escape");
+    await expect(sidebar).not.toBeVisible();
+    await page.getByRole("button", { name: "Show left panel" }).click();
+    await sidebar.getByRole("link", { name: "Overview", exact: true }).click();
+    await expect(sidebar).not.toBeVisible();
+  } else {
+    await page.getByRole("button", { name: "Hide left panel" }).click();
+  }
+  await expect(
+    page.getByText("Active projects", { exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Your projects" }),
+  ).toBeVisible();
+  await expect(page.getByLabel("Build history").first()).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/overview-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+});

@@ -12,23 +12,25 @@ import {
 import { useAtom, useAtomValue } from "jotai";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import {
-  Activity,
-  ArrowDownToLine,
-  ArrowRight,
-  Box,
-  ChevronRight,
-  Code2,
-  Command,
-  Folder,
-  FolderGit2,
-  GitBranch,
-  LayoutGrid,
-  Plus,
-  Search,
-  Settings2,
-  Terminal,
-  Workflow,
-} from "lucide-react";
+  IconActivity as Activity,
+  IconDownload as ArrowDownToLine,
+  IconArrowRight as ArrowRight,
+  IconBox as Box,
+  IconChevronRight as ChevronRight,
+  IconCode as Code2,
+  IconCommand as Command,
+  IconFolder as Folder,
+  IconFolderCode as FolderGit2,
+  IconGitBranch as GitBranch,
+  IconLayoutGrid as LayoutGrid,
+  IconPlus as Plus,
+  IconLayoutSidebarLeftCollapse as PanelLeftClose,
+  IconLayoutSidebarLeftExpand as PanelLeftOpen,
+  IconSearch as Search,
+  IconAdjustmentsHorizontal as Settings2,
+  IconTerminal2 as Terminal,
+  IconRoute as Workflow,
+} from "@tabler/icons-react";
 import {
   graphql,
   isActive,
@@ -50,6 +52,7 @@ import { ExportView, ProjectSettings } from "./components/ProjectSettings";
 import { CommandPalette } from "./components/CommandPalette";
 import {
   CopyButton,
+  date,
   duration,
   Empty,
   ErrorNotice,
@@ -69,6 +72,28 @@ export default function App() {
   const client = useQueryClient();
   const [palette, setPalette] = useState(false);
   const [newProject, setNewProject] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    if (window.innerWidth < 1024) return false;
+    return localStorage.getItem("studio.sidebarOpen") !== "false";
+  });
+  const toggleSidebar = () => {
+    setSidebarOpen((open) => {
+      if (window.innerWidth >= 1024)
+        localStorage.setItem("studio.sidebarOpen", String(!open));
+      return !open;
+    });
+  };
+  useEffect(() => {
+    if (window.innerWidth < 1024) setSidebarOpen(false);
+  }, [location.pathname]);
+  useEffect(() => {
+    const close = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && window.innerWidth < 1024)
+        setSidebarOpen(false);
+    };
+    window.addEventListener("keydown", close);
+    return () => window.removeEventListener("keydown", close);
+  }, []);
   const projectId = matchPath("/project/:id/*", location.pathname)?.params.id;
   const currentProject = projects.data?.find(
     (project) => project.id === projectId,
@@ -150,8 +175,27 @@ export default function App() {
   }, []);
   return (
     <div className="min-h-screen bg-canvas text-text">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-60 flex-col border-r border-line bg-sidebar lg:flex">
-        <Link to="/" className="flex h-20 items-center gap-3 px-6">
+      {sidebarOpen && (
+        <button
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          aria-label="Close navigation"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <aside
+        id="studio-sidebar"
+        aria-label="Workspace navigation"
+        hidden={!sidebarOpen}
+        onClick={(event) => {
+          if (
+            window.innerWidth < 1024 &&
+            (event.target as HTMLElement).closest("a")
+          )
+            setSidebarOpen(false);
+        }}
+        className={`${sidebarOpen ? "flex" : "hidden"} fixed bottom-0 left-0 top-14 z-40 w-60 flex-col border-r border-line bg-sidebar`}
+      >
+        <Link to="/" className="flex h-16 shrink-0 items-center gap-3 px-5">
           <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-canvas">
             <Workflow size={20} strokeWidth={2.5} />
           </span>
@@ -246,9 +290,23 @@ export default function App() {
           <Terminal size={13} />
         </div>
       </aside>
-      <div className="lg:pl-60">
-        <header className="flex h-16 items-center justify-between gap-4 border-b border-line bg-canvas/90 px-5 md:px-9">
-          <div className="flex min-w-0 items-center gap-2 text-xs">
+      <div className={sidebarOpen ? "pt-14 lg:pl-60" : "pt-14"}>
+        <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between gap-4 border-b border-line bg-panel px-4">
+          <button
+            className="icon-btn"
+            aria-label={sidebarOpen ? "Hide left panel" : "Show left panel"}
+            title={sidebarOpen ? "Hide left panel" : "Show left panel"}
+            aria-expanded={sidebarOpen}
+            aria-controls="studio-sidebar"
+            onClick={toggleSidebar}
+          >
+            {sidebarOpen ? (
+              <PanelLeftClose size={18} />
+            ) : (
+              <PanelLeftOpen size={18} />
+            )}
+          </button>
+          <div className="flex min-w-0 flex-1 items-center gap-2 text-xs">
             <Link
               to="/"
               className="flex items-center gap-2 text-muted hover:text-text"
@@ -269,8 +327,8 @@ export default function App() {
               LOCAL FIRST
             </span>
             <button
-              className="icon-btn lg:hidden"
-              aria-label="Quick search"
+              className="icon-btn"
+              aria-label="Open command palette"
               onClick={() => setPalette(true)}
             >
               <Search size={17} />
@@ -280,7 +338,7 @@ export default function App() {
             </span>
           </div>
         </header>
-        <main className="mx-auto max-w-[1600px] px-5 py-8 md:px-9 md:py-9">
+        <main className="mx-auto max-w-[1600px] px-4 py-5 md:px-6 md:py-6">
           <Routes>
             <Route
               path="/"
@@ -374,16 +432,14 @@ function Overview({
     : "—";
   return (
     <>
-      <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="section-label mb-2 text-accent">
-            Your machine. Your pipelines.
-          </p>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            Workspace overview<span className="text-accent">.</span>
+          <p className="section-label mb-2 text-accent">FluentCI Studio</p>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Workspace overview
           </h1>
           <p className="mt-2 text-sm text-muted">
-            Build, test, and ship. Everything starts here.
+            Your local projects and pipeline activity.
           </p>
         </div>
         <button className="btn-primary" onClick={onNew}>
@@ -419,7 +475,7 @@ function Overview({
             icon: <GitBranch size={17} />,
           },
         ].map((metric) => (
-          <div key={metric.label} className="p-5 md:p-6">
+          <div key={metric.label} className="p-4">
             <div className="flex items-center justify-between text-xs text-muted">
               {metric.label}
               <span className="text-accent/70">{metric.icon}</span>
@@ -706,62 +762,84 @@ function ProjectPage({
         <ExportView projectId={id} />
       ) : (
         <>
-          <div className="mb-7 rounded-xl border border-line bg-panel p-5">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex items-center gap-2">
-                <h2 className="text-xs font-medium">Build history</h2>
+          <div className="grid min-w-0 gap-5 xl:grid-cols-[240px_minmax(0,1fr)]">
+            <section
+              className="min-w-0 self-start rounded-xl border border-line bg-panel p-3"
+              aria-label="Run history"
+            >
+              <div className="mb-3 flex items-center justify-between px-1">
+                <h2 className="text-xs font-medium">Recent runs</h2>
                 <span className="font-mono text-[10px] text-muted">
                   {runs.data?.length || 0} runs
                 </span>
               </div>
-              <div className="flex items-center gap-4 text-[10px] text-muted">
-                <span className="flex items-center gap-1.5">
-                  <span className="size-1.5 rounded-full bg-success" />
-                  Passed
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-1.5 rounded-full bg-danger" />
-                  Failed
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <span className="size-1.5 rounded-full bg-accent" />
-                  Running
-                </span>
-                <Link className="ml-2 text-accent hover:underline" to={base}>
-                  Latest run
-                </Link>
+              <HistoryBars
+                compact
+                runs={runs.data || []}
+                projectId={id}
+                selectedId={current?.id}
+              />
+              <Link
+                className="my-3 block px-1 text-[11px] text-accent hover:underline"
+                to={base}
+              >
+                Latest run
+              </Link>
+              <div className="max-h-64 space-y-1.5 overflow-y-auto xl:max-h-[60vh]">
+                {runs.data?.map((run) => (
+                  <Link
+                    key={run.id}
+                    to={`${base}/run/${run.id}`}
+                    aria-current={current?.id === run.id ? "page" : undefined}
+                    className={`block rounded-lg border p-2.5 transition-colors ${current?.id === run.id ? "border-accent/40 bg-accent/10" : "border-line hover:bg-elevated"}`}
+                  >
+                    <div className="flex items-center gap-2 text-xs">
+                      <StatusIcon status={run.status} />
+                      <span className="min-w-0 flex-1 truncate">
+                        {run.title || run.id.slice(0, 8)}
+                      </span>
+                      <span className="shrink-0 font-mono text-[10px] text-muted">
+                        {duration(run.duration)}
+                      </span>
+                    </div>
+                    <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-muted">
+                      <span>{statusLabel(run.status)}</span>
+                      <span className="truncate">{date(run.date)}</span>
+                    </div>
+                  </Link>
+                ))}
+                {!runs.data?.length && (
+                  <p className="p-2 text-xs text-muted">
+                    Run your pipeline to start building a history.
+                  </p>
+                )}
               </div>
-            </div>
-            <HistoryBars
-              runs={runs.data || []}
-              projectId={id}
-              selectedId={current?.id}
-            />
-            <div className="mt-3 flex items-center justify-between text-[10px] text-muted">
-              <span>Older</span>
-              <span>Hover for details · click to inspect</span>
-              <span>Latest</span>
+            </section>
+            <div className="min-w-0">
+              {runs.error ? (
+                <ErrorNotice
+                  error={runs.error}
+                  retry={() => void runs.refetch()}
+                />
+              ) : runs.isPending ||
+                (detail.isPending && !!(runId || runs.data?.length)) ? (
+                <Loading />
+              ) : detail.error ? (
+                <ErrorNotice
+                  error={detail.error}
+                  retry={() => void detail.refetch()}
+                />
+              ) : runId && !current ? (
+                <Empty icon={<Terminal size={24} />} title="Run not found">
+                  Select another run from the build history.
+                </Empty>
+              ) : current && current.projectId !== id ? (
+                <ErrorNotice error="This run belongs to another project." />
+              ) : (
+                <RunView run={current} />
+              )}
             </div>
           </div>
-          {runs.error ? (
-            <ErrorNotice error={runs.error} retry={() => void runs.refetch()} />
-          ) : runs.isPending ||
-            (detail.isPending && !!(runId || runs.data?.length)) ? (
-            <Loading />
-          ) : detail.error ? (
-            <ErrorNotice
-              error={detail.error}
-              retry={() => void detail.refetch()}
-            />
-          ) : runId && !current ? (
-            <Empty icon={<Terminal size={24} />} title="Run not found">
-              Select another run from the build history.
-            </Empty>
-          ) : current && current.projectId !== id ? (
-            <ErrorNotice error="This run belongs to another project." />
-          ) : (
-            <RunView run={current} />
-          )}
           {current && (
             <div className="mt-8 flex flex-wrap items-center justify-between gap-3 border-t border-line pt-5">
               <div>

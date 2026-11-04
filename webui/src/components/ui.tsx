@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  Check,
-  CheckCircle2,
-  Circle,
-  CircleDashed,
-  Copy,
-  LoaderCircle,
-  OctagonX,
-  X,
-  XCircle,
-} from "lucide-react";
+  IconCheck as Check,
+  IconCircleCheck as CheckCircle2,
+  IconCircle as Circle,
+  IconCircleDashed as CircleDashed,
+  IconCopy as Copy,
+  IconLoader2 as LoaderCircle,
+  IconSquareRoundedX as OctagonX,
+  IconX as X,
+  IconCircleX as XCircle,
+} from "@tabler/icons-react";
 
 export function duration(ms: number) {
   const seconds = Math.max(0, Math.floor(ms / 1000));

@@ -1,4 +1,9 @@
-import { Play, RotateCcw, Square, LoaderCircle } from "lucide-react";
+import {
+  IconPlayerPlay as Play,
+  IconRefresh as RotateCcw,
+  IconPlayerStop as Square,
+  IconLoader2 as LoaderCircle,
+} from "@tabler/icons-react";
 import { isActive } from "../api";
 import type { Run } from "../types";
 
