@@ -73,9 +73,8 @@ in Actions). Uploading is separate from checks and packaging.
 flake without updating its lockfile. Publishing is explicit:
 
 - `fluentci run nix flakehub` needs `flakehub-push`, `RELEASE_VERSION`, and the
-  publisher's GitHub/OIDC environment. The FlakeHub workflow retains the official
-  upload action for its authentication and binary setup, after the PureScript
-  flake check.
+  publisher's GitHub/OIDC environment. No automatic Nix publishing workflows
+  are configured.
 - `fluentci run nix flakestry` needs Nix, `curl`, `jq`, `jo`, `VERSION`, `REF`,
   `GH_TOKEN`, and GitHub's `ACTIONS_ID_TOKEN_REQUEST_TOKEN` and
   `ACTIONS_ID_TOKEN_REQUEST_URL`. It collects metadata in a temporary directory,
@@ -84,13 +83,15 @@ flake without updating its lockfile. Publishing is explicit:
 
 Publishing functions are never included in the default check.
 
-## Workflow bootstrap and module tests
+## GitHub releases and module tests
 
-The composite action in `.github/actions/setup-ci` installs the toolchain and
-builds this checkout's release CLI before it can run its own modules. This initial
-Studio/Cargo build is the bootstrap; subsequent workflow jobs execute PureScript
-functions through that CLI. GitHub workflows retain triggers, runner matrices,
-permissions, and credential setup.
+The only GitHub Actions workflow is `.github/workflows/release.yml`. It runs when
+an existing GitHub release is published, or manually with a release tag. It builds
+Studio and the release CLI directly on native Linux and macOS runners for x86_64
+and arm64, then uploads the archive and SHA-256 checksum for each target. It does
+not need a preinstalled FluentCI binary or the PureScript toolchain.
+
+The PureScript modules remain available for local CI and explicit publishing.
 
 Run the module integration tests independently with:
 

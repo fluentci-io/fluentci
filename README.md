@@ -2,7 +2,6 @@
 
 # FluentCI
 
-[![CI](https://github.com/fluentci-io/fluentci/actions/workflows/ci.yml/badge.svg)](https://github.com/fluentci-io/fluentci/actions/workflows/ci.yml)
 [![Release](https://github.com/fluentci-io/fluentci/actions/workflows/release.yml/badge.svg)](https://github.com/fluentci-io/fluentci/actions/workflows/release.yml)
 [![Discord](https://img.shields.io/discord/1132020671262773358?label=discord&logo=discord&color=5865F2)](https://discord.gg/V4U6dPskKc)
 
@@ -86,7 +85,9 @@ install -m 755 target/release/fluentci "$HOME/.local/bin/fluentci"
 Published archives are listed on the
 [releases page](https://github.com/fluentci-io/fluentci/releases). Older releases
 contain the previous CLI; build this branch to use the unified Rust executable.
-The release workflow builds Linux and macOS archives for x86_64 and ARM64.
+The release workflow builds Linux and macOS archives for x86_64 and ARM64 when a
+GitHub release is published. It can also be run manually with an existing release
+tag. Each target uploads a `.tar.gz` archive and SHA-256 checksum to that release.
 
 ### Runtime tools
 
