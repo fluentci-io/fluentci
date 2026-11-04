@@ -85,9 +85,12 @@ install -m 755 target/release/fluentci "$HOME/.local/bin/fluentci"
 Published archives are listed on the
 [releases page](https://github.com/fluentci-io/fluentci/releases). Older releases
 contain the previous CLI; build this branch to use the unified Rust executable.
-The release workflow builds Linux and macOS archives for x86_64 and ARM64 when a
-GitHub release is published. It can also be run manually with an existing release
-tag. Each target uploads a `.tar.gz` archive and SHA-256 checksum to that release.
+The release workflow builds Linux and macOS archives for x86_64 and ARM64, plus
+native x86_64 FreeBSD, NetBSD, and OpenBSD archives, when a GitHub release is
+published. It can also be run manually with an existing release tag. Each target
+uploads a `.tar.gz` archive and SHA-256 checksum. Studio builds once on Ubuntu;
+BSD guests embed those assets without JavaScript build tools. See the
+[BSD release notes](.github/BSD-RELEASES.md) for OS versions and runtime details.
 
 ### Runtime tools
 

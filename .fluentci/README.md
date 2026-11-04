@@ -87,9 +87,11 @@ Publishing functions are never included in the default check.
 
 The only GitHub Actions workflow is `.github/workflows/release.yml`. It runs when
 an existing GitHub release is published, or manually with a release tag. It builds
-Studio and the release CLI directly on native Linux and macOS runners for x86_64
-and arm64, then uploads the archive and SHA-256 checksum for each target. It does
-not need a preinstalled FluentCI binary or the PureScript toolchain.
+Studio once on Ubuntu and transfers the static assets to the native build jobs.
+The CLI builds for Linux/macOS x86_64 and arm64, plus x86_64 FreeBSD, NetBSD, and
+OpenBSD. Every target uploads an archive and SHA-256 checksum. BSD guests need no
+Bun, Node, Vite, or React build tools. The workflow needs neither a preinstalled
+FluentCI binary nor the PureScript toolchain. See the [BSD release notes](../.github/BSD-RELEASES.md).
 
 The PureScript modules remain available for local CI and explicit publishing.
 
