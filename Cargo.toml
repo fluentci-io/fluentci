@@ -2,7 +2,8 @@
 name = "fluentci"
 version = "0.16.8"
 edition = "2024"
-rust-version = "1.96"
+# OpenBSD uses its native Rust 1.90 package; other targets need the newer Wasmtime compiler.
+rust-version = "1.90"
 description = "FluentCI command line and local CI server"
 license = "MPL-2.0"
 

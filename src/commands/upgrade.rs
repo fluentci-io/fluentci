@@ -19,6 +19,9 @@ pub(super) async fn execute() -> Result<()> {
     let os = match std::env::consts::OS {
         "macos" => "apple-darwin",
         "linux" => "unknown-linux-gnu",
+        "freebsd" => "unknown-freebsd",
+        "netbsd" => "unknown-netbsd",
+        "openbsd" => "unknown-openbsd",
         _ => bail!("Upgrade is not supported on this platform"),
     };
     let target = format!("{}-{os}", std::env::consts::ARCH);

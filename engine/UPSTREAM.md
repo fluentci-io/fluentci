@@ -12,3 +12,8 @@ The unified CLI calls the engine library through its own internal worker mode.
 Engine source otherwise remains upstream code. Root `cargo fmt`, Clippy and tests
 apply to the new application crate. Engine files and provider caches retain their
 upstream formats; application database persistence is exclusively SQLx/SQLite.
+
+The AWS SDK baseline is pinned to the sibling engine's OpenBSD-compatible
+`aws-config` 1.5.5 and `aws-sdk-s3` 1.45.0. The root lockfile constrains their
+transitive dependencies to Rust 1.90-compatible releases. The OpenBSD runtime
+selection and NetBSD Wasmtime signal-context patch remain unchanged.

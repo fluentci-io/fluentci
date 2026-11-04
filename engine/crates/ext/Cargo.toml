@@ -16,8 +16,9 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 anyhow = "1.0.80"
 async-trait = "0.1.79"
-aws-config = "1.1.8"
-aws-sdk-s3 = {version = "1.20.0", features = ["rt-tokio"]}
+# Match fluentci-engine's OpenBSD-compatible AWS SDK baseline.
+aws-config = "=1.5.5"
+aws-sdk-s3 = {version = "=1.45.0", features = ["rt-tokio"]}
 cloud-storage = {version = "0.11.1", features = ["global-client", "rustls-tls"], default-features = false}
 dirs = "5.0.1"
 fluentci-logging = {path = "../logging", version = "0.1.2"}

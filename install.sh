@@ -7,11 +7,14 @@ done
 case "$(uname -s)" in
     Darwin) fluentci_os=apple-darwin ;;
     Linux) fluentci_os=unknown-linux-gnu ;;
+    FreeBSD) fluentci_os=unknown-freebsd ;;
+    NetBSD) fluentci_os=unknown-netbsd ;;
+    OpenBSD) fluentci_os=unknown-openbsd ;;
     *) echo "Unsupported operating system" >&2; exit 1 ;;
 esac
 case "$(uname -m)" in
     arm64|aarch64) fluentci_arch=aarch64 ;;
-    x86_64) fluentci_arch=x86_64 ;;
+    x86_64|amd64) fluentci_arch=x86_64 ;;
     *) echo "Unsupported architecture" >&2; exit 1 ;;
 esac
 fluentci_target="${fluentci_arch}-${fluentci_os}"
