@@ -88,3 +88,49 @@ fn initializes_and_runs_a_pipeline_without_external_runtimes() -> anyhow::Result
     assert!(!unknown.output()?.status.success());
     Ok(())
 }
+
+#[test]
+fn every_public_command_and_argument_has_help() {
+    fn check(command: &clap::Command, path: &str) {
+        for argument in command
+            .get_arguments()
+            .filter(|argument| !argument.is_hide_set())
+        {
+            assert!(
+                argument
+                    .get_help()
+                    .is_some_and(|help| !help.to_string().trim().is_empty()),
+                "{path}: argument {} has no description",
+                argument.get_id(),
+            );
+        }
+
+        for subcommand in command
+            .get_subcommands()
+            .filter(|subcommand| !subcommand.is_hide_set())
+        {
+            let path = format!("{path} {}", subcommand.get_name());
+            assert!(
+                subcommand
+                    .get_about()
+                    .is_some_and(|about| !about.to_string().trim().is_empty()),
+                "{path}: command has no description",
+            );
+            if subcommand.get_name() != "help" {
+                check(subcommand, &path);
+            }
+        }
+    }
+
+    let mut command = Cli::command();
+    command.build();
+    check(&command, "fluentci");
+}
+
+#[test]
+fn dependency_cache_command_is_not_exposed() {
+    let mut command = Cli::command();
+    command.build();
+    assert!(command.find_subcommand("cache").is_none());
+    assert!(!command.render_help().to_string().contains("cache      "));
+}

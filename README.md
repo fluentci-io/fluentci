@@ -297,7 +297,7 @@ Run `fluentci --help` or `fluentci <command> --help` for arguments and options.
 | --- | --- |
 | `run`, or no subcommand | Execute local or published pipelines |
 | `init`, `search` | Create pipelines and find reusable packages |
-| `ls` / `list`, `docs` / `man`, `cache` | Inspect pipelines and cache TypeScript dependencies |
+| `ls` / `list`, `docs` / `man` | List pipeline jobs and read documentation |
 | `studio`, `server` | Start the embedded UI or local GraphQL API |
 | `project create`, `list`, `show`, `export` | Manage saved projects and export CI manifests |
 | `login`, `whoami`, `publish` | Authenticate and publish packages |

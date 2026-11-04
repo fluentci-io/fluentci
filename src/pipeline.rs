@@ -216,7 +216,7 @@ pub async fn action_command(action: &crate::models::Action, root: &Path) -> Resu
     Ok(c)
 }
 
-pub async fn inspect(pipeline: Option<&str>, mode: &str, lock_write: bool) -> Result<()> {
+pub async fn inspect(pipeline: Option<&str>, mode: &str) -> Result<()> {
     let pipeline = pipeline.unwrap_or(".");
     if pipeline == "."
         && mode == "list"
@@ -235,18 +235,8 @@ pub async fn inspect(pipeline: Option<&str>, mode: &str, lock_write: bool) -> Re
             registry::resolve(pipeline).await?.url("README.md")
         })
         .arg("-p");
-    } else if mode == "cache" && pipeline == "." {
-        c.args(["cache", "--reload"]);
-        if lock_write {
-            c.arg("--lock-write");
-        }
-        c.arg("deps.ts").current_dir(".fluentci");
     } else {
-        c.args(if mode == "cache" {
-            vec!["cache", "--reload"]
-        } else {
-            vec!["run", "-A"]
-        });
+        c.args(["run", "-A"]);
         let (map, file) = if pipeline == "." {
             (
                 ".fluentci/import_map.json".into(),

@@ -49,12 +49,8 @@ pub async fn dispatch(cli: cli::Cli) -> Result<()> {
             wasm,
         }) => init(name.as_deref(), template.as_deref(), standalone, wasm).await,
         Some(Search { query, limit }) => registry::search(&query, limit).await,
-        Some(Cache {
-            pipeline,
-            lock_write,
-        }) => pipeline::inspect(pipeline.as_deref(), "cache", lock_write).await,
-        Some(Ls { pipeline }) => pipeline::inspect(pipeline.as_deref(), "list", false).await,
-        Some(Docs { pipeline }) => pipeline::inspect(pipeline.as_deref(), "docs", false).await,
+        Some(Ls { pipeline }) => pipeline::inspect(pipeline.as_deref(), "list").await,
+        Some(Docs { pipeline }) => pipeline::inspect(pipeline.as_deref(), "docs").await,
         Some(Doctor) => doctor().await,
         Some(Env) => {
             for (key, value) in config::environment(Path::new("."))? {
