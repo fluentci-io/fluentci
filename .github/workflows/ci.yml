@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: FluentCI tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    env:
+      FLUENTCI_VERSION: '2026.11.04'
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TERM_COLOR: always
+      # Keep release optimization while avoiding LTO for every test executable.
+      CARGO_PROFILE_RELEASE_LTO: 'false'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install FluentCI with curl
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ci-release-tests-no-lto
+      - name: Install the PureScript Wasm compiler toolchain
+        run: sh .fluentci/scripts/install-sdk-tools.sh
+      - name: Verify the Wasm compiler toolchain by building modules
+        run: fluentci --check-update=false modules --json
+      - name: Run tests with FluentCI
+        run: |
+          FLUENTCI_BIN="$(command -v fluentci)" fluentci --check-update=false run main check
