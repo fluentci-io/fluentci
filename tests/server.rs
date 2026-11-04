@@ -4,6 +4,7 @@ use axum::{
 };
 use fluentci::{
     db::Db,
+    models::{Action, Project},
     server::{self, AppState},
 };
 use tower::ServiceExt;
@@ -92,6 +93,171 @@ async fn graphql_http_endpoint() -> anyhow::Result<()> {
     assert_eq!(
         serde_json::from_slice::<serde_json::Value>(&body)?["data"]["countProjects"],
         0
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn suggestions_read_declared_exports_and_saved_commands_without_building()
+-> anyhow::Result<()> {
+    let (temp, db) = setup().await?;
+    std::fs::write(
+        temp.path().join("fluentci.toml"),
+        r#"
+[[modules]]
+name = "tools"
+path = "tools.wasm"
+[[modules]]
+name = "unbuilt"
+path = "source"
+sdk = "typescript"
+build = ["this-command-must-never-run"]
+"#,
+    )?;
+    std::fs::create_dir(temp.path().join("source"))?;
+    std::fs::write(
+        temp.path().join("tools.wasm"),
+        wat::parse_str(
+            r#"(module
+      (func (export "test")) (func (export "build")) (func (export "__internal")))"#,
+        )?,
+    )?;
+    let project = Project::new(temp.path().to_string_lossy().into());
+    db.save_project(&project).await?;
+    db.save_actions(
+        &project.id,
+        &[Action {
+            name: "Saved".into(),
+            plugin: "tools".into(),
+            commands: "test --release\ncustom arg\ntest".into(),
+            enabled: true,
+            ..Action::default()
+        }],
+    )
+    .await?;
+    let schema = server::schema(AppState::new(db));
+    let response = schema
+        .execute(format!(
+            r#"{{ actionSuggestions(projectId:"{}") {{ name functions }} }}"#,
+            project.id
+        ))
+        .await;
+    assert!(response.errors.is_empty(), "{:?}", response.errors);
+    let modules = response.data.into_json()?["actionSuggestions"]
+        .as_array()
+        .unwrap()
+        .clone();
+    let tools = modules
+        .iter()
+        .find(|module| module["name"] == "tools")
+        .unwrap();
+    assert_eq!(
+        tools["functions"],
+        serde_json::json!(["build", "custom", "test"])
+    );
+    assert!(
+        modules
+            .iter()
+            .any(|module| module["name"] == "unbuilt"
+                && module["functions"] == serde_json::json!([]))
+    );
+    Ok(())
+}
+
+#[test]
+fn ci_exports_use_the_requested_setup_and_installer() -> anyhow::Result<()> {
+    let github = fluentci::export::generate("github", &[])?;
+    assert!(github.contains("fluentci-io/setup-fluentci@next"));
+    for provider in ["gitlab", "azure", "circleci", "aws"] {
+        let yaml = fluentci::export::generate(provider, &[])?;
+        assert!(yaml.contains("curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh"), "{provider}: {yaml}");
+    }
+    Ok(())
+}
+
+#[tokio::test]
+async fn directory_suggestions_stay_inside_the_project() -> anyhow::Result<()> {
+    let (temp, db) = setup().await?;
+    std::fs::create_dir_all(temp.path().join("webui/src/components"))?;
+    std::fs::create_dir_all(temp.path().join("node_modules/ignored"))?;
+    std::fs::create_dir_all(temp.path().join(".git/objects"))?;
+    let outside = tempfile::tempdir()?;
+    std::fs::create_dir(outside.path().join("outside"))?;
+    #[cfg(unix)]
+    std::os::unix::fs::symlink(outside.path(), temp.path().join("linked"))?;
+    let project = Project::new(temp.path().to_string_lossy().into());
+    db.save_project(&project).await?;
+    let response = server::schema(AppState::new(db))
+        .execute(format!(
+            r#"{{ projectDirectories(projectId:"{}") }}"#,
+            project.id
+        ))
+        .await;
+    assert!(response.errors.is_empty(), "{:?}", response.errors);
+    assert_eq!(
+        response.data.into_json()?["projectDirectories"],
+        serde_json::json!([".", "webui", "webui/src", "webui/src/components"])
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn renaming_validates_unique_names_and_preserves_display_names() -> anyhow::Result<()> {
+    let (_temp, db) = setup().await?;
+    let mut first = Project::new("empty".into());
+    first.name = "first".into();
+    first.display_name = Some("Friendly title".into());
+    let mut second = Project::new("empty".into());
+    second.name = "taken".into();
+    db.save_project(&first).await?;
+    db.save_project(&second).await?;
+    let schema = server::schema(AppState::new(db.clone()));
+    for name in ["taken", " TAKEN ", "   "] {
+        let response = schema
+            .execute(format!(
+                r#"mutation {{ updateProject(id:"{}",projectName:"{name}") {{ name }} }}"#,
+                first.id
+            ))
+            .await;
+        assert!(!response.errors.is_empty(), "Accepted {name:?}");
+        assert_eq!(db.project(&first.id).await?.unwrap().name, "first");
+    }
+    let response = schema.execute(format!(r#"mutation {{ updateProject(id:"{}",projectName:" renamed ") {{ name displayName }} }}"#, first.id)).await;
+    assert!(response.errors.is_empty(), "{:?}", response.errors);
+    let project = db.project(&first.id).await?.unwrap();
+    assert_eq!(project.name, "renamed");
+    assert_eq!(project.display_name.as_deref(), Some("Friendly title"));
+    let response = schema
+        .execute(format!(
+            r#"{{ projectNameAvailable(name:"RENAMED",projectId:"{}") }}"#,
+            second.id
+        ))
+        .await;
+    assert_eq!(response.data.into_json()?["projectNameAvailable"], false);
+    Ok(())
+}
+
+#[tokio::test]
+async fn simultaneous_renames_cannot_claim_the_same_name() -> anyhow::Result<()> {
+    let (_temp, db) = setup().await?;
+    let mut first = Project::new("empty".into());
+    let mut second = Project::new("empty".into());
+    db.save_project(&first).await?;
+    db.save_project(&second).await?;
+    first.name = "same".into();
+    second.name = "SAME".into();
+    let (one, two) = tokio::join!(
+        db.save_project_with_unique_name(&first),
+        db.save_project_with_unique_name(&second)
+    );
+    assert_ne!(one.is_ok(), two.is_ok());
+    assert_eq!(
+        db.projects()
+            .await?
+            .iter()
+            .filter(|project| project.name.eq_ignore_ascii_case("same"))
+            .count(),
+        1
     );
     Ok(())
 }

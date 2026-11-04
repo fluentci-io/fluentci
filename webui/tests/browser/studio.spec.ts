@@ -148,3 +148,55 @@ test("left panel toggles while preserving project bars and stats", async ({
     fullPage: true,
   });
 });
+
+test("validates forms, suggests project paths, and inspects pipeline spans", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/project/local-fluentci/actions");
+  const module = page.getByRole("combobox", { name: "Action 1 module" });
+  await module.fill("rus");
+  await page.getByRole("option", { name: "rust", exact: true }).click();
+  const commands = page.getByRole("combobox", {
+    name: "Action 1 functions / commands",
+  });
+  await commands.fill("bu");
+  await page.getByRole("option", { name: "build", exact: true }).click();
+  const directory = page.getByRole("combobox", {
+    name: "Action 1 working directory",
+  });
+  await directory.fill("webui/s");
+  await page.getByRole("option", { name: "webui/src", exact: true }).click();
+  await expect(directory).toHaveValue("webui/src");
+  const name = page.getByRole("textbox", { name: "Action 1 name" });
+  await name.fill("   ");
+  await page.getByRole("button", { name: "Save actions" }).click();
+  await expect(page.getByText("Enter a step name.")).toBeVisible();
+  await name.fill("Build frontend");
+  await page.getByRole("button", { name: "Save actions" }).click();
+  await expect(page.getByRole("button", { name: "Saved" })).toBeVisible();
+  await page.getByRole("link", { name: "Settings", exact: true }).click();
+  await page
+    .getByRole("textbox", { name: "Project name", exact: true })
+    .fill("renamed-project");
+  await page.getByRole("button", { name: "Save changes" }).click();
+  await expect(page.getByText("Changes saved.")).toBeVisible();
+  await page.getByRole("link", { name: "Execution", exact: true }).click();
+  await page.getByRole("button", { name: "Spans", exact: true }).click();
+  await expect(
+    page.getByRole("region", { name: "Pipeline spans" }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `test-results/spans-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.getByRole("button", { name: "Inspect Build Studio span" }).click();
+  await expect(
+    page.getByRole("button", { name: /Build Studio/ }),
+  ).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByText("✓ 148 modules transformed")).toBeVisible();
+});

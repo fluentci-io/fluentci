@@ -4,9 +4,11 @@ use crate::{
     db::Db,
     executor::{self, Events},
     models::*,
+    modules,
+    workspace::Workspace,
 };
 use anyhow::{Context as _, Result};
-use async_graphql::{Context, EmptySubscription, ID, InputObject, Object, Schema};
+use async_graphql::{Context, EmptySubscription, ID, InputObject, Object, Schema, SimpleObject};
 use async_graphql_axum::{GraphQLRequest, GraphQLResponse};
 use axum::{
     Router,
@@ -19,6 +21,10 @@ use axum::{
     routing::get,
 };
 use rust_embed::RustEmbed;
+use std::{
+    collections::{BTreeMap, BTreeSet, VecDeque},
+    path::Path,
+};
 use tokio::sync::broadcast;
 
 #[derive(RustEmbed)]
@@ -66,6 +72,56 @@ fn page<T>(
         .skip(offset)
         .take(limit.unwrap_or(100).clamp(0, 1000) as usize)
         .collect()
+}
+
+fn directory_suggestions(root: &Path) -> Result<Vec<String>> {
+    let root = root
+        .canonicalize()
+        .context("Project directory is unavailable")?;
+    anyhow::ensure!(root.is_dir(), "Project path is not a directory");
+    let mut directories = vec![".".to_owned()];
+    let mut pending = VecDeque::from([(root.clone(), 0)]);
+    while let Some((directory, depth)) = pending.pop_front() {
+        if depth >= 6 || directories.len() >= 500 {
+            continue;
+        }
+        let Ok(entries) = std::fs::read_dir(directory) else {
+            continue;
+        };
+        let mut children: Vec<_> = entries
+            .filter_map(Result::ok)
+            .filter(|entry| {
+                entry
+                    .file_type()
+                    .is_ok_and(|kind| kind.is_dir() && !kind.is_symlink())
+                    && !matches!(
+                        entry.file_name().to_str(),
+                        Some(".git" | "node_modules" | "target")
+                    )
+            })
+            .map(|entry| entry.path())
+            .collect();
+        children.sort();
+        for child in children {
+            if directories.len() >= 500 {
+                break;
+            }
+            directories.push(
+                child
+                    .strip_prefix(&root)?
+                    .to_string_lossy()
+                    .replace('\\', "/"),
+            );
+            pending.push_back((child, depth + 1));
+        }
+    }
+    Ok(directories)
+}
+
+#[derive(SimpleObject)]
+struct ModuleSuggestion {
+    name: String,
+    functions: Vec<String>,
 }
 
 pub struct Query;
@@ -138,6 +194,77 @@ impl Query {
         project_id: ID,
     ) -> async_graphql::Result<Vec<Action>> {
         Ok(ctx.data::<AppState>()?.db.actions(&project_id).await?)
+    }
+
+    async fn project_name_available(
+        &self,
+        ctx: &Context<'_>,
+        name: String,
+        project_id: ID,
+    ) -> async_graphql::Result<bool> {
+        Ok(!name.trim().is_empty()
+            && ctx
+                .data::<AppState>()?
+                .db
+                .project_name_available(&name, &project_id)
+                .await?)
+    }
+
+    async fn project_directories(
+        &self,
+        ctx: &Context<'_>,
+        project_id: ID,
+    ) -> async_graphql::Result<Vec<String>> {
+        let project = ctx
+            .data::<AppState>()?
+            .db
+            .project(&project_id)
+            .await?
+            .context("Project not found")?;
+        Ok(
+            tokio::task::spawn_blocking(move || directory_suggestions(Path::new(&project.path)))
+                .await??,
+        )
+    }
+
+    async fn action_suggestions(
+        &self,
+        ctx: &Context<'_>,
+        project_id: ID,
+    ) -> async_graphql::Result<Vec<ModuleSuggestion>> {
+        let db = &ctx.data::<AppState>()?.db;
+        let project = db
+            .project(&project_id)
+            .await?
+            .context("Project not found")?;
+        let mut suggestions: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        let root = Path::new(&project.path);
+        let mut actions = db.actions(&project_id).await?;
+        actions.extend(crate::detection::actions(root)?);
+        for action in actions {
+            let functions = suggestions.entry(action.plugin).or_default();
+            for command in action.commands.lines() {
+                if let Some(name) = command.split_whitespace().next() {
+                    functions.insert(name.to_owned());
+                }
+            }
+        }
+        let workspace = Workspace::discover(root)?;
+        for module in modules::discover(&workspace)? {
+            // Missing or stale artifacts must not hide modules or saved suggestions.
+            let functions = module.cached_functions().await.unwrap_or_default();
+            suggestions
+                .entry(module.name)
+                .or_default()
+                .extend(functions);
+        }
+        Ok(suggestions
+            .into_iter()
+            .map(|(name, functions)| ModuleSuggestion {
+                name,
+                functions: functions.into_iter().collect(),
+            })
+            .collect())
     }
 
     async fn get_run(&self, ctx: &Context<'_>, id: ID) -> async_graphql::Result<Option<Run>> {
@@ -266,6 +393,7 @@ impl Mutation {
         ctx: &Context<'_>,
         id: ID,
         name: Option<String>,
+        project_name: Option<String>,
         description: Option<String>,
         tags: Option<String>,
     ) -> async_graphql::Result<Option<Project>> {
@@ -273,8 +401,19 @@ impl Mutation {
         let Some(mut p) = db.project(&id).await? else {
             return Ok(None);
         };
-        if name.is_some() {
-            p.display_name = name;
+        let renaming = project_name.is_some();
+        if let Some(name) = project_name {
+            let name = name.trim();
+            if name.is_empty() {
+                return Err(async_graphql::Error::new("Enter a project name."));
+            }
+            p.name = name.to_owned();
+        }
+        if let Some(name) = name {
+            if name.trim().is_empty() {
+                return Err(async_graphql::Error::new("Enter a display name."));
+            }
+            p.display_name = Some(name);
         }
         if description.is_some() {
             p.description = description;
@@ -288,7 +427,12 @@ impl Mutation {
                     .collect(),
             );
         }
-        db.save_project(&p).await?;
+        if renaming {
+            db.save_project_with_unique_name(&p).await?;
+        } else {
+            db.save_project(&p).await?;
+        }
+        executor::publish(Some(&ctx.data::<AppState>()?.events), "project", &p);
         Ok(Some(p))
     }
 

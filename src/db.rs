@@ -73,6 +73,29 @@ impl Db {
         Ok(())
     }
 
+    pub async fn project_name_available(&self, name: &str, project_id: &str) -> Result<bool> {
+        let exists: bool = sqlx::query_scalar(
+            "SELECT EXISTS(SELECT 1 FROM projects WHERE lower(trim(name))=lower(?) AND id<>?)",
+        )
+        .bind(name.trim())
+        .bind(project_id)
+        .fetch_one(&self.0)
+        .await?;
+        Ok(!exists)
+    }
+
+    /// The conditional write checks uniqueness under SQLite's writer lock.
+    pub async fn save_project_with_unique_name(&self, project: &Project) -> Result<()> {
+        let result = sqlx::query("UPDATE projects SET name=?,data=? WHERE id=? AND NOT EXISTS (SELECT 1 FROM projects WHERE lower(trim(name))=lower(?) AND id<>?)")
+            .bind(&project.name).bind(serde_json::to_string(project)?).bind(&project.id)
+            .bind(&project.name).bind(&project.id).execute(&self.0).await?;
+        anyhow::ensure!(
+            result.rows_affected() == 1,
+            "A project with this name already exists."
+        );
+        Ok(())
+    }
+
     pub async fn delete_project(&self, id: &str) -> Result<bool> {
         Ok(sqlx::query("DELETE FROM projects WHERE id=?")
             .bind(id)

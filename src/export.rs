@@ -5,7 +5,8 @@ use anyhow::{Result, bail};
 use serde_json::{Value, json};
 
 fn script(a: &Action) -> String {
-    a.commands
+    let commands = a
+        .commands
         .lines()
         .map(|c| {
             format!(
@@ -15,18 +16,20 @@ fn script(a: &Action) -> String {
             )
         })
         .collect::<Vec<_>>()
-        .join("\n")
+        .join("\n");
+    format!("export PATH=\"$HOME/.local/bin:$PATH\"\n{commands}")
 }
 
 pub fn generate(provider: &str, actions: &[Action]) -> Result<String> {
     let actions: Vec<_> = actions.iter().filter(|a| a.enabled).collect();
-    let setup = "curl -fsSL https://cli.fluentci.io | bash";
+    let setup =
+        "curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh";
     let commands: Vec<_> = actions.iter().map(|a| script(a)).collect();
     let value = match provider {
         "github" => {
             let mut steps = vec![
                 json!({"uses":"actions/checkout@v4"}),
-                json!({"name":"Setup FluentCI","uses":"fluentci-io/setup-fluentci@v5"}),
+                json!({"name":"Setup FluentCI","uses":"fluentci-io/setup-fluentci@next"}),
             ];
             for a in &actions {
                 let mut step = json!({"name":a.name,"run":script(a)});

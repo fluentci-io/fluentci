@@ -20,6 +20,7 @@ import {
   IconX as X,
 } from "@tabler/icons-react";
 import Ansi from "ansi-to-react";
+import { PipelineSpans } from "./PipelineSpans";
 import { graphql, isActive, mergeLogs } from "../api";
 import { followLogsAtom, logSearchAtom, timestampsAtom } from "../state";
 import type { Job, Log, Run } from "../types";
@@ -276,7 +277,19 @@ export function Step({
 
 export function RunView({ run }: { run: Run | null | undefined }) {
   const client = useQueryClient();
-  const [params] = useSearchParams();
+  const [params, setParams] = useSearchParams();
+  const view = params.get("view") === "spans" ? "spans" : "steps";
+  const setView = (value: "steps" | "spans") => {
+    setParams(
+      (previous) => {
+        const next = new URLSearchParams(previous);
+        if (value === "spans") next.set("view", value);
+        else next.delete("view");
+        return next;
+      },
+      { replace: true },
+    );
+  };
   const focusJob = params.get("job");
   const focusLog = params.get("log");
   const now = useNow();
@@ -341,12 +354,20 @@ export function RunView({ run }: { run: Run | null | undefined }) {
         )
       ) {
         event.preventDefault();
-        searchRef.current?.focus();
+        setParams(
+          (previous) => {
+            const next = new URLSearchParams(previous);
+            next.delete("view");
+            return next;
+          },
+          { replace: true },
+        );
+        requestAnimationFrame(() => searchRef.current?.focus());
       }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, []);
+  }, [setParams]);
   const active = isActive(run?.status);
   const completed = jobs.filter((job) =>
     ["SUCCESS", "FAILURE", "SKIPPED", "CANCELLED"].includes(job.status),
@@ -399,175 +420,217 @@ export function RunView({ run }: { run: Run | null | undefined }) {
       </div>
       {run.message && <ErrorNotice error={run.message} />}
       {!!exportError && <ErrorNotice error={exportError} />}
-      <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-panel p-2">
-        <div className="relative flex min-w-40 flex-1 items-center gap-2 pl-2">
-          <Search size={15} className="shrink-0 text-muted" />
-          <input
-            ref={searchRef}
-            aria-label="Search logs"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setMatchIndex(0);
-            }}
-            onKeyDown={(event) => {
-              if (event.key === "Escape") setSearch("");
-              if (event.key === "Enter" && matches.length)
-                setMatchIndex(
-                  (index) => index + (event.shiftKey ? matches.length - 1 : 1),
-                );
-            }}
-            placeholder="Search all logs…"
-            className="w-full bg-transparent py-1.5 text-xs outline-none placeholder:text-muted"
-          />
-          {search && (
-            <>
-              <span className="shrink-0 text-xs text-muted" role="status">
-                {matches.length
-                  ? `${(matchIndex % matches.length) + 1}/${matches.length}`
-                  : "No matches"}
-              </span>
-              <button
-                className="icon-btn"
-                aria-label="Previous match"
-                disabled={!matches.length}
-                onClick={() =>
-                  setMatchIndex((index) => index + matches.length - 1)
-                }
-              >
-                <ArrowUp size={13} />
-              </button>
-              <button
-                className="icon-btn"
-                aria-label="Next match"
-                disabled={!matches.length}
-                onClick={() => setMatchIndex((index) => index + 1)}
-              >
-                <ArrowDown size={13} />
-              </button>
-              <button
-                className="icon-btn"
-                aria-label="Clear log search"
-                onClick={() => setSearch("")}
-              >
-                <X size={13} />
-              </button>
-            </>
-          )}
-        </div>
-        <span className="mx-1 hidden h-5 w-px bg-line sm:block" />
-        <button
-          className={`toolbar-btn ${follow ? "text-accent" : ""}`}
-          aria-pressed={follow}
-          onClick={() => setFollow((value) => !value)}
-        >
-          {follow ? <Radio size={14} /> : <Pause size={14} />}
-          <span>{follow ? "Following" : "Paused"}</span>
-        </button>
-        <button
-          className={`toolbar-btn ${timestamps ? "text-accent" : ""}`}
-          aria-label="Toggle timestamps"
-          aria-pressed={timestamps}
-          onClick={() => setTimestamps((value) => !value)}
-        >
-          <Clock3 size={14} />
-        </button>
-        <button
-          className="toolbar-btn"
-          aria-label="Expand all steps"
-          onClick={() =>
-            setExpanded(Object.fromEntries(jobs.map((job) => [job.id, true])))
-          }
-        >
-          <ChevronsUpDown size={14} />
-        </button>
-        <button
-          className="toolbar-btn"
-          aria-label="Collapse all steps"
-          onClick={() =>
-            setExpanded(Object.fromEntries(jobs.map((job) => [job.id, false])))
-          }
-        >
-          <ChevronsDownUp size={14} />
-        </button>
-        <button
-          className="toolbar-btn"
-          disabled={exporting}
-          onClick={async () => {
-            setExporting(true);
-            setExportError(null);
-            try {
-              const entries = await Promise.all(
-                jobs.map(async (job) => {
-                  const { logs: saved } = await graphql<{ logs: Log[] }>(
-                    "query($id: ID!) { logs(jobId: $id) { id jobId message createdAt } }",
-                    { id: job.id },
-                  );
-                  return [
-                    job.id,
-                    mergeLogs(
-                      saved,
-                      client.getQueryData<Log[]>(["logs", job.id]) || [],
-                    ),
-                  ] as const;
-                }),
-              );
-              download(
-                `fluentci-${run.id.slice(0, 8)}.txt`,
-                exportLogs(run, new Map(entries)),
-              );
-            } catch (error) {
-              setExportError(error);
-            } finally {
-              setExporting(false);
-            }
+      <div
+        className="mb-3 inline-flex gap-1 rounded-lg border border-line bg-panel p-1"
+        role="group"
+        aria-label="Execution view"
+      >
+        {(["steps", "spans"] as const).map((value) => (
+          <button
+            key={value}
+            type="button"
+            aria-pressed={view === value}
+            className={`rounded-md px-3 py-1.5 text-xs capitalize ${view === value ? "bg-accent/20 text-accent" : "text-muted hover:bg-elevated"}`}
+            onClick={() => setView(value)}
+          >
+            {value === "steps" ? "Steps & logs" : "Spans"}
+          </button>
+        ))}
+      </div>
+      {view === "spans" && (
+        <PipelineSpans
+          run={run}
+          now={now}
+          onSelect={(job) => {
+            setParams(
+              (previous) => {
+                const next = new URLSearchParams(previous);
+                next.delete("view");
+                next.delete("log");
+                next.set("job", job.id);
+                return next;
+              },
+              { replace: true },
+            );
+            setExpanded((old) => ({ ...old, [job.id]: true }));
+            setSearch("");
           }}
-        >
-          <Download size={14} />
-          <span>{exporting ? "Exporting…" : "Download logs"}</span>
-        </button>
-      </div>
-      <div className="space-y-2.5">
-        {jobs.map((job, index) => {
-          const defaultOpen =
-            job.status === "RUNNING" || job.status === "FAILURE";
-          const open = search
-            ? (logs.get(job.id) || []).some((log) =>
-                plainText(log.message)
-                  .toLowerCase()
-                  .includes(search.toLowerCase()),
-              )
-            : (expanded[job.id] ?? defaultOpen);
-          return (
-            <Step
-              key={job.id}
-              job={job}
-              logs={logs.get(job.id) || []}
-              search={search}
-              open={open}
-              onToggle={() => {
-                if (search) setSearch("");
-                setExpanded((old) => ({ ...old, [job.id]: !open }));
-              }}
-              timestamps={timestamps}
-              focusedLogId={
-                selectedMatch?.jobId === job.id
-                  ? selectedMatch.logId
-                  : !search && focusJob === job.id
-                    ? focusLog || undefined
-                    : undefined
-              }
-              logError={results[index].error}
-              now={now}
-            />
-          );
-        })}
-      </div>
-      {!jobs.length && (
-        <Empty icon={<Terminal size={24} />} title="No steps recorded">
-          This run has no recorded steps.
-        </Empty>
+        />
       )}
+      <div hidden={view === "spans"}>
+        <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-line bg-panel p-2">
+          <div className="relative flex min-w-40 flex-1 items-center gap-2 pl-2">
+            <Search size={15} className="shrink-0 text-muted" />
+            <input
+              ref={searchRef}
+              aria-label="Search logs"
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setMatchIndex(0);
+              }}
+              onKeyDown={(event) => {
+                if (event.key === "Escape") setSearch("");
+                if (event.key === "Enter" && matches.length)
+                  setMatchIndex(
+                    (index) =>
+                      index + (event.shiftKey ? matches.length - 1 : 1),
+                  );
+              }}
+              placeholder="Search all logs…"
+              className="w-full bg-transparent py-1.5 text-xs outline-none placeholder:text-muted"
+            />
+            {search && (
+              <>
+                <span className="shrink-0 text-xs text-muted" role="status">
+                  {matches.length
+                    ? `${(matchIndex % matches.length) + 1}/${matches.length}`
+                    : "No matches"}
+                </span>
+                <button
+                  className="icon-btn"
+                  aria-label="Previous match"
+                  disabled={!matches.length}
+                  onClick={() =>
+                    setMatchIndex((index) => index + matches.length - 1)
+                  }
+                >
+                  <ArrowUp size={13} />
+                </button>
+                <button
+                  className="icon-btn"
+                  aria-label="Next match"
+                  disabled={!matches.length}
+                  onClick={() => setMatchIndex((index) => index + 1)}
+                >
+                  <ArrowDown size={13} />
+                </button>
+                <button
+                  className="icon-btn"
+                  aria-label="Clear log search"
+                  onClick={() => setSearch("")}
+                >
+                  <X size={13} />
+                </button>
+              </>
+            )}
+          </div>
+          <span className="mx-1 hidden h-5 w-px bg-line sm:block" />
+          <button
+            className={`toolbar-btn ${follow ? "text-accent" : ""}`}
+            aria-pressed={follow}
+            onClick={() => setFollow((value) => !value)}
+          >
+            {follow ? <Radio size={14} /> : <Pause size={14} />}
+            <span>{follow ? "Following" : "Paused"}</span>
+          </button>
+          <button
+            className={`toolbar-btn ${timestamps ? "text-accent" : ""}`}
+            aria-label="Toggle timestamps"
+            aria-pressed={timestamps}
+            onClick={() => setTimestamps((value) => !value)}
+          >
+            <Clock3 size={14} />
+          </button>
+          <button
+            className="toolbar-btn"
+            aria-label="Expand all steps"
+            onClick={() =>
+              setExpanded(Object.fromEntries(jobs.map((job) => [job.id, true])))
+            }
+          >
+            <ChevronsUpDown size={14} />
+          </button>
+          <button
+            className="toolbar-btn"
+            aria-label="Collapse all steps"
+            onClick={() =>
+              setExpanded(
+                Object.fromEntries(jobs.map((job) => [job.id, false])),
+              )
+            }
+          >
+            <ChevronsDownUp size={14} />
+          </button>
+          <button
+            className="toolbar-btn"
+            disabled={exporting}
+            onClick={async () => {
+              setExporting(true);
+              setExportError(null);
+              try {
+                const entries = await Promise.all(
+                  jobs.map(async (job) => {
+                    const { logs: saved } = await graphql<{ logs: Log[] }>(
+                      "query($id: ID!) { logs(jobId: $id) { id jobId message createdAt } }",
+                      { id: job.id },
+                    );
+                    return [
+                      job.id,
+                      mergeLogs(
+                        saved,
+                        client.getQueryData<Log[]>(["logs", job.id]) || [],
+                      ),
+                    ] as const;
+                  }),
+                );
+                download(
+                  `fluentci-${run.id.slice(0, 8)}.txt`,
+                  exportLogs(run, new Map(entries)),
+                );
+              } catch (error) {
+                setExportError(error);
+              } finally {
+                setExporting(false);
+              }
+            }}
+          >
+            <Download size={14} />
+            <span>{exporting ? "Exporting…" : "Download logs"}</span>
+          </button>
+        </div>
+        <div className="space-y-2.5">
+          {jobs.map((job, index) => {
+            const defaultOpen =
+              job.status === "RUNNING" || job.status === "FAILURE";
+            const open = search
+              ? (logs.get(job.id) || []).some((log) =>
+                  plainText(log.message)
+                    .toLowerCase()
+                    .includes(search.toLowerCase()),
+                )
+              : (expanded[job.id] ?? defaultOpen);
+            return (
+              <Step
+                key={job.id}
+                job={job}
+                logs={logs.get(job.id) || []}
+                search={search}
+                open={open}
+                onToggle={() => {
+                  if (search) setSearch("");
+                  setExpanded((old) => ({ ...old, [job.id]: !open }));
+                }}
+                timestamps={timestamps}
+                focusedLogId={
+                  selectedMatch?.jobId === job.id
+                    ? selectedMatch.logId
+                    : !search && focusJob === job.id
+                      ? focusLog || undefined
+                      : undefined
+                }
+                logError={results[index].error}
+                now={now}
+              />
+            );
+          })}
+        </div>
+        {!jobs.length && (
+          <Empty icon={<Terminal size={24} />} title="No steps recorded">
+            This run has no recorded steps.
+          </Empty>
+        )}
+      </div>
       <div className="mt-4 flex items-center justify-between text-[11px] text-muted">
         <span>
           {completed} of {jobs.length} steps finished{" "}

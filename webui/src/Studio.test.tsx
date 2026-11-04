@@ -12,6 +12,7 @@ import { Provider } from "jotai";
 import { MemoryRouter } from "react-router-dom";
 import { http, HttpResponse } from "msw";
 import App from "./App";
+import { pipelineTimings } from "./pipelineTimings";
 import { PipelineControl } from "./components/PipelineControl";
 import { HistoryBars } from "./components/HistoryBars";
 import { exportLogs, plainText } from "./components/RunView";
@@ -324,5 +325,162 @@ describe("build history", () => {
     const result = mergeLogs(logs.slice(0, 3), logs.slice(2, 5));
     expect(result).toHaveLength(5);
     expect(new Set(result.map((log) => log.id)).size).toBe(5);
+  });
+});
+
+describe("validated Studio forms", () => {
+  it("rejects blank step names and malformed environment variables without saving", async () => {
+    renderApp("/project/local-fluentci/actions");
+    const name = await screen.findByRole("textbox", { name: "Action 1 name" });
+    await userEvent.clear(name);
+    await userEvent.type(name, "   ");
+    await userEvent.click(screen.getByRole("button", { name: "Save actions" }));
+    expect(await screen.findByText("Enter a step name.")).toBeVisible();
+    const data = await graphql<{ actions: Action[] }>(
+      "query($id: ID!) { actions(projectId: $id) { name } }",
+      { id: project.id },
+    );
+    expect(data.actions[0].name.trim()).not.toBe("");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Build");
+    const env = screen.getAllByLabelText(/Environment variables/)[0];
+    await userEvent.clear(env);
+    await userEvent.type(env, "INVALID");
+    await userEvent.click(screen.getByRole("button", { name: "Save actions" }));
+    expect(
+      await screen.findByText("Use KEY=value, one variable per line."),
+    ).toBeVisible();
+  });
+
+  it("selects modules, functions, and project directories with the keyboard", async () => {
+    renderApp("/project/local-fluentci/actions");
+    const module = await screen.findByRole("combobox", {
+      name: "Action 1 module",
+    });
+    await userEvent.clear(module);
+    await userEvent.type(module, "rus");
+    await screen.findByRole("option", { name: "rust" });
+    await userEvent.keyboard("{Enter}");
+    expect(module).toHaveValue("rust");
+    const commands = screen.getByRole("combobox", {
+      name: "Action 1 functions / commands",
+    });
+    await userEvent.clear(commands);
+    await userEvent.type(commands, "bu");
+    await screen.findByRole("option", { name: "build" });
+    await userEvent.keyboard("{Tab}");
+    expect(commands).toHaveValue("build");
+    fireEvent.change(commands, {
+      target: { value: "build --release\nte", selectionStart: 18 },
+    });
+    await userEvent.keyboard("{Enter}");
+    expect(commands).toHaveValue("build --release\ntest");
+    const directory = screen.getByRole("combobox", {
+      name: "Action 1 working directory",
+    });
+    await userEvent.clear(directory);
+    await userEvent.type(directory, "webui/s");
+    await screen.findByRole("option", { name: "webui/src" });
+    await userEvent.keyboard("{Enter}");
+    expect(directory).toHaveValue("webui/src");
+    await userEvent.click(screen.getByRole("button", { name: "Save actions" }));
+    await screen.findByRole("button", { name: "Saved" });
+  });
+
+  it("validates project names and saves the name separately from its display name", async () => {
+    renderApp("/project/local-fluentci/settings");
+    const name = await screen.findByRole("textbox", {
+      name: "Project name",
+    });
+    await userEvent.clear(name);
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Enter a project name.")).toBeVisible();
+    await userEvent.type(name, "renamed-project");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    expect(await screen.findByText("Changes saved.")).toBeVisible();
+    const data = await graphql<{
+      project: { name: string; displayName: string };
+    }>("query($id: ID!) { project(id: $id) { name displayName } }", {
+      id: project.id,
+    });
+    expect(data.project.name).toBe("renamed-project");
+    expect(data.project.displayName).toBe(project.displayName);
+  });
+
+  it("rejects a name that became taken at save time", async () => {
+    renderApp("/project/local-fluentci/settings");
+    const name = await screen.findByRole("textbox", {
+      name: "Project name",
+    });
+    server.use(
+      http.post("*/graphql", async ({ request }) => {
+        const { query } = (await request.json()) as { query: string };
+        if (query.includes("updateProject"))
+          return HttpResponse.json({
+            errors: [{ message: "A project with this name already exists." }],
+          });
+      }),
+    );
+    await userEvent.clear(name);
+    await userEvent.type(name, "taken");
+    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(name).toHaveAttribute("aria-invalid", "true"));
+    expect(screen.queryByText("Changes saved.")).not.toBeInTheDocument();
+  });
+
+  it("validates Git URLs before cloning", async () => {
+    renderApp("/");
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Add project" })[0],
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clone repository" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Add a project" });
+    await userEvent.type(
+      within(dialog).getByRole("textbox", { name: "Git repository URL" }),
+      "not a git url",
+    );
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Clone and add project" }),
+    );
+    expect(
+      await within(dialog).findByText(
+        "Enter a Git repository URL (HTTPS or SSH).",
+      ),
+    ).toBeVisible();
+  });
+});
+
+describe("pipeline spans", () => {
+  it("grows running spans but keeps recorded runs fixed and leaves unstarted steps unpositioned", () => {
+    const run = makeRun();
+    const start = Date.parse(run.date);
+    const first = pipelineTimings(run, start + 60_000);
+    const later = pipelineTimings(run, start + 65_000);
+    expect(later.spans[1].elapsed - first.spans[1].elapsed).toBe(5000);
+    expect(later.spans[2].offset).toBeNull();
+    const complete = makeRun("SUCCESS");
+    expect(pipelineTimings(complete, start + 100_000)).toEqual(
+      pipelineTimings(complete, start + 500_000),
+    );
+  });
+  it("opens span details in step logs and restores the spans view from the URL", async () => {
+    renderApp("/project/local-fluentci?view=spans");
+    const span = await screen.findByRole("button", {
+      name: "Inspect Build Studio span",
+    });
+    expect(screen.getByRole("button", { name: "Spans" })).toHaveAttribute(
+      "aria-pressed",
+      "true",
+    );
+    expect(
+      screen.getByRole("region", { name: "Pipeline spans" }),
+    ).toBeVisible();
+    await userEvent.click(span);
+    expect(
+      await screen.findByRole("button", { name: /Build Studio/ }),
+    ).toHaveAttribute("aria-expanded", "true");
+    expect(await screen.findByText("✓ 148 modules transformed")).toBeVisible();
   });
 });

@@ -70,6 +70,77 @@ impl LocalModule {
         })
     }
 
+    /// Read exports without builds, downloads, or SDK setup.
+    pub async fn cached_functions(&self) -> Result<Vec<String>> {
+        let artifact = match &self.source {
+            ModuleSource::Url(url) => dirs::cache_dir()
+                .context("Cache directory is unavailable")?
+                .join("fluentci/modules")
+                .join(format!("{}.wasm", sha256::digest(url.as_str()))),
+            ModuleSource::Path(source) if source.extension().is_some_and(|ext| ext == "wasm") => {
+                source.clone()
+            }
+            ModuleSource::Path(source)
+                if self.definition.sdk != Sdk::Rust || self.definition.build.is_some() =>
+            {
+                source.join(
+                    self.definition
+                        .artifact
+                        .as_deref()
+                        .unwrap_or(Path::new("dist/plugin.wasm")),
+                )
+            }
+            ModuleSource::Path(source) => {
+                let manifest = if source.is_dir() {
+                    source.join("Cargo.toml")
+                } else {
+                    source.clone()
+                };
+                let mut command = Command::new("cargo");
+                command
+                    .args([
+                        "metadata",
+                        "--offline",
+                        "--locked",
+                        "--no-deps",
+                        "--format-version=1",
+                        "--manifest-path",
+                    ])
+                    .arg(&manifest)
+                    .current_dir(
+                        manifest
+                            .parent()
+                            .context("Manifest has no parent directory")?,
+                    )
+                    .kill_on_drop(true);
+                let output =
+                    tokio::time::timeout(std::time::Duration::from_secs(5), command.output())
+                        .await??;
+                anyhow::ensure!(output.status.success(), "Cargo metadata unavailable");
+                let metadata: CargoMetadata = serde_json::from_slice(&output.stdout)?;
+                let package = metadata
+                    .packages
+                    .iter()
+                    .find(|package| package.manifest_path == manifest)
+                    .context("Module package is missing")?;
+                let target = package
+                    .targets
+                    .iter()
+                    .find(|target| target.crate_types.iter().any(|kind| kind == "cdylib"))
+                    .context("Module has no cdylib target")?;
+                metadata
+                    .target_directory
+                    .join(WASM_TARGET)
+                    .join("release")
+                    .join(format!("{}.wasm", target.name.replace('-', "_")))
+            }
+        };
+        if !artifact.is_file() {
+            return Ok(Vec::new());
+        }
+        functions(&tokio::fs::read(artifact).await?)
+    }
+
     pub async fn prepare(&self) -> Result<PathBuf> {
         if let ModuleSource::Url(url) = &self.source {
             return download(url).await;

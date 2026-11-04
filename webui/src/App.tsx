@@ -9,6 +9,9 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { repositorySchema, type RepositoryValues } from "./forms";
 import { useAtom, useAtomValue } from "jotai";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import {
@@ -863,12 +866,20 @@ function ProjectPage({
 }
 
 function NewProject({ onClose }: { onClose: () => void }) {
-  const [repository, setRepository] = useState("");
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RepositoryValues>({
+    resolver: zodResolver(repositorySchema),
+    defaultValues: { repository: "" },
+    mode: "onTouched",
+  });
   const [mode, setMode] = useState<"local" | "clone">("local");
   const client = useQueryClient();
   const navigate = useNavigate();
   const mutation = useMutation({
-    mutationFn: async () =>
+    mutationFn: async ({ repository }: RepositoryValues) =>
       (
         await graphql<{ createProject: Project }>(
           `mutation($repository: String!) { createProject(fromRepository: $repository) { ${projectFields} } }`,
@@ -914,10 +925,8 @@ function NewProject({ onClose }: { onClose: () => void }) {
         </>
       ) : (
         <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            mutation.mutate();
-          }}
+          noValidate
+          onSubmit={handleSubmit((values) => mutation.mutate(values))}
         >
           <label className="field-label">
             Git repository URL
@@ -925,11 +934,22 @@ function NewProject({ onClose }: { onClose: () => void }) {
               autoFocus
               className="input font-mono"
               placeholder="https://github.com/you/project.git"
-              required
-              value={repository}
-              onChange={(event) => setRepository(event.target.value)}
+              {...register("repository")}
+              aria-invalid={!!errors.repository}
+              aria-describedby={
+                errors.repository ? "repository-error" : undefined
+              }
             />
           </label>
+          {errors.repository && (
+            <p
+              id="repository-error"
+              role="alert"
+              className="mt-2 text-xs text-danger"
+            >
+              {errors.repository.message}
+            </p>
+          )}
           <p className="mt-3 text-xs leading-5 text-muted">
             Cloned into ~/.fluentci/workspace. Uses your local Git credentials.
           </p>

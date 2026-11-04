@@ -107,6 +107,25 @@ export function createMockApi({
                 };
               }),
           };
+        } else if (/\bprojectNameAvailable\s*\(/.test(query)) {
+          data = {
+            projectNameAvailable: !projects.some(
+              (project) =>
+                project.id !== v.id &&
+                project.name.trim().toLowerCase() ===
+                  String(v.name).trim().toLowerCase(),
+            ),
+          };
+        } else if (/\bprojectDirectories\s*\(/.test(query)) {
+          data = { projectDirectories: [".", "src", "webui", "webui/src"] };
+        } else if (/\bactionSuggestions\s*\(/.test(query)) {
+          data = {
+            actionSuggestions: [
+              { name: ".", functions: ["build", "test", "release"] },
+              { name: "rust", functions: ["build", "test", "fmt", "clippy"] },
+              { name: "bun", functions: ["install", "run", "test"] },
+            ],
+          };
         } else if (/\bprojects\s*\(/.test(query)) data = { projects };
         else if (/\bproject\s*\(/.test(query))
           data = { project: projects.find((item) => item.id === v.id) || null };
@@ -150,7 +169,20 @@ export function createMockApi({
           data = { createProject: project };
         } else if (/\bupdateProject\s*\(/.test(query)) {
           const project = projects.find((item) => item.id === v.id)!;
+          if (
+            v.projectName &&
+            projects.some(
+              (other) =>
+                other.id !== v.id &&
+                other.name.toLowerCase() ===
+                  String(v.projectName).trim().toLowerCase(),
+            )
+          )
+            return HttpResponse.json({
+              errors: [{ message: "A project with this name already exists." }],
+            });
           Object.assign(project, {
+            name: v.projectName ? String(v.projectName).trim() : project.name,
             displayName: v.name,
             description: v.description,
             tags: String(v.tags).split(","),

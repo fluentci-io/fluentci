@@ -1,5 +1,8 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useForm, useWatch } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { projectSettingsSchema, type ProjectSettingsValues } from "../forms";
 import { useNavigate } from "react-router-dom";
 import hljs from "highlight.js/lib/core";
 import yaml from "highlight.js/lib/languages/yaml";
@@ -16,17 +19,52 @@ import { CopyButton, download, ErrorNotice, Loading, Modal } from "./ui";
 export function ProjectSettings({ project }: { project: Project }) {
   const client = useQueryClient();
   const navigate = useNavigate();
-  const [name, setName] = useState(project.displayName || project.name);
-  const [description, setDescription] = useState(project.description || "");
-  const [tags, setTags] = useState((project.tags || []).join(", "));
+  const {
+    register,
+    handleSubmit,
+    getValues,
+    setError,
+    control,
+    formState: { errors },
+  } = useForm<ProjectSettingsValues>({
+    resolver: zodResolver(projectSettingsSchema),
+    defaultValues: {
+      projectName: project.name,
+      name: project.displayName || project.name,
+      description: project.description || "",
+      tags: (project.tags || []).join(", "),
+    },
+    mode: "onTouched",
+  });
+  const projectName = useWatch({ control, name: "projectName" });
+  const [checkedName, setCheckedName] = useState(projectName.trim());
+  useEffect(() => {
+    const timer = setTimeout(() => setCheckedName(projectName.trim()), 300);
+    return () => clearTimeout(timer);
+  }, [projectName]);
+  const availability = useQuery({
+    queryKey: ["projectNameAvailable", project.id, checkedName],
+    enabled: !!checkedName,
+    queryFn: async ({ signal }) =>
+      (
+        await graphql<{ projectNameAvailable: boolean }>(
+          "query($name: String!, $id: ID!) { projectNameAvailable(name: $name, projectId: $id) }",
+          { name: checkedName, id: project.id },
+          signal,
+        )
+      ).projectNameAvailable,
+    staleTime: 0,
+  });
+  const nameTaken =
+    checkedName === projectName.trim() && availability.data === false;
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [notice, setNotice] = useState("");
   const mutation = useMutation({
     mutationFn: async (action: "save" | "archive" | "delete") => {
       if (action === "save")
         await graphql(
-          "mutation($id: ID!, $name: String!, $description: String!, $tags: String!) { updateProject(id: $id, name: $name, description: $description, tags: $tags) { id } }",
-          { id: project.id, name, description, tags },
+          "mutation($id: ID!, $name: String!, $projectName: String!, $description: String!, $tags: String!) { updateProject(id: $id, name: $name, projectName: $projectName, description: $description, tags: $tags) { id } }",
+          { id: project.id, ...getValues() },
         );
       if (action === "archive")
         await graphql(
@@ -38,6 +76,12 @@ export function ProjectSettings({ project }: { project: Project }) {
           id: project.id,
         });
       return action;
+    },
+    onError: (error) => {
+      if (error.message.includes("project with this name"))
+        setError("projectName", {
+          message: "A project with this name already exists.",
+        });
     },
     onSuccess: (action) => {
       void client.invalidateQueries({ queryKey: ["projects"] });
@@ -55,34 +99,67 @@ export function ProjectSettings({ project }: { project: Project }) {
       {mutation.error && <ErrorNotice error={mutation.error} />}
       <form
         className="space-y-5"
-        onSubmit={(event) => {
-          event.preventDefault();
-          mutation.mutate("save");
-        }}
+        noValidate
+        onSubmit={handleSubmit(() => {
+          if (nameTaken)
+            setError("projectName", {
+              message: "A project with this name already exists.",
+            });
+          else mutation.mutate("save");
+        })}
       >
+        <label className="field-label">
+          Project name
+          <input
+            className="input"
+            {...register("projectName")}
+            aria-label="Project name"
+            aria-invalid={!!errors.projectName || nameTaken}
+            aria-describedby="project-slug-help"
+          />
+          <span
+            id="project-slug-help"
+            className={`mt-2 block text-xs ${errors.projectName || nameTaken ? "text-danger" : "text-muted"}`}
+            role={errors.projectName || nameTaken ? "alert" : "status"}
+          >
+            {errors.projectName?.message ||
+              (nameTaken
+                ? "A project with this name already exists."
+                : availability.isError
+                  ? "Availability check unavailable. Uniqueness will be checked when saving."
+                  : checkedName !== projectName.trim() ||
+                      availability.isFetching
+                    ? "Checking name…"
+                    : "Unique workspace name, also used by the CLI.")}
+          </span>
+        </label>
         <label className="field-label">
           Display name
           <input
             className="input"
-            required
-            value={name}
-            onChange={(event) => setName(event.target.value)}
+            {...register("name")}
+            aria-invalid={!!errors.name}
+            aria-describedby={errors.name ? "project-name-error" : undefined}
           />
+          {errors.name && (
+            <span
+              id="project-name-error"
+              role="alert"
+              className="mt-2 block text-danger"
+            >
+              {errors.name.message}
+            </span>
+          )}
         </label>
         <label className="field-label">
           Description
-          <textarea
-            className="input min-h-24"
-            value={description}
-            onChange={(event) => setDescription(event.target.value)}
-          />
+          <textarea className="input min-h-24" {...register("description")} />
         </label>
         <label className="field-label">
           Tags
           <input
             className="input"
-            value={tags}
-            onChange={(event) => setTags(event.target.value)}
+            {...register("tags")}
             placeholder="rust, backend, release"
           />
         </label>

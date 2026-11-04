@@ -57,3 +57,8 @@ export interface SearchResult {
   excerpt: string;
   createdAt: string;
 }
+
+export interface ModuleSuggestion {
+  name: string;
+  functions: string[];
+}
