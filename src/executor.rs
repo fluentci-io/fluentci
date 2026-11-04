@@ -1,6 +1,6 @@
 //! Durable pipeline execution. Output and state changes are persisted before publication.
 
-use crate::{config, db::Db, models::*, pipeline};
+use crate::{db::Db, models::*, pipeline};
 use anyhow::{Context, Result};
 use std::{path::Path, process::Stdio, time::Instant};
 use tokio::{
@@ -18,10 +18,8 @@ pub fn publish(events: Option<&Events>, channel: &str, data: impl serde::Seriali
 
 pub async fn prepare(db: &Db, project: &Project) -> Result<Run> {
     let mut actions = db.actions(&project.id).await?;
-    if actions.is_empty()
-        && let Some(path) = config::find(Path::new(&project.path))
-    {
-        actions = config::Config::read(&path)?.actions()?;
+    if actions.is_empty() {
+        actions = crate::detection::actions(Path::new(&project.path))?;
         db.save_actions(&project.id, &actions).await?;
     }
     anyhow::ensure!(

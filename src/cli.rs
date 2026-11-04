@@ -147,13 +147,13 @@ pub enum Command {
         #[command(subcommand)]
         command: Option<AgentCommand>,
     },
-    /// Start an interactive Deno/Dagger pipeline session
+    /// Start an interactive pipeline and Wasm module session
     Repl {
-        /// Enable Dagger debug logging
+        /// Show detailed session errors
         #[arg(long)]
         debug: bool,
-        /// Registry pipelines to import into the session
-        pipelines: Vec<String>,
+        /// Pipeline or module selected for direct function calls
+        pipeline: Option<String>,
     },
     /// Start the embedded Studio web UI and local API
     Studio {

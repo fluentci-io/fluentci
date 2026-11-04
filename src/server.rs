@@ -234,8 +234,9 @@ impl Mutation {
             project.repository_url = Some(repo);
         }
         s.db.save_project(&project).await?;
-        if let Some(path) = crate::config::find(std::path::Path::new(&project.path)) {
-            s.db.save_actions(&project.id, &crate::config::Config::read(&path)?.actions()?)
+        let root = std::path::Path::new(&project.path);
+        if root.is_dir() {
+            s.db.save_actions(&project.id, &crate::detection::actions(root)?)
                 .await?;
         }
         executor::publish(Some(&s.events), "project", &project);
