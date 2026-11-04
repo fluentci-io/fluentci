@@ -26,10 +26,10 @@ jobs:
       CARGO_PROFILE_RELEASE_LTO: 'false'
     steps:
       - uses: actions/checkout@v4
-      - name: Install FluentCI with curl
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Set up FluentCI
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
