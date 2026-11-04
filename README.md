@@ -21,6 +21,7 @@ through Axum, and persists application data in SQLite through SQLx.
 - [Build and install](#build-and-install)
 - [Quick start](#quick-start)
 - [Pipeline configuration](#pipeline-configuration)
+- [Workspace modules](#workspace-modules)
 - [WebAssembly plugins](#webassembly-plugins)
 - [Studio and GraphQL](#studio-and-graphql)
 - [Projects and CI exports](#projects-and-ci-exports)
@@ -112,12 +113,14 @@ fluentci ls
 fluentci run
 ```
 
-The generated `.fluentci/fluentci.toml` contains a `hello` step. Run a named step
-or choose a different working directory:
+Initialization creates a root `fluentci.toml` and a default Rust module under
+`.fluentci/main`. The config declares the module and a `hello` step. Run the
+module directly, run the step, or choose a different working directory:
 
 ```sh
+fluentci run main hello
 fluentci run . hello
-fluentci run --work-dir ./my-project .
+fluentci run --work-dir ./my-project main hello
 ```
 
 Search for a reusable pipeline and run a Wasm plugin:
@@ -135,8 +138,9 @@ fluentci studio
 
 ## Pipeline configuration
 
-FluentCI reads `.fluentci/fluentci.toml`, falling back to `fluentci.toml` in the
-project root. Commands can be a string or an array executed in order:
+FluentCI searches ancestor directories for `fluentci.toml`, falling back to the
+legacy `.fluentci/fluentci.toml` layout. Commands can be a string or an array
+executed in order:
 
 ```toml
 [package]
@@ -165,6 +169,121 @@ step variables take precedence. Use `fluentci env` to display that file's values
 See [fixtures](./fixtures) for configuration examples across languages and
 frameworks.
 
+## Workspace modules
+
+Declare multiple modules in the root `fluentci.toml`. Local paths are relative
+to that file; URL modules point directly to compiled Wasm:
+
+```toml
+[[modules]]
+name = "main"
+path = ".fluentci/main"
+sdk = "rust"
+
+[[modules]]
+name = "checks"
+path = ".fluentci/checks"
+sdk = "purescript"
+
+[[modules]]
+name = "backend"
+path = ".fluentci/backend"
+sdk = "elixir"
+entry = "Backend"
+
+[[modules]]
+name = "shared"
+url = "https://example.com/plugins/shared.wasm"
+```
+
+Supported SDKs are `rust` (the default), `purescript`, `elixir`, `gleam`,
+`typescript`, `python`, and `rescript`. A local path can also identify a compiled
+`.wasm` file or a Rust `Cargo.toml`. Declared names take precedence over registry
+packages, so a local module needs no `--wasm` flag:
+
+```sh
+fluentci run main hello
+fluentci run checks test
+fluentci run shared hello
+```
+
+Add modules without replacing existing configuration or comments:
+
+```sh
+fluentci modules add checks --sdk purescript
+fluentci modules add backend --sdk elixir
+fluentci modules add existing --path ./path/to/plugin.wasm
+fluentci modules add shared --url https://example.com/plugins/shared.wasm
+```
+
+New modules are generated under `.fluentci/<name>`. `--path` registers an existing
+source relative to your current directory. For an existing Elixir project, add
+`--entry YourPluginModule`. HTTP(S) URLs must end in `.wasm`; query parameters
+are supported. Downloads are cached locally and no source build runs for a URL.
+
+Discover modules and their actual exported functions:
+
+```sh
+fluentci modules
+fluentci modules main
+fluentci inspect
+fluentci modules --json
+```
+
+Discovery builds source modules as needed and inspects their Wasm exports.
+JSON includes the detected workspace/config paths and each module's name, SDK,
+source, artifact, and function names; build logs go to stderr.
+
+### Running from a monorepo package
+
+These commands work from nested package directories. FluentCI walks upwards to
+the nearest configuration without crossing a `.git` boundary. Before
+initialization, it also recognizes Cargo workspaces, npm/Yarn workspaces, pnpm,
+Lerna, Nx, Turborepo, Deno workspaces, and Go workspaces.
+
+```sh
+cd apps/backend/src
+fluentci run main hello
+fluentci modules add frontend --sdk typescript
+```
+
+Commands run at the detected workspace root by default. `--work-dir` sets an
+explicit execution directory while retaining workspace module lookup. Step
+`working_directory` values are relative to the workspace root. A nested FluentCI
+configuration overrides one farther up the directory tree.
+
+### SDK build commands
+
+| SDK | Default build | Required tools |
+| --- | --- | --- |
+| Rust | Cargo release build for `wasm32-unknown-unknown` | Rust, Cargo, Rustup |
+| PureScript | `npm run build`: Spago → esbuild → extism-js | Node/npm, PureScript, Spago, extism-js |
+| Gleam | `npm run build`: Gleam JS → esbuild → extism-js | Node/npm, Gleam, extism-js |
+| TypeScript | `npm run build`: esbuild → extism-js | Node/npm, extism-js |
+| ReScript | `npm run build`: ReScript → esbuild → extism-js | Node/npm, extism-js; compiler is a package dependency |
+| Elixir | `mix fluentci.plugin.build <entry> --output dist/plugin.wasm` | Elixir/Mix, Rust with the Wasm target |
+| Python | `uv run fluentci-plugin <entry> -o dist/plugin.wasm` | uv, extism-py, Binaryen |
+
+JavaScript-based builders install npm dependencies when `node_modules` is absent.
+Generated starters embed the SDK source they need; they do not require a sibling
+engine checkout. Python defaults to `entry = "plugin.py"`; Elixir requires its
+DSL module as `entry`. Non-Rust builders default to `dist/plugin.wasm`.
+
+Override a project's build command or artifact location when needed:
+
+```toml
+[[modules]]
+name = "custom"
+path = ".fluentci/custom"
+sdk = "typescript"
+build = ["bun", "run", "build:wasm"]
+artifact = "build/custom.wasm"
+```
+
+Build commands are argument arrays executed in the module directory. Artifact
+paths are relative to the module directory. Rust resolves the selected package's
+actual library target and workspace target directory through Cargo metadata.
+
 ## WebAssembly plugins
 
 The linked engine uses Extism to execute WebAssembly plugins. Write plugins in
@@ -176,10 +295,11 @@ Rust or use one of the engine's
 Generate a minimal plugin:
 
 ```sh
-fluentci init hello-plugin --wasm
+fluentci init hello-plugin --sdk rust
 ```
 
-This creates a Rust library in `.fluentci` with an Extism export:
+This creates `.fluentci/hello-plugin` and declares it in the root `fluentci.toml`,
+with an Extism export:
 
 ```rust
 use extism_pdk::*;
@@ -193,7 +313,7 @@ pub fn hello() -> FnResult<String> {
 Run its `hello` export:
 
 ```sh
-fluentci run --wasm . hello
+fluentci run hello-plugin hello
 ```
 
 The CLI installs the Wasm target, builds the local plugin, and invokes the linked
@@ -206,8 +326,9 @@ You can also run an already compiled module:
 fluentci run --wasm ./target/wasm32-unknown-unknown/release/hello_plugin.wasm hello
 ```
 
-Use `--standalone` with `init --wasm` to generate a reusable plugin in the current
-directory. Publishing requires a FluentCI access token:
+Choose another language with `fluentci init --sdk typescript` (or another
+supported SDK). Rust is the default. `--standalone` generates a reusable plugin
+in the current directory. Publishing requires a FluentCI access token:
 
 ```sh
 fluentci login
@@ -297,6 +418,7 @@ Run `fluentci --help` or `fluentci <command> --help` for arguments and options.
 | --- | --- |
 | `run`, or no subcommand | Execute local or published pipelines |
 | `init`, `search` | Create pipelines and find reusable packages |
+| `modules` / `inspect`, `modules add` | Discover modules/functions and add local or URL modules |
 | `ls` / `list`, `docs` / `man` | List pipeline jobs and read documentation |
 | `studio`, `server` | Start the embedded UI or local GraphQL API |
 | `project create`, `list`, `show`, `export` | Manage saved projects and export CI manifests |

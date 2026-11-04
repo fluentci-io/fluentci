@@ -67,6 +67,21 @@ Deno/Dagger. Documentation rendering uses Glow. Service controls use Overmind's
 Unix sockets. Hosted registry/runner operations require their existing remote
 services and credentials.
 
-A newly initialized pipeline uses `.fluentci/fluentci.toml`. `fluentci run`
-executes its steps; `fluentci ls` lists them. `init --template` imports registry
-or GitHub source. Files that already exist are preserved.
+A newly initialized workspace has a root `fluentci.toml` and a module in
+`.fluentci/main/`. `init --sdk` chooses from Rust (default), PureScript, Elixir,
+Gleam, TypeScript, Python, and ReScript. `modules add` appends declarations while
+preserving existing config comments; `--path` and `--url` register existing
+modules. SDK starters are embedded from `templates/sdk`, independently of sibling
+checkouts.
+
+`src/workspace.rs` finds ancestor FluentCI configuration and workspace roots,
+stopping at repository boundaries. `src/modules.rs` resolves declarations,
+builds source modules using their SDK, downloads URL modules, and inspects actual
+Wasm function exports. Local paths are relative to the declaring config file.
+Named module invocation and discovery work from nested monorepo directories;
+explicit work directories remain available for execution.
+
+Use `fluentci modules` (alias `inspect`) to discover exports, or `--json` for
+structured output. Source builds run during discovery; their logs go to stderr.
+The application database remains SQLx/SQLite; downloaded Wasm artifacts are kept
+in the OS cache directory under `fluentci/modules`.
