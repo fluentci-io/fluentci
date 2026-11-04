@@ -112,7 +112,8 @@ native x86_64 FreeBSD, NetBSD, and OpenBSD archives, when a GitHub release is
 published. It can also be run manually with an existing release tag. Each target
 uploads a `.tar.gz` archive and SHA-256 checksum. Studio builds once on Ubuntu;
 BSD guests embed those assets without JavaScript build tools. The workflow
-installs the CLI with curl, then invokes the PureScript release module for build,
+installs the CLI with `fluentci-io/setup-fluentci@next`, then invokes the PureScript
+release module for build,
 verification, packaging, and upload. That module is compiled once on Ubuntu and
 transferred as Wasm to the platform jobs. See the
 [BSD release notes](.github/BSD-RELEASES.md) for OS versions and runtime details.

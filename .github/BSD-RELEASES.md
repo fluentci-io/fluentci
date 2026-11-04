@@ -10,8 +10,10 @@ The single release workflow includes native x86_64 jobs matching fluentci-engine
 
 Studio's Vite/React assets are built **once on Ubuntu**, then transferred as a
 workflow artifact together with the compiled PureScript release module and Wasm
-smoke fixtures. Every host and guest installs the published FluentCI CLI with
-curl before module invocations. `FLUENTCI_VERSION` pins that bootstrap CLI;
+smoke fixtures. GitHub runners install the CLI with
+`fluentci-io/setup-fluentci@next` before module invocations. Native BSD guests use
+the curl installer without installing a Node runtime for the JavaScript action.
+`FLUENTCI_VERSION` pins that bootstrap CLI;
 `RELEASE_VERSION` identifies the new release being built. BSD guests invoke the
 compiled module's `bsdBuild` function and never install Bun, Node, Vite, React
 build tools, or PureScript. Ubuntu invokes `bsdVerify` and `bsdUpload` after VM

@@ -91,7 +91,7 @@ Publishing functions are never included in the default check.
 ## GitHub releases and module tests
 
 `.github/workflows/ci.yml` runs on pushes to `main` and pull requests targeting
-`main`. It installs FluentCI with curl and the
+`main`. It uses `fluentci-io/setup-fluentci@next` to install the CLI, installs the
 SDK compiler toolchain, then invokes `fluentci run main check` for module tests,
 Studio assets, formatting, Clippy, and release Rust tests. `FLUENTCI_BIN` points
 module integration tests at the installed CLI in a fresh checkout. Before testing,
@@ -103,10 +103,10 @@ are checked or installed as well. The CLI installs each module's local esbuild
 package from its npm lockfile. CI disables
 LTO for test executables while retaining release optimization.
 
-The release workflow is `.github/workflows/release.yml`. It installs
-FluentCI with curl before invoking modules, using `FLUENTCI_VERSION=2026.11.04` as
-the bootstrap CLI. This is separate from `RELEASE_VERSION`, the release being
-built, so a new release never depends on its own not-yet-built binary.
+The release workflow is `.github/workflows/release.yml`. Its GitHub runner jobs
+install FluentCI with `fluentci-io/setup-fluentci@next`. The action's `version`
+input reads `FLUENTCI_VERSION`, which selects the existing `2026.11.04` bootstrap
+CLI. `RELEASE_VERSION` identifies the release being built.
 
 The Ubuntu input job installs the PureScript/Spago/Extism compiler toolchain and
 runs `fluentci run release prepare`. That module validates the release and BSD
@@ -120,7 +120,9 @@ fluentci --check-update=false run --wasm .fluentci/release/dist/plugin.wasm buil
 ```
 
 They do not build PureScript sources or need its compiler toolchain. Native BSD
-guests also do not install Node, Bun, Vite, or React build tools. Their `bsdBuild`
+guests also do not install Node, Bun, Vite, or React build tools. Inside each VM,
+the CLI is bootstrapped with its native curl installer; the JavaScript setup
+action runs on the outer GitHub runner. Their `bsdBuild`
 function invokes the existing native build/smoke/package helper; `bsdVerify` and
 `bsdUpload` validate and publish copied-back assets on Ubuntu.
 
