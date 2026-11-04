@@ -1,38 +1,90 @@
-name: release
+name: Release
+
 on:
   release:
-    types: [created]
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag to build and upload
+        required: true
+        type: string
+
 permissions:
-  contents: write
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
 jobs:
-  build:
+  release:
+    name: Release ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - os: ubuntu-latest
+          - os: ubuntu-24.04
             target: x86_64-unknown-linux-gnu
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
           - os: macos-15-intel
             target: x86_64-apple-darwin
-          - os: macos-latest
+          - os: macos-15
             target: aarch64-apple-darwin
-    runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.tag }}
+      TARGET: ${{ matrix.target }}
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TERM_COLOR: always
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
-      - uses: ./.github/actions/setup-ci
-      - name: Build release target
-        run: fluentci --check-update=false run release build
-        env:
-          TARGET: ${{ matrix.target }}
-      - name: Package release
-        run: fluentci --check-update=false run release package
-        env:
-          RELEASE_VERSION: ${{ github.ref_name }}
-          TARGET: ${{ matrix.target }}
-      - name: Upload release assets
-        run: fluentci --check-update=false run release upload
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+      - name: Verify GitHub release exists
         env:
           GH_TOKEN: ${{ github.token }}
-          RELEASE_VERSION: ${{ github.ref_name }}
-          TARGET: ${{ matrix.target }}
+        run: gh release view "$RELEASE_VERSION" --json tagName --jq '.tagName'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: oven-sh/setup-bun@v2
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes build-essential cmake pkg-config
+      - name: Build Studio assets
+        working-directory: webui
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build:web
+      - name: Build release binary
+        run: cargo build --release --locked --target "$TARGET"
+      - name: Check release binary
+        run: |
+          "target/$TARGET/release/fluentci" --version
+      - name: Package release assets
+        run: |
+          set -euo pipefail
+          archive="fluentci_${RELEASE_VERSION}_${TARGET}.tar.gz"
+          mkdir -p target/release-assets
+          COPYFILE_DISABLE=1 tar -czf "target/release-assets/$archive" -C "target/$TARGET/release" fluentci
+          cd target/release-assets
+          shasum -a 256 "$archive" > "$archive.sha256"
+      - name: Upload GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          archive="target/release-assets/fluentci_${RELEASE_VERSION}_${TARGET}.tar.gz"
+          gh release upload "$RELEASE_VERSION" "$archive" "$archive.sha256" --clobber
