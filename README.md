@@ -264,7 +264,14 @@ configuration overrides one farther up the directory tree.
 | Elixir | `mix fluentci.plugin.build <entry> --output dist/plugin.wasm` | Elixir/Mix, Rust with the Wasm target |
 | Python | `uv run fluentci-plugin <entry> -o dist/plugin.wasm` | uv, extism-py, Binaryen |
 
-JavaScript-based builders install npm dependencies when `node_modules` is absent.
+Every source-module run checks the SDK's required tools and reports all missing
+tools before starting its build. Checks also apply during discovery and to cached
+source builds. Project-local compilers in `node_modules/.bin` and `.venv/bin` are
+recognized. JavaScript-based builders install declared npm dependencies when
+`node_modules` is absent, then check the complete toolchain again before building.
+Custom `build` commands validate their executable; compiled `.wasm` files and URL
+modules use the embedded runtime without needing source compilers.
+
 Generated starters embed the SDK source they need; they do not require a sibling
 engine checkout. Python defaults to `entry = "plugin.py"`; Elixir requires its
 DSL module as `entry`. Non-Rust builders default to `dist/plugin.wasm`.

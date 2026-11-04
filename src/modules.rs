@@ -2,7 +2,7 @@
 
 use crate::{
     config::{Config, Module, Sdk},
-    process,
+    process, tools,
     workspace::Workspace,
 };
 use anyhow::{Context, Result};
@@ -123,10 +123,12 @@ impl LocalModule {
                 .unwrap_or(Path::new("dist/plugin.wasm")),
         );
         if let Some(build) = &self.definition.build {
-            process::execute_build(&build[0], &build[1..], source).await?;
+            let program = tools::require_build_command(&build[0], source)?;
+            process::execute_build(&program.to_string_lossy(), &build[1..], source).await?;
         } else {
             match self.definition.sdk {
                 Sdk::Purescript | Sdk::Gleam | Sdk::Typescript | Sdk::Rescript => {
+                    tools::require_sdk(self.definition.sdk, source, true)?;
                     if !source.join("node_modules").is_dir() {
                         let install = if source.join("package-lock.json").is_file() {
                             "ci"
@@ -135,9 +137,11 @@ impl LocalModule {
                         };
                         process::execute_build("npm", [install], source).await?;
                     }
+                    tools::require_sdk(self.definition.sdk, source, false)?;
                     process::execute_build("npm", ["run", "build"], source).await?;
                 }
                 Sdk::Elixir => {
+                    tools::require_sdk(Sdk::Elixir, source, false)?;
                     let entry = self
                         .definition
                         .entry
@@ -159,6 +163,7 @@ impl LocalModule {
                     .await?;
                 }
                 Sdk::Python => {
+                    tools::require_sdk(Sdk::Python, source, false)?;
                     let entry = self.definition.entry.as_deref().unwrap_or("plugin.py");
                     process::execute_build(
                         "uv",
@@ -264,6 +269,7 @@ pub async fn build(manifest: &Path) -> Result<PathBuf> {
     let directory = manifest
         .parent()
         .context("Cargo manifest has no parent directory")?;
+    tools::require_sdk(Sdk::Rust, directory, false)?;
     let output = Command::new("cargo")
         .args([
             "metadata",

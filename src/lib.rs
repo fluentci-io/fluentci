@@ -15,4 +15,5 @@ pub mod remote;
 pub mod scaffold;
 pub mod server;
 pub mod services;
+pub mod tools;
 pub mod workspace;
