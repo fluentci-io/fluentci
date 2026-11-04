@@ -1,3 +1,7 @@
 result
 demo*
 kview
+/target/
+*.db
+*.db-shm
+*.db-wal
