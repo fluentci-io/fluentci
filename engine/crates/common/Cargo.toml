@@ -1,0 +1,27 @@
+[package]
+authors = ["Tsiry Sandratraina <tsiry.sndr@fluentci.io>"]
+categories = ["command-line-utilities", "development-tools"]
+description = "Programmable CI/CD engine without Containers, built on top of Nix ❄️"
+edition = "2021"
+keywords = ["nix", "environment", "ci", "wasm", "devops"]
+license = "MPL-2.0"
+name = "fluentci-common"
+repository = "https://github.com/fluentci-io/fluentci-engine"
+version = "0.2.12"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.81"
+dirs = "5.0.1"
+fluentci-core = {path = "../core", version = "0.3.11"}
+fluentci-ext = {path = "../ext", version = "0.2.10"}
+fluentci-secrets = {path = "../secrets", version = "0.1.2"}
+fluentci-types = {path = "../types", version = "0.1.10"}
+regex = "1.10.4"
+sha256 = "1.5.0"
+uuid = {version = "1.8.0", features = [
+  "v4",
+  "fast-rng",
+  "macro-diagnostics",
+]}

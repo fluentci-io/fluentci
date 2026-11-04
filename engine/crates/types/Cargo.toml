@@ -1,0 +1,15 @@
+[package]
+authors = ["Tsiry Sandratraina <tsiry.sndr@fluentci.io>"]
+categories = ["command-line-utilities"]
+description = "Programmable CI/CD engine without Containers, built on top of Nix ❄️"
+edition = "2021"
+keywords = ["nix", "environment", "ci", "wasm", "devops"]
+license = "MPL-2.0"
+name = "fluentci-types"
+version = "0.1.10"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = {version = "1.0.197", features = ["serde_derive", "derive"]}
+serde_yaml = "0.9.34"

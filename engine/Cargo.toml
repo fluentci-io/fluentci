@@ -1,0 +1,10 @@
+[workspace]
+members = ["crates/*", "vendor/superconsole"]
+exclude = ["vendor/wasmtime", "vendor/extism-openbsd"]
+resolver = "2"
+
+[workspace.dependencies]
+extism = "=1.41.0"
+extism-pdk = "=1.4.1"
+crossterm = { version = "0.29.0", default-features = false, features = ["windows"] }
+superconsole = { package = "fluentci-superconsole", path = "vendor/superconsole", version = "=0.3.1" }

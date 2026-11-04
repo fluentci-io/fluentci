@@ -1,0 +1,19 @@
+[package]
+authors = ["Tsiry Sandratraina <tsiry.sndr@fluentci.io>"]
+categories = ["command-line-utilities"]
+description = "Programmable CI/CD engine without Containers, built on top of Nix ❄️"
+edition = "2021"
+keywords = ["nix", "environment", "ci", "wasm", "devops"]
+license = "MPL-2.0"
+name = "fluentci-logging"
+repository = "https://github.com/fluentci-io/fluentci-engine"
+version = "0.1.2"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.82"
+reqwest = {version = "0.12.4", features = ["rustls-tls", "blocking"], default-features = false}
+serde = {version = "1.0.198", features = ["derive"]}
+serde_json = "1.0.116"
+uuid = {version = "1.8.0", features = ["v4"]}
