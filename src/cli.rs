@@ -1,4 +1,7 @@
-use clap::{Args, Parser, Subcommand};
+use clap::{
+    Args, Parser, Subcommand,
+    builder::{Styles, styling::RgbColor},
+};
 use std::path::PathBuf;
 
 #[derive(Debug, Parser)]
@@ -6,7 +9,8 @@ use std::path::PathBuf;
     name = "fluentci",
     version,
     about = "FluentCI — CI/CD pipelines powered by Wasm and Dagger",
-    subcommand_precedence_over_arg = true
+    subcommand_precedence_over_arg = true,
+    styles = help_styles()
 )]
 pub struct Cli {
     #[command(subcommand)]
@@ -19,6 +23,27 @@ pub struct Cli {
     /// Check for a published CLI update at most once a day
     #[arg(long, global=true, default_value="true", action=clap::ArgAction::Set)]
     pub check_update: bool,
+}
+
+/// Rocksky's palette, mapped to Clap's help and diagnostic roles.
+fn help_styles() -> Styles {
+    let primary = RgbColor(0, 232, 198).on_default();
+    let secondary = RgbColor(0, 198, 232).on_default();
+    let accent = RgbColor(130, 100, 255).on_default();
+    let highlight = RgbColor(100, 232, 130).on_default();
+    let muted = RgbColor(200, 210, 220).on_default();
+    let error = RgbColor(255, 100, 100).on_default();
+
+    Styles::styled()
+        .header(primary.bold())
+        .usage(secondary.bold())
+        .literal(highlight)
+        .placeholder(accent)
+        .context(muted)
+        .context_value(secondary)
+        .valid(highlight)
+        .invalid(error)
+        .error(error.bold())
 }
 
 fn default_database() -> PathBuf {
