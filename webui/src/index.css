@@ -1,153 +1,109 @@
-@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@100;200;300;400;500;600;800&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;500;600;700;800;900&display=swap');
+@import "tailwindcss";
 
-:root {
-  font-family: Lexend, Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
-
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+@theme {
+  --font-sans: "Geist Variable", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, monospace;
+  --color-canvas: #101214;
+  --color-sidebar: #121517;
+  --color-panel: #171b1e;
+  --color-elevated: #20262a;
+  --color-terminal: #0c0f11;
+  --color-line: #293035;
+  --color-text: #e1e7e8;
+  --color-muted: #89969c;
+  --color-accent: #72ddc3;
+  --color-success: #65c897;
+  --color-danger: #ed7c83;
+  --color-warning: #dfbb78;
+  --color-log: #bfccd2;
 }
 
-a {
-  text-decoration: inherit;
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    @apply m-0 min-w-80 bg-canvas font-sans text-text;
+  }
+  button,
+  a,
+  input,
+  textarea,
+  select {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button {
+    @apply cursor-pointer;
+  }
+  button:disabled {
+    @apply cursor-not-allowed opacity-40;
+  }
+  :focus-visible {
+    @apply outline-2 outline-offset-4 outline-accent;
+  }
+  input[type="checkbox"] {
+    @apply accent-accent;
+  }
+  ::selection {
+    @apply bg-accent/25 text-text;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #354149 transparent;
+  }
+  kbd {
+    @apply rounded border border-line bg-canvas px-1.5 py-0.5 font-mono text-[10px] text-muted;
+  }
+  dialog::backdrop {
+    background: rgb(0 0 0 / 65%);
+    backdrop-filter: blur(5px);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
 }
 
-
-
-body {
-  min-width: 320px;
-  min-height: 100vh;
-  background-color: #0f0124 !important;
-  color: #fff;
-  overflow-y: hidden;
-}
-
-h1 {
-  font-size: 3.2em;
-  line-height: 1.1;
-}
-
-::placeholder {
-  color: rgb(158, 148, 183) !important;
-  opacity: 0.5; /* Firefox */
-}
-
-::-ms-input-placeholder { /* Edge 12 -18 */
-  color: rgb(158, 148, 183) !important;
-}
-
-a {
-  color: #5324ff;
-}
-
-li {
-  border-bottom-color: #1b0657 !important; 
-}
-
-li:last-child {
-  border-bottom: none;
-}
-
-code {
-  font-family: Inconsolata, monospace;
-}
-
-code[class*="language-"] {
-  background-color: initial !important;
-  background: initial !important;
-  box-shadow: none !important;
-  font-family: Inconsolata, Consolas, monospace;
-}
-
-pre[class*="language-"] {
-  background: #10072c !important;
-  border: 1px solid #ffffff1f;
-  border-radius: 5px;
-  padding: 20px;
-}
-
-/* Custom Scrollbar for WebKit Browsers (Chrome, Safari) */
-::-webkit-scrollbar {
-  width: 5px;  /* Width of the entire scrollbar */
-  height: 5px; /* Height of the horizontal scrollbar */
-}
-
-::-webkit-scrollbar-track {
-  background: #f1f1f113; /* Color of the track */
-  border-radius: 10px; /* Rounded corners for the track */
-}
-
-::-webkit-scrollbar-thumb {
-  background-color: #88888864; /* Color of the thumb */
-  border-radius: 10px !important; /* Rounded corners for the thumb */
-  border: 0px solid #f1f1f15f; /* Padding around thumb */
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: #88888864; /* Color of the thumb on hover */
-}
-
-/* Custom Scrollbar for Firefox */
-body {
-  scrollbar-width: thin;       /* Width of the scrollbar */
-  scrollbar-color: #f1f1f119 #0f0124 ; /* Color of the thumb and track */
-}
-
-/* Apply the styles to all scrollable elements */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: #f1f1f119 #0f0124 ;
-}
-
-/*
-*::-webkit-scrollbar {
-  display: none;
-}
-*/
-
-* {
-  /*-ms-overflow-style: none;  /* Internet Explorer 10+ */
-  /*scrollbar-width: none;     /* Firefox */
-}
-
-
-.markdown-dark > ol > li > pre > div {
-  background: #151236 !important;
-}
-
-.markdown-dark > pre > div {
-  background: #151236 !important;
-}
-
-.markdown-dark > pre > div > code {
-  background: #151236 !important;
-}
-
-.markdown-dark > ol > li > p {
-  color: rgb(242, 242, 244);
-}
-
-.markdown-dark > p {
-  color: rgb(242, 242, 244);
-}
-
-.markdown-dark {
-  color: rgb(242, 242, 244);
-}
-
-.markdown-dark > ol > li > pre > div > code {
-  background: #151236 !important;
-}
-
-.markdown-dark > ol > li {
-  margin-top: 1rem;
-  margin-bottom: 1rem;
-}
-
-.markdown-dark > ol > li::marker {
-  color: #fff;
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-accent bg-accent px-4 py-2.5 text-xs font-semibold text-canvas transition-colors hover:border-accent/80 hover:bg-accent/85;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-line bg-panel px-3 py-2 text-xs font-medium text-text transition-colors hover:border-muted/50 hover:bg-elevated;
+  }
+  .btn-cancel {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg border border-danger/35 bg-danger/10 px-4 py-2.5 text-xs font-medium text-danger transition-colors hover:bg-danger/20;
+  }
+  .icon-btn {
+    @apply inline-flex size-7 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-elevated hover:text-text;
+  }
+  .toolbar-btn {
+    @apply inline-flex items-center justify-center gap-1.5 rounded-md px-2 py-1.5 text-[11px] text-muted transition-colors hover:bg-elevated hover:text-text;
+  }
+  .input {
+    @apply mt-2 block w-full rounded-lg border border-line bg-terminal px-3 py-2.5 text-sm text-text outline-none transition-colors placeholder:text-muted/60 focus:border-accent/60;
+  }
+  .field-label {
+    @apply block text-xs font-medium text-muted;
+  }
+  .section-label {
+    @apply text-[10px] font-medium uppercase tracking-[.15em] text-muted;
+  }
+  .nav-item {
+    @apply flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-xs text-muted transition-colors hover:bg-panel hover:text-text;
+  }
+  .nav-active {
+    @apply bg-accent/[.075] text-accent hover:bg-accent/10 hover:text-accent;
+  }
+  .modal {
+    @apply fixed inset-0 m-auto max-h-[85vh] w-[calc(100%-2rem)] rounded-xl border border-line bg-panel p-0 text-text shadow-2xl;
+  }
 }

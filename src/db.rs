@@ -202,6 +202,78 @@ impl Db {
             .await?)
     }
 
+    pub async fn search(
+        &self,
+        text: &str,
+        project: Option<&str>,
+        limit: i32,
+    ) -> Result<Vec<SearchResult>> {
+        // Treat user input as literal token prefixes, never as FTS operators.
+        let text: String = text.chars().take(256).collect();
+        let expression = text
+            .split(|c: char| !c.is_alphanumeric())
+            .filter(|token| !token.is_empty())
+            .take(16)
+            .map(|token| format!("\"{token}\"*"))
+            .collect::<Vec<_>>()
+            .join(" AND ");
+        if expression.is_empty() || limit <= 0 {
+            return Ok(Vec::new());
+        }
+        let rows = sqlx::query(
+            "SELECT * FROM (
+                SELECT p.id AS id, 'PROJECT' AS kind, p.id AS project_id,
+                       NULL AS run_id, NULL AS job_id,
+                       coalesce(json_extract(p.data, '$.displayName'), p.name) AS title,
+                       snippet(project_search, -1, '', '', ' … ', 24) AS excerpt,
+                       p.created_at AS created_at, bm25(project_search, 5.0, 1.0) AS score
+                FROM project_search JOIN projects p ON p.rowid = project_search.rowid
+                WHERE project_search MATCH ? AND (? IS NULL OR p.id = ?)
+                UNION ALL
+                SELECT r.id, 'RUN', r.project_id, r.id, NULL,
+                       coalesce(json_extract(r.data, '$.title'), r.id),
+                       snippet(run_search, -1, '', '', ' … ', 24), r.date,
+                       bm25(run_search, 5.0, 1.0)
+                FROM run_search JOIN runs r ON r.rowid = run_search.rowid
+                WHERE run_search MATCH ? AND (? IS NULL OR r.project_id = ?)
+                UNION ALL
+                SELECT l.id, 'LOG', r.project_id, r.id, j.id,
+                       coalesce(json_extract(j.data, '$.name'), j.id),
+                       snippet(log_search, 0, '', '', ' … ', 32), l.created_at,
+                       bm25(log_search)
+                FROM log_search JOIN logs l ON l.rowid = log_search.rowid
+                JOIN jobs j ON j.id = l.job_id JOIN runs r ON r.id = j.run_id
+                WHERE log_search MATCH ? AND (? IS NULL OR r.project_id = ?)
+            ) ORDER BY CASE kind WHEN 'PROJECT' THEN 0 WHEN 'RUN' THEN 1 ELSE 2 END,
+                       score, created_at DESC, id LIMIT ?",
+        )
+        .bind(&expression)
+        .bind(project)
+        .bind(project)
+        .bind(&expression)
+        .bind(project)
+        .bind(project)
+        .bind(&expression)
+        .bind(project)
+        .bind(project)
+        .bind(limit.min(100))
+        .fetch_all(&self.0)
+        .await?;
+        Ok(rows
+            .into_iter()
+            .map(|row| SearchResult {
+                id: row.get("id"),
+                kind: row.get("kind"),
+                project_id: row.get("project_id"),
+                run_id: row.get("run_id"),
+                job_id: row.get("job_id"),
+                title: row.get("title"),
+                excerpt: row.get("excerpt"),
+                created_at: row.get("created_at"),
+            })
+            .collect())
+    }
+
     pub async fn set_setting(&self, key: &str, value: &str) -> Result<()> {
         sqlx::query("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key).bind(value).execute(&self.0).await?;
         Ok(())

@@ -111,8 +111,12 @@ pub async fn execute_prepared(
         .into(),
     );
     for job in &mut run.jobs {
-        if job.status == "RUNNING" {
+        if cancelled && matches!(job.status.as_str(), "RUNNING" | "PENDING") {
+            job.status = "CANCELLED".into();
+        } else if job.status == "RUNNING" {
             job.status = "FAILURE".into();
+        } else if job.status == "PENDING" {
+            job.status = "SKIPPED".into();
         }
     }
     db.save_run(&run).await?;
@@ -191,7 +195,7 @@ async fn execute_actions(
                     publish(
                         events,
                         "logs",
-                        serde_json::json!({"text":message,"jobId":log.job_id,"projectId":project.id,"runId":run.id}),
+                        serde_json::json!({"id":log.id,"createdAt":log.created_at,"text":message,"jobId":log.job_id,"projectId":project.id,"runId":run.id}),
                     );
                 }
             }

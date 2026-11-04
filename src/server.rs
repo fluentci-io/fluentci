@@ -72,6 +72,24 @@ pub struct Query;
 
 #[Object]
 impl Query {
+    async fn search(
+        &self,
+        ctx: &Context<'_>,
+        query: String,
+        project_id: Option<ID>,
+        limit: Option<i32>,
+    ) -> async_graphql::Result<Vec<SearchResult>> {
+        Ok(ctx
+            .data::<AppState>()?
+            .db
+            .search(
+                &query,
+                project_id.as_ref().map(|id| id.as_str()),
+                limit.unwrap_or(30),
+            )
+            .await?)
+    }
+
     #[allow(clippy::too_many_arguments)]
     async fn projects(
         &self,

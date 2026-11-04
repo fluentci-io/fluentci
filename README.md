@@ -427,6 +427,15 @@ fluentci server --port 6076
 Studio registers the current directory as a project. Saved project actions and
 execution history are shared with CLI commands through the same SQLite database.
 
+Studio includes a dark local workspace, a single status-aware Run/Cancel/Restart
+control, collapsible timed steps, live streaming logs, instant log filtering,
+and `.txt` log downloads. Build-history bars link to previous runs and show
+details on hover or keyboard focus. Press **⌘K / Ctrl+K** to search projects,
+runs, and persisted logs using SQLite FTS5; log results open the matching step.
+Actions use ordered command forms, and saved actions can be exported to supported
+CI providers. See [Studio development](./webui/README.md) for Storybook, MSW mocks,
+and frontend tests.
+
 ## Projects and CI exports
 
 ```sh

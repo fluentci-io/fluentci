@@ -15,12 +15,28 @@ async fn executes_shell_actions_and_persists_output_and_status() -> anyhow::Resu
         ..Action::default()
     };
     db.save_actions(&project.id, &[action]).await?;
-    let result = executor::execute(db.clone(), project.clone(), None).await?;
+    let (events, mut received) = tokio::sync::broadcast::channel(32);
+    let result = executor::execute(db.clone(), project.clone(), Some(events)).await?;
     assert_eq!(result.status.as_deref(), Some("SUCCESS"));
     assert_eq!(result.jobs[0].status, "SUCCESS");
     let logs = db.logs(None, Some(&project.id)).await?;
     assert_eq!(logs.len(), 2);
     assert!(logs.iter().any(|l| l.message == "hello"));
+    let mut streamed = Vec::new();
+    while let Ok(event) = received.try_recv() {
+        let event: serde_json::Value = serde_json::from_str(&event)?;
+        if event["channel"] == "logs" {
+            streamed.push(event["data"].clone());
+        }
+    }
+    assert_eq!(streamed.len(), logs.len());
+    for log in &logs {
+        let event = streamed.iter().find(|event| event["id"] == log.id).unwrap();
+        assert_eq!(event["createdAt"], log.created_at);
+        assert_eq!(event["text"], log.message);
+        assert_eq!(event["jobId"], log.job_id);
+        assert_eq!(event["runId"], result.id);
+    }
     assert_eq!(
         db.project(&project.id).await?.unwrap().reliability,
         Some(100.0)
@@ -57,6 +73,7 @@ async fn records_failure_and_skips_subsequent_actions() -> anyhow::Result<()> {
     let runs = db.runs(&p.id).await?;
     assert_eq!(runs[0].status.as_deref(), Some("FAILURE"));
     assert_eq!(runs[0].jobs[0].status, "FAILURE");
+    assert_eq!(runs[0].jobs[1].status, "SKIPPED");
     assert!(!temp.path().join("should-not-exist").exists());
     Ok(())
 }
