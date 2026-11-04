@@ -9,8 +9,13 @@ The single release workflow includes native x86_64 jobs matching fluentci-engine
 | `x86_64-unknown-openbsd` | OpenBSD 7.8 | Native Rust package, with dependencies compatible with Rust 1.90 |
 
 Studio's Vite/React assets are built **once on Ubuntu**, then transferred as a
-workflow artifact. BSD guests receive only the compiled assets and Wasm smoke
-fixtures. They never install Bun, Node, Vite, React build tools, or PureScript.
+workflow artifact together with the compiled PureScript release module and Wasm
+smoke fixtures. Every host and guest installs the published FluentCI CLI with
+curl before module invocations. `FLUENTCI_VERSION` pins that bootstrap CLI;
+`RELEASE_VERSION` identifies the new release being built. BSD guests invoke the
+compiled module's `bsdBuild` function and never install Bun, Node, Vite, React
+build tools, or PureScript. Ubuntu invokes `bsdVerify` and `bsdUpload` after VM
+copyback.
 
 All native builds use `cargo build --release --locked`. FreeBSD and NetBSD host
 toolchains are downloaded over HTTPS and verified against Rust's SHA-256

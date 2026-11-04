@@ -19,7 +19,7 @@ fluentci run main build      # Studio + host release CLI
 | `main` | `check`, `build` | Standard repository checks and release CLI build |
 | `rust` | `format`, `lint`, `test`, `check`, `build` | Cargo formatting, linting, tests, and builds |
 | `studio` | `install`, `build` | Frozen Bun dependency install and embedded Studio web assets |
-| `release` | `build`, `package`, `upload` | Target release build, archive/checksum creation, GitHub upload |
+| `release` | `prepare`, `build`, `buildPrepared`, `check`, `package`, `upload`, `bsd*` | Release inputs, native builds, verification, and uploads |
 | `nix` | `check`, `metadata`, `flakehub`, `flakestry` | Flake validation, inspection, and explicit publishing |
 
 `common` is a shared PureScript source package, not a Wasm module. The modules
@@ -58,6 +58,11 @@ fluentci run release build
 fluentci run release package
 ```
 
+`build` prepares Studio locally. `buildPrepared` requires an existing
+`webui/dist/index.html` and builds only the target binary; platform jobs use it
+after downloading the Studio artifact. `check` runs the target binary's version
+and help commands.
+
 Archives and SHA-256 checksum files are written under `target/release-assets/`.
 Each archive contains a single `fluentci` executable at its root, matching the
 installer's expected layout. Packaging reads the selected target's existing
@@ -85,15 +90,34 @@ Publishing functions are never included in the default check.
 
 ## GitHub releases and module tests
 
-The only GitHub Actions workflow is `.github/workflows/release.yml`. It runs when
-an existing GitHub release is published, or manually with a release tag. It builds
-Studio once on Ubuntu and transfers the static assets to the native build jobs.
-The CLI builds for Linux/macOS x86_64 and arm64, plus x86_64 FreeBSD, NetBSD, and
-OpenBSD. Every target uploads an archive and SHA-256 checksum. BSD guests need no
-Bun, Node, Vite, or React build tools. The workflow needs neither a preinstalled
-FluentCI binary nor the PureScript toolchain. See the [BSD release notes](../.github/BSD-RELEASES.md).
+The only GitHub Actions workflow is `.github/workflows/release.yml`. It installs
+FluentCI with curl before invoking modules, using `FLUENTCI_VERSION=2026.11.04` as
+the bootstrap CLI. This is separate from `RELEASE_VERSION`, the release being
+built, so a new release never depends on its own not-yet-built binary.
 
+The Ubuntu input job installs the PureScript/Spago/Extism compiler toolchain and
+runs `fluentci run release prepare`. That module validates the release and BSD
+checks, generates Wasm fixtures, and builds Studio once. The job publishes the
+compiled release module along with those portable inputs.
+
+All Linux/macOS jobs, BSD host jobs, and BSD guests invoke the precompiled module:
+
+```sh
+fluentci --check-update=false run --wasm .fluentci/release/dist/plugin.wasm buildPrepared
+```
+
+They do not build PureScript sources or need its compiler toolchain. Native BSD
+guests also do not install Node, Bun, Vite, or React build tools. Their `bsdBuild`
+function invokes the existing native build/smoke/package helper; `bsdVerify` and
+`bsdUpload` validate and publish copied-back assets on Ubuntu.
+
+YAML retains checkout, tool setup, caches, artifact transfer, and VM startup.
+Preparation, dependency installation, build, binary checks, packaging, archive
+verification, and uploads run through PureScript module functions. The initial
+SDK compiler setup happens only in `.fluentci/scripts/install-sdk-tools.sh` on
+Ubuntu; BSD package preparation installs the tools needed to bootstrap the CLI.
 The PureScript modules remain available for local CI and explicit publishing.
+See the [BSD release notes](../.github/BSD-RELEASES.md).
 
 Run the module integration tests independently with:
 
