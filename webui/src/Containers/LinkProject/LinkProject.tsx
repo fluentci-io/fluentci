@@ -1,6 +1,5 @@
 import { FC, useEffect } from "react";
 import styled from "@emotion/styled";
-import Titlebar from "../../Components/Titlebar";
 import Navbar from "../../Components/Navbar";
 import MainContent from "./MainContent";
 import AskAI from "../../Components/AskAI";
@@ -37,7 +36,7 @@ const LinkProject: FC = () => {
 
   return (
     <>
-      <Titlebar />
+
       <Container>
         <Navbar />
         <MainContent />

@@ -1,7 +1,6 @@
 import { FC } from "react";
 import styled from "@emotion/styled";
 import MainContent from "./MainContent";
-import Titlebar from "../../Components/Titlebar";
 import Navbar from "../../Components/Navbar";
 import AskAI from "../../Components/AskAI";
 
@@ -15,7 +14,7 @@ const Container = styled.div`
 const Project: FC = () => {
   return (
     <>
-      <Titlebar />
+
       <Container>
         <Navbar />
         <MainContent />

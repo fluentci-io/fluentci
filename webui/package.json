@@ -3,28 +3,22 @@
   "private": true,
   "version": "0.2.0",
   "type": "module",
-  "main": "dist-electron/main/index.js",
   "author": "Tsiry Sandratraina <tsiry.sndr@fluentci.io>",
-  "debug": {
-    "env": {
-      "VITE_DEV_SERVER_URL": "http://127.0.0.1:7777/"
-    }
-  },
   "scripts": {
-    "dev": "vite --config vite.dev.config.ts",
-    "local": "VITE_APP_API_URL=http://localhost:8787/graphql vite --config vite.dev.config.ts",
-    "prod": "VITE_APP_API_URL=https://api.fluentci.io/graphql VITE_APP_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsuZmx1ZW50Y2kuaW8k vite --config vite.dev.config.ts",
-    "start": "electron .",
-    "build:web": "vite build --config vite.dev.config.ts",
-    "build": "tsc && vite build && electron-builder",
-    "build:prod": "VITE_APP_API_URL=https://api.fluentci.io/graphql VITE_APP_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsuZmx1ZW50Y2kuaW8k tsc && vite build --config vite.dev.config.ts",
+    "dev": "vite",
+    "local": "VITE_APP_API_URL=http://localhost:8787/graphql vite",
+    "prod": "VITE_APP_API_URL=https://api.fluentci.io/graphql VITE_APP_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsuZmx1ZW50Y2kuaW8k vite",
+    "start": "vite preview",
+    "build:web": "vite build",
+    "build": "vite build",
+    "build:prod": "VITE_APP_API_URL=https://api.fluentci.io/graphql VITE_APP_CLERK_PUBLISHABLE_KEY=pk_live_Y2xlcmsuZmx1ZW50Y2kuaW8k tsc && vite build",
     "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "graphql:generate": "graphql-codegen --config codegen.yml",
-    "test": "vitest --config vite.dev.config.ts",
-    "coverage": "vitest run --config vite.dev.config.ts --coverage"
+    "test": "vitest",
+    "coverage": "vitest run --coverage"
   },
   "dependencies": {
     "@apollo/client": "^3.9.4",
@@ -61,8 +55,6 @@
     "baseui": "14",
     "copy-to-clipboard": "^3.3.3",
     "dayjs": "^1.11.10",
-    "electron-squirrel-startup": "^1.0.1",
-    "electron-updater": "^6.1.8",
     "framer-motion": "^11.3.28",
     "graphql": "15.7.2",
     "nanoid": "^5.0.7",
@@ -112,8 +104,6 @@
     "@typescript-eslint/parser": "^6.21.0",
     "@vitejs/plugin-react": "^4.2.1",
     "@vitest/ui": "^1.6.0",
-    "electron": "30.0.8",
-    "electron-builder": "^24.13.3",
     "eslint": "^8.56.0",
     "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-react-refresh": "^0.4.5",
@@ -124,8 +114,6 @@
     "storybook": "^7.6.13",
     "typescript": "^5.2.2",
     "vite": "^5.1.0",
-    "vite-plugin-electron": "^0.28.7",
-    "vite-plugin-electron-renderer": "^0.14.5",
     "vitest": "^1.6.0"
   },
   "trustedDependencies": [

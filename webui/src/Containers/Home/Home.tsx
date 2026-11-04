@@ -1,10 +1,6 @@
 import { FC, useEffect } from "react";
 import styled from "@emotion/styled";
 import MainContent from "./MainContent";
-import Titlebar from "../../Components/Titlebar";
-import Loading from "./Loading";
-import { useRecoilState } from "recoil";
-import { HomeState } from "./HomeState";
 import Navbar from "../../Components/Navbar";
 import AskAI from "../../Components/AskAI";
 import { useStarPackageMutation } from "../../Hooks/GraphQL";
@@ -19,12 +15,7 @@ const Container = styled.div`
 
 const Home: FC = () => {
   const { isSignedIn, getToken } = useAuth();
-  const [{ loading }, setState] = useRecoilState(HomeState);
   const [starPackage] = useStarPackageMutation();
-
-  const setLoading = (loading: boolean) => {
-    setState({ loading });
-  };
 
   useEffect(() => {
     if (location.hostname !== "app.fluentci.io") {
@@ -62,27 +53,12 @@ const Home: FC = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isSignedIn]);
 
-  useEffect(() => {
-    if (!location.host) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      (window as any).ipcRenderer.on(
-        "setup-deno",
-        (data: { message: string; done: boolean }) => {
-          setLoading(data.done);
-        }
-      );
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   return (
     <>
-      <Titlebar />
+
       <Container>
         <Navbar />
-        {!location.host && loading && <Loading />}
-        {!location.host && !loading && <MainContent />}
-        {location.host && <MainContent />}
+        <MainContent />
         <AskAI />
       </Container>
     </>

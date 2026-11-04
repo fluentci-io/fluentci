@@ -19,7 +19,6 @@ import { Fullscreen, FullscreenExit } from "@styled-icons/bootstrap";
 import { Modal, ModalHeader, SIZE } from "baseui/modal";
 import { CloseCircle } from "@styled-icons/ionicons-sharp";
 import Duration from "../../Components/Duration";
-import Titlebar from "../../Components/Titlebar";
 import Navbar from "../../Components/Navbar";
 import AskAI from "../../Components/AskAI";
 
@@ -43,7 +42,7 @@ const Run: FC<RunProps> = (props) => {
   const [expandedIndex, setExpandedIndex] = useState<string | null>(null);
   return (
     <>
-      <Titlebar />
+
       <div
         style={{
           display: "flex",

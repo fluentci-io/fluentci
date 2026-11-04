@@ -6,7 +6,6 @@ import { useNavigate } from "react-router-dom";
 import Billing from "./Billing";
 import Account from "./Account";
 import AccessTokens from "./AccessTokens";
-import Titlebar from "../../../Components/Titlebar";
 import AskAI from "../../../Components/AskAI";
 import styles from "./styles";
 
@@ -47,7 +46,7 @@ const Navigator: FC<NavigatorProps> = ({ activeKey, setActiveKey }) => {
 
   return (
     <div style={{ height: "100vh", overflowY: "auto" }}>
-      <Titlebar />
+
       <div
         style={{
           display: "flex",

@@ -1,7 +1,0 @@
-{
-  "imports": {
-    "downstream": "https://deno.land/x/downstream@0.3.3/mod.ts",
-    "graphql": "npm:graphql@16.6.0"
-  },
-  "scopes": {}
-}
