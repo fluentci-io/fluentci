@@ -17,9 +17,52 @@ concurrency:
   group: release-${{ github.event.release.tag_name || inputs.tag }}
   cancel-in-progress: false
 
+env:
+  RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.tag }}
+  BSD_RUST_VERSION: '1.99.1'
+
 jobs:
+  studio:
+    name: Build Studio and portable release inputs
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+      - name: Verify existing release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          case "$RELEASE_VERSION" in
+            ''|*[!A-Za-z0-9._+-]*) echo 'Unsupported release tag' >&2; exit 1 ;;
+          esac
+          gh release view "$RELEASE_VERSION" --json tagName --jq '.tagName'
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: oven-sh/setup-bun@v2
+      - name: Check OpenBSD compiler compatibility
+        run: python3 .github/scripts/check-openbsd-msrv.py
+      - name: Test BSD archive verification
+        run: python3 .github/scripts/test-bsd-release-verification.py -v
+      - name: Generate portable Wasm smoke fixtures
+        run: python3 .github/scripts/create-bsd-smoke-fixtures.py .release-smoke
+      - name: Build Studio assets on Linux
+        working-directory: webui
+        run: |
+          bun install --frozen-lockfile --ignore-scripts
+          bun run build:web
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-inputs
+          path: |
+            webui/dist/
+            .release-smoke/*.wasm
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
   release:
     name: Release ${{ matrix.target }}
+    needs: studio
     runs-on: ${{ matrix.os }}
     permissions:
       contents: write
@@ -36,7 +79,6 @@ jobs:
           - os: macos-15
             target: aarch64-apple-darwin
     env:
-      RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.tag }}
       TARGET: ${{ matrix.target }}
       CARGO_BUILD_JOBS: '2'
       CARGO_TERM_COLOR: always
@@ -54,7 +96,10 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
-      - uses: oven-sh/setup-bun@v2
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-inputs
+          path: .
       - uses: Swatinem/rust-cache@v2
         with:
           key: release-${{ matrix.target }}
@@ -63,11 +108,6 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes build-essential cmake pkg-config
-      - name: Build Studio assets
-        working-directory: webui
-        run: |
-          bun install --frozen-lockfile --ignore-scripts
-          bun run build:web
       - name: Build release binary
         run: cargo build --release --locked --target "$TARGET"
       - name: Check release binary
@@ -87,4 +127,101 @@ jobs:
         run: |
           set -euo pipefail
           archive="target/release-assets/fluentci_${RELEASE_VERSION}_${TARGET}.tar.gz"
+          gh release upload "$RELEASE_VERSION" "$archive" "$archive.sha256" --clobber
+
+  bsd:
+    name: Release ${{ matrix.target }}
+    needs: studio
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: freebsd
+            version: '14.3'
+            target: x86_64-unknown-freebsd
+          - os: netbsd
+            version: '10.1'
+            target: x86_64-unknown-netbsd
+          - os: openbsd
+            version: '7.8'
+            target: x86_64-unknown-openbsd
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-inputs
+          path: .
+      - name: Reserve disk space for BSD VM caches
+        run: |
+          sudo rm -rf /usr/local/lib/android /usr/share/dotnet /usr/local/.ghcup /opt/ghc /opt/hostedtoolcache/CodeQL
+      - name: Cache native BSD toolchains and Cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: .ci-cache/bsd-rust
+          key: bsd-release-v1-${{ matrix.os }}-${{ matrix.version }}-${{ env.BSD_RUST_VERSION }}-${{ hashFiles('Cargo.lock', 'Cargo.toml', 'engine/**/Cargo.toml', '.github/scripts/*bsd*') }}-${{ hashFiles('src/**/*.rs', 'engine/**/*.rs', 'webui/dist/**') }}
+          restore-keys: |
+            bsd-release-v1-${{ matrix.os }}-${{ matrix.version }}-${{ env.BSD_RUST_VERSION }}-${{ hashFiles('Cargo.lock', 'Cargo.toml', 'engine/**/Cargo.toml', '.github/scripts/*bsd*') }}-
+            bsd-release-v1-${{ matrix.os }}-${{ matrix.version }}-${{ env.BSD_RUST_VERSION }}-
+      - name: Build and smoke-test FreeBSD release
+        if: matrix.os == 'freebsd'
+        uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc
+        with:
+          release: ${{ matrix.version }}
+          arch: x86_64
+          mem: 8192
+          cpu: 2
+          copyback: true
+          envs: 'RELEASE_VERSION TARGET BSD_RUST_VERSION'
+          prepare: sh .github/scripts/prepare-bsd-release.sh
+          run: sh .github/scripts/build-bsd-release.sh
+      - name: Build and smoke-test NetBSD release
+        if: matrix.os == 'netbsd'
+        uses: vmactions/netbsd-vm@c8a0d7ddb84619a7a8cc4e652efa7950b3fd9f92
+        with:
+          release: ${{ matrix.version }}
+          arch: x86_64
+          mem: 8192
+          cpu: 2
+          copyback: true
+          envs: 'RELEASE_VERSION TARGET BSD_RUST_VERSION'
+          prepare: sh .github/scripts/prepare-bsd-release.sh
+          run: sh .github/scripts/build-bsd-release.sh
+      - name: Build and smoke-test OpenBSD release
+        if: matrix.os == 'openbsd'
+        uses: vmactions/openbsd-vm@f1ca8bc8ecc5b6ef7218e5b914836e067e1546d3
+        with:
+          release: ${{ matrix.version }}
+          arch: x86_64
+          mem: 8192
+          cpu: 2
+          copyback: true
+          envs: 'RELEASE_VERSION TARGET BSD_RUST_VERSION'
+          prepare: sh .github/scripts/prepare-bsd-release.sh
+          run: sh .github/scripts/build-bsd-release.sh
+      - name: Verify copied-back BSD assets
+        run: python3 .github/scripts/verify-bsd-release.py "dist/bsd/$TARGET" "$RELEASE_VERSION" "$TARGET"
+      - name: Preserve BSD failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bsd-release-failure-${{ matrix.target }}
+          path: |
+            .release-smoke/*.log
+            dist/bsd/${{ matrix.target }}/
+          include-hidden-files: true
+          if-no-files-found: ignore
+      - name: Upload BSD GitHub release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          archive="dist/bsd/$TARGET/fluentci_${RELEASE_VERSION}_${TARGET}.tar.gz"
           gh release upload "$RELEASE_VERSION" "$archive" "$archive.sha256" --clobber

@@ -8,3 +8,9 @@ kview
 
 # PureScript editor state
 .psc-ide-port
+
+# Native BSD release caches and fixtures
+/.ci-cache/
+/.release-smoke/
+/.bsd-release-smoke.*/
+/dist/bsd/
