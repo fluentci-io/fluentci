@@ -1,6 +1,8 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
+import hljs from "highlight.js/lib/core";
+import yaml from "highlight.js/lib/languages/yaml";
 import {
   IconArchive as Archive,
   IconDownload as Download,
@@ -171,6 +173,8 @@ export function ProjectSettings({ project }: { project: Project }) {
   );
 }
 
+hljs.registerLanguage("yaml", yaml);
+
 const providers = [
   { id: "github", name: "GitHub Actions", file: "ci.yml" },
   { id: "gitlab", name: "GitLab CI", file: ".gitlab-ci.yml" },
@@ -192,6 +196,10 @@ export function ExportView({ projectId }: { projectId: string }) {
         )
       ).exportActions,
   });
+  const highlighted = useMemo(
+    () => hljs.highlight(query.data || "", { language: "yaml" }).value,
+    [query.data],
+  );
   return (
     <div>
       <div className="mb-6 flex flex-wrap justify-between gap-4">
@@ -240,7 +248,11 @@ export function ExportView({ projectId }: { projectId: string }) {
             </div>
           </div>
           <pre className="overflow-auto rounded-b-lg border border-t-0 border-line bg-terminal p-5 font-mono text-xs leading-6 text-log">
-            {query.data}
+            {/* Highlight.js escapes source text before adding token markup. */}
+            <code
+              className="yaml-code language-yaml"
+              dangerouslySetInnerHTML={{ __html: highlighted }}
+            />
           </pre>
         </>
       )}

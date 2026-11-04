@@ -108,3 +108,28 @@
     @apply fixed inset-0 m-auto max-h-[85vh] w-[calc(100%-2rem)] rounded-xl border border-line bg-panel p-0 text-text shadow-2xl;
   }
 }
+
+/* YAML tokens use the same Night Rider colors as the Studio shell. */
+.yaml-code .hljs-attr {
+  color: #7ea7fb;
+}
+.yaml-code .hljs-string {
+  color: #55f0d7;
+}
+.yaml-code .hljs-number,
+.yaml-code .hljs-literal {
+  color: #ffdb7f;
+}
+.yaml-code .hljs-bullet,
+.yaml-code .hljs-punctuation,
+.yaml-code .hljs-meta {
+  color: #a68ae1;
+}
+.yaml-code .hljs-type,
+.yaml-code .hljs-template-variable {
+  color: #e591ff;
+}
+.yaml-code .hljs-comment {
+  color: var(--color-muted);
+  font-style: italic;
+}
