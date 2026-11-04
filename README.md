@@ -54,7 +54,30 @@ through Axum, and persists application data in SQLite through SQLx.
 
 ## Build and install
 
-Build this Rust port from a checkout with Rust **1.96 or newer** and Bun installed:
+Install the prebuilt CLI for your platform with curl:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"
+fluentci --version
+```
+
+The installer defaults to release **2026.11.04**, detects your OS and architecture,
+verifies the archive's SHA-256 checksum, and installs into `~/.local/bin` without
+sudo. It supports Linux/macOS on x86_64 and arm64, and FreeBSD/NetBSD/OpenBSD on
+x86_64. Add `~/.local/bin` to your shell profile's `PATH` to keep it available.
+
+Override the release with `FLUENTCI_VERSION` and the destination with
+`FLUENTCI_INSTALL_DIR`. Set these variables on `sh` when piping from curl:
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | \
+  FLUENTCI_VERSION=2026.11.04 FLUENTCI_INSTALL_DIR="$HOME/bin" sh
+```
+
+### Build from source
+
+Build from a checkout with Rust **1.96 or newer** and Bun installed:
 
 ```sh
 cd webui
@@ -83,8 +106,7 @@ install -m 755 target/release/fluentci "$HOME/.local/bin/fluentci"
 ```
 
 Published archives are listed on the
-[releases page](https://github.com/fluentci-io/fluentci/releases). Older releases
-contain the previous CLI; build this branch to use the unified Rust executable.
+[2026.11.04 release page](https://github.com/tsirysndr/fluentci/releases/tag/2026.11.04).
 The release workflow builds Linux and macOS archives for x86_64 and ARM64, plus
 native x86_64 FreeBSD, NetBSD, and OpenBSD archives, when a GitHub release is
 published. It can also be run manually with an existing release tag. Each target
