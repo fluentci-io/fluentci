@@ -1,0 +1,62 @@
+name: Bootstrap FluentCI CI
+description: Build the local release CLI and install the PureScript Wasm toolchain
+runs:
+  using: composite
+  steps:
+    - uses: dtolnay/rust-toolchain@stable
+      with:
+        components: rustfmt, clippy
+        targets: wasm32-unknown-unknown
+    - uses: oven-sh/setup-bun@v2
+    - uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    - uses: Swatinem/rust-cache@v2
+    - name: Install PureScript toolchain
+      shell: bash
+      run: npm install --global purescript@0.15.16 spago@1.0.5
+    - name: Install Extism JavaScript compiler
+      shell: bash
+      env:
+        EXTISM_JS_VERSION: v1.7.0
+      run: |
+        set -euo pipefail
+        case "$RUNNER_OS" in
+          Linux) platform=linux ;;
+          macOS) platform=macos ;;
+          *) echo "Unsupported runner: $RUNNER_OS" >&2; exit 1 ;;
+        esac
+        case "$RUNNER_ARCH" in
+          X64) arch=x86_64 ;;
+          ARM64) arch=aarch64 ;;
+          *) echo "Unsupported architecture: $RUNNER_ARCH" >&2; exit 1 ;;
+        esac
+        archive="extism-js-${arch}-${platform}-${EXTISM_JS_VERSION}.gz"
+        directory="$RUNNER_TEMP/extism-js"
+        mkdir -p "$directory"
+        cd "$directory"
+        base="https://github.com/extism/js-pdk/releases/download/${EXTISM_JS_VERSION}"
+        curl --fail --location --retry 3 "$base/$archive" -o "$archive"
+        curl --fail --location --retry 3 "$base/$archive.sha256" -o "$archive.sha256"
+        expected=$(awk '{print $1}' "$archive.sha256")
+        actual=$(shasum -a 256 "$archive" | awk '{print $1}')
+        test "$expected" = "$actual"
+        gunzip -c "$archive" > extism-js
+        chmod +x extism-js
+        echo "$directory" >> "$GITHUB_PATH"
+    - name: Cache PureScript dependencies
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/.cache/spago
+          .fluentci/*/.spago
+          .fluentci/*/node_modules
+        key: purescript-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('.fluentci/**/spago.lock', '.fluentci/**/package-lock.json') }}
+    # This repository builds the CLI that executes its own CI modules.
+    - name: Bootstrap release CLI
+      shell: bash
+      run: |
+        bun install --cwd webui --frozen-lockfile --ignore-scripts
+        (cd webui && bun run build:web)
+        cargo build --release --locked
+        echo "$GITHUB_WORKSPACE/target/release" >> "$GITHUB_PATH"

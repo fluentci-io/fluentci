@@ -17,16 +17,16 @@ jobs:
       id-token: "write"
       contents: "read"
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Fluent CI
-        uses: fluentci-io/setup-fluentci@v5
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+      - uses: ./.github/actions/setup-ci
+      - uses: DeterminateSystems/nix-installer-action@main
+      - name: Install publishing tools
+        run: nix profile install nixpkgs#jo nixpkgs#jq
       - name: Publish
-        run: |
-          deno install -A -g -f -r --unstable-kv https://github.com/fluentci-io/fluentci/raw/refs/heads/main/main.ts -n fluentci
-          fluentci run --wasm flakestry publish
+        run: fluentci --check-update=false run nix flakestry
         env:
           VERSION: ${{ inputs.tag || github.ref_name }}
           GH_TOKEN: ${{ github.token }}
-          ACTIONS_ID_TOKEN_REQUEST_TOKEN: ${{ env.ACTIONS_ID_TOKEN_REQUEST_TOKEN }}
-          ACTIONS_ID_TOKEN_REQUEST_URL: ${{ env.ACTIONS_ID_TOKEN_REQUEST_URL }}
-          REF: ${{ github.sha }}
+          REF: ${{ inputs.tag || github.sha }}

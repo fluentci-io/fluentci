@@ -20,22 +20,19 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: oven-sh/setup-bun@v2
-      - uses: Swatinem/rust-cache@v2
-      - run: bun install --frozen-lockfile --ignore-scripts && bun run build:web
-        working-directory: webui
-      - run: cargo build --release --locked --target ${{ matrix.target }}
-      - name: Package
+      - uses: ./.github/actions/setup-ci
+      - name: Build release target
+        run: fluentci --check-update=false run release build
+        env:
+          TARGET: ${{ matrix.target }}
+      - name: Package release
+        run: fluentci --check-update=false run release package
         env:
           RELEASE_VERSION: ${{ github.ref_name }}
           TARGET: ${{ matrix.target }}
-        run: |
-          cp "target/$TARGET/release/fluentci" fluentci
-          tar czf "fluentci_${RELEASE_VERSION}_${TARGET}.tar.gz" fluentci
-          shasum -a 256 "fluentci_${RELEASE_VERSION}_${TARGET}.tar.gz" > "fluentci_${RELEASE_VERSION}_${TARGET}.tar.gz.sha256"
       - name: Upload release assets
+        run: fluentci --check-update=false run release upload
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ github.ref_name }}
-        run: gh release upload "$RELEASE_VERSION" fluentci_*.tar.gz fluentci_*.sha256
+          TARGET: ${{ matrix.target }}

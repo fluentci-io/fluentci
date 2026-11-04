@@ -11,16 +11,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
-      - uses: oven-sh/setup-bun@v2
-      - uses: Swatinem/rust-cache@v2
-      - run: bun install --frozen-lockfile --ignore-scripts
-        working-directory: webui
-      - run: bun run build:web
-        working-directory: webui
-      - run: cargo fmt --all --check
-      - run: cargo clippy --release --all-targets --locked -- -D warnings
-      - run: cargo test --release --locked
+      - uses: ./.github/actions/setup-ci
+      - name: Discover PureScript CI modules
+        run: fluentci --check-update=false modules --json
+      - name: Run Rust and Studio checks
+        run: fluentci --check-update=false run main check

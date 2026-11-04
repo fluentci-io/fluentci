@@ -16,10 +16,13 @@ jobs:
       id-token: "write"
       contents: "read"
     steps:
-      - uses: "actions/checkout@v3"
+      - uses: "actions/checkout@v4"
         with:
           ref: "${{ (inputs.tag != null) && format('refs/tags/{0}', inputs.tag) || '' }}"
+      - uses: ./.github/actions/setup-ci
       - uses: "DeterminateSystems/nix-installer-action@main"
+      - name: Check flake
+        run: fluentci --check-update=false run nix check
       - uses: "DeterminateSystems/flakehub-push@main"
         with:
           visibility: "public"
