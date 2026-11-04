@@ -1,0 +1,153 @@
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@100;200;300;400;500;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inconsolata:wght@300;400;500;600;700;800;900&display=swap');
+
+:root {
+  font-family: Lexend, Inter, system-ui, Avenir, Helvetica, Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+a {
+  text-decoration: inherit;
+}
+
+
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #0f0124 !important;
+  color: #fff;
+  overflow-y: hidden;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+::placeholder {
+  color: rgb(158, 148, 183) !important;
+  opacity: 0.5; /* Firefox */
+}
+
+::-ms-input-placeholder { /* Edge 12 -18 */
+  color: rgb(158, 148, 183) !important;
+}
+
+a {
+  color: #5324ff;
+}
+
+li {
+  border-bottom-color: #1b0657 !important; 
+}
+
+li:last-child {
+  border-bottom: none;
+}
+
+code {
+  font-family: Inconsolata, monospace;
+}
+
+code[class*="language-"] {
+  background-color: initial !important;
+  background: initial !important;
+  box-shadow: none !important;
+  font-family: Inconsolata, Consolas, monospace;
+}
+
+pre[class*="language-"] {
+  background: #10072c !important;
+  border: 1px solid #ffffff1f;
+  border-radius: 5px;
+  padding: 20px;
+}
+
+/* Custom Scrollbar for WebKit Browsers (Chrome, Safari) */
+::-webkit-scrollbar {
+  width: 5px;  /* Width of the entire scrollbar */
+  height: 5px; /* Height of the horizontal scrollbar */
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f113; /* Color of the track */
+  border-radius: 10px; /* Rounded corners for the track */
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #88888864; /* Color of the thumb */
+  border-radius: 10px !important; /* Rounded corners for the thumb */
+  border: 0px solid #f1f1f15f; /* Padding around thumb */
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #88888864; /* Color of the thumb on hover */
+}
+
+/* Custom Scrollbar for Firefox */
+body {
+  scrollbar-width: thin;       /* Width of the scrollbar */
+  scrollbar-color: #f1f1f119 #0f0124 ; /* Color of the thumb and track */
+}
+
+/* Apply the styles to all scrollable elements */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #f1f1f119 #0f0124 ;
+}
+
+/*
+*::-webkit-scrollbar {
+  display: none;
+}
+*/
+
+* {
+  /*-ms-overflow-style: none;  /* Internet Explorer 10+ */
+  /*scrollbar-width: none;     /* Firefox */
+}
+
+
+.markdown-dark > ol > li > pre > div {
+  background: #151236 !important;
+}
+
+.markdown-dark > pre > div {
+  background: #151236 !important;
+}
+
+.markdown-dark > pre > div > code {
+  background: #151236 !important;
+}
+
+.markdown-dark > ol > li > p {
+  color: rgb(242, 242, 244);
+}
+
+.markdown-dark > p {
+  color: rgb(242, 242, 244);
+}
+
+.markdown-dark {
+  color: rgb(242, 242, 244);
+}
+
+.markdown-dark > ol > li > pre > div > code {
+  background: #151236 !important;
+}
+
+.markdown-dark > ol > li {
+  margin-top: 1rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-dark > ol > li::marker {
+  color: #fff;
+}

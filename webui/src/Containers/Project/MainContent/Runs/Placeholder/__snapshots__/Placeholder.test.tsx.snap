@@ -1,0 +1,22 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Placeholder > should render 1`] = `
+<div>
+  <div
+    class="css-1pgldjh"
+  >
+    <div
+      style="margin-top: 20px;"
+    >
+      <span
+        class="css-teipoa"
+      >
+        THERE'S NOTHING HERE YET BUT THAT'S OKAY
+      </span>
+    </div>
+    <p>
+      Once available, the timeline of pipeline runs will appear here
+    </p>
+  </div>
+</div>
+`;

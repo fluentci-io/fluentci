@@ -1,0 +1,264 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Composer > should render 1`] = `
+<div>
+  <div
+    style="display: flex; flex-direction: column; position: relative;"
+  >
+    <div
+      class="css-1rwt18y"
+    >
+      <button
+        class="css-olxsem"
+      >
+        <svg
+          aria-hidden="true"
+          class="StyledIconBase-sc-ea9ulj-0 gEpWWb"
+          color="#fff"
+          fill="currentColor"
+          focusable="false"
+          height="15"
+          viewBox="0 0 16 16"
+          width="15"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M3 0h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V2a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V2a1 1 0 0 0-1-1H3zm0 8h10a2 2 0 0 1 2 2v3a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2zm0 1a1 1 0 0 0-1 1v3a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1v-3a1 1 0 0 0-1-1H3z"
+          />
+        </svg>
+      </button>
+      <button
+        class="css-ualqix"
+      >
+        <svg
+          aria-hidden="true"
+          class="StyledIconBase-sc-ea9ulj-0 gEpWWb"
+          color="#fff"
+          fill="currentColor"
+          focusable="false"
+          height="21"
+          viewBox="0 0 16 16"
+          width="21"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          <path
+            d="M5.854 4.854a.5.5 0 1 0-.708-.708l-3.5 3.5a.5.5 0 0 0 0 .708l3.5 3.5a.5.5 0 0 0 .708-.708L2.707 8l3.147-3.146zm4.292 0a.5.5 0 0 1 .708-.708l3.5 3.5a.5.5 0 0 1 0 .708l-3.5 3.5a.5.5 0 0 1-.708-.708L13.293 8l-3.147-3.146z"
+          />
+        </svg>
+      </button>
+    </div>
+    <div
+      style="margin-top: 50px;"
+    >
+      <div>
+        <button
+          class="css-10yefha"
+        >
+          <svg
+            aria-hidden="true"
+            class="StyledIconBase-sc-ea9ulj-0 gEpWWb"
+            color="#fff"
+            fill="currentColor"
+            focusable="false"
+            height="15"
+            viewBox="0 0 16 16"
+            width="15"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2Z"
+              fill-rule="evenodd"
+            />
+          </svg>
+        </button>
+        <div
+          class="css-12l3k25"
+        >
+          <div
+            class="css-of0uoe"
+          />
+        </div>
+        <div
+          class="action css-1gebutb"
+        >
+          <img
+            alt="gleam"
+            class="action"
+            src="https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/gleam.png"
+            style="max-width: 34px; border-radius: 2px; padding: 5px; margin-right: 15px;"
+          />
+          <div
+            class="action"
+            style="display: flex; flex: 1; overflow: hidden;"
+          >
+            <div
+              class="css-3azhy3"
+            >
+              test
+            </div>
+          </div>
+          <label
+            class=""
+            data-baseweb="checkbox"
+          >
+            <div
+              class=""
+            >
+              <div
+                class=""
+              />
+            </div>
+            <input
+              checked=""
+              class=""
+              type="checkbox"
+              value=""
+            />
+          </label>
+          <button
+            class="css-1xnjjfw"
+            id="1__anchor"
+          >
+            <svg
+              aria-hidden="true"
+              class="StyledIconBase-sc-ea9ulj-0 gEpWWb"
+              fill="currentColor"
+              focusable="false"
+              height="20"
+              viewBox="0 0 128 512"
+              width="20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M64 360c30.9 0 56 25.1 56 56s-25.1 56-56 56-56-25.1-56-56 25.1-56 56-56zm0-160c30.9 0 56 25.1 56 56s-25.1 56-56 56-56-25.1-56-56 25.1-56 56-56zm56-104c0 30.9-25.1 56-56 56S8 126.9 8 96s25.1-56 56-56 56 25.1 56 56z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+        </div>
+        <div
+          class="css-12l3k25"
+        >
+          <div
+            class="css-of0uoe"
+          />
+        </div>
+      </div>
+      <div>
+        <button
+          class="css-10yefha"
+        >
+          <svg
+            aria-hidden="true"
+            class="StyledIconBase-sc-ea9ulj-0 gEpWWb"
+            color="#fff"
+            fill="currentColor"
+            focusable="false"
+            height="15"
+            viewBox="0 0 16 16"
+            width="15"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2Z"
+              fill-rule="evenodd"
+            />
+          </svg>
+        </button>
+        <div
+          class="css-12l3k25"
+        >
+          <div
+            class="css-of0uoe"
+          />
+        </div>
+        <div
+          class="action css-1gebutb"
+        >
+          <img
+            alt="gleam"
+            class="action"
+            src="https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/gleam.png"
+            style="max-width: 34px; border-radius: 2px; padding: 5px; margin-right: 15px;"
+          />
+          <div
+            class="action"
+            style="display: flex; flex: 1; overflow: hidden;"
+          >
+            <div
+              class="css-3azhy3"
+            >
+              build
+            </div>
+          </div>
+          <label
+            class=""
+            data-baseweb="checkbox"
+          >
+            <div
+              class=""
+            >
+              <div
+                class=""
+              />
+            </div>
+            <input
+              checked=""
+              class=""
+              type="checkbox"
+              value=""
+            />
+          </label>
+          <button
+            class="css-1xnjjfw"
+            id="2__anchor"
+          >
+            <svg
+              aria-hidden="true"
+              class="StyledIconBase-sc-ea9ulj-0 gEpWWb"
+              fill="currentColor"
+              focusable="false"
+              height="20"
+              viewBox="0 0 128 512"
+              width="20"
+              xmlns="http://www.w3.org/2000/svg"
+            >
+              <path
+                d="M64 360c30.9 0 56 25.1 56 56s-25.1 56-56 56-56-25.1-56-56 25.1-56 56-56zm0-160c30.9 0 56 25.1 56 56s-25.1 56-56 56-56-25.1-56-56 25.1-56 56-56zm56-104c0 30.9-25.1 56-56 56S8 126.9 8 96s25.1-56 56-56 56 25.1 56 56z"
+                fill="currentColor"
+              />
+            </svg>
+          </button>
+        </div>
+        <div
+          class="css-12l3k25"
+        >
+          <div
+            class="css-of0uoe"
+          />
+        </div>
+        <button
+          class="css-10yefha"
+        >
+          <svg
+            aria-hidden="true"
+            class="StyledIconBase-sc-ea9ulj-0 gEpWWb"
+            color="#fff"
+            fill="currentColor"
+            focusable="false"
+            height="15"
+            viewBox="0 0 16 16"
+            width="15"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <path
+              d="M8 2a.5.5 0 0 1 .5.5v5h5a.5.5 0 0 1 0 1h-5v5a.5.5 0 0 1-1 0v-5h-5a.5.5 0 0 1 0-1h5v-5A.5.5 0 0 1 8 2Z"
+              fill-rule="evenodd"
+            />
+          </svg>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+`;

@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Duration > should render the component 1`] = `
+<div>
+  <div
+    class="css-we0til"
+  >
+    02.0s
+  </div>
+</div>
+`;

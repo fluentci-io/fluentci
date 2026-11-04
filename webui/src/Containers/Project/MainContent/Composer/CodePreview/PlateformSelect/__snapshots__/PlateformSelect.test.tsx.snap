@@ -1,0 +1,63 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`PlateformSelect > should render the component 1`] = `
+<div>
+  <div
+    class="css-38orqy"
+  >
+    <div
+      class=""
+      data-baseweb="select"
+    >
+      <div
+        class=""
+      >
+        <div
+          class=""
+        >
+          <div
+            class=""
+            value="github"
+          >
+            Github Actions
+          </div>
+          <div
+            class=""
+          >
+            <input
+              aria-autocomplete="list"
+              aria-expanded="false"
+              aria-haspopup="listbox"
+              aria-label="Selected Github Actions. "
+              class=""
+              role="combobox"
+              tabindex="0"
+              value=""
+            />
+            <div
+              class=""
+            />
+          </div>
+        </div>
+        <div
+          class=""
+        >
+          <svg
+            class=""
+            data-baseweb="icon"
+            title="open"
+            viewBox="0 0 24 24"
+          >
+            <title>
+              open
+            </title>
+            <path
+              d="M12.7071 15.2929L17.1464 10.8536C17.4614 10.5386 17.2383 10 16.7929 10L7.20711 10C6.76165 10 6.53857 10.5386 6.85355 10.8536L11.2929 15.2929C11.6834 15.6834 12.3166 15.6834 12.7071 15.2929Z"
+            />
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+`;

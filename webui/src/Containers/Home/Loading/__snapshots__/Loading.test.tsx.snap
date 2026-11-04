@@ -1,0 +1,11 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Loading > should render the component 1`] = `
+<div>
+  <div
+    class="css-1dwv9t7"
+  >
+    <div />
+  </div>
+</div>
+`;

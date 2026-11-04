@@ -1,0 +1,64 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`Action > should render the component 1`] = `
+<div>
+  <div
+    class="action css-1gebutb"
+  >
+    <img
+      alt="go"
+      class="action"
+      src="https://cdn.jsdelivr.net/gh/fluent-ci-templates/.github/assets/go-original-wordmark.svg"
+      style="max-width: 34px; border-radius: 2px; padding: 5px; margin-right: 15px;"
+    />
+    <div
+      class="action"
+      style="display: flex; flex: 1; overflow: hidden;"
+    >
+      <div
+        class="css-3azhy3"
+      >
+        tests
+      </div>
+    </div>
+    <label
+      class=""
+      data-baseweb="checkbox"
+    >
+      <div
+        class=""
+      >
+        <div
+          class=""
+        />
+      </div>
+      <input
+        checked=""
+        class=""
+        type="checkbox"
+        value=""
+      />
+    </label>
+    <button
+      class="css-1xnjjfw"
+      id="1__anchor"
+    >
+      <svg
+        aria-hidden="true"
+        class="StyledIconBase-sc-ea9ulj-0 gEpWWb"
+        fill="currentColor"
+        focusable="false"
+        height="20"
+        viewBox="0 0 128 512"
+        width="20"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <path
+          d="M64 360c30.9 0 56 25.1 56 56s-25.1 56-56 56-56-25.1-56-56 25.1-56 56-56zm0-160c30.9 0 56 25.1 56 56s-25.1 56-56 56-56-25.1-56-56 25.1-56 56-56zm56-104c0 30.9-25.1 56-56 56S8 126.9 8 96s25.1-56 56-56 56 25.1 56 56z"
+          fill="currentColor"
+        />
+      </svg>
+    </button>
+  </div>
+</div>
+`;
