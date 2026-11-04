@@ -483,7 +483,13 @@ Set `RUST_LOG` to configure the CLI's diagnostic logging.
 
 ## Development
 
-Build the UI before running Rust checks:
+This repository's CI is implemented with PureScript Wasm modules under
+[`.fluentci`](./.fluentci/README.md), declared in the root `fluentci.toml`.
+After building the CLI and installing the PureScript toolchain, run
+`fluentci run` for module tests, the Studio build, formatting, release Clippy,
+and release Rust tests. `fluentci modules` lists the available functions.
+
+To run the underlying checks directly, build the UI first:
 
 ```sh
 cd webui
