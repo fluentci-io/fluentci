@@ -13,3 +13,4 @@ pub mod registry;
 pub mod remote;
 pub mod server;
 pub mod services;
+pub mod workspace;

@@ -104,8 +104,8 @@ impl Config {
 
 pub fn find(root: &Path) -> Option<PathBuf> {
     [
-        root.join(".fluentci/fluentci.toml"),
         root.join("fluentci.toml"),
+        root.join(".fluentci/fluentci.toml"),
     ]
     .into_iter()
     .find(|p| p.is_file())
