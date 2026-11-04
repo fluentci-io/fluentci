@@ -1,9 +1,13 @@
 # Rust CLI development
 
-The primary entry point is `src/main.rs`. Clap defines the command tree, Tokio runs
+The primary entry point is `src/main.rs`. Each command handler lives in its own
+`src/commands/<command>.rs`; `src/commands/mod.rs` dispatches the parsed command.
+Clap defines the command tree, Tokio runs
 asynchronous work, and Axum serves the GraphQL API, WebSocket events and embedded
-Studio assets. The previous TypeScript implementation remains as a reference;
-it is not invoked by the Rust executable.
+Studio assets. CLI commands, project detection, interactive sessions, execution,
+and persistence are implemented in Rust. The former Deno CLI/server sources,
+tests, manifests, and root Dagger module configuration have been removed.
+TypeScript remains in the Studio frontend and guest SDKs.
 
 ## Build and run
 
@@ -62,8 +66,9 @@ Engine provider workers also re-enter this executable. Wasm plugins, package
 manager tools, and user-requested toolchains may still be fetched by the engine.
 
 Existing TypeScript/Dagger pipelines continue to run with Deno and Dagger as
-pipeline runtimes; the CLI itself does not require Deno. The REPL also requires
-Deno/Dagger. Documentation rendering uses Glow. Service controls use Overmind's
+pipeline runtimes; the CLI and its native REPL do not require Deno. REPL commands
+invoke the Rust runner directly, including declared Wasm modules. Documentation
+rendering uses Glow. Service controls use Overmind's
 Unix sockets. Hosted registry/runner operations require their existing remote
 services and credentials.
 
@@ -85,3 +90,20 @@ Use `fluentci modules` (alias `inspect`) to discover exports, or `--json` for
 structured output. Source builds run during discovery; their logs go to stderr.
 The application database remains SQLx/SQLite; downloaded Wasm artifacts are kept
 in the OS cache directory under `fluentci/modules`.
+
+## Initial project actions
+
+`src/detection.rs` supplies default actions for supported project manifests when
+no FluentCI configuration or saved actions exist. Explicit configuration takes
+precedence, and saved user actions are preserved. Studio project creation,
+repository imports, and the executor use the same detector. Rust defaults use
+release builds and release tests.
+
+## Native interactive session
+
+`fluentci repl [module]` runs an interactive session implemented in Rust. Enter
+`run main check`, `modules [name]`, `help`, or `exit`. With a module selected,
+enter a function name and arguments directly. Quoted arguments use the same
+shell-word parser as the CLI; a failed invocation reports its error and leaves
+the session open. The session exits on EOF or Ctrl-C. It does not evaluate
+JavaScript or launch a Deno REPL.

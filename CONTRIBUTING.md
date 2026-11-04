@@ -27,7 +27,7 @@ as much information as you can. Details like these are incredibly useful:
 Contributions via pull requests are much appreciated. Before sending us a pull
 request, please ensure that:
 
-1. You are working against the latest source on the _master_ branch.
+1. You are working against the latest source on the _main_ branch.
 2. You check existing open, and recently merged, pull requests to make sure
    someone else hasn't addressed the problem already.
 3. You open an issue to discuss any significant work - we would hate for your
@@ -39,7 +39,20 @@ To send us a pull request, please:
 2. Modify the source; please focus on the specific change you are contributing.
    If you also reformat all the code, it will be hard for us to focus on your
    change.
-3. Ensure local tests pass.
+3. Build Studio assets, then run the release Rust checks:
+
+   ```sh
+   cd webui
+   bun install --frozen-lockfile --ignore-scripts
+   bun run build:web
+   cd ..
+   cargo fmt --all --check
+   cargo clippy --release --all-targets --locked -- -D warnings
+   cargo test --release --locked
+   ```
+
+   The CLI and server live in `src/*.rs`; the Studio frontend lives in `webui`.
+   See [Rust development notes](docs/rust-port.md) for details.
 4. Commit to your fork using clear commit messages.
 5. Send us a pull request, answering any default questions in the pull request
    interface.

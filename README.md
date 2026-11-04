@@ -97,7 +97,7 @@ tag. Each target uploads a `.tar.gz` archive and SHA-256 checksum to that releas
 | Shell steps | Bash and the tools invoked by the step |
 | Published Wasm plugins | Tools required by the plugin or its environment provider |
 | Building local Rust plugins | Cargo, Rustup, and the `wasm32-unknown-unknown` target |
-| TypeScript/Dagger pipelines and REPL | Deno and Dagger; Docker when required by the pipeline |
+| Existing TypeScript/Dagger pipelines | Deno and Dagger; Docker when required by the pipeline |
 | Terminal documentation | Glow |
 | Service controls | Overmind and its Unix sockets |
 
@@ -136,6 +136,13 @@ Start Studio:
 ```sh
 fluentci studio
 ```
+
+## Interactive session
+
+`fluentci repl main` opens a native Rust session for a declared module. Enter a
+function such as `check`, or use `run main check` to select a module explicitly.
+`modules` lists available functions; `help` shows commands; `exit` leaves the
+session. The session also exits on EOF or Ctrl-C.
 
 ## Pipeline configuration
 
@@ -433,7 +440,7 @@ Run `fluentci --help` or `fluentci <command> --help` for arguments and options.
 | `project create`, `list`, `show`, `export` | Manage saved projects and export CI manifests |
 | `login`, `whoami`, `publish` | Authenticate and publish packages |
 | `agent`, `agent list` | Connect a hosted runner agent or list agents |
-| `repl` | Start a Deno/Dagger REPL |
+| `repl [module]` | Start a native interactive pipeline session |
 | `up`, `down`, `ps`, `status`, `start`, `restart`, `stop`, `echo` | Control services and stream their logs |
 | `env`, `doctor`, `upgrade`, `community` | Inspect configuration, diagnose tools, update, and find support |
 
