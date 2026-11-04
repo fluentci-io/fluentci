@@ -90,7 +90,20 @@ Publishing functions are never included in the default check.
 
 ## GitHub releases and module tests
 
-The only GitHub Actions workflow is `.github/workflows/release.yml`. It installs
+`.github/workflows/ci.yml` runs on pushes to `main` and pull requests targeting
+`main`. It installs FluentCI with curl and the
+SDK compiler toolchain, then invokes `fluentci run main check` for module tests,
+Studio assets, formatting, Clippy, and release Rust tests. `FLUENTCI_BIN` points
+module integration tests at the installed CLI in a fresh checkout. Before testing,
+CI builds all modules to verify the complete compiler and bundler toolchain.
+The shared bootstrap installs PureScript 0.15.16, Spago 1.0.5, Extism JS 1.7.0,
+and Binaryen 133 (`wasm-merge` and `wasm-opt`), verifies download checksums, and
+checks each executable's version. Node 24, npm, Git, and native shared libraries
+are checked or installed as well. The CLI installs each module's local esbuild
+package from its npm lockfile. CI disables
+LTO for test executables while retaining release optimization.
+
+The release workflow is `.github/workflows/release.yml`. It installs
 FluentCI with curl before invoking modules, using `FLUENTCI_VERSION=2026.11.04` as
 the bootstrap CLI. This is separate from `RELEASE_VERSION`, the release being
 built, so a new release never depends on its own not-yet-built binary.
