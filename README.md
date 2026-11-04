@@ -231,6 +231,7 @@ fluentci modules --json
 ```
 
 Discovery builds source modules as needed and inspects their Wasm exports.
+Compiler and runtime helpers are hidden for every SDK in text and JSON output.
 JSON includes the detected workspace/config paths and each module's name, SDK,
 source, artifact, and function names; build logs go to stderr.
 

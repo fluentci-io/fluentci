@@ -332,7 +332,11 @@ pub fn functions(bytes: &[u8]) -> Result<Vec<String>> {
         if let Payload::ExportSection(exports) = payload? {
             for export in exports {
                 let export = export?;
-                if export.kind == ExternalKind::Func {
+                if export.kind == ExternalKind::Func
+                    && !export.name.starts_with("__")
+                    && !export.name.starts_with("PyInit_")
+                    && !matches!(export.name, "_start" | "_initialize")
+                {
                     functions.push(export.name.to_owned());
                 }
             }

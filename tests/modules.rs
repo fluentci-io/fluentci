@@ -37,6 +37,67 @@ fn wasm(path: &Path, export: &str) -> anyhow::Result<()> {
 }
 
 #[test]
+fn discovery_hides_runtime_exports_for_every_sdk() -> anyhow::Result<()> {
+    let temp = tempfile::tempdir()?;
+    let root = temp.path();
+    std::fs::write(
+        root.join("plugin.wasm"),
+        wat::parse_str(
+            r#"(module
+                (memory (export "memory") 1)
+                (func (export "__invoke"))
+                (func (export "__conv_pipeline"))
+                (func (export "PyInit_extism_ffi"))
+                (func (export "_start"))
+                (func (export "_initialize"))
+                (func (export "check"))
+                (func (export "_custom")))"#,
+        )?,
+    )?;
+    let sdks = [
+        "rust",
+        "purescript",
+        "elixir",
+        "gleam",
+        "typescript",
+        "python",
+        "rescript",
+    ];
+    let configuration: String = sdks
+        .iter()
+        .map(|sdk| format!("[[modules]]\nname='{sdk}'\npath='plugin.wasm'\nsdk='{sdk}'\n"))
+        .collect();
+    std::fs::write(root.join("fluentci.toml"), configuration)?;
+    for command in ["modules", "inspect"] {
+        let output = cli(root, root, &[command])?;
+        success(&output);
+        let text = String::from_utf8(output.stdout)?;
+        assert!(text.contains("  check\n"));
+        assert!(text.contains("  _custom\n"));
+        for hidden in [
+            "__invoke",
+            "__conv_pipeline",
+            "PyInit_extism_ffi",
+            "_start",
+            "_initialize",
+        ] {
+            assert!(!text.contains(hidden), "{command} exposed {hidden}");
+        }
+
+        let output = cli(root, root, &[command, "--json"])?;
+        success(&output);
+        let listing: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+        let modules = listing["modules"].as_array().unwrap();
+        assert_eq!(modules.len(), sdks.len());
+        for (module, sdk) in modules.iter().zip(sdks) {
+            assert_eq!(module["sdk"], sdk);
+            assert_eq!(module["functions"], serde_json::json!(["_custom", "check"]));
+        }
+    }
+    Ok(())
+}
+
+#[test]
 fn invokes_and_discovers_multiple_modules_from_nested_directories() -> anyhow::Result<()> {
     let temp = tempfile::tempdir()?;
     let root = temp.path().canonicalize()?;
