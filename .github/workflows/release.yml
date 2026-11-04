@@ -2,54 +2,40 @@ name: release
 on:
   release:
     types: [created]
-
+permissions:
+  contents: write
 jobs:
   build:
-    name: release
-    runs-on: macos-13
     strategy:
       matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - aarch64-unknown-linux-gnu
-          - x86_64-apple-darwin
-          - aarch64-apple-darwin
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: macos-latest
+            target: aarch64-apple-darwin
+    runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Fluent CI
-        uses: fluentci-io/setup-fluentci@v5
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: oven-sh/setup-bun@v2
+      - uses: Swatinem/rust-cache@v2
+      - run: bun install --frozen-lockfile --ignore-scripts && bun run build:web
+        working-directory: webui
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Package
         env:
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Compile
+          RELEASE_VERSION: ${{ github.ref_name }}
+          TARGET: ${{ matrix.target }}
         run: |
-            rm deno.lock
-            deno install -A -g -f -r --unstable-kv https://github.com/fluentci-io/fluentci/raw/refs/heads/main/main.ts -n fluentci
-            deno compile -A --no-check --output fluentci --target ${{ matrix.target }} main.ts
-      - name: Set env
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-      - name: Archive assets
-        run: |
-          tar czvf fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz fluentci
-          shasum -a 256 fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz > fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz.sha256
-      - name: Upload assets to Cloudflare R2
-        run: |
-          mkdir -p r2/fluentci/${{ env.RELEASE_VERSION }}
-          cp fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz r2/fluentci/${{ env.RELEASE_VERSION }}
-          cp fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz.sha256 r2/fluentci/${{ env.RELEASE_VERSION }}
-          cd r2 && fluentci run --wasm r2-sync upload --endpoint-url https://$ACCOUNT_ID.r2.cloudflarestorage.com s3://assets || exit 0
-        env:
-          TAG: ${{ env.RELEASE_VERSION }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          ACCOUNT_ID: fe5b1e2ce9f94f4c0415ab94ce402012
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          cp "target/$TARGET/release/fluentci" fluentci
+          tar czf "fluentci_${RELEASE_VERSION}_${TARGET}.tar.gz" fluentci
+          shasum -a 256 "fluentci_${RELEASE_VERSION}_${TARGET}.tar.gz" > "fluentci_${RELEASE_VERSION}_${TARGET}.tar.gz.sha256"
       - name: Upload release assets
-        run: |
-          for ext in tar.gz tar.gz.sha256; do
-            export FILE=fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.$ext
-            fluentci run --wasm github release_upload $TAG $FILE
-          done
         env:
-          TAG: ${{ env.RELEASE_VERSION }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ github.ref_name }}
+        run: gh release upload "$RELEASE_VERSION" fluentci_*.tar.gz fluentci_*.sha256
