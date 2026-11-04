@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { spawnSync } from "node:child_process";
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { delimiter, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import test from "node:test";
@@ -18,30 +18,35 @@ function fixture(t) {
   mkdirSync(join(directory, "webui"));
   const log = join(directory, "commands.jsonl");
   const mock = join(bin, "command.mjs");
-  writeFileSync(mock, `import { appendFileSync } from "node:fs";
+  writeFileSync(mock, `import { appendFileSync, mkdirSync, writeFileSync } from "node:fs";
 import { basename } from "node:path";
 const command = basename(process.argv[1]);
 appendFileSync(process.env.CI_TEST_LOG, JSON.stringify({command, args: process.argv.slice(2), cwd: process.cwd()}) + "\\n");
 if (process.env.CI_TEST_FAIL === command + ":" + process.argv[2]) process.exit(7);
+if (command === "bun" && process.argv[2] === "run") {
+  mkdirSync("dist", { recursive: true });
+  writeFileSync("dist/index.html", "studio fixture");
+}
 `);
-  for (const program of ["cargo", "bun", "gh", "nix", "flakehub-push"]) {
+  for (const program of ["cargo", "bun", "gh", "nix", "flakehub-push", "sudo", "python3"]) {
     const path = join(bin, program);
     // The mock keeps the real program name while executing the same JS body.
     writeFileSync(path, `#!/usr/bin/env node\n${readFileSync(mock, "utf8")}`);
     chmodSync(path, 0o755);
   }
+  symlinkSync(process.execPath, join(bin, "node"));
   function run(module, fn, extra = {}) {
     const env = { ...process.env, PATH: bin + delimiter + process.env.PATH, CI_TEST_LOG: log, ...extra };
     delete env.FLUENTCI_PROJECT_ID;
     for (const [key, value] of Object.entries(extra)) if (value == null) delete env[key];
-    const result = spawnSync(binary, ["--check-update=false", "--database", join(directory, "test.db"), "run", "--work-dir", directory, module, fn], { cwd: directory, env, encoding: "utf8", timeout: 120_000 });
+    const result = spawnSync(binary, ["--check-update=false", "--database", join(directory, "test.db"), "run", "--work-dir", directory, ...(module.endsWith(".wasm") ? ["--wasm"] : []), module, fn], { cwd: directory, env, encoding: "utf8", timeout: 120_000 });
     if (result.error) throw result.error;
     return result;
   }
   function commands() {
-    return readFileSync(log, "utf8").trim().split("\n").map(JSON.parse);
+    return existsSync(log) ? readFileSync(log, "utf8").trim().split("\n").map(JSON.parse) : [];
   }
-  return { directory, run, commands };
+  return { directory, bin, run, commands };
 }
 
 function success(result) {
@@ -97,7 +102,7 @@ test("release archives contain the binary and a valid checksum; upload passes ex
   assert.equal(unpacked.status, 0, unpacked.stderr);
   assert.equal(unpacked.stdout, "fixture binary\n");
   success(f.run("release", "upload", env));
-  assert.deepEqual(f.commands().at(-1).args, ["release", "upload", env.RELEASE_VERSION, `target/release-assets/${archiveName}`, `target/release-assets/${archiveName}.sha256`]);
+  assert.deepEqual(f.commands().at(-1).args, ["release", "upload", env.RELEASE_VERSION, `target/release-assets/${archiveName}`, `target/release-assets/${archiveName}.sha256`, "--clobber"]);
 });
 
 test("Nix checks and FlakeHub publishing use the configured commands", t => {
@@ -124,4 +129,71 @@ test("release and publishing jobs reject missing configuration before commands r
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, new RegExp(`Set ${variable} before running this job`));
   }
+});
+
+test("prepared release builds use downloaded Wasm and need no source SDK tools", t => {
+  const f = fixture(t);
+  mkdirSync(join(f.directory, "webui/dist"));
+  writeFileSync(join(f.directory, "webui/dist/index.html"), "prebuilt studio");
+  const module = join(root, ".fluentci/release/dist/plugin.wasm");
+  success(f.run(module, "buildPrepared", { TARGET: "x86_64-unknown-linux-gnu", PATH: f.bin + delimiter + "/usr/bin:/bin" }));
+  assert.deepEqual(f.commands().map(({ command, args }) => [command, ...args]), [
+    ["cargo", "build", "--release", "--locked", "--target", "x86_64-unknown-linux-gnu"],
+  ]);
+});
+
+test("prepared release builds fail before Cargo when Studio assets are missing", t => {
+  const f = fixture(t);
+  const result = f.run(join(root, ".fluentci/release/dist/plugin.wasm"), "buildPrepared", { TARGET: "x86_64-unknown-linux-gnu" });
+  assert.notEqual(result.status, 0);
+  assert.deepEqual(f.commands(), []);
+});
+
+test("BSD upload and runner setup run through the compiled module", t => {
+  const f = fixture(t);
+  const module = join(root, ".fluentci/release/dist/plugin.wasm");
+  success(f.run(module, "bsdUpload", { TARGET: "x86_64-unknown-netbsd", RELEASE_VERSION: "v0.0.0-ci-test" }));
+  success(f.run(module, "linuxDependencies"));
+  const commands = f.commands();
+  assert.deepEqual(commands[0].args, [
+    "release", "upload", "v0.0.0-ci-test",
+    "dist/bsd/x86_64-unknown-netbsd/fluentci_v0.0.0-ci-test_x86_64-unknown-netbsd.tar.gz",
+    "dist/bsd/x86_64-unknown-netbsd/fluentci_v0.0.0-ci-test_x86_64-unknown-netbsd.tar.gz.sha256", "--clobber",
+  ]);
+  assert.deepEqual(commands.slice(1).map(({ command, args }) => [command, ...args]), [
+    ["sudo", "apt-get", "update"],
+    ["sudo", "apt-get", "install", "--yes", "build-essential", "cmake", "pkg-config"],
+  ]);
+});
+
+test("release preparation validates inputs before building Studio on the input runner", t => {
+  const f = fixture(t);
+  success(f.run(join(root, ".fluentci/release/dist/plugin.wasm"), "prepare", { RELEASE_VERSION: "2026.11.04" }));
+  assert.deepEqual(f.commands().map(({ command, args }) => [command, ...args]), [
+    ["gh", "release", "view", "2026.11.04", "--json", "tagName", "--jq", ".tagName"],
+    ["python3", ".github/scripts/check-openbsd-msrv.py"],
+    ["python3", ".github/scripts/test-bsd-release-verification.py", "-v"],
+    ["python3", ".github/scripts/create-bsd-smoke-fixtures.py", ".release-smoke"],
+    ["bun", "install", "--frozen-lockfile", "--ignore-scripts"],
+    ["bun", "run", "build:web"],
+  ]);
+});
+
+test("release preparation rejects unsafe tags before external commands", t => {
+  const f = fixture(t);
+  const result = f.run(join(root, ".fluentci/release/dist/plugin.wasm"), "prepare", { RELEASE_VERSION: "../../invalid" });
+  assert.notEqual(result.status, 0);
+  assert.deepEqual(f.commands(), []);
+});
+
+test("compiled BSD functions invoke the native helper and copied-back verifier", t => {
+  const f = fixture(t);
+  const scripts = join(f.directory, ".github/scripts");
+  mkdirSync(scripts, { recursive: true });
+  writeFileSync(join(scripts, "build-bsd-release.sh"), "#!/bin/sh\nprintf bsd-build > bsd-built\n");
+  const module = join(root, ".fluentci/release/dist/plugin.wasm");
+  success(f.run(module, "bsdBuild"));
+  assert.equal(readFileSync(join(f.directory, "bsd-built"), "utf8"), "bsd-build");
+  success(f.run(module, "bsdVerify", { TARGET: "x86_64-unknown-openbsd", RELEASE_VERSION: "2026.11.04" }));
+  assert.deepEqual(f.commands().at(-1).args, [".github/scripts/verify-bsd-release.py", "dist/bsd/x86_64-unknown-openbsd", "2026.11.04", "x86_64-unknown-openbsd"]);
 });
