@@ -1,0 +1,33 @@
+# Run the standard CI checks with `fluentci run` from any repository directory.
+[[steps]]
+name = "check"
+command = "fluentci run main check"
+
+[package]
+name = "fluentci"
+version = "0.16.8"
+
+[[modules]]
+name = "main"
+path = ".fluentci/main"
+sdk = "purescript"
+
+[[modules]]
+name = "rust"
+path = ".fluentci/rust"
+sdk = "purescript"
+
+[[modules]]
+name = "studio"
+path = ".fluentci/studio"
+sdk = "purescript"
+
+[[modules]]
+name = "release"
+path = ".fluentci/release"
+sdk = "purescript"
+
+[[modules]]
+name = "nix"
+path = ".fluentci/nix"
+sdk = "purescript"

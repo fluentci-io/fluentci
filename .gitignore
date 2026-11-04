@@ -5,3 +5,6 @@ kview
 *.db
 *.db-shm
 *.db-wal
+
+# PureScript editor state
+.psc-ide-port

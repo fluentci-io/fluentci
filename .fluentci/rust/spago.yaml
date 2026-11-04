@@ -1,0 +1,14 @@
+package:
+  name: fluentci-ci-rust
+  dependencies: [effect, either, fluentci, prelude, foldable-traversable, fluentci-ci-common, fluentci-ci-studio]
+workspace:
+  packageSet:
+    registry: 81.11.0
+  extraPackages:
+    fluentci:
+      git: https://github.com/fluentci-io/purescript-fluentci.git
+      ref: 954d03568935c26f92434119a110635a41a6fa4c
+    fluentci-ci-common:
+      path: ../common
+    fluentci-ci-studio:
+      path: ../studio
