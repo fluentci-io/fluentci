@@ -2,23 +2,74 @@
 
 use crate::models::Action;
 use anyhow::{Context, Result, bail};
-use serde::Deserialize;
-use std::path::{Path, PathBuf};
+use clap::ValueEnum;
+use serde::{Deserialize, Serialize};
+use std::{
+    collections::HashSet,
+    path::{Path, PathBuf},
+};
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
     #[serde(default)]
     pub steps: Vec<Step>,
     pub package: Option<Package>,
+    #[serde(default)]
+    pub modules: Vec<Module>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct Module {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub url: Option<String>,
+    #[serde(default)]
+    pub sdk: Sdk,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub entry: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub artifact: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub build: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Copy, Default, Deserialize, Serialize, ValueEnum, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum Sdk {
+    #[default]
+    Rust,
+    Purescript,
+    Elixir,
+    Gleam,
+    Typescript,
+    Python,
+    Rescript,
+}
+
+impl Sdk {
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Rust => "rust",
+            Self::Purescript => "purescript",
+            Self::Elixir => "elixir",
+            Self::Gleam => "gleam",
+            Self::Typescript => "typescript",
+            Self::Python => "python",
+            Self::Rescript => "rescript",
+        }
+    }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Package {
     pub name: String,
     pub version: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Step {
     pub name: String,
     pub command: Commands,
@@ -26,7 +77,7 @@ pub struct Step {
     pub working_directory: Option<String>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Commands {
     One(String),
@@ -44,7 +95,64 @@ impl Commands {
 
 impl Config {
     pub fn parse(content: &str) -> Result<Self> {
-        toml::from_str(content).context("Invalid fluentci.toml")
+        let config: Self = toml::from_str(content).context("Invalid fluentci.toml")?;
+        let mut names = HashSet::new();
+        for module in &config.modules {
+            validate_module_name(&module.name)?;
+            anyhow::ensure!(
+                module.path.is_some() != module.url.is_some(),
+                "Module {:?} must specify exactly one of path or url",
+                module.name
+            );
+            if let Some(path) = &module.path {
+                anyhow::ensure!(
+                    !path.as_os_str().is_empty(),
+                    "Module {:?} has an empty path",
+                    module.name
+                );
+            }
+            if let Some(url) = &module.url {
+                validate_module_url(url)?;
+                anyhow::ensure!(
+                    module.build.is_none() && module.artifact.is_none(),
+                    "URL module {:?} cannot specify build or artifact",
+                    module.name
+                );
+            }
+            anyhow::ensure!(
+                names.insert(&module.name),
+                "Duplicate module name {:?}",
+                module.name
+            );
+            anyhow::ensure!(
+                module.sdk != Sdk::Rust || module.artifact.is_none() || module.build.is_some(),
+                "Rust module {:?} artifacts are resolved through Cargo; artifact overrides require a build command",
+                module.name
+            );
+            if let Some(build) = &module.build {
+                anyhow::ensure!(
+                    !build.is_empty() && !build[0].trim().is_empty(),
+                    "Module {:?} has an empty build command",
+                    module.name
+                );
+            }
+            let precompiled = module.url.is_some()
+                || module.path.as_ref().is_some_and(|path| {
+                    path.extension()
+                        .is_some_and(|extension| extension == "wasm")
+                });
+            if module.sdk == Sdk::Elixir && module.build.is_none() && !precompiled {
+                anyhow::ensure!(
+                    module
+                        .entry
+                        .as_ref()
+                        .is_some_and(|entry| !entry.trim().is_empty()),
+                    "Elixir module {:?} requires entry = \"YourPluginModule\"",
+                    module.name
+                );
+            }
+        }
+        Ok(config)
     }
 
     pub fn read(path: &Path) -> Result<Self> {
@@ -119,4 +227,27 @@ pub fn environment(root: &Path) -> Result<Vec<(String, String)>> {
     dotenvy::from_path_iter(path)?
         .map(|v| v.map_err(Into::into))
         .collect()
+}
+
+pub fn validate_module_name(name: &str) -> Result<()> {
+    anyhow::ensure!(
+        !name.is_empty()
+            && name != "shell"
+            && name
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_')),
+        "Invalid module name {name:?}: use letters, digits, hyphens, or underscores; 'shell' is reserved"
+    );
+    Ok(())
+}
+
+pub fn validate_module_url(value: &str) -> Result<reqwest::Url> {
+    let url = reqwest::Url::parse(value).context("Invalid Wasm module URL")?;
+    anyhow::ensure!(
+        matches!(url.scheme(), "http" | "https")
+            && url.host_str().is_some()
+            && url.path().ends_with(".wasm"),
+        "Module URL must be an HTTP(S) URL ending in .wasm (query parameters are allowed)"
+    );
+    Ok(url)
 }

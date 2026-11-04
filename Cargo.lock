@@ -2984,16 +2984,19 @@ dependencies = [
  "serde",
  "serde_json",
  "serde_yaml",
+ "sha256",
  "shlex 1.3.0",
  "sqlx",
  "tempfile",
  "tokio",
  "tokio-tungstenite 0.28.0",
  "toml 0.9.12+spec-1.1.0",
+ "toml_edit",
  "tower 0.5.3",
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "wasmparser 0.243.0",
  "wat",
  "zip",
 ]
@@ -7488,6 +7491,7 @@ dependencies = [
  "indexmap 2.14.2",
  "toml_datetime 1.1.2+spec-1.1.0",
  "toml_parser",
+ "toml_writer",
  "winnow 1.0.4",
 ]
 

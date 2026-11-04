@@ -14,6 +14,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
+          targets: wasm32-unknown-unknown
       - uses: oven-sh/setup-bun@v2
       - uses: Swatinem/rust-cache@v2
       - run: bun install --frozen-lockfile --ignore-scripts

@@ -56,7 +56,7 @@ fn rejects_invalid_ports_and_conflicting_providers() {
 }
 
 #[test]
-fn initializes_and_runs_a_pipeline_without_external_runtimes() -> anyhow::Result<()> {
+fn initializes_and_runs_the_default_rust_module() -> anyhow::Result<()> {
     use std::process::Command as Process;
 
     let temp = tempfile::tempdir()?;
@@ -74,7 +74,11 @@ fn initializes_and_runs_a_pipeline_without_external_runtimes() -> anyhow::Result
     };
     assert!(cli("init").output()?.status.success());
     let list = cli("ls").output()?;
-    assert_eq!(String::from_utf8_lossy(&list.stdout).trim(), "hello");
+    let listing = String::from_utf8_lossy(&list.stdout);
+    assert!(listing.contains("main [rust]"));
+    assert!(listing.lines().any(|line| line == "hello"));
+    assert!(temp.path().join("fluentci.toml").is_file());
+    assert!(temp.path().join(".fluentci/main/Cargo.toml").is_file());
     let run = cli("run").output()?;
     assert!(
         run.status.success(),

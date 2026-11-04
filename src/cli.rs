@@ -1,3 +1,4 @@
+use crate::config::Sdk;
 use clap::{
     Args, Parser, Subcommand,
     builder::{Styles, styling::RgbColor},
@@ -66,7 +67,7 @@ pub struct RunArgs {
     /// Working directory for the pipeline
     #[arg(long)]
     pub work_dir: Option<PathBuf>,
-    /// Local pipeline, module path, or registry package (defaults to .)
+    /// Declared module, local pipeline, module path, or registry package (defaults to .)
     pub pipeline: Option<String>,
     /// Job names or plugin arguments, including plugin flags
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
@@ -77,7 +78,7 @@ pub struct RunArgs {
 pub enum Command {
     /// Run a local or registry pipeline
     Run(RunArgs),
-    /// Initialize a pipeline or reusable Wasm plugin
+    /// Create a root fluentci.toml and a default module under .fluentci
     Init {
         /// Name for the generated pipeline or plugin
         name: Option<String>,
@@ -87,9 +88,12 @@ pub enum Command {
         /// Generate a reusable package in the current directory
         #[arg(short, long)]
         standalone: bool,
-        /// Generate a Rust WebAssembly plugin
+        /// Generate a WebAssembly plugin (the default)
         #[arg(short = 'w', long)]
         wasm: bool,
+        /// SDK used by the generated module
+        #[arg(long, value_enum, default_value = "rust")]
+        sdk: Sdk,
     },
     /// Search for reusable pipelines in the registry
     Search {
@@ -98,6 +102,17 @@ pub enum Command {
         /// Maximum number of results
         #[arg(short, long, default_value_t = 100)]
         limit: u32,
+    },
+    /// Discover modules and functions, or add a module
+    #[command(visible_alias = "inspect", subcommand_precedence_over_arg = true)]
+    Modules {
+        #[command(subcommand)]
+        command: Option<ModuleCommand>,
+        /// Inspect only this module (builds source modules)
+        name: Option<String>,
+        /// Emit module paths, SDKs, and function exports as JSON
+        #[arg(long)]
+        json: bool,
     },
     /// List jobs in a local or registry pipeline
     #[command(name = "ls", alias = "list")]
@@ -199,6 +214,27 @@ pub enum Command {
     },
     #[command(name = "provider-worker", hide = true)]
     ProviderWorker { request: PathBuf },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ModuleCommand {
+    /// Scaffold and declare another workspace module
+    Add {
+        /// Unique name used to invoke the module
+        name: String,
+        /// SDK used by the module
+        #[arg(long, value_enum, default_value = "rust")]
+        sdk: Sdk,
+        /// Register an existing module instead of generating one
+        #[arg(long, conflicts_with = "url")]
+        path: Option<PathBuf>,
+        /// Register an HTTP(S) URL to a compiled .wasm module
+        #[arg(long, conflicts_with = "path")]
+        url: Option<String>,
+        /// Elixir plugin module or Python entry file for an existing module
+        #[arg(long, requires = "path")]
+        entry: Option<String>,
+    },
 }
 
 #[derive(Debug, Subcommand)]

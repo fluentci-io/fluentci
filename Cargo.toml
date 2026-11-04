@@ -28,6 +28,7 @@ serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serde_yaml = "0.9"
 shlex = "1"
+sha256 = "1.5"
 sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
 tempfile = "3"
 tokio = { version = "1", features = ["full"] }
@@ -35,7 +36,9 @@ tokio-tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 toml = "0.9"
+toml_edit = "0.25"
 uuid = { version = "1", features = ["v4"] }
+wasmparser = "0.243"
 zip = { version = "4", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]

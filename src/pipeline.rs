@@ -1,18 +1,25 @@
-use crate::{cli::RunArgs, config, db::Db, process, registry};
-use anyhow::{Context, Result, bail};
-use std::path::{Path, PathBuf};
+use crate::{cli::RunArgs, config, db::Db, modules, process, registry, workspace::Workspace};
+use anyhow::{Context, Result};
+use std::path::Path;
 use tokio::process::Command;
 
 pub async fn run(args: &RunArgs, db: &Db) -> Result<()> {
-    let root = args
+    let start = args
         .work_dir
         .as_deref()
         .unwrap_or(Path::new("."))
         .canonicalize()
         .context("Working directory does not exist")?;
+    let workspace = Workspace::discover(&start)?;
+    let root = &workspace.root;
+    let working_directory = if args.work_dir.is_some() {
+        &start
+    } else {
+        root
+    };
     let pipeline = args.pipeline.as_deref().unwrap_or(".");
     if args.remote_exec {
-        return crate::remote::run(args, &root, db).await;
+        return crate::remote::run(args, root, db).await;
     }
     if pipeline == "."
         && let Ok(key) = std::env::var("FLUENTCI_PROJECT_ID")
@@ -26,9 +33,14 @@ pub async fn run(args: &RunArgs, db: &Db) -> Result<()> {
     if pipeline == "."
         && !args.wasm
         && !root.join(".fluentci/mod.ts").is_file()
-        && let Some(path) = config::find(&root)
+        && let Some(path) = config::find(root)
     {
-        let actions = config::Config::read(&path)?.actions()?;
+        let config = config::Config::read(&path)?;
+        let actions = config.actions()?;
+        anyhow::ensure!(
+            !actions.is_empty(),
+            "No pipeline steps configured. Run a declared module with fluentci run <module> <function>"
+        );
         let requested = &args.jobs;
         for name in requested {
             anyhow::ensure!(
@@ -43,17 +55,54 @@ pub async fn run(args: &RunArgs, db: &Db) -> Result<()> {
             for command in action_commands(action)? {
                 let mut action = action.clone();
                 action.commands = command;
-                process::run(&mut action_command(&action, &root).await?).await?;
+                process::run(&mut action_command_at(&action, root, working_directory).await?)
+                    .await?;
             }
         }
         return Ok(());
     }
-    let mut command = command(args, &root).await?;
+    let mut command = command_with_config(args, working_directory, root).await?;
     process::run(&mut command).await
 }
 
 pub async fn command(args: &RunArgs, root: &Path) -> Result<Command> {
+    command_with_config(args, root, root).await
+}
+
+async fn command_with_config(args: &RunArgs, root: &Path, config_root: &Path) -> Result<Command> {
     let pipeline = args.pipeline.as_deref().unwrap_or(".");
+    let declared = if pipeline == "." && args.wasm {
+        let workspace = Workspace::discover(config_root)?;
+        if let Some(path) = &workspace.config {
+            let config = config::Config::read(path)?;
+            anyhow::ensure!(
+                config.modules.len() <= 1,
+                "Multiple modules are declared; select one with fluentci run <module> <function>"
+            );
+            config
+                .modules
+                .first()
+                .map(|module| modules::LocalModule::resolve(path, module))
+                .transpose()?
+        } else {
+            None
+        }
+    } else {
+        modules::resolve(config_root, pipeline)?
+    };
+    if let Some(module) = declared {
+        anyhow::ensure!(
+            !args.jobs.is_empty(),
+            "Specify a function: fluentci run {} <function> [args...]; use fluentci modules to list exports",
+            module.name
+        );
+        let wasm = module.prepare().await?;
+        let mut command = engine_command(&wasm.to_string_lossy(), &args.jobs)?;
+        command
+            .current_dir(root)
+            .envs(config::environment(config_root)?);
+        return Ok(command);
+    }
     let wasm = args.wasm
         || pipeline.ends_with(".wasm")
         || pipeline.ends_with("?wasm=1")
@@ -123,37 +172,10 @@ async fn wasm_command(pipeline: &str, jobs: &[String], root: &Path) -> Result<Co
             .map(|p| root.join(p))
             .find(|p| p.join("Cargo.toml").is_file())
             .context("This directory does not contain a FluentCI plugin")?;
-        process::execute("rustup", ["target", "add", "wasm32-unknown-unknown"], &dir).await?;
-        process::execute(
-            "cargo",
-            ["build", "--release", "--target", "wasm32-unknown-unknown"],
-            &dir,
-        )
-        .await?;
-        let manifest: toml::Value =
-            toml::from_str(&std::fs::read_to_string(dir.join("Cargo.toml"))?)?;
-        let name = manifest["package"]["name"]
-            .as_str()
-            .context("Missing Cargo package name")?
-            .replace('-', "_");
-        // Cargo may place artifacts at a workspace root or in CARGO_TARGET_DIR.
-        let output = Command::new("cargo")
-            .args(["metadata", "--no-deps", "--format-version=1"])
-            .current_dir(&dir)
-            .output()
-            .await?;
-        if !output.status.success() {
-            bail!("cargo metadata failed");
-        }
-        let metadata: serde_json::Value = serde_json::from_slice(&output.stdout)?;
-        PathBuf::from(
-            metadata["target_directory"]
-                .as_str()
-                .context("Missing target directory")?,
-        )
-        .join(format!("wasm32-unknown-unknown/release/{name}.wasm"))
-        .to_string_lossy()
-        .into_owned()
+        modules::build(&dir.join("Cargo.toml"))
+            .await?
+            .to_string_lossy()
+            .into_owned()
     } else if pipeline.contains("://")
         || pipeline.ends_with(".wasm")
         || pipeline.starts_with("ghcr.io/")
@@ -170,18 +192,31 @@ async fn wasm_command(pipeline: &str, jobs: &[String], root: &Path) -> Result<Co
                 .trim_end_matches('/')
         )
     };
-    let mut c = Command::new(std::env::current_exe()?);
-    c.args(["__engine-call", "--module", &module, "--"])
+    engine_command(&module, jobs)
+}
+
+fn engine_command(module: &str, jobs: &[String]) -> Result<Command> {
+    let mut command = Command::new(std::env::current_exe()?);
+    command
+        .args(["__engine-call", "--module", module, "--"])
         .args(jobs)
         .env("WASM_ENABLED", "1");
-    Ok(c)
+    Ok(command)
 }
 
 pub async fn action_command(action: &crate::models::Action, root: &Path) -> Result<Command> {
+    action_command_at(action, root, root).await
+}
+
+async fn action_command_at(
+    action: &crate::models::Action,
+    root: &Path,
+    default_directory: &Path,
+) -> Result<Command> {
     let cwd = action
         .working_directory
         .as_ref()
-        .map_or_else(|| root.to_path_buf(), |p| root.join(p));
+        .map_or_else(|| default_directory.to_path_buf(), |path| root.join(path));
     let jobs = shlex::split(&action.commands).context("Unclosed quote in action command")?;
     let mut c = if action.plugin == "shell" {
         let mut command = Command::new("bash");
@@ -197,7 +232,7 @@ pub async fn action_command(action: &crate::models::Action, root: &Path) -> Resu
             .envs(config::environment(root)?);
         command
     } else {
-        command(
+        command_with_config(
             &RunArgs {
                 wasm: action.use_wasm,
                 pipeline: Some(action.plugin.clone()),
@@ -205,6 +240,7 @@ pub async fn action_command(action: &crate::models::Action, root: &Path) -> Resu
                 ..RunArgs::default()
             },
             &cwd,
+            root,
         )
         .await?
     };
@@ -217,12 +253,18 @@ pub async fn action_command(action: &crate::models::Action, root: &Path) -> Resu
 }
 
 pub async fn inspect(pipeline: Option<&str>, mode: &str) -> Result<()> {
+    let workspace = Workspace::current()?;
+    let root = &workspace.root;
     let pipeline = pipeline.unwrap_or(".");
     if pipeline == "."
         && mode == "list"
-        && let Some(path) = config::find(Path::new("."))
+        && let Some(path) = &workspace.config
     {
-        for step in config::Config::read(&path)?.steps {
+        let config = config::Config::read(path)?;
+        for module in config.modules {
+            println!("{} [{}]", module.name, module.sdk.name());
+        }
+        for step in config.steps {
             println!("{}", step.name);
         }
         return Ok(());
@@ -248,6 +290,7 @@ pub async fn inspect(pipeline: Option<&str>, mode: &str) -> Result<()> {
         };
         c.arg(format!("--import-map={map}")).arg(file);
     }
+    c.current_dir(root);
     process::run(&mut c).await
 }
 

@@ -9,9 +9,17 @@ use std::{
 use tokio::process::Command;
 
 pub async fn run(command: &mut Command) -> Result<()> {
+    run_with_stdout(command, Stdio::inherit()).await
+}
+
+pub async fn run_build(command: &mut Command) -> Result<()> {
+    run_with_stdout(command, Stdio::from(std::io::stderr())).await
+}
+
+async fn run_with_stdout(command: &mut Command, stdout: Stdio) -> Result<()> {
     command
         .stdin(Stdio::inherit())
-        .stdout(Stdio::inherit())
+        .stdout(stdout)
         .stderr(Stdio::inherit())
         .kill_on_drop(true);
     let description = format!("{command:?}");
@@ -31,6 +39,14 @@ where
     S: AsRef<OsStr>,
 {
     run(Command::new(program).args(args).current_dir(cwd)).await
+}
+
+pub async fn execute_build<I, S>(program: &str, args: I, cwd: &Path) -> Result<()>
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<OsStr>,
+{
+    run_build(Command::new(program).args(args).current_dir(cwd)).await
 }
 
 #[derive(Debug)]

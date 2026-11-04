@@ -2,11 +2,12 @@
 
 use crate::{
     archive, auth,
-    cli::{self, ProjectCommand},
-    config,
+    cli::{self, ModuleCommand, ProjectCommand},
+    config::{self, Commands, Config, Module, Package, Sdk, Step},
     db::Db,
     models::Project,
-    pipeline, process, registry,
+    pipeline, process, registry, scaffold,
+    workspace::Workspace,
 };
 use anyhow::{Context, Result, bail};
 use std::path::Path;
@@ -46,14 +47,40 @@ pub async fn dispatch(cli: cli::Cli) -> Result<()> {
             name,
             template,
             standalone,
-            wasm,
-        }) => init(name.as_deref(), template.as_deref(), standalone, wasm).await,
+            wasm: _,
+            sdk,
+        }) => init(name.as_deref(), template.as_deref(), standalone, sdk).await,
         Some(Search { query, limit }) => registry::search(&query, limit).await,
+        Some(Modules {
+            command:
+                Some(ModuleCommand::Add {
+                    name,
+                    sdk,
+                    path,
+                    url,
+                    entry,
+                }),
+            ..
+        }) => {
+            crate::modules::add(
+                &name,
+                sdk,
+                path.as_deref(),
+                url.as_deref(),
+                entry.as_deref(),
+            )
+            .await
+        }
+        Some(Modules {
+            command: None,
+            name,
+            json,
+        }) => crate::modules::inspect(name.as_deref(), json).await,
         Some(Ls { pipeline }) => pipeline::inspect(pipeline.as_deref(), "list").await,
         Some(Docs { pipeline }) => pipeline::inspect(pipeline.as_deref(), "docs").await,
         Some(Doctor) => doctor().await,
         Some(Env) => {
-            for (key, value) in config::environment(Path::new("."))? {
+            for (key, value) in config::environment(&Workspace::current()?.root)? {
                 println!("{key} = {value}");
             }
             Ok(())
@@ -66,7 +93,7 @@ pub async fn dispatch(cli: cli::Cli) -> Result<()> {
         Some(Repl { debug, pipelines }) => repl(debug, &pipelines).await,
         Some(Server { port }) => crate::server::serve(db, port, false).await,
         Some(Studio { port }) => {
-            let path = std::env::current_dir()?.to_string_lossy().into_owned();
+            let path = Workspace::current()?.root.to_string_lossy().into_owned();
             if db.project(&path).await?.is_none() {
                 let p = crate::models::Project::new(path);
                 db.save_project(&p).await?;
@@ -126,7 +153,7 @@ async fn project(db: &Db, command: ProjectCommand) -> Result<()> {
             aws,
             ..
         } => {
-            let key = name.unwrap_or(std::env::current_dir()?.to_string_lossy().into());
+            let key = name.unwrap_or(Workspace::current()?.root.to_string_lossy().into());
             let p = db.project(&key).await?.context("Project not found")?;
             let provider = if azure {
                 "azure"
@@ -152,13 +179,33 @@ async fn init(
     name: Option<&str>,
     template: Option<&str>,
     standalone: bool,
-    wasm: bool,
+    sdk: Sdk,
 ) -> Result<()> {
-    let destination = if standalone {
-        Path::new(".")
+    let workspace = Workspace::current()?;
+    let root = if standalone {
+        std::env::current_dir()?
     } else {
-        Path::new(".fluentci")
+        workspace.root
     };
+    let name = name.unwrap_or("main");
+    config::validate_module_name(name)?;
+    let destination = if standalone {
+        root.clone()
+    } else {
+        root.join(".fluentci").join(name)
+    };
+    anyhow::ensure!(
+        config::find(&root).is_none(),
+        "A FluentCI configuration already exists at {}; use fluentci modules add <name> to declare another module",
+        root.display()
+    );
+    if !standalone {
+        anyhow::ensure!(
+            !destination.exists(),
+            "Refusing to overwrite {}",
+            destination.display()
+        );
+    }
     if let Some(template) = template {
         let p = registry::resolve(template).await?;
         let response = registry::client()
@@ -192,50 +239,49 @@ async fn init(
         if let Some(directory) = p.metadata.directory {
             source = source.join(directory);
         }
-        if wasm && source.join("plugin").is_dir() {
+        if source.join("plugin").is_dir() {
             source = source.join("plugin");
         }
-        copy_tree(&source, destination)?;
+        copy_tree(&source, &destination)?;
     } else {
-        tokio::fs::create_dir_all(destination).await?;
-        let name = name.unwrap_or("pipeline");
-        if wasm {
-            anyhow::ensure!(
-                !name.is_empty()
-                    && name
-                        .chars()
-                        .all(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_')),
-                "A Rust plugin name must contain only letters, digits, hyphens, or underscores"
-            );
-            let manifest = format!(
-                "[package]\nname = {}\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ncrate-type = [\"cdylib\"]\n\n[dependencies]\nextism-pdk = \"=1.4.1\"\n",
-                toml::Value::String(name.into())
-            );
-            create_file(&destination.join("Cargo.toml"), &manifest).await?;
-            tokio::fs::create_dir_all(destination.join("src")).await?;
-            create_file(&destination.join("src/lib.rs"),"use extism_pdk::*;\n\n#[plugin_fn]\npub fn hello() -> FnResult<String> {\n    Ok(\"Hello from FluentCI\".into())\n}\n").await?;
-        } else {
-            let content = format!(
-                "[package]\nname = {}\nversion = \"0.1.0\"\n\n[[steps]]\nname = \"hello\"\ncommand = \"echo Hello from FluentCI\"\n",
-                toml::Value::String(name.into())
-            );
-            create_file(&destination.join("fluentci.toml"), &content).await?;
-        }
+        scaffold::write(&destination, name, sdk).await?;
     }
-    println!("Pipeline initialized in {}", destination.display());
-    Ok(())
-}
-
-async fn create_file(path: &Path, content: &str) -> Result<()> {
-    use tokio::io::AsyncWriteExt;
-
-    let mut file = tokio::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(path)
-        .await
-        .with_context(|| format!("Creating {} (existing files are preserved)", path.display()))?;
-    file.write_all(content.as_bytes()).await?;
+    let path = if standalone {
+        std::path::PathBuf::from(".")
+    } else {
+        destination.strip_prefix(&root)?.to_path_buf()
+    };
+    let config = Config {
+        package: Some(Package {
+            name: name.into(),
+            version: "0.1.0".into(),
+        }),
+        modules: vec![Module {
+            name: name.into(),
+            path: Some(path),
+            url: None,
+            sdk,
+            entry: (sdk == Sdk::Elixir).then(|| "Main".into()),
+            artifact: None,
+            build: None,
+        }],
+        steps: vec![Step {
+            name: "hello".into(),
+            command: Commands::One(format!("fluentci run {name} hello")),
+            env: None,
+            working_directory: None,
+        }],
+    };
+    scaffold::create_file(
+        &root.join("fluentci.toml"),
+        &toml::to_string_pretty(&config)?,
+    )
+    .await?;
+    println!(
+        "Initialized {} module {name:?} in {}",
+        sdk.name(),
+        destination.display()
+    );
     Ok(())
 }
 
