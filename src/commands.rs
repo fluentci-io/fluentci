@@ -1,4 +1,5 @@
 //! User-facing command orchestration.
+
 use crate::{
     archive, auth,
     cli::{self, ProjectCommand},
@@ -37,6 +38,7 @@ pub async fn dispatch(cli: cli::Cli) -> Result<()> {
         tracing::debug!(%error,"Update check failed");
     }
     use cli::Command::*;
+
     match cli.command {
         None => pipeline::run(&cli.run, &db).await,
         Some(Run(args)) => pipeline::run(&args, &db).await,
@@ -99,6 +101,7 @@ pub async fn dispatch(cli: cli::Cli) -> Result<()> {
         }
     }
 }
+
 async fn project(db: &Db, command: ProjectCommand) -> Result<()> {
     match command {
         ProjectCommand::Create => {
@@ -148,6 +151,7 @@ async fn project(db: &Db, command: ProjectCommand) -> Result<()> {
     }
     Ok(())
 }
+
 async fn init(
     name: Option<&str>,
     template: Option<&str>,
@@ -225,8 +229,10 @@ async fn init(
     println!("Pipeline initialized in {}", destination.display());
     Ok(())
 }
+
 async fn create_file(path: &Path, content: &str) -> Result<()> {
     use tokio::io::AsyncWriteExt;
+
     let mut file = tokio::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -236,6 +242,7 @@ async fn create_file(path: &Path, content: &str) -> Result<()> {
     file.write_all(content.as_bytes()).await?;
     Ok(())
 }
+
 fn copy_tree(source: &Path, destination: &Path) -> Result<()> {
     std::fs::create_dir_all(destination)?;
     for entry in std::fs::read_dir(source)? {
@@ -254,6 +261,7 @@ fn copy_tree(source: &Path, destination: &Path) -> Result<()> {
     }
     Ok(())
 }
+
 async fn doctor() -> Result<()> {
     println!(
         "FluentCI {} (embedded engine, Studio, SQLite)",
@@ -287,6 +295,7 @@ async fn doctor() -> Result<()> {
     );
     Ok(())
 }
+
 async fn publish(db: &Db, wasm: bool) -> Result<()> {
     let token = auth::token(db).await?;
     let mut request = registry::client()
@@ -349,6 +358,7 @@ async fn publish(db: &Db, wasm: bool) -> Result<()> {
     println!("Package published successfully");
     Ok(())
 }
+
 async fn repl(debug: bool, pipelines: &[String]) -> Result<()> {
     let mut source = String::new();
     if Path::new(".fluentci/mod.ts").is_file() {
@@ -368,6 +378,7 @@ async fn repl(debug: bool, pipelines: &[String]) -> Result<()> {
     }
     process::run(&mut c).await
 }
+
 async fn upgrade() -> Result<()> {
     let data: serde_json::Value = registry::client()
         .get("https://api.github.com/repos/fluentci-io/fluentci/releases/latest")

@@ -1,9 +1,11 @@
 use clap::{CommandFactory, Parser};
 use fluentci::cli::{Cli, Command};
+
 #[test]
 fn clap_definition_is_valid() {
     Cli::command().debug_assert();
 }
+
 #[test]
 fn forwards_plugin_flags_verbatim() {
     let c = Cli::try_parse_from([
@@ -27,6 +29,7 @@ fn forwards_plugin_flags_verbatim() {
         ["run", "test", "--timeout", "100", "--check-update=false"]
     );
 }
+
 #[test]
 fn supports_implicit_run_and_aliases() {
     let c = Cli::try_parse_from(["fluentci", "--wasm", "rust", "test"]).unwrap();
@@ -43,6 +46,7 @@ fn supports_implicit_run_and_aliases() {
         Some(Command::Docs { .. })
     ));
 }
+
 #[test]
 fn rejects_invalid_ports_and_conflicting_providers() {
     assert!(Cli::try_parse_from(["fluentci", "studio", "--port", "70000"]).is_err());
@@ -50,9 +54,11 @@ fn rejects_invalid_ports_and_conflicting_providers() {
         Cli::try_parse_from(["fluentci", "project", "export", "--github", "--gitlab"]).is_err()
     );
 }
+
 #[test]
 fn initializes_and_runs_a_pipeline_without_external_runtimes() -> anyhow::Result<()> {
     use std::process::Command as Process;
+
     let temp = tempfile::tempdir()?;
     let binary = env!("CARGO_BIN_EXE_fluentci");
     let database = temp.path().join("db");

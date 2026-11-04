@@ -1,4 +1,5 @@
 use fluentci::config::Config;
+
 #[test]
 fn parses_every_existing_fixture() {
     for file in std::fs::read_dir("fixtures").unwrap() {
@@ -12,6 +13,7 @@ fn parses_every_existing_fixture() {
         }
     }
 }
+
 #[test]
 fn preserves_quoted_arguments_and_environment_values() {
     let config = Config::parse(
@@ -33,6 +35,7 @@ working_directory = "client"
     assert_eq!(actions[0].env.as_ref().unwrap()[0], "TOKEN=a=b");
     assert_eq!(actions[0].working_directory.as_deref(), Some("client"));
 }
+
 #[test]
 fn rejects_empty_commands() {
     assert!(

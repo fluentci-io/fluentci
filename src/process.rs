@@ -1,4 +1,5 @@
 //! Child processes use argument vectors, never interpolated shell commands.
+
 use anyhow::{Context, Result, bail};
 use std::{
     ffi::OsStr,
@@ -23,6 +24,7 @@ pub async fn run(command: &mut Command) -> Result<()> {
     }
     Ok(())
 }
+
 pub async fn execute<I, S>(program: &str, args: I, cwd: &Path) -> Result<()>
 where
     I: IntoIterator<Item = S>,
@@ -36,9 +38,11 @@ pub struct Failure {
     pub program: String,
     pub status: ExitStatus,
 }
+
 impl std::fmt::Display for Failure {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} exited with {}", self.program, self.status)
     }
 }
+
 impl std::error::Error for Failure {}

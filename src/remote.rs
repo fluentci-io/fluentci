@@ -1,4 +1,5 @@
 //! Compatibility with FluentCI's hosted runner protocol.
+
 use crate::{archive, auth, cli::RunArgs, db::Db, registry};
 use anyhow::{Context, Result, bail};
 use futures_util::{SinkExt, StreamExt};
@@ -50,6 +51,7 @@ pub async fn run(args: &RunArgs, root: &Path, db: &Db) -> Result<()> {
     }
     bail!("Runner disconnected before reporting an exit status")
 }
+
 pub async fn list_agents(db: &Db) -> Result<()> {
     let token = auth::token(db).await?;
     let id = auth::user_id(&token).await?;
@@ -64,6 +66,7 @@ pub async fn list_agents(db: &Db) -> Result<()> {
     println!("{}", serde_json::to_string_pretty(&data)?);
     Ok(())
 }
+
 pub async fn agent(db: &Db) -> Result<()> {
     let token = auth::token(db).await?;
     let id = if let Some(id) = db.setting("agent_id").await? {
@@ -130,6 +133,7 @@ pub async fn agent(db: &Db) -> Result<()> {
         }
     }
 }
+
 async fn build(payload: &serde_json::Value, token: &str) -> Result<()> {
     let temp = tempfile::tempdir()?;
     let query: serde_json::Value =
@@ -203,6 +207,7 @@ async fn build(payload: &serde_json::Value, token: &str) -> Result<()> {
     .await?;
     Ok(())
 }
+
 async fn send(id: &str, token: &str, body: String) -> Result<()> {
     registry::client()
         .post(registry::EVENTS)

@@ -1,4 +1,5 @@
 //! Durable pipeline execution. Output and state changes are persisted before publication.
+
 use crate::{config, db::Db, models::*, pipeline};
 use anyhow::{Context, Result};
 use std::{path::Path, process::Stdio, time::Instant};
@@ -8,11 +9,13 @@ use tokio::{
 };
 
 pub type Events = broadcast::Sender<String>;
+
 pub fn publish(events: Option<&Events>, channel: &str, data: impl serde::Serialize) {
     if let Some(events) = events {
         let _ = events.send(serde_json::json!({"channel":channel,"data":data}).to_string());
     }
 }
+
 pub async fn prepare(db: &Db, project: &Project) -> Result<Run> {
     let mut actions = db.actions(&project.id).await?;
     if actions.is_empty()
@@ -49,10 +52,12 @@ pub async fn prepare(db: &Db, project: &Project) -> Result<Run> {
     db.save_run(&run).await?;
     Ok(run)
 }
+
 pub async fn execute(db: Db, project: Project, events: Option<Events>) -> Result<Run> {
     let run = prepare(&db, &project).await?;
     execute_prepared(db, project, run, events).await
 }
+
 pub async fn execute_job(
     db: Db,
     project: Project,
@@ -76,6 +81,7 @@ pub async fn execute_job(
         .find(|job| job.name == name)
         .context("Job missing from completed run")
 }
+
 pub async fn execute_prepared(
     db: Db,
     project: Project,
@@ -122,6 +128,7 @@ pub async fn execute_prepared(
     outcome?;
     Ok(run)
 }
+
 async fn execute_actions(
     db: &Db,
     project: &Project,
@@ -204,6 +211,7 @@ async fn execute_actions(
     }
     Ok(())
 }
+
 async fn update_stats(db: &Db, project: &Project) -> Result<()> {
     let runs = db.runs(&project.id).await?;
     let recent: Vec<_> = runs.iter().rev().take(18).cloned().collect();

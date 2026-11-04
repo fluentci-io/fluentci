@@ -1,5 +1,6 @@
 use crate::{db::Db, registry};
 use anyhow::{Context, Result};
+
 pub async fn token(db: &Db) -> Result<String> {
     if let Ok(token) = std::env::var("FLUENTCI_ACCESS_TOKEN") {
         return Ok(token);
@@ -7,6 +8,7 @@ pub async fn token(db: &Db) -> Result<String> {
     if let Some(token) = db.setting("access_token").await? {
         return Ok(token);
     }
+
     // Import the previous CLI's token once; subsequent writes use SQLite.
     if let Some(home) = dirs::home_dir()
         && let Ok(token) = tokio::fs::read_to_string(home.join(".fluentci/access-token")).await
@@ -16,6 +18,7 @@ pub async fn token(db: &Db) -> Result<String> {
     }
     anyhow::bail!("You are not logged in. Run fluentci login or set FLUENTCI_ACCESS_TOKEN")
 }
+
 pub async fn user_id(token: &str) -> Result<String> {
     Ok(registry::client()
         .get("https://api.fluentci.io/validate")
@@ -27,6 +30,7 @@ pub async fn user_id(token: &str) -> Result<String> {
         .text()
         .await?)
 }
+
 pub async fn login(db: &Db) -> Result<()> {
     println!("Generate an access token at https://app.fluentci.io/settings/tokens");
     let token =
@@ -37,6 +41,7 @@ pub async fn login(db: &Db) -> Result<()> {
     println!("Logged in successfully");
     Ok(())
 }
+
 pub async fn whoami(db: &Db) -> Result<()> {
     let id = user_id(&token(db).await?).await?;
     let mut request = registry::client().get(format!("https://api.github.com/user/{}", id.trim()));

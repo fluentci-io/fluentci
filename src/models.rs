@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 pub fn id() -> String {
     uuid::Uuid::new_v4().to_string()
 }
+
 pub fn now() -> String {
     chrono::Utc::now().to_rfc3339()
 }
@@ -29,6 +30,7 @@ pub struct Project {
     pub archived: Option<bool>,
     pub repository_url: Option<String>,
 }
+
 impl Project {
     pub fn new(path: String) -> Self {
         let id = id();
@@ -42,6 +44,7 @@ impl Project {
         }
     }
 }
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize, SimpleObject, InputObject)]
 #[graphql(input_name = "ActionInput")]
 #[serde(rename_all = "camelCase")]
@@ -58,6 +61,7 @@ pub struct Action {
     pub env: Option<Vec<String>>,
     pub working_directory: Option<String>,
 }
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize, SimpleObject)]
 #[serde(rename_all = "camelCase")]
 pub struct Run {
@@ -76,6 +80,7 @@ pub struct Run {
     pub cursor: Option<String>,
     pub status: Option<String>,
 }
+
 #[derive(Debug, Clone, Default, Serialize, Deserialize, SimpleObject)]
 #[serde(rename_all = "camelCase")]
 pub struct Job {
@@ -87,6 +92,7 @@ pub struct Job {
     pub duration: Option<i32>,
     pub logs: Option<Vec<Log>>,
 }
+
 #[derive(Debug, Clone, Serialize, Deserialize, SimpleObject)]
 #[serde(rename_all = "camelCase")]
 pub struct Log {

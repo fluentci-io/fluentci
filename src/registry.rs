@@ -18,6 +18,7 @@ pub fn client() -> &'static reqwest::Client {
     });
     &CLIENT
 }
+
 #[derive(Debug, Deserialize)]
 pub struct Package {
     pub name: Option<String>,
@@ -27,16 +28,19 @@ pub struct Package {
     pub github_url: Option<String>,
     pub directory: Option<String>,
 }
+
 pub struct Resolved {
     pub name: String,
     pub version: String,
     pub metadata: Package,
 }
+
 impl Resolved {
     pub fn url(&self, file: &str) -> String {
         format!("{PACKAGES}/{}@{}/{}", self.name, self.version, file)
     }
 }
+
 pub async fn resolve(pipeline: &str) -> Result<Resolved> {
     let (name, version) = pipeline.split_once('@').unwrap_or((pipeline, "latest"));
     let url = format!("{API}/pipeline/{name}");
@@ -65,6 +69,7 @@ pub async fn resolve(pipeline: &str) -> Result<Resolved> {
         metadata,
     })
 }
+
 pub async fn search(query: &str, limit: u32) -> Result<()> {
     #[derive(Deserialize)]
     struct Search {

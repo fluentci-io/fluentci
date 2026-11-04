@@ -115,6 +115,7 @@ pub async fn command(args: &RunArgs, root: &Path) -> Result<Command> {
     command.current_dir(root).envs(config::environment(root)?);
     Ok(command)
 }
+
 async fn wasm_command(pipeline: &str, jobs: &[String], root: &Path) -> Result<Command> {
     let module = if pipeline == "." {
         let dir = [".fluentci/plugin", ".fluentci", "plugin", "."]
@@ -175,6 +176,7 @@ async fn wasm_command(pipeline: &str, jobs: &[String], root: &Path) -> Result<Co
         .env("WASM_ENABLED", "1");
     Ok(c)
 }
+
 pub async fn action_command(action: &crate::models::Action, root: &Path) -> Result<Command> {
     let cwd = action
         .working_directory
@@ -213,6 +215,7 @@ pub async fn action_command(action: &crate::models::Action, root: &Path) -> Resu
     }
     Ok(c)
 }
+
 pub async fn inspect(pipeline: Option<&str>, mode: &str, lock_write: bool) -> Result<()> {
     let pipeline = pipeline.unwrap_or(".");
     if pipeline == "."

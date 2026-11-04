@@ -1,4 +1,5 @@
 //! Overmind's local Unix socket protocol.
+
 use anyhow::{Context, Result};
 use std::{
     collections::BTreeMap,
@@ -6,10 +7,12 @@ use std::{
     time::Duration,
 };
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
+
 struct Service {
     command: String,
     socket: PathBuf,
 }
+
 fn discover() -> Result<BTreeMap<String, Service>> {
     let mut services = BTreeMap::new();
     let Ok(dirs) = std::fs::read_dir(".fluentci") else {
@@ -37,6 +40,7 @@ fn discover() -> Result<BTreeMap<String, Service>> {
     }
     Ok(services)
 }
+
 #[cfg(unix)]
 async fn request(path: &Path, command: &str, stream: bool) -> Result<String> {
     let mut socket = tokio::net::UnixStream::connect(path).await?;
@@ -53,10 +57,12 @@ async fn request(path: &Path, command: &str, stream: bool) -> Result<String> {
     tokio::time::timeout(Duration::from_secs(5), socket.read_to_string(&mut data)).await??;
     Ok(data.replace('\0', ""))
 }
+
 #[cfg(not(unix))]
 async fn request(_path: &Path, _command: &str, _stream: bool) -> Result<String> {
     anyhow::bail!("Service sockets require Unix")
 }
+
 pub async fn control(operation: &str, name: Option<&str>) -> Result<()> {
     let services = discover()?;
     if let Some(name) = name {

@@ -1,7 +1,9 @@
 //! CI manifests are serialized as YAML so action text cannot break their structure.
+
 use crate::models::Action;
 use anyhow::{Result, bail};
 use serde_json::{Value, json};
+
 fn script(a: &Action) -> String {
     a.commands
         .lines()
@@ -15,6 +17,7 @@ fn script(a: &Action) -> String {
         .collect::<Vec<_>>()
         .join("\n")
 }
+
 pub fn generate(provider: &str, actions: &[Action]) -> Result<String> {
     let actions: Vec<_> = actions.iter().filter(|a| a.enabled).collect();
     let setup = "curl -fsSL https://cli.fluentci.io | bash";

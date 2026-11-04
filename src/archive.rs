@@ -1,7 +1,9 @@
 //! Reproducible source bundles and path-checked extraction.
+
 use anyhow::{Context, Result};
 use std::{io::Cursor, path::Path};
 use zip::{ZipArchive, ZipWriter, write::SimpleFileOptions};
+
 pub fn bundle(root: &Path) -> Result<Vec<u8>> {
     let mut paths = Vec::new();
     let walker = ignore::WalkBuilder::new(root)
@@ -37,6 +39,7 @@ pub fn bundle(root: &Path) -> Result<Vec<u8>> {
     }
     Ok(zip.finish()?.into_inner())
 }
+
 pub fn extract(bytes: &[u8], destination: &Path) -> Result<()> {
     let mut zip = ZipArchive::new(Cursor::new(bytes))?;
     for index in 0..zip.len() {

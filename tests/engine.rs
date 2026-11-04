@@ -1,4 +1,5 @@
 use std::process::Command;
+
 #[test]
 fn runs_wasm_with_the_linked_engine_without_an_external_binary() -> anyhow::Result<()> {
     let temp = tempfile::tempdir()?;

@@ -1,4 +1,5 @@
 use fluentci::archive;
+
 #[test]
 fn bundles_are_deterministic_and_honor_ignore_files() -> anyhow::Result<()> {
     let root = tempfile::tempdir()?;
@@ -14,9 +15,11 @@ fn bundles_are_deterministic_and_honor_ignore_files() -> anyhow::Result<()> {
     assert!(!output.path().join("secret.txt").exists());
     Ok(())
 }
+
 #[test]
 fn refuses_archive_paths_outside_destination() -> anyhow::Result<()> {
     use std::io::{Cursor, Write};
+
     let mut zip = zip::ZipWriter::new(Cursor::new(Vec::new()));
     zip.start_file("../outside.txt", zip::write::SimpleFileOptions::default())?;
     zip.write_all(b"invalid")?;

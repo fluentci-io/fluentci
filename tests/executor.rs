@@ -1,4 +1,5 @@
 use fluentci::{db::Db, executor, models::*};
+
 #[tokio::test]
 async fn executes_shell_actions_and_persists_output_and_status() -> anyhow::Result<()> {
     let temp = tempfile::tempdir()?;
@@ -26,6 +27,7 @@ async fn executes_shell_actions_and_persists_output_and_status() -> anyhow::Resu
     );
     Ok(())
 }
+
 #[tokio::test]
 async fn records_failure_and_skips_subsequent_actions() -> anyhow::Result<()> {
     let temp = tempfile::tempdir()?;
@@ -58,6 +60,7 @@ async fn records_failure_and_skips_subsequent_actions() -> anyhow::Result<()> {
     assert!(!temp.path().join("should-not-exist").exists());
     Ok(())
 }
+
 #[tokio::test]
 async fn handles_multiline_scripts_and_command_arrays() -> anyhow::Result<()> {
     let temp = tempfile::tempdir()?;
@@ -82,6 +85,7 @@ async fn handles_multiline_scripts_and_command_arrays() -> anyhow::Result<()> {
     );
     Ok(())
 }
+
 #[tokio::test]
 async fn cancels_an_active_process_and_persists_terminal_status() -> anyhow::Result<()> {
     let temp = tempfile::tempdir()?;

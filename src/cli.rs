@@ -1,5 +1,6 @@
 use clap::{Args, Parser, Subcommand};
 use std::path::PathBuf;
+
 #[derive(Debug, Parser)]
 #[command(
     name = "fluentci",
@@ -18,11 +19,13 @@ pub struct Cli {
     #[arg(long, global=true, default_value="true", action=clap::ArgAction::Set)]
     pub check_update: bool,
 }
+
 fn default_database() -> PathBuf {
     dirs::home_dir()
         .unwrap_or_else(|| PathBuf::from("."))
         .join(".fluentci/fluentci.db")
 }
+
 #[derive(Debug, Clone, Default, Args)]
 pub struct RunArgs {
     #[arg(short = 'r', long)]
@@ -37,6 +40,7 @@ pub struct RunArgs {
     #[arg(trailing_var_arg = true, allow_hyphen_values = true)]
     pub jobs: Vec<String>,
 }
+
 #[derive(Debug, Subcommand)]
 pub enum Command {
     /// Run a local or registry pipeline
@@ -132,11 +136,13 @@ pub enum Command {
         request: PathBuf,
     },
 }
+
 #[derive(Debug, Subcommand)]
 pub enum AgentCommand {
     #[command(alias = "ls")]
     List,
 }
+
 #[derive(Debug, Subcommand)]
 pub enum ProjectCommand {
     Create,

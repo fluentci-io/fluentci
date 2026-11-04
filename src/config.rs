@@ -1,4 +1,5 @@
 //! Pipeline configuration shared by the CLI, executor, and Studio.
+
 use crate::models::Action;
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
@@ -10,11 +11,13 @@ pub struct Config {
     pub steps: Vec<Step>,
     pub package: Option<Package>,
 }
+
 #[derive(Debug, Deserialize)]
 pub struct Package {
     pub name: String,
     pub version: String,
 }
+
 #[derive(Debug, Deserialize)]
 pub struct Step {
     pub name: String,
@@ -22,12 +25,14 @@ pub struct Step {
     pub env: Option<Vec<String>>,
     pub working_directory: Option<String>,
 }
+
 #[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub enum Commands {
     One(String),
     Many(Vec<String>),
 }
+
 impl Commands {
     pub fn lines(&self) -> &[String] {
         match self {
@@ -36,16 +41,19 @@ impl Commands {
         }
     }
 }
+
 impl Config {
     pub fn parse(content: &str) -> Result<Self> {
         toml::from_str(content).context("Invalid fluentci.toml")
     }
+
     pub fn read(path: &Path) -> Result<Self> {
         Self::parse(
             &std::fs::read_to_string(path)
                 .with_context(|| format!("Reading {}", path.display()))?,
         )
     }
+
     pub fn actions(&self) -> Result<Vec<Action>> {
         self.steps
             .iter()
@@ -93,6 +101,7 @@ impl Config {
             .collect()
     }
 }
+
 pub fn find(root: &Path) -> Option<PathBuf> {
     [
         root.join(".fluentci/fluentci.toml"),
@@ -101,6 +110,7 @@ pub fn find(root: &Path) -> Option<PathBuf> {
     .into_iter()
     .find(|p| p.is_file())
 }
+
 pub fn environment(root: &Path) -> Result<Vec<(String, String)>> {
     let path = root.join(".fluentci/.env");
     if !path.is_file() {

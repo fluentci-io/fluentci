@@ -67,6 +67,7 @@ async fn persists_relations_and_cascades_deletes() -> anyhow::Result<()> {
     assert!(db.logs(None, None).await?.is_empty());
     Ok(())
 }
+
 #[tokio::test]
 async fn replaces_actions_atomically_and_enforces_foreign_keys() -> anyhow::Result<()> {
     let temp = tempfile::tempdir()?;
@@ -96,6 +97,7 @@ async fn replaces_actions_atomically_and_enforces_foreign_keys() -> anyhow::Resu
     assert!(db.project("renamed").await?.is_some());
     Ok(())
 }
+
 #[tokio::test]
 async fn same_timestamp_runs_are_not_lost() -> anyhow::Result<()> {
     let temp = tempfile::tempdir()?;

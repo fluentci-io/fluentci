@@ -1,4 +1,5 @@
 //! Axum hosts Studio assets, GraphQL, and live execution events on one origin.
+
 use crate::{
     db::Db,
     executor::{self, Events},
@@ -24,11 +25,13 @@ use tokio::sync::broadcast;
 #[folder = "webui/dist/"]
 struct Assets;
 type Api = Schema<Query, Mutation, EmptySubscription>;
+
 #[derive(Clone)]
 pub struct AppState {
     pub db: Db,
     pub events: Events,
 }
+
 impl AppState {
     pub fn new(db: Db) -> Self {
         Self {
@@ -37,6 +40,7 @@ impl AppState {
         }
     }
 }
+
 #[derive(Default, InputObject)]
 struct ProjectFilters {
     org: Option<String>,
@@ -44,6 +48,7 @@ struct ProjectFilters {
     archived: Option<bool>,
     tags: Option<Vec<String>>,
 }
+
 fn page<T>(
     mut items: Vec<T>,
     skip: Option<i32>,
@@ -62,7 +67,9 @@ fn page<T>(
         .take(limit.unwrap_or(100).clamp(0, 1000) as usize)
         .collect()
 }
+
 pub struct Query;
+
 #[Object]
 impl Query {
     #[allow(clippy::too_many_arguments)]
@@ -98,12 +105,15 @@ impl Query {
         }
         Ok(items)
     }
+
     async fn project(&self, ctx: &Context<'_>, id: ID) -> async_graphql::Result<Option<Project>> {
         Ok(ctx.data::<AppState>()?.db.project(&id).await?)
     }
+
     async fn count_projects(&self, ctx: &Context<'_>) -> async_graphql::Result<i32> {
         Ok(ctx.data::<AppState>()?.db.projects().await?.len() as i32)
     }
+
     async fn actions(
         &self,
         ctx: &Context<'_>,
@@ -111,9 +121,11 @@ impl Query {
     ) -> async_graphql::Result<Vec<Action>> {
         Ok(ctx.data::<AppState>()?.db.actions(&project_id).await?)
     }
+
     async fn get_run(&self, ctx: &Context<'_>, id: ID) -> async_graphql::Result<Option<Run>> {
         Ok(ctx.data::<AppState>()?.db.run(&id).await?)
     }
+
     #[allow(clippy::too_many_arguments)]
     async fn get_runs(
         &self,
@@ -142,12 +154,15 @@ impl Query {
         }
         Ok(runs)
     }
+
     async fn count_runs(&self, ctx: &Context<'_>, project_id: ID) -> async_graphql::Result<i32> {
         Ok(ctx.data::<AppState>()?.db.runs(&project_id).await?.len() as i32)
     }
+
     async fn jobs(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<Job>> {
         Ok(ctx.data::<AppState>()?.db.jobs(None).await?)
     }
+
     async fn job(&self, ctx: &Context<'_>, id: ID) -> async_graphql::Result<Option<Job>> {
         Ok(ctx
             .data::<AppState>()?
@@ -157,6 +172,7 @@ impl Query {
             .into_iter()
             .find(|j| j.id == id.as_str()))
     }
+
     async fn logs(
         &self,
         ctx: &Context<'_>,
@@ -172,9 +188,11 @@ impl Query {
             )
             .await?)
     }
+
     async fn log(&self, ctx: &Context<'_>) -> async_graphql::Result<Option<Log>> {
         Ok(ctx.data::<AppState>()?.db.logs(None, None).await?.pop())
     }
+
     // Preserve the original API's spelling for existing Studio clients.
     async fn export_actions(
         &self,
@@ -188,7 +206,9 @@ impl Query {
         )?)
     }
 }
+
 pub struct Mutation;
+
 #[Object]
 impl Mutation {
     async fn create_project(
@@ -221,6 +241,7 @@ impl Mutation {
         executor::publish(Some(&s.events), "project", &project);
         Ok(project)
     }
+
     async fn update_project(
         &self,
         ctx: &Context<'_>,
@@ -251,9 +272,11 @@ impl Mutation {
         db.save_project(&p).await?;
         Ok(Some(p))
     }
+
     async fn delete_project(&self, ctx: &Context<'_>, id: ID) -> async_graphql::Result<bool> {
         Ok(ctx.data::<AppState>()?.db.delete_project(&id).await?)
     }
+
     async fn archive_project(
         &self,
         ctx: &Context<'_>,
@@ -261,6 +284,7 @@ impl Mutation {
     ) -> async_graphql::Result<Option<Project>> {
         archive(ctx, &id, true).await
     }
+
     async fn unarchive_project(
         &self,
         ctx: &Context<'_>,
@@ -268,6 +292,7 @@ impl Mutation {
     ) -> async_graphql::Result<Option<Project>> {
         archive(ctx, &id, false).await
     }
+
     async fn save_actions(
         &self,
         ctx: &Context<'_>,
@@ -283,6 +308,7 @@ impl Mutation {
             .await?;
         Ok(actions)
     }
+
     async fn run_pipeline(
         &self,
         ctx: &Context<'_>,
@@ -307,6 +333,7 @@ impl Mutation {
         });
         Ok(pending)
     }
+
     async fn cancel_run(&self, ctx: &Context<'_>, id: ID) -> async_graphql::Result<Run> {
         let s = ctx.data::<AppState>()?;
         let mut run = s.db.run(&id).await?.context("Run not found")?;
@@ -315,6 +342,7 @@ impl Mutation {
         executor::publish(Some(&s.events), "run", &run);
         Ok(run)
     }
+
     async fn run_job(
         &self,
         ctx: &Context<'_>,
@@ -329,6 +357,7 @@ impl Mutation {
         Ok(executor::execute_job(s.db, p, &job_name, Some(s.events)).await?)
     }
 }
+
 async fn archive(
     ctx: &Context<'_>,
     id: &str,
@@ -342,11 +371,13 @@ async fn archive(
     db.save_project(&p).await?;
     Ok(Some(p))
 }
+
 pub fn schema(state: AppState) -> Api {
     Schema::build(Query, Mutation, EmptySubscription)
         .data(state)
         .finish()
 }
+
 pub fn router(state: AppState, studio: bool) -> Router {
     let api = schema(state.clone());
     let mut app = Router::new()
@@ -366,6 +397,7 @@ pub fn router(state: AppState, studio: bool) -> Router {
     }
     app.with_state(state)
 }
+
 async fn graphiql() -> Html<String> {
     Html(
         async_graphql::http::GraphiQLSource::build()
@@ -373,9 +405,11 @@ async fn graphiql() -> Html<String> {
             .finish(),
     )
 }
+
 async fn socket(ws: WebSocketUpgrade, State(state): State<AppState>) -> Response {
     ws.on_upgrade(move |ws| events(ws, state.events))
 }
+
 async fn events(mut ws: WebSocket, tx: Events) {
     let mut rx = tx.subscribe();
     loop {
@@ -394,6 +428,7 @@ async fn events(mut ws: WebSocket, tx: Events) {
         }
     }
 }
+
 async fn studio_or_socket(
     ws: std::result::Result<
         WebSocketUpgrade,
@@ -407,6 +442,7 @@ async fn studio_or_socket(
     }
     asset(uri.path())
 }
+
 pub fn asset(path: &str) -> Response {
     let path = path.trim_start_matches('/');
     let file = if path.is_empty() || !path.rsplit('/').next().unwrap_or("").contains('.') {
@@ -428,6 +464,7 @@ pub fn asset(path: &str) -> Response {
         None => (StatusCode::NOT_FOUND, "Asset not found").into_response(),
     }
 }
+
 pub async fn serve(db: Db, port: u16, studio: bool) -> Result<()> {
     let state = AppState::new(db);
     let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port)).await?;

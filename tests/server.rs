@@ -7,11 +7,13 @@ use fluentci::{
     server::{self, AppState},
 };
 use tower::ServiceExt;
+
 async fn setup() -> anyhow::Result<(tempfile::TempDir, Db)> {
     let temp = tempfile::tempdir()?;
     let db = Db::open(&temp.path().join("db")).await?;
     Ok((temp, db))
 }
+
 #[tokio::test]
 async fn graphql_crud_uses_sqlite() -> anyhow::Result<()> {
     let (temp, db) = setup().await?;
@@ -47,6 +49,7 @@ async fn graphql_crud_uses_sqlite() -> anyhow::Result<()> {
     assert!(db.actions(id).await?.is_empty());
     Ok(())
 }
+
 #[tokio::test]
 async fn serves_embedded_ui_and_spa_routes() -> anyhow::Result<()> {
     let (_temp, db) = setup().await?;
@@ -70,6 +73,7 @@ async fn serves_embedded_ui_and_spa_routes() -> anyhow::Result<()> {
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
     Ok(())
 }
+
 #[tokio::test]
 async fn graphql_http_endpoint() -> anyhow::Result<()> {
     let (_temp, db) = setup().await?;

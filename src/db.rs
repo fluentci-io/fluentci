@@ -8,14 +8,17 @@ use std::{path::Path, time::Duration};
 
 #[derive(Clone)]
 pub struct Db(SqlitePool);
+
 impl Db {
     pub async fn open(path: &Path) -> Result<Self> {
         if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
             tokio::fs::create_dir_all(parent).await?;
         }
+
         #[cfg(unix)]
         {
             use std::os::unix::fs::OpenOptionsExt;
+
             std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
@@ -40,6 +43,7 @@ impl Db {
             .context("SQLite migrations failed")?;
         Ok(db)
     }
+
     pub async fn project(&self, key: &str) -> Result<Option<Project>> {
         let data: Option<String> = sqlx::query_scalar(
             "SELECT data FROM projects WHERE id=? OR name=? OR path=? ORDER BY created_at LIMIT 1",
@@ -52,6 +56,7 @@ impl Db {
         data.map(|d| serde_json::from_str(&d).map_err(Into::into))
             .transpose()
     }
+
     pub async fn projects(&self) -> Result<Vec<Project>> {
         let rows: Vec<String> =
             sqlx::query_scalar("SELECT data FROM projects ORDER BY created_at,id")
@@ -61,11 +66,13 @@ impl Db {
             .map(|d| Ok(serde_json::from_str(&d)?))
             .collect()
     }
+
     pub async fn save_project(&self, p: &Project) -> Result<()> {
         sqlx::query("INSERT INTO projects(id,name,path,created_at,data) VALUES(?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name,path=excluded.path,data=excluded.data")
             .bind(&p.id).bind(&p.name).bind(&p.path).bind(&p.created_at).bind(serde_json::to_string(p)?).execute(&self.0).await?;
         Ok(())
     }
+
     pub async fn delete_project(&self, id: &str) -> Result<bool> {
         Ok(sqlx::query("DELETE FROM projects WHERE id=?")
             .bind(id)
@@ -74,6 +81,7 @@ impl Db {
             .rows_affected()
             > 0)
     }
+
     pub async fn actions(&self, project: &str) -> Result<Vec<Action>> {
         let rows: Vec<String> =
             sqlx::query_scalar("SELECT data FROM actions WHERE project_id=? ORDER BY position")
@@ -84,6 +92,7 @@ impl Db {
             .map(|d| Ok(serde_json::from_str(&d)?))
             .collect()
     }
+
     pub async fn save_actions(&self, project: &str, actions: &[Action]) -> Result<()> {
         let mut tx = self.0.begin().await?;
         sqlx::query("DELETE FROM actions WHERE project_id=?")
@@ -102,6 +111,7 @@ impl Db {
         tx.commit().await?;
         Ok(())
     }
+
     pub async fn save_run(&self, r: &Run) -> Result<()> {
         let mut tx = self.0.begin().await?;
         let mut metadata = r.clone();
@@ -124,6 +134,7 @@ impl Db {
         tx.commit().await?;
         Ok(())
     }
+
     pub async fn logs(&self, job: Option<&str>, project: Option<&str>) -> Result<Vec<Log>> {
         let rows = sqlx::query("SELECT l.* FROM logs l JOIN jobs j ON j.id=l.job_id JOIN runs r ON r.id=j.run_id WHERE (? IS NULL OR l.job_id=?) AND (? IS NULL OR r.project_id=?) ORDER BY l.created_at,l.rowid")
             .bind(job).bind(job).bind(project).bind(project).fetch_all(&self.0).await?;
@@ -137,6 +148,7 @@ impl Db {
             })
             .collect())
     }
+
     pub async fn jobs(&self, run: Option<&str>) -> Result<Vec<Job>> {
         let rows: Vec<String> = sqlx::query_scalar(
             "SELECT data FROM jobs WHERE (? IS NULL OR run_id=?) ORDER BY position,rowid",
@@ -153,6 +165,7 @@ impl Db {
         }
         Ok(jobs)
     }
+
     pub async fn runs(&self, project: &str) -> Result<Vec<Run>> {
         let rows: Vec<String> =
             sqlx::query_scalar("SELECT data FROM runs WHERE project_id=? ORDER BY date,id")
@@ -167,6 +180,7 @@ impl Db {
         }
         Ok(runs)
     }
+
     pub async fn run(&self, id: &str) -> Result<Option<Run>> {
         let data: Option<String> = sqlx::query_scalar("SELECT data FROM runs WHERE id=?")
             .bind(id)
@@ -180,12 +194,14 @@ impl Db {
             Ok(None)
         }
     }
+
     pub async fn setting(&self, key: &str) -> Result<Option<String>> {
         Ok(sqlx::query_scalar("SELECT value FROM settings WHERE key=?")
             .bind(key)
             .fetch_optional(&self.0)
             .await?)
     }
+
     pub async fn set_setting(&self, key: &str, value: &str) -> Result<()> {
         sqlx::query("INSERT INTO settings(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(key).bind(value).execute(&self.0).await?;
         Ok(())
