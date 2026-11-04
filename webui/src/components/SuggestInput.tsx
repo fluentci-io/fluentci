@@ -1,4 +1,4 @@
-import { forwardRef, useId, useRef, useState } from "react";
+import { forwardRef, useId, useLayoutEffect, useRef, useState } from "react";
 
 export const SuggestInput = forwardRef<
   HTMLInputElement | HTMLTextAreaElement,
@@ -29,6 +29,19 @@ export const SuggestInput = forwardRef<
 ) {
   const id = useId();
   const input = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const pendingCursor = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    if (
+      pendingCursor.current !== null &&
+      document.activeElement === input.current
+    ) {
+      input.current?.setSelectionRange(
+        pendingCursor.current,
+        pendingCursor.current,
+      );
+      pendingCursor.current = null;
+    }
+  });
   const [open, setOpen] = useState(false);
   const [active, setActive] = useState(0);
   const [cursor, setCursor] = useState(value.length);
@@ -64,12 +77,8 @@ export const SuggestInput = forwardRef<
       lineStart +
       (multiline ? line.match(/^\s*/)?.[0].length || 0 : 0) +
       suggestion.length;
-    requestAnimationFrame(() => {
-      if (document.activeElement === input.current) {
-        input.current?.setSelectionRange(position, position);
-        setCursor(position);
-      }
-    });
+    pendingCursor.current = position;
+    setCursor(position);
   };
   const props = {
     ref: (node: HTMLInputElement | HTMLTextAreaElement | null) => {
@@ -93,6 +102,7 @@ export const SuggestInput = forwardRef<
     onChange: (
       event: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
     ) => {
+      pendingCursor.current = null;
       onChange(event.target.value);
       setCursor(event.target.selectionStart ?? event.target.value.length);
       setActive(0);

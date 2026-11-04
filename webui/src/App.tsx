@@ -32,7 +32,6 @@ import {
   IconSearch as Search,
   IconAdjustmentsHorizontal as Settings2,
   IconTerminal2 as Terminal,
-  IconRoute as Workflow,
 } from "@tabler/icons-react";
 import {
   graphql,
@@ -52,6 +51,7 @@ import { PipelineControl } from "./components/PipelineControl";
 import { RunView } from "./components/RunView";
 import { ActionsEditor } from "./components/ActionsEditor";
 import { ExportView, ProjectSettings } from "./components/ProjectSettings";
+import { StudioStatusBar } from "./components/StudioStatusBar";
 import { CommandPalette } from "./components/CommandPalette";
 import {
   CopyButton,
@@ -177,7 +177,7 @@ export default function App() {
     return () => window.removeEventListener("keydown", key);
   }, []);
   return (
-    <div className="min-h-screen bg-canvas text-text">
+    <div className="min-h-screen bg-canvas pb-7 text-text">
       {sidebarOpen && (
         <button
           className="fixed inset-0 z-30 bg-black/50 lg:hidden"
@@ -196,12 +196,9 @@ export default function App() {
           )
             setSidebarOpen(false);
         }}
-        className={`${sidebarOpen ? "flex" : "hidden"} fixed bottom-0 left-0 top-14 z-40 w-60 flex-col border-r border-line bg-sidebar`}
+        className={`${sidebarOpen ? "flex" : "hidden"} fixed bottom-7 left-0 top-14 z-40 w-60 flex-col border-r border-line bg-sidebar`}
       >
         <Link to="/" className="flex h-16 shrink-0 items-center gap-3 px-5">
-          <span className="flex size-8 items-center justify-center rounded-lg bg-accent text-canvas">
-            <Workflow size={20} strokeWidth={2.5} />
-          </span>
           <span className="text-lg font-semibold tracking-tight">
             fluentci
             <span className="ml-2 text-[10px] font-normal uppercase tracking-[.16em] text-muted">
@@ -383,6 +380,32 @@ export default function App() {
           </Routes>
         </main>
       </div>
+      <StudioStatusBar
+        connection={connection}
+        project={currentProject}
+        projectCount={
+          projects.data?.filter((project) => !project.archived).length || 0
+        }
+        runningCount={allRuns.filter((run) => isActive(run.status)).length}
+        runId={
+          matchPath("/project/:id/run/:runId", location.pathname)?.params.runId
+        }
+        latestRun={currentProject ? controllingRun : undefined}
+        view={
+          location.pathname.endsWith("/actions")
+            ? "Actions"
+            : location.pathname.endsWith("/settings")
+              ? "Settings"
+              : location.pathname.endsWith("/export")
+                ? "CI export"
+                : !currentProject
+                  ? "Overview"
+                  : new URLSearchParams(location.search).get("view") === "spans"
+                    ? "Spans"
+                    : "Execution"
+        }
+        onSearch={() => setPalette(true)}
+      />
       {palette && (
         <CommandPalette
           projects={projects.data || []}
