@@ -14,21 +14,21 @@ cd webui
 bun install --frozen-lockfile --ignore-scripts
 bun run build:web
 cd ..
-cargo build --locked
-cargo run -- studio
+cargo build --release --locked
+cargo run --release -- studio
 ```
 
 Studio is served at http://localhost:6076 and GraphQL at `/graphql` on the same
 port. `--port` changes both. The default listener is loopback. Set
 `FLUENTCI_NO_OPEN=1` to suppress automatic browser opening. All web assets are
 embedded in the executable; Node, Bun and a separate Studio server are unnecessary
-at runtime. During UI development, run `cargo run -- server` and `bun run dev`
+at runtime. During UI development, run `cargo run --release -- server` and `bun run dev`
 in `webui`; Vite proxies `/graphql` and `/ws` to port 6076.
 
 ```sh
 cargo fmt --all --check
-cargo clippy --all-targets --locked -- -D warnings
-cargo test --locked
+cargo clippy --release --all-targets --locked -- -D warnings
+cargo test --release --locked
 ```
 
 ## Persistence

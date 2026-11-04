@@ -145,11 +145,11 @@ version = "0.1.0"
 
 [[steps]]
 name = "check"
-command = ["cargo fmt --all --check", "cargo clippy -- -D warnings"]
+command = ["cargo fmt --all --check", "cargo clippy --release -- -D warnings"]
 
 [[steps]]
 name = "test"
-command = "cargo test"
+command = "cargo test --release"
 env = ["CI=true", "RUST_BACKTRACE=1"]
 
 [[steps]]
@@ -363,11 +363,11 @@ bun run build:web
 bunx tsc --noEmit
 cd ..
 cargo fmt --all --check
-cargo clippy --all-targets --locked -- -D warnings
-cargo test --locked
+cargo clippy --release --all-targets --locked -- -D warnings
+cargo test --release --locked
 ```
 
-For frontend development, start `cargo run -- server` and then run `bun run dev`
+For frontend development, start `cargo run --release -- server` and then run `bun run dev`
 inside `webui`. Vite proxies `/graphql` and `/ws` to the local API on port 6076.
 `nix develop` provides a development shell with Rust, Bun, and build tools.
 
