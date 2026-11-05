@@ -5,7 +5,7 @@
   "type": "module",
   "author": "Tsiry Sandratraina <tsiry.sndr@fluentci.io>",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --port 5174",
     "dev:mock": "VITE_STUDIO_MOCKS=true vite",
     "start": "vite preview",
     "build:web": "tsc --noEmit && vite build",

@@ -48,3 +48,30 @@ jobs:
       - name: Run tests with FluentCI
         run: |
           FLUENTCI_BIN="$(command -v fluentci)" fluentci --check-update=false run main check
+
+  landing:
+    name: Landing workspace
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Lint, typecheck, and build the landing page
+        run: bunx turbo run lint typecheck build --filter=@fluentci/landing
+      - name: Install the browser for responsive checks
+        run: bunx playwright install --with-deps chromium
+        working-directory: apps/landing
+      - name: Check SDK tabs and responsive layouts
+        run: bun run test:browser
+        working-directory: apps/landing
+      - name: Preserve browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: landing-browser-results
+          path: apps/landing/test-results/
+          if-no-files-found: ignore

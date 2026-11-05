@@ -55,6 +55,10 @@ bun run build
 bun run build --bundles app
 ```
 
+JavaScript dependencies use the monorepo root `bun.lock`; installing from this
+directory resolves the shared Bun workspace. `bun run build:desktop` from the
+repository root runs the native build through Turborepo.
+
 The wrapper always passes `--locked` to Cargo; Tauri builds in release mode.
 Packages are written under `src-tauri/target/release/bundle/`.
 For distributable macOS releases, configure Apple's signing and notarization

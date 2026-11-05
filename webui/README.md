@@ -37,10 +37,11 @@ then start Studio with `fluentci studio`.
 
 For frontend development, start `cargo run --release -- server` from the
 repository root and `bun run dev` here. Vite proxies `/graphql` and `/ws` to
-127.0.0.1:6076. `VITE_APP_API_URL` and `VITE_APP_WS_URL` can override those
+127.0.0.1:6076. Studio development uses port 5174; the landing page uses 5173.
+`VITE_APP_API_URL` and `VITE_APP_WS_URL` can override those
 endpoints. Fonts are bundled, so Studio does not need a font CDN.
 
-Use Node 22.22+ and Bun. The lockfile is committed; install with scripts disabled.
+Use Node 22.22+ and Bun. The root workspace `bun.lock` is committed; install with scripts disabled.
 
 ## Develop with mocks
 

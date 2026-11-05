@@ -1,0 +1,26 @@
+{
+  "name": "fluentci-monorepo",
+  "private": true,
+  "packageManager": "bun@1.4.3",
+  "workspaces": [
+    "apps/*",
+    "webui",
+    "desktop"
+  ],
+  "scripts": {
+    "dev": "turbo run dev --filter=@fluentci/landing --filter=fluentci-studio",
+    "dev:landing": "turbo run dev --filter=@fluentci/landing",
+    "dev:studio": "turbo run dev --filter=fluentci-studio",
+    "build": "turbo run build --filter=!fluentci-desktop",
+    "build:landing": "turbo run build --filter=@fluentci/landing",
+    "build:desktop": "turbo run build --filter=fluentci-desktop",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:browser": "turbo run test:browser"
+  },
+  "devDependencies": {
+    "turbo": "^2.5.0",
+    "prettier": "^3.6.0"
+  }
+}

@@ -62,7 +62,7 @@ export PATH="$HOME/.local/bin:$PATH"
 fluentci --version
 ```
 
-The installer defaults to release **2026.11.04**, detects your OS and architecture,
+The installer resolves the latest release, detects your OS and architecture,
 verifies the archive's SHA-256 checksum, and installs into `~/.local/bin` without
 sudo. It supports Linux/macOS on x86_64 and arm64, and FreeBSD/NetBSD/OpenBSD on
 x86_64. Add `~/.local/bin` to your shell profile's `PATH` to keep it available.
@@ -529,6 +529,56 @@ or `OTEL_EXPORTER_ZIPKIN_ENDPOINT`. It also supports a Jaeger agent through
 Set `RUST_LOG` to configure the CLI's diagnostic logging.
 
 ## Development
+
+The JavaScript apps use a Bun workspace and Turborepo with one root `bun.lock`.
+Use Bun **1.4.3** (declared in `package.json`) and Node **24+**. From the repository
+root:
+
+```sh
+bun install --frozen-lockfile --ignore-scripts
+bun run dev:landing  # http://localhost:5173
+bun run dev:studio   # http://localhost:5174; start the Rust API separately
+bun run dev         # landing + Studio together
+```
+
+| Workspace           | Location       | Purpose                                       |
+| ------------------- | -------------- | --------------------------------------------- |
+| `@fluentci/landing` | `apps/landing` | Public React/Vite/Tailwind landing page       |
+| `fluentci-studio`   | `webui`        | Studio UI embedded in the CLI and desktop app |
+| `fluentci-desktop`  | `desktop`      | Native Tauri app and release bundle           |
+
+The landing page uses Lexend for text and Inconsolata for code, with bundled fonts,
+SDK examples, install instructions, and a Studio preview. It requires no API server.
+Studio's Vite server proxies to the Rust API on port 6076. To develop Studio:
+
+```sh
+# Build the embedded assets before compiling the CLI.
+cd webui
+bun install --frozen-lockfile --ignore-scripts
+bun run build:web
+cd ..
+cargo run --release -- server
+# In a second terminal, at the repository root:
+bun run dev:studio
+```
+
+Workspace checks and production builds:
+
+```sh
+bun run build          # landing + Studio; outputs in each workspace's dist/
+bun run build:landing  # apps/landing/dist/ only
+bun run lint
+bun run typecheck
+bun run test           # Studio unit tests
+bun run test:browser   # landing + Studio browser tests
+bun run build:desktop  # explicitly build the native app on the current OS
+```
+
+Turborepo caches web builds and checks in `.turbo/`; persistent dev servers, tests,
+and native builds are not cached. The desktop task builds Studio first, then uses
+the existing release/locked Tauri wrapper. Its standalone commands and CI module
+remain available. Do not create lockfiles inside the app workspaces; nested
+`bun install` commands use the root workspace lockfile.
 
 This repository's CI is implemented with PureScript Wasm modules under
 [`.fluentci`](./.fluentci/README.md), declared in the root `fluentci.toml`.
