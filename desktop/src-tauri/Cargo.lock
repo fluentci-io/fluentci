@@ -3872,7 +3872,7 @@ dependencies = [
 
 [[package]]
 name = "fluentci"
-version = "0.16.8"
+version = "0.17.0"
 dependencies = [
  "anyhow",
  "async-graphql",
