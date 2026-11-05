@@ -41,6 +41,10 @@
     "test:browser": {
       "cache": false
     },
+    "@fluentci/docs#build": {
+      "outputs": ["_site/**"],
+      "env": ["DOCS_URL"]
+    },
     "@fluentci/api#build": {
       "outputs": [
         "build/dev/javascript/**"

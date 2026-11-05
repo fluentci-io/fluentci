@@ -1,0 +1,31 @@
+{
+  "name": "@fluentci/docs",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "lume build",
+    "dev": "lume build --serve --hostname=127.0.0.1 --port=4174",
+    "format": "prettier --write .",
+    "lint": "prettier --check .",
+    "typecheck": "tsc --noEmit",
+    "test": "bun run build && node --test tests/*.test.mjs",
+    "test:browser": "playwright test"
+  },
+  "devDependencies": {
+    "@lumeland/lume": "4.0.1",
+    "@lumeland/plugin-base-path": "^1.0.0",
+    "@lumeland/plugin-code-highlight": "^1.0.0",
+    "@lumeland/plugin-pagefind": "^1.0.0",
+    "@lumeland/plugin-sitemap": "^1.0.0",
+    "@lumeland/plugin-toc": "^1.0.0",
+    "@playwright/test": "^1.64.1",
+    "@types/node": "24",
+    "highlight.js": "11.12.0",
+    "prettier": "^3.9.10",
+    "typescript": "^7.0.2"
+  }
+}

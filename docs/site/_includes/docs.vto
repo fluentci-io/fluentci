@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title }} · FluentCI Docs</title>
+    <meta name="description" content="{{ description }}">
+    <meta name="theme-color" content="#09090d">
+    <link rel="icon" href="/assets/favicon.png" type="image/png">
+    <link rel="describedby" href="/llms.txt" type="text/plain">
+    <script>
+      try { document.documentElement.dataset.theme = localStorage.getItem("fluentci-docs-theme") === "light" ? "light" : "dark"; } catch { /* Default to dark. */ }
+    </script>
+    <link rel="stylesheet" href="/assets/pagefind.css">
+    <link rel="stylesheet" href="/assets/styles.css">
+    <script src="/assets/pagefind.js" type="module"></script>
+    <script src="/assets/docs.js" defer></script>
+  </head>
+  <body>
+    <a href="#content" class="skip-link">Skip to content</a>
+    <header class="header" data-pagefind-ignore>
+      <a class="brand" href="/"><img src="/assets/logo.png" width="30" height="30" alt=""><strong>fluentci</strong><span>docs</span></a>
+      <div class="header-actions">
+        <button id="search-open" class="search-open" type="button">Search docs <kbd>⌘ K</kbd></button>
+        <a href="https://fluentci.io" class="website-link">Website</a>
+        <a href="{{ repo }}" class="github-link">GitHub</a>
+        <button id="theme-toggle" type="button" aria-label="Switch to light theme">Light</button>
+        <button id="menu-toggle" type="button" aria-controls="sidebar" aria-expanded="false">Menu</button>
+      </div>
+    </header>
+    <div class="docs-layout">
+      <button id="menu-backdrop" class="menu-backdrop" type="button" aria-label="Close navigation" tabindex="-1"></button>
+      <aside id="sidebar" class="sidebar" aria-label="Documentation navigation" data-pagefind-ignore>
+        <nav>
+        {{ for group of navigation }}
+          <section class="nav-group">
+            <h2>{{ group.title }}</h2>
+            <ul>{{ for item of group.items }}
+              <li><a href="{{ item.url }}" {{ if item.url === url }}aria-current="page"{{ /if }}>{{ item.title }}</a></li>
+            {{ /for }}</ul>
+          </section>
+        {{ /for }}
+        </nav>
+        <a class="sidebar-footer" href="https://discord.gg/H7M28d9dRk">Join the community ↗</a>
+      </aside>
+      <main class="main">
+        <article id="content" data-pagefind-body>
+          <p class="eyebrow">{{ section }}</p>
+          <h1 data-pagefind-meta="title">{{ title }}</h1>
+          <p class="lead">{{ description }}</p>
+          <div class="prose">{{ content |> safe }}</div>
+        </article>
+        <div class="article-footer" data-pagefind-ignore>
+          <a href="{{ repo }}/edit/main/docs/site/{{ source }}">Edit this page ↗</a>
+          <a href="{{ repo }}/issues/new">Report an issue ↗</a>
+        </div>
+        <nav class="pagination" aria-label="Related pages" data-pagefind-ignore>
+          {{ if previous }}<a href="{{ previous.url }}"><small>← Previous</small>{{ previous.title }}</a>{{ /if }}
+          {{ if next }}<a href="{{ next.url }}"><small>Next →</small>{{ next.title }}</a>{{ /if }}
+        </nav>
+        <footer class="footer">Made with <span>♥</span> in Antananarivo, Madagascar.</footer>
+      </main>
+      <aside class="page-toc" data-pagefind-ignore><p>On this page</p><nav toc="content" aria-label="On this page"></nav></aside>
+    </div>
+    <dialog id="search-dialog" aria-label="Search documentation">
+      <div class="dialog-heading"><span>Search documentation</span><button id="search-close" type="button">Close <kbd>esc</kbd></button></div>
+      <div id="search">
+        <pagefind-config bundle-path="{{ '/pagefind/' |> url }}" base-url="{{ '/' |> url }}"></pagefind-config>
+        <pagefind-input placeholder="Search guides, SDKs, commands…"></pagefind-input>
+        <pagefind-summary></pagefind-summary>
+        <pagefind-results></pagefind-results>
+      </div>
+    </dialog>
+  </body>
+</html>

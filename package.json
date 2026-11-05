@@ -4,6 +4,7 @@
   "packageManager": "bun@1.4.3",
   "workspaces": [
     "apps/*",
+    "docs",
     "webui",
     "desktop"
   ],
@@ -18,7 +19,9 @@
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
     "test:browser": "turbo run test:browser",
-    "dev:api": "turbo run dev --filter=@fluentci/api"
+    "dev:api": "turbo run dev --filter=@fluentci/api",
+    "dev:docs": "turbo run dev --filter=@fluentci/docs",
+    "build:docs": "turbo run build --filter=@fluentci/docs"
   },
   "devDependencies": {
     "turbo": "^2.5.0",

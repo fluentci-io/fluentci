@@ -49,6 +49,39 @@ jobs:
         run: |
           FLUENTCI_BIN="$(command -v fluentci)" fluentci --check-update=false run main check
 
+  docs:
+    name: Documentation workspace
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Lint, typecheck, and build documentation
+        run: bunx turbo run lint typecheck build --filter=@fluentci/docs
+      - name: Check internal links and public-source boundaries
+        run: bun run test
+        working-directory: docs
+      - name: Install browser
+        run: bunx playwright install --with-deps chromium
+        working-directory: docs
+      - name: Check navigation, search, themes, and responsive layouts
+        run: bun run test:browser
+        working-directory: docs
+      - name: Preserve browser failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-browser-results
+          path: docs/test-results/
+          if-no-files-found: ignore
+
   landing:
     name: Landing workspace
     runs-on: ubuntu-24.04

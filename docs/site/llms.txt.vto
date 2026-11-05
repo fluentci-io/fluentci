@@ -1,0 +1,18 @@
+---
+layout: false
+url: /llms.txt
+---
+# FluentCI documentation
+
+> Guides and reference for FluentCI: a programmable CI/CD CLI, embedded Wasm engine, language SDKs, local Studio, desktop app, and AT Protocol plugin registry.
+
+Install with `curl -fsSL https://cli.fluentci.io | sh`. Local execution requires no account. Source plugin compilation needs its language toolchain. The unified CLI is separate from engine-only command examples.
+
+{{ for group of navigation }}
+## {{ group.title }}
+
+{{ for item of group.items }}
+- [{{ item.title }}]({{ item.url |> url(true) }})
+{{ /for }}
+
+{{ /for }}
