@@ -39,6 +39,8 @@ must not contain credentials, query strings, or fragments. In-memory databases
 are unsupported: records and replay checkpoints must persist on disk.
 
 Run `bun run lint`, `bun run typecheck`, and `bun run test` to validate the API.
+Use `bun run format` to format Gleam and all JavaScript bindings, scripts and
+tests. Lint checks Prettier formatting, including generated JavaScript.
 
 ## Lexicons and generated code
 

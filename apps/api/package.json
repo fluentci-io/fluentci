@@ -13,7 +13,9 @@
     "dev": "bun run build && node --watch entry/server.mjs",
     "start": "node entry/server.mjs",
     "test": "gleam test && node --test tests/*.test.mjs",
-    "lint": "bun run lexicons:check && gleam format --check src test",
+    "format": "gleam format src test && prettier --write \"{entry,scripts,src,tests}/**/*.mjs\"",
+    "format:check": "prettier --check \"{entry,scripts,src,tests}/**/*.mjs\"",
+    "lint": "bun run lexicons:check && gleam format --check src test && bun run format:check",
     "typecheck": "gleam check",
     "db:migrate": "gleam build --target javascript && node scripts/migrate.mjs",
     "jetstream": "gleam build --target javascript && node entry/jetstream.mjs"
@@ -30,6 +32,7 @@
     "ws": "^8.18.0"
   },
   "devDependencies": {
-    "@atproto/crypto": "^0.4.4"
+    "@atproto/crypto": "^0.4.4",
+    "prettier": "^3.6.0"
   }
 }
