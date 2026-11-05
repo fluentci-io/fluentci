@@ -37,7 +37,10 @@ test("SDK tabs show highlighted samples, matching scaffold commands, and support
   page,
 }) => {
   await page.goto("/");
+  await expect(page.getByRole("tab").first()).toHaveText("ClojureScript");
+  await expect(page.getByRole("tab", { name: "ClojureScript", exact: true })).toHaveAttribute("aria-selected", "true");
   for (const [name, sdk, source] of [
+    ["ClojureScript", "clojurescript", "src/main/plugin.cljc"],
     ["PureScript", "purescript", "src/Main.purs"],
     ["Python", "python", "plugin.py"],
     ["TypeScript", "typescript", "entry.ts"],
@@ -61,7 +64,7 @@ test("SDK tabs show highlighted samples, matching scaffold commands, and support
     .getByRole("tab", { name: "ReScript", exact: true })
     .press("ArrowRight");
   await expect(
-    page.getByRole("tab", { name: "PureScript", exact: true }),
+    page.getByRole("tab", { name: "ClojureScript", exact: true }),
   ).toBeFocused();
   await page.keyboard.press("End");
   await expect(
@@ -69,7 +72,7 @@ test("SDK tabs show highlighted samples, matching scaffold commands, and support
   ).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Home");
   await expect(
-    page.getByRole("tab", { name: "PureScript", exact: true }),
+    page.getByRole("tab", { name: "ClojureScript", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
 });
 

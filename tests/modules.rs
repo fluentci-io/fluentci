@@ -57,6 +57,7 @@ fn discovery_hides_runtime_exports_for_every_sdk() -> anyhow::Result<()> {
     let sdks = [
         "rust",
         "purescript",
+        "clojurescript",
         "elixir",
         "gleam",
         "typescript",
@@ -149,6 +150,7 @@ fn initializes_every_sdk_and_adds_modules_without_replacing_configuration() -> a
         ("rust", "Cargo.toml"),
         ("typescript", "entry.ts"),
         ("purescript", "spago.yaml"),
+        ("clojurescript", "src/main/plugin.cljc"),
         ("gleam", "gleam.toml"),
         ("elixir", "mix.exs"),
         ("python", "plugin.py"),
@@ -207,6 +209,45 @@ fn initializes_every_sdk_and_adds_modules_without_replacing_configuration() -> a
         .success()
     );
     assert!(!invalid.path().join("fluentci.toml").exists());
+    Ok(())
+}
+
+#[test]
+fn clojurescript_module_embeds_checked_sdk_and_renames_locked_package() -> anyhow::Result<()> {
+    let temp = tempfile::tempdir()?;
+    let root = temp.path().canonicalize()?;
+    success(&cli(&root, &root, &["init"])?);
+    success(&cli(
+        &root,
+        &root,
+        &["modules", "add", "typed-ci", "--sdk", "clojurescript"],
+    )?);
+    let module = root.join(".fluentci/typed-ci");
+    for file in [
+        "src/main/plugin.cljc",
+        "src/main/entry.cljs",
+        ".sdk/clojurescript/src/fluentci/plugin.cljc",
+        ".sdk/clojurescript/src/fluentci/pdk.cljc",
+        ".sdk/clojurescript/dev/check.clj",
+        ".sdk/clojurescript/test/fluentci/type_errors/argv.cljc",
+    ] {
+        assert!(module.join(file).is_file(), "Missing {file}");
+    }
+    let package: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(module.join("package.json"))?)?;
+    let lock: serde_json::Value =
+        serde_json::from_slice(&std::fs::read(module.join("package-lock.json"))?)?;
+    assert_eq!(package["name"], "fluentci-typed-ci");
+    assert_eq!(lock["name"], package["name"]);
+    assert_eq!(lock["packages"][""]["name"], package["name"]);
+    assert!(std::fs::read_to_string(module.join("build.mjs"))?.contains("-M:check"));
+    let imports = std::fs::read_to_string(module.join("imports.d.ts"))?;
+    assert!(imports.contains("export function hello(): I32"));
+    assert!(!imports.contains("export function greet()"));
+    assert_eq!(
+        Config::read(&root.join("fluentci.toml"))?.modules[1].sdk,
+        Sdk::Clojurescript
+    );
     Ok(())
 }
 

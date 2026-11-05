@@ -35,9 +35,15 @@ pub async fn write(directory: &Path, name: &str, sdk: Sdk) -> Result<()> {
                 .create_new(true)
                 .open(&path)
                 .await?;
-            if matches!(relative, "package.json" | "rescript.json") {
+            if matches!(
+                relative,
+                "package.json" | "package-lock.json" | "rescript.json"
+            ) {
                 let mut package: serde_json::Value = serde_json::from_slice(&asset.data)?;
                 package["name"] = serde_json::json!(format!("fluentci-{name}"));
+                if relative == "package-lock.json" {
+                    package["packages"][""]["name"] = package["name"].clone();
+                }
                 file.write_all(serde_json::to_string_pretty(&package)?.as_bytes())
                     .await?;
             } else {

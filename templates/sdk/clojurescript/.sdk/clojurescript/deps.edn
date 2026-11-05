@@ -1,0 +1,13 @@
+{:paths ["src"]
+ :deps {org.clojure/clojure {:mvn/version "1.12.5"}
+        org.clojure/clojurescript {:mvn/version "1.12.145"}}
+ :mvn/repos {"central" {:url "https://repo.maven.apache.org/maven2/"}}
+ :aliases
+ {:check {:jvm-opts ["-Dtyped.clojure.preserve-check-ns-after-opt-in=true"]
+          :extra-deps {org.typedclojure/typed.clj.checker {:mvn/version "1.4.0"}}
+          :extra-paths ["dev" "demo-plugin/src" "test"]
+          :main-opts ["-m" "check"]}
+  :test {:extra-paths ["test"]
+         :main-opts ["-m" "cljs.main" "-co" "test.edn" "-c" "fluentci.test-runner"]}
+  :plugin {:extra-paths ["dev" "demo-plugin/src"]
+           :main-opts ["-m" "compile-plugin"]}}}

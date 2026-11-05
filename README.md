@@ -233,7 +233,7 @@ name = "shared"
 url = "https://example.com/plugins/shared.wasm"
 ```
 
-Supported SDKs are `rust` (the default), `purescript`, `elixir`, `gleam`,
+Supported SDKs are `rust` (the default), `clojurescript`, `purescript`, `elixir`, `gleam`,
 `typescript`, `python`, and `rescript`. A local path can also identify a compiled
 `.wasm` file or a Rust `Cargo.toml`. Declared names take precedence over registry
 packages, so a local module needs no `--wasm` flag:
@@ -296,6 +296,7 @@ configuration overrides one farther up the directory tree.
 | --- | --- | --- |
 | Rust | Cargo release build for `wasm32-unknown-unknown` | Rust, Cargo, Rustup |
 | PureScript | `npm run build`: Spago → esbuild → extism-js | Node/npm, PureScript, Spago, extism-js |
+| ClojureScript | `npm run build`: Typed Clojure check → ClojureScript → esbuild → extism-js | JDK 21+, Clojure CLI, Node/npm, extism-js, Binaryen |
 | Gleam | `npm run build`: Gleam JS → esbuild → extism-js | Node/npm, Gleam, extism-js |
 | TypeScript | `npm run build`: esbuild → extism-js | Node/npm, extism-js |
 | ReScript | `npm run build`: ReScript → esbuild → extism-js | Node/npm, extism-js; compiler is a package dependency |

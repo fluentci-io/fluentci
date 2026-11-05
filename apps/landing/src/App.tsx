@@ -6,7 +6,7 @@ const github = "https://github.com/fluentci-io/fluentci";
 const docs = `${github}#readme`;
 const discord = "https://discord.gg/H7M28d9dRk";
 const install = "curl -fsSL https://cli.fluentci.io | sh";
-const heroExample = examples[0];
+const heroExample = examples.find((example) => example.sdk === "purescript") ?? examples[0];
 
 function BrandIcon({ brand }: { brand: "github" | "discord" }) {
   return (

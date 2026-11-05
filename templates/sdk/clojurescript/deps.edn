@@ -1,0 +1,11 @@
+{:paths ["src"]
+ :deps {fluentci/sdk {:local/root ".sdk/clojurescript"}}
+ :aliases
+ {:check {:jvm-opts ["-Dtyped.clojure.preserve-check-ns-after-opt-in=true"]
+          :extra-deps {org.typedclojure/typed.clj.checker {:mvn/version "1.4.0"}
+                       fluentci/build {:local/root ".sdk/clojurescript/dev"}
+                       fluentci/type-tests {:local/root ".sdk/clojurescript/test"}}
+          :main-opts ["-m" "check" "main.plugin"]}
+  :build {:extra-deps {fluentci/build {:local/root ".sdk/clojurescript/dev"}}
+          :main-opts ["-m" "compile-plugin" "main.entry" "build.edn"
+                      "src" ".sdk/clojurescript/src"]}}}

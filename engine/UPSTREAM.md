@@ -1,7 +1,7 @@
 # Imported engine source
 
 Source: https://github.com/fluentci-io/fluentci-engine
-Commit: 340e066502e4a7e21274fb122d607fd6f491419e
+Commit: badf6717073b124cd8f4e09fc6909185bba36274
 
 The engine crates and existing vendored runtime patches are copied here so this
 repository builds independently of sibling checkouts. Their licenses are retained.
@@ -17,3 +17,8 @@ The AWS SDK baseline is pinned to the sibling engine's OpenBSD-compatible
 `aws-config` 1.5.5 and `aws-sdk-s3` 1.45.0. The root lockfile constrains their
 transitive dependencies to Rust 1.90-compatible releases. The OpenBSD runtime
 selection and NetBSD Wasmtime signal-context patch remain unchanged.
+
+The ClojureScript SDK source and its static checker fixtures are embedded in
+`../templates/sdk/clojurescript/.sdk/clojurescript/` at this revision. The engine
+crate and vendor source is unchanged since the previous imported revision; the
+CLI library entry point and reduced Cargo workspace remain local integration.
