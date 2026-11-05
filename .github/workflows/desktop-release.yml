@@ -89,7 +89,9 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: desktop-release-module
-          path: .
+          path: .fluentci/desktop/dist
+      - name: Verify the downloaded desktop module
+        run: test -s "$DESKTOP_MODULE"
       - uses: Swatinem/rust-cache@v2
         with:
           workspaces: desktop/src-tauri
