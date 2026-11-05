@@ -8,6 +8,13 @@
  * above-listed licenses.
  */
 
+use crate::Span;
+use crate::SpanError;
+use crate::vec_as_fmt_write::VecAsFmtWrite;
+use crossterm::Command;
+use crossterm::cursor::MoveToColumn;
+use crossterm::terminal::Clear;
+use crossterm::terminal::ClearType;
 use std::fmt;
 use std::fmt::Display;
 use std::fmt::Formatter;
@@ -15,15 +22,8 @@ use std::fmt::Write as _;
 use std::mem;
 use std::slice;
 use std::vec;
-use crossterm::Command;
-use crossterm::cursor::MoveToColumn;
-use crossterm::terminal::Clear;
-use crossterm::terminal::ClearType;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
-use crate::Span;
-use crate::SpanError;
-use crate::vec_as_fmt_write::VecAsFmtWrite;
 
 /// A `Line` is an abstraction for a collection of stylized or unstylized strings.
 /// Since each `Span` denotes a portion of a single line, an ordered collection represents a single line of text.
@@ -199,7 +199,11 @@ impl Line {
         if span.is_empty() {
             return;
         }
-        if let Some(last) = self.0.last_mut().filter(|last| last.is_mergeable_with(&span)) {
+        if let Some(last) = self
+            .0
+            .last_mut()
+            .filter(|last| last.is_mergeable_with(&span))
+        {
             last.content.to_mut().push_str(&span.content);
             return;
         }

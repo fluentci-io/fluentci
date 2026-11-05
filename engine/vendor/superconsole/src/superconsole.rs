@@ -8,16 +8,6 @@
  * above-listed licenses.
  */
 
-use std::cmp;
-use std::env;
-use std::io;
-use crossterm::QueueableCommand;
-use crossterm::cursor;
-use crossterm::cursor::MoveToColumn;
-use crossterm::cursor::MoveUp;
-use crossterm::terminal::Clear;
-use crossterm::terminal::ClearType;
-use crossterm::tty::IsTty;
 use crate::Dimensions;
 use crate::Direction;
 use crate::Lines;
@@ -29,6 +19,16 @@ use crate::error::OutputError;
 use crate::output::BlockingSuperConsoleOutput;
 use crate::output::OutputTarget;
 use crate::output::SuperConsoleOutput;
+use crossterm::QueueableCommand;
+use crossterm::cursor;
+use crossterm::cursor::MoveToColumn;
+use crossterm::cursor::MoveUp;
+use crossterm::terminal::Clear;
+use crossterm::terminal::ClearType;
+use crossterm::tty::IsTty;
+use std::cmp;
+use std::env;
+use std::io;
 
 const MINIMUM_EMIT: usize = 5;
 const MAX_GRAPHEME_BUFFER: usize = 1000000;

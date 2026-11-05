@@ -9,12 +9,12 @@
  */
 
 //! Testing utilities for Superconsole.
-use std::any::Any;
 use crate::Dimensions;
 use crate::error::OutputError;
 use crate::output::OutputTarget;
 use crate::output::SuperConsoleOutput;
 use crate::superconsole::SuperConsole;
+use std::any::Any;
 
 /// An output for testing that doesn't do real I/O.
 pub struct TestOutput {
