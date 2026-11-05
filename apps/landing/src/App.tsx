@@ -5,8 +5,7 @@ import { highlight } from "./highlight";
 const github = "https://github.com/fluentci-io/fluentci";
 const docs = `${github}#readme`;
 const discord = "https://discord.gg/H7M28d9dRk";
-const install =
-  "curl -fsSL https://cli.fluentci.io | sh";
+const install = "curl -fsSL https://cli.fluentci.io | sh";
 const pipeline = `# fluentci.toml
 [[steps]]
 name = "install"
@@ -220,7 +219,7 @@ export default function App() {
             Open source. Local first. Developer owned.
           </p>
           <div className="mt-6 grid gap-12 lg:grid-cols-[1.18fr_1fr] lg:gap-16">
-            <div className="pt-2">
+            <div className="min-w-0 pt-2">
               <h1 className="max-w-2xl text-[clamp(2.6rem,6.5vw,4.8rem)] font-normal leading-[1.08] tracking-[-0.045em]">
                 Your pipeline.
                 <br />
@@ -232,6 +231,19 @@ export default function App() {
                 Build, test, and deploy with a programmable CI/CD tool that
                 starts on your machine and goes with you to CI.
               </p>
+              <div
+                role="region"
+                aria-label="Quick install"
+                className="mt-7 rounded-lg border border-accent/30 bg-panel p-4"
+              >
+                <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+                  <span className="text-xs text-muted">Install with curl</span>
+                  <Copy text={install} label="Copy install command" />
+                </div>
+                <Code className="whitespace-pre-wrap break-all text-[15px] leading-7">
+                  {install}
+                </Code>
+              </div>
               <div className="mt-8 flex flex-wrap items-center gap-6">
                 <a className="button-primary" href="#install">
                   Install FluentCI

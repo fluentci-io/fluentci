@@ -1,7 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-const install =
-  "curl -fsSL https://cli.fluentci.io | sh";
+const install = "curl -fsSL https://cli.fluentci.io | sh";
 
 test("SDK tabs show highlighted samples, matching scaffold commands, and support the keyboard", async ({
   page,
@@ -47,7 +46,12 @@ test("copies the installer, renders the preview, and links to the project and co
   page,
 }, testInfo) => {
   await page.goto("/");
-  await page.getByRole("button", { name: "Copy command", exact: true }).click();
+  const quickInstall = page.getByRole("region", { name: "Quick install" });
+  await expect(quickInstall).toContainText(install);
+  await expect(quickInstall).toBeInViewport();
+  await quickInstall
+    .getByRole("button", { name: "Copy install command", exact: true })
+    .click();
   await expect(
     page.getByRole("status").filter({ hasText: "Copied" }),
   ).toBeVisible();
@@ -63,13 +67,15 @@ test("copies the installer, renders the preview, and links to the project and co
   await expect(
     page.getByText("Made with ♥ in Antananarivo, Madagascar"),
   ).toBeVisible();
-  expect(
-    await page
-      .getByRole("img", { name: /FluentCI Studio desktop/ })
-      .evaluate(
+  const preview = page.getByRole("img", { name: /FluentCI Studio desktop/ });
+  await preview.scrollIntoViewIfNeeded();
+  await expect
+    .poll(() =>
+      preview.evaluate(
         (image: HTMLImageElement) => image.complete && image.naturalWidth > 0,
       ),
-  ).toBe(true);
+    )
+    .toBe(true);
   expect(
     await page.evaluate(
       () => document.documentElement.scrollWidth <= window.innerWidth,
