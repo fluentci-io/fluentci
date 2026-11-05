@@ -198,7 +198,11 @@ impl LocalModule {
             process::execute_build(&program.to_string_lossy(), &build[1..], source).await?;
         } else {
             match self.definition.sdk {
-                Sdk::Purescript | Sdk::Gleam | Sdk::Typescript | Sdk::Rescript => {
+                Sdk::Purescript
+                | Sdk::Clojurescript
+                | Sdk::Gleam
+                | Sdk::Typescript
+                | Sdk::Rescript => {
                     tools::require_sdk(self.definition.sdk, source, true)?;
                     if !source.join("node_modules").is_dir() {
                         let install = if source.join("package-lock.json").is_file() {

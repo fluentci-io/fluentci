@@ -42,6 +42,7 @@ pub enum Sdk {
     #[default]
     Rust,
     Purescript,
+    Clojurescript,
     Elixir,
     Gleam,
     Typescript,
@@ -54,6 +55,7 @@ impl Sdk {
         match self {
             Self::Rust => "rust",
             Self::Purescript => "purescript",
+            Self::Clojurescript => "clojurescript",
             Self::Elixir => "elixir",
             Self::Gleam => "gleam",
             Self::Typescript => "typescript",

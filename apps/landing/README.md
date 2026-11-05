@@ -24,9 +24,10 @@ bun run preview
 bun run test:browser
 ```
 
-Browser checks cover 320px, 390px, and desktop layouts, all six SDK tabs,
+Browser checks cover 320px, 390px, and desktop layouts, all seven SDK tabs,
 keyboard navigation, syntax highlighting, copy-to-clipboard, links, and assets.
 Local checks use installed Google Chrome; CI uses Playwright Chromium.
+ClojureScript is the first selected SDK tab; the hero features PureScript.
 
 The SDK examples follow this repository's generated templates. Each exports the
 starter `hello` job, prints a greeting, and runs `git status --short`. The scaffold

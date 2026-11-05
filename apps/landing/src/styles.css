@@ -41,6 +41,8 @@ pre {
   --color-panel: #101017;
   --color-raised: #191922;
   --color-accent: #c3a6ff;
+  --color-accent-hover: #d4c0ff;
+  --color-success: #9cdbaf;
   --color-cyan: #73d9ea;
   --color-ink: #efeff5;
   --color-muted: #a1a1b3;
@@ -54,6 +56,34 @@ pre {
     font-synthesis: none;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
+    --syntax-comment: #858598;
+    --syntax-keyword: #c3a6ff;
+    --syntax-string: #9cdbaf;
+    --syntax-title: #73d9ea;
+    --syntax-type: #e9bd8a;
+    --syntax-number: #ffa6bf;
+    --syntax-variable: #c9c9d6;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --color-paper: #fff;
+    --color-panel: #fafafd;
+    --color-raised: #f1f0f6;
+    --color-accent: #6d28d9;
+    --color-accent-hover: #5b21b6;
+    --color-cyan: #08798a;
+    --color-success: #197845;
+    --color-ink: #181822;
+    --color-muted: #5c5c6e;
+    --color-soft: #71627e;
+    --color-line: #e3e2eb;
+    --syntax-comment: #686878;
+    --syntax-keyword: #6d28d9;
+    --syntax-string: #197845;
+    --syntax-title: #08798a;
+    --syntax-type: #92521b;
+    --syntax-number: #b52c60;
+    --syntax-variable: #414154;
   }
   html {
     scroll-behavior: smooth;
@@ -79,7 +109,7 @@ pre {
     color: #ffffff;
   }
   :focus-visible {
-    outline: 2px solid #c3a6ff;
+    outline: 2px solid var(--color-accent);
     outline-offset: 5px;
   }
   @media (prefers-reduced-motion: reduce) {
@@ -112,7 +142,10 @@ pre {
     @apply underline decoration-accent/40 underline-offset-4 transition-colors hover:text-accent hover:decoration-accent;
   }
   .button-primary {
-    @apply rounded-md border border-accent bg-accent px-5 py-3 text-xs font-medium text-paper transition-colors hover:border-[#d4c0ff] hover:bg-[#d4c0ff];
+    @apply rounded-md border border-accent bg-accent px-5 py-3 text-xs font-medium text-paper transition-colors hover:border-accent-hover hover:bg-accent-hover;
+  }
+  .theme-switch {
+    @apply rounded-md border border-line bg-panel px-3 py-2 font-mono text-xs text-muted transition-colors hover:border-accent hover:text-accent;
   }
   .copy-button {
     @apply rounded border border-line bg-raised px-2.5 py-1.5 text-[11px] text-muted transition-colors hover:border-accent/60 hover:text-accent;
@@ -159,36 +192,36 @@ pre {
 }
 
 .hljs-comment {
-  color: #858598;
+  color: var(--syntax-comment);
 }
 .hljs-keyword,
 .hljs-operator,
 .hljs-built_in {
-  color: #c3a6ff;
+  color: var(--syntax-keyword);
 }
 .hljs-string,
 .hljs-meta .hljs-string {
-  color: #9cdbaf;
+  color: var(--syntax-string);
 }
 .hljs-title,
 .hljs-title.function_,
 .hljs-name {
-  color: #73d9ea;
+  color: var(--syntax-title);
 }
 .hljs-type,
 .hljs-title.class_,
 .hljs-section {
-  color: #e9bd8a;
+  color: var(--syntax-type);
 }
 .hljs-number,
 .hljs-literal,
 .hljs-symbol {
-  color: #ffa6bf;
+  color: var(--syntax-number);
 }
 .hljs-attr,
 .hljs-variable,
 .hljs-params {
-  color: #c9c9d6;
+  color: var(--syntax-variable);
 }
 
 @media (max-width: 639px) {

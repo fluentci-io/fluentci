@@ -1,9 +1,23 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#09090d" />
+    <script>
+      // Apply the saved preference before rendering to avoid a theme flash.
+      try {
+        const theme = localStorage.getItem("fluentci-landing-theme") === "light"
+          ? "light"
+          : "dark";
+        document.documentElement.dataset.theme = theme;
+        document.documentElement.style.colorScheme = theme;
+        document.querySelector('meta[name="theme-color"]').content =
+          theme === "light" ? "#ffffff" : "#09090d";
+      } catch {
+        document.documentElement.style.colorScheme = "dark";
+      }
+    </script>
     <meta
       name="description"
       content="FluentCI is programmable CI/CD for your machine and your runners. Write pipelines in your language, compile to WebAssembly, and run them from one CLI."

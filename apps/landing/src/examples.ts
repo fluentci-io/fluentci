@@ -1,5 +1,23 @@
 export const examples = [
   {
+    name: "ClojureScript",
+    sdk: "clojurescript",
+    file: "src/main/plugin.cljc",
+    language: "clojurescript",
+    pipe: "The -> macro threads the immutable pipeline through each function. Terminal functions end in !.",
+    code: `(ns ^:typed.clojure main.plugin
+  (:require [fluentci.plugin :as p]
+            #?(:clj [typed.clojure :as t])))
+
+#?(:clj (t/ann hello [-> nil]))
+(defn hello []
+  (-> (p/pipeline "hello")
+      (p/exec ["echo" "Hello from FluentCI"])
+      (p/exec ["git" "status" "--short"])
+      p/stdout!
+      p/output!))`,
+  },
+  {
     name: "PureScript",
     sdk: "purescript",
     file: "src/Main.purs",

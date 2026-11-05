@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { examples } from "./examples";
 import { highlight } from "./highlight";
 
@@ -6,18 +6,7 @@ const github = "https://github.com/fluentci-io/fluentci";
 const docs = `${github}#readme`;
 const discord = "https://discord.gg/H7M28d9dRk";
 const install = "curl -fsSL https://cli.fluentci.io | sh";
-const pipeline = `# fluentci.toml
-[[steps]]
-name = "install"
-command = "bun install --frozen-lockfile"
-
-[[steps]]
-name = "test"
-command = "bun run test"
-
-[[steps]]
-name = "build"
-command = "bun run build"`;
+const heroExample = examples.find((example) => example.sdk === "purescript") ?? examples[0];
 
 function BrandIcon({ brand }: { brand: "github" | "discord" }) {
   return (
@@ -34,6 +23,36 @@ function BrandIcon({ brand }: { brand: "github" | "discord" }) {
         }
       />
     </svg>
+  );
+}
+
+function ThemeSwitcher() {
+  const [theme, setTheme] = useState<"dark" | "light">(() =>
+    document.documentElement.dataset.theme === "light" ? "light" : "dark",
+  );
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+    document
+      .querySelector('meta[name="theme-color"]')
+      ?.setAttribute("content", theme === "dark" ? "#09090d" : "#ffffff");
+    try {
+      localStorage.setItem("fluentci-landing-theme", theme);
+    } catch {
+      // Switching remains available when browser storage is disabled.
+    }
+  }, [theme]);
+
+  return (
+    <button
+      type="button"
+      className="theme-switch"
+      aria-label={`Switch to ${theme === "dark" ? "light" : "dark"} theme`}
+      onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+    >
+      {theme === "dark" ? "Light" : "Dark"}
+    </button>
   );
 }
 
@@ -211,6 +230,7 @@ export default function App() {
             <BrandIcon brand="discord" />
             <span>Discord</span>
           </a>
+          <ThemeSwitcher />
         </nav>
       </header>
       <main id="main">
@@ -220,12 +240,10 @@ export default function App() {
           </p>
           <div className="mt-6 grid gap-12 lg:grid-cols-[1.18fr_1fr] lg:gap-16">
             <div className="min-w-0 pt-2">
-              <h1 className="max-w-2xl text-[clamp(2.6rem,6.5vw,4.8rem)] font-normal leading-[1.08] tracking-[-0.045em]">
-                Your pipeline.
+              <h1 className="max-w-2xl text-[clamp(1.875rem,5.6vw,4rem)] font-normal leading-[1.08] tracking-[-0.045em]">
+                Strongly typed.
                 <br />
-                Your language.
-                <br />
-                <span className="text-accent">Your machine.</span>
+                <span className="text-accent">Functional CI/CD.</span>
               </h1>
               <p className="mt-7 max-w-[440px] text-[15px] leading-8 text-muted">
                 Build, test, and deploy with a programmable CI/CD tool that
@@ -256,22 +274,19 @@ export default function App() {
                 One CLI. Reusable Wasm plugins. No account required.
               </p>
             </div>
-            <div className="min-w-0 self-start overflow-hidden rounded-xl border border-line bg-panel lg:mt-4">
-              <div className="flex items-center justify-between border-b border-line px-5 py-3.5 font-mono text-sm">
-                <span>fluentci.toml</span>
-                <span className="text-muted">a pipeline, in plain text</span>
+            <div role="region" aria-label="PureScript pipeline example" className="min-w-0 self-start overflow-hidden rounded-xl border border-line bg-panel lg:mt-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3.5 font-mono text-sm">
+                <span>{heroExample.file}</span>
+                <span className="text-muted">{heroExample.name}</span>
               </div>
               <Code
-                language="toml"
+                language={heroExample.language}
                 className="p-5 text-[15px] leading-[1.7] sm:p-6"
               >
-                {pipeline}
+                {heroExample.code}
               </Code>
               <div className="border-t border-line bg-paper px-5 py-4 font-mono text-[15px] text-ink">
-                <span className="text-muted">$ </span>fluentci run
-                <span className="float-right text-[#9cdbaf]">
-                  3 jobs passed
-                </span>
+                <span className="text-muted">$ </span>fluentci run ci hello
               </div>
             </div>
           </div>

@@ -10,6 +10,15 @@ pub fn require_sdk(sdk: Sdk, directory: &Path, pending_dependencies: bool) -> Re
     let required: &[&str] = match sdk {
         Sdk::Rust => &["cargo", "rustc", "rustup"],
         Sdk::Purescript => &["node", "npm", "purs", "spago", "extism-js"],
+        Sdk::Clojurescript => &[
+            "node",
+            "npm",
+            "java",
+            "clojure",
+            "extism-js",
+            "wasm-merge",
+            "wasm-opt",
+        ],
         Sdk::Elixir => &["elixir", "mix", "cargo", "rustc", "rustup"],
         Sdk::Gleam => &["node", "npm", "gleam", "extism-js"],
         Sdk::Typescript => &["node", "npm", "extism-js"],
@@ -22,7 +31,11 @@ pub fn require_sdk(sdk: Sdk, directory: &Path, pending_dependencies: bool) -> Re
         .filter(|program| {
             let local = match sdk {
                 Sdk::Python if *program != "uv" => Some(".venv/bin"),
-                Sdk::Purescript | Sdk::Gleam | Sdk::Typescript | Sdk::Rescript
+                Sdk::Purescript
+                | Sdk::Clojurescript
+                | Sdk::Gleam
+                | Sdk::Typescript
+                | Sdk::Rescript
                     if !matches!(*program, "node" | "npm") =>
                 {
                     Some("node_modules/.bin")

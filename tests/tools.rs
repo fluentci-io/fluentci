@@ -26,6 +26,19 @@ fn reports_all_missing_sdk_tools_before_building() -> anyhow::Result<()> {
             "",
         ),
         ("typescript", vec!["node", "npm", "extism-js"], ""),
+        (
+            "clojurescript",
+            vec![
+                "node",
+                "npm",
+                "java",
+                "clojure",
+                "extism-js",
+                "wasm-merge",
+                "wasm-opt",
+            ],
+            "",
+        ),
         ("gleam", vec!["node", "npm", "gleam", "extism-js"], ""),
         (
             "elixir",

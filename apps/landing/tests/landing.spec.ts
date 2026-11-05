@@ -2,11 +2,45 @@ import { expect, test } from "@playwright/test";
 
 const install = "curl -fsSL https://cli.fluentci.io | sh";
 
+test("defaults to dark and remembers a white light theme", async ({ page }, testInfo) => {
+  await page.emulateMedia({ colorScheme: "light" });
+  await page.goto("/");
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(9, 9, 13)");
+  const heading = page.getByRole("heading", { level: 1 });
+  await expect(heading).toHaveText("Strongly typed.Functional CI/CD.");
+  expect(await heading.evaluate(element => element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight))).toBeLessThan(2.1);
+  const example = page.getByRole("region", { name: "PureScript pipeline example" });
+  await expect(example).toContainText("src/Main.purs");
+  await expect(example).toContainText("hello :: Effect Unit");
+  await expect(example.locator(".hljs-string").first()).toBeVisible();
+  const switcher = page.getByRole("button", { name: "Switch to light theme" });
+  await switcher.focus();
+  await page.keyboard.press("Space");
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
+  await expect(page.locator("meta[name='theme-color']")).toHaveAttribute("content", "#ffffff");
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
+  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await page.getByRole("tab", { name: "TypeScript", exact: true }).click();
+  await expect(page.getByRole("tabpanel").locator(".hljs-string").first()).toHaveCSS("color", "rgb(25, 120, 69)");
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.screenshot({ path: `test-results/landing-light-${testInfo.project.name}.png` });
+  await page.getByRole("button", { name: "Switch to dark theme" }).click();
+  await page.reload();
+  await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
+});
+
 test("SDK tabs show highlighted samples, matching scaffold commands, and support the keyboard", async ({
   page,
 }) => {
   await page.goto("/");
+  await expect(page.getByRole("tab").first()).toHaveText("ClojureScript");
+  await expect(page.getByRole("tab", { name: "ClojureScript", exact: true })).toHaveAttribute("aria-selected", "true");
   for (const [name, sdk, source] of [
+    ["ClojureScript", "clojurescript", "src/main/plugin.cljc"],
     ["PureScript", "purescript", "src/Main.purs"],
     ["Python", "python", "plugin.py"],
     ["TypeScript", "typescript", "entry.ts"],
@@ -30,7 +64,7 @@ test("SDK tabs show highlighted samples, matching scaffold commands, and support
     .getByRole("tab", { name: "ReScript", exact: true })
     .press("ArrowRight");
   await expect(
-    page.getByRole("tab", { name: "PureScript", exact: true }),
+    page.getByRole("tab", { name: "ClojureScript", exact: true }),
   ).toBeFocused();
   await page.keyboard.press("End");
   await expect(
@@ -38,7 +72,7 @@ test("SDK tabs show highlighted samples, matching scaffold commands, and support
   ).toHaveAttribute("aria-selected", "true");
   await page.keyboard.press("Home");
   await expect(
-    page.getByRole("tab", { name: "PureScript", exact: true }),
+    page.getByRole("tab", { name: "ClojureScript", exact: true }),
   ).toHaveAttribute("aria-selected", "true");
 });
 

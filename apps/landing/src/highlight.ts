@@ -6,10 +6,12 @@ import elixir from "highlight.js/lib/languages/elixir";
 import bash from "highlight.js/lib/languages/bash";
 import ini from "highlight.js/lib/languages/ini";
 import reasonml from "highlight.js/lib/languages/reasonml";
+import clojure from "highlight.js/lib/languages/clojure";
 
 hljs.registerLanguage("typescript", typescript);
 hljs.registerLanguage("python", python);
 hljs.registerLanguage("purescript", haskell);
+hljs.registerLanguage("clojurescript", clojure);
 hljs.registerLanguage("elixir", elixir);
 hljs.registerLanguage("rescript", reasonml);
 hljs.registerLanguage("bash", bash);
