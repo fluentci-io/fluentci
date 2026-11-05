@@ -65,6 +65,11 @@ versioned plan format, functional SDK direction, and current limitations.
 [Elixir host plans](sdk/elixir/HOST_PLANS.md) provide immutable `|>` builders, pure
 JSON compilation, typed results, and managed local execution with cancellation.
 
+Version **0.6.2** adds composable host/transfer/digest primitives, compiled DAG
+execution, and incremental output publication. The new SDK bindings require
+matching engine sources. See the [executor benchmarks](crates/executor/benchmarks/README.md)
+for measured gains and their limits.
+
 Version **0.6.1** provides unified execution, parallel matrices, workflow primitives,
 and native file and env-file tasks. See the [0.6 compatibility notes](docs/compatibility-0.6.md) for
 migration guidance, legacy scheduling/service limits, and supported guest build paths.
@@ -75,7 +80,7 @@ Pure matrix builders expand named cases and Cartesian products into native tasks
 with include/exclude filters, stable IDs, prerequisites and joins. `jobs` bounds
 concurrency; each case uses normal execution, caching, logs and cancellation.
 Matching guest SDKs submit a complete independent plan through `execute_plan`.
-See [matrix jobs](docs/matrix.md) for all six language APIs and current boundaries.
+See [matrix jobs](docs/matrix.md) for SDK APIs and current boundaries.
 This API requires FluentCI Engine 0.6.1 or later and matching guest SDKs.
 
 ## 🚀 Quick Start
@@ -98,13 +103,13 @@ cargo run --release -p fluentci-engine -- serve
 
 ## 📦 Downloads
 
-Download **FluentCI Engine v0.6.1** for your platform:
+Download **FluentCI Engine v0.6.2** for your platform:
 
-- `Mac`: arm64: [fluentci-engine_v0.6.1_aarch64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.1/fluentci-engine_v0.6.1_aarch64-apple-darwin.tar.gz) intel: [fluentci-engine_v0.6.1_x86_64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.1/fluentci-engine_v0.6.1_x86_64-apple-darwin.tar.gz)
-- `Linux`: intel: [fluentci-engine_v0.6.1_x86_64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.1/fluentci-engine_v0.6.1_x86_64-unknown-linux-gnu.tar.gz) arm64: [fluentci-engine_v0.6.1_aarch64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.1/fluentci-engine_v0.6.1_aarch64-unknown-linux-gnu.tar.gz)
-- `FreeBSD`: x86_64: [fluentci-engine_v0.6.1_x86_64-unknown-freebsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.1/fluentci-engine_v0.6.1_x86_64-unknown-freebsd.tar.gz)
-- `NetBSD`: x86_64: [fluentci-engine_v0.6.1_x86_64-unknown-netbsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.1/fluentci-engine_v0.6.1_x86_64-unknown-netbsd.tar.gz)
-- `OpenBSD`: x86_64: [fluentci-engine_v0.6.1_x86_64-unknown-openbsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.1/fluentci-engine_v0.6.1_x86_64-unknown-openbsd.tar.gz)
+- `Mac`: arm64: [fluentci-engine_v0.6.2_aarch64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_aarch64-apple-darwin.tar.gz) intel: [fluentci-engine_v0.6.2_x86_64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_x86_64-apple-darwin.tar.gz)
+- `Linux`: intel: [fluentci-engine_v0.6.2_x86_64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_x86_64-unknown-linux-gnu.tar.gz) arm64: [fluentci-engine_v0.6.2_aarch64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_aarch64-unknown-linux-gnu.tar.gz)
+- `FreeBSD`: x86_64: [fluentci-engine_v0.6.2_x86_64-unknown-freebsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_x86_64-unknown-freebsd.tar.gz)
+- `NetBSD`: x86_64: [fluentci-engine_v0.6.2_x86_64-unknown-netbsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_x86_64-unknown-netbsd.tar.gz)
+- `OpenBSD`: x86_64: [fluentci-engine_v0.6.2_x86_64-unknown-openbsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_x86_64-unknown-openbsd.tar.gz)
 
 ## 📚 Documentation
 
@@ -477,3 +482,12 @@ and running release-mode compatibility tests.
 
 Native BSD archive targets, verification, and compiler availability are described
 in the [BSD release guide](.github/BSD-RELEASES.md).
+
+## Repository CI modules
+
+The root [`fluentci.toml`](fluentci.toml) declares PureScript Wasm CI modules under
+[`.fluentci`](.fluentci/README.md). Run `fluentci modules` to discover functions,
+`fluentci run rust test` for native release tests, or `fluentci run main check`
+for Rust and provider end-to-end validation. GitHub Actions installs the CLI with
+`fluentci-io/setup-fluentci@next`; release modules are compiled once on Ubuntu and
+invoked as portable Wasm on the native Linux/macOS release runners.

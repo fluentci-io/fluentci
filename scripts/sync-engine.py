@@ -5,6 +5,7 @@ Does not copy build output or overwrite the CLI's local integration wrapper.
 """
 
 import argparse
+import re
 from pathlib import Path
 import shutil
 import sys
@@ -25,6 +26,7 @@ def main():
     ]
     mappings.append((root / "engine/crates/cli/src", sibling / "crates/cli/src"))
     mappings.append((root / "engine/AGENTS.md", sibling / "AGENTS.md"))
+    mappings.append((root / "engine/README.md", sibling / "README.md"))
     for name in ("src/content/line.rs", "src/superconsole.rs", "src/testing.rs"):
         relative = Path("vendor/superconsole") / name
         mappings.append((root / "engine" / relative, sibling / relative))
@@ -38,6 +40,18 @@ def main():
         if language == "purescript":
             mappings.append((source / "spago.yaml", sibling / "sdk/purescript/spago.yaml"))
     differing = []
+    # The CLI manifest has a local library wrapper. Synchronize only its package
+    # version, preserving each repository's integration-specific manifest fields.
+    source_manifest = root / "engine/crates/cli/Cargo.toml"
+    target_manifest = sibling / "crates/cli/Cargo.toml"
+    pattern = r'^version\s*=\s*"([^\"]+)"'
+    expected = re.search(pattern, source_manifest.read_text(), re.MULTILINE).group(1)
+    target_text = target_manifest.read_text()
+    actual = re.search(pattern, target_text, re.MULTILINE).group(1)
+    if actual != expected:
+        differing.append("crates/cli/Cargo.toml (package version)")
+        if args.write:
+            target_manifest.write_text(re.sub(pattern, f'version = "{expected}"', target_text, count=1, flags=re.MULTILINE))
     for source, destination in mappings:
         files = sorted(source.rglob("*")) if source.is_dir() else [source]
         for file in files:
