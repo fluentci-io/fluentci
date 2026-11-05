@@ -363,7 +363,13 @@ defmodule FluentCI.Host do
     )
   end
 
-  defp validate(%{kind: kind}, :primitive, path), do: checked(kind in ["os", "arch", "digest", "ssh", "scp", "sftp", "rsync", "ftp", "ftps", "s3"], path)
+  defp validate(%{kind: kind}, :primitive, path),
+    do:
+      checked(
+        kind in ["os", "arch", "digest", "ssh", "scp", "sftp", "rsync", "ftp", "ftps", "s3"],
+        path
+      )
+
   defp validate(_, _, path), do: {:error, {:invalid_field, path}}
   defp checked(true, _), do: :ok
   defp checked(false, path), do: {:error, {:invalid_field, path}}
