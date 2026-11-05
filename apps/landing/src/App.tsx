@@ -3,7 +3,7 @@ import { examples } from "./examples";
 import { highlight } from "./highlight";
 
 const github = "https://github.com/fluentci-io/fluentci";
-const docs = `${github}#readme`;
+const docs = "https://docs.fluentci.io";
 const discord = "https://discord.gg/H7M28d9dRk";
 const install = "curl -fsSL https://cli.fluentci.io | sh";
 const heroExample = examples.find((example) => example.sdk === "purescript") ?? examples[0];
