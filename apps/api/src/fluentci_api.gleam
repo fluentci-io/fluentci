@@ -14,8 +14,7 @@ pub fn main() -> Nil {
         promise.tap(db.open(), fn(database) {
           let server = runtime.create(database)
           routes.register(server, database)
-          let stop_indexer =
-            jetstream.start(database, jetstream.ingest(database, _))
+          let stop_indexer = jetstream.start(database, jetstream.ingest)
           runtime.listen(server, database, stop_indexer)
         })
       Nil

@@ -1,4 +1,5 @@
 import fluentci_api/env
+import gleam/list
 import gleeunit
 import gleeunit/should
 
@@ -91,4 +92,50 @@ pub fn memory_database_is_rejected_test() {
   }
   let assert Error(errors) = env.validate(read, env.Indexer)
   errors |> should.equal(["DATABASE_URL must identify a local SQLite file"])
+}
+
+pub fn four_jetstreams_are_enabled_by_default_test() {
+  let assert Ok(config) = env.validate(settings, env.Server)
+  config.jetstream_urls |> list.length |> should.equal(4)
+}
+
+pub fn jetstream_list_overrides_legacy_url_and_removes_duplicates_test() {
+  let read = fn(name) {
+    case name {
+      "JETSTREAM_URLS" ->
+        " wss://east.example/subscribe, wss://west.example/subscribe,wss://east.example/subscribe "
+      "JETSTREAM_URL" -> "not-used"
+      _ -> settings(name)
+    }
+  }
+  let assert Ok(config) = env.validate(read, env.Server)
+  config.jetstream_urls
+  |> should.equal([
+    "wss://east.example/subscribe",
+    "wss://west.example/subscribe",
+  ])
+}
+
+pub fn every_jetstream_url_is_validated_test() {
+  let read = fn(name) {
+    case name {
+      "JETSTREAM_URLS" ->
+        "wss://east.example/subscribe,ws://remote.example/subscribe,"
+      _ -> settings(name)
+    }
+  }
+  let assert Error(errors) = env.validate(read, env.Server)
+  errors
+  |> should.equal(["JETSTREAM_URLS must use WSS (WS is allowed on loopback)"])
+}
+
+pub fn legacy_jetstream_override_selects_one_source_test() {
+  let read = fn(name) {
+    case name {
+      "JETSTREAM_URL" -> "ws://localhost:6009/subscribe"
+      _ -> settings(name)
+    }
+  }
+  let assert Ok(config) = env.validate(read, env.Indexer)
+  config.jetstream_urls |> should.equal(["ws://localhost:6009/subscribe"])
 }

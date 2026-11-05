@@ -1,5 +1,7 @@
 import {resolve} from 'node:path';
-import {root} from './config_ffi.mjs';
+import {root,DEFAULT_JETSTREAM_URLS} from './config_ffi.mjs';
+import {toList} from '../gleam.mjs';
+export const defaultStreams=()=>toList(DEFAULT_JETSTREAM_URLS);
 export const get=name=>process.env[name] ?? '';
 const loopback=host=>['localhost','127.0.0.1','[::1]'].includes(host);
 export function validHttp(value){try{const u=new URL(value);return (u.protocol==='https:'||(u.protocol==='http:'&&loopback(u.hostname)))&&!u.username&&!u.password&&!u.search&&!u.hash;}catch{return false;}}
@@ -9,7 +11,7 @@ export const validDatabase=value=>value.startsWith('file:')&&value.slice(5).trim
 export function apply(config){
  process.env.HOST=config.host;process.env.PORT=String(config.port);
  process.env.DATABASE_URL=config.database_url.startsWith('file:')&&!config.database_url.startsWith('file:/')?`file:${resolve(root(),config.database_url.slice(5))}`:config.database_url;
- process.env.SERVICE_DID=config.service_did;process.env.JETSTREAM_URL=config.jetstream_url;
+ process.env.SERVICE_DID=config.service_did;process.env.JETSTREAM_URLS=config.jetstream_urls.toArray().join(',');
 }
 export function abort(errors){
  console.error(`Invalid FluentCI API environment:\n${errors.toArray().map(error=>`  - ${error}`).join('\n')}`);

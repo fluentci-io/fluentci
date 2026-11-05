@@ -16,7 +16,7 @@ pub type Env {
     port: Int,
     database_url: String,
     service_did: String,
-    jetstream_url: String,
+    jetstream_urls: List(String),
   )
 }
 
@@ -28,6 +28,9 @@ fn valid_http(value: String) -> Bool
 
 @external(javascript, "./env_ffi.mjs", "validStream")
 fn valid_stream(value: String) -> Bool
+
+@external(javascript, "./env_ffi.mjs", "defaultStreams")
+fn default_streams() -> List(String)
 
 @external(javascript, "./env_ffi.mjs", "validDid")
 fn valid_did(value: String) -> Bool
@@ -56,9 +59,16 @@ pub fn validate(
   let host = read("HOST") |> default("127.0.0.1")
   let database = read("DATABASE_URL") |> default("file:./data/registry.sqlite")
   let did = read("SERVICE_DID") |> default("did:web:api.fluentci.io")
-  let stream =
-    read("JETSTREAM_URL")
-    |> default("wss://jetstream2.us-east.bsky.network/subscribe")
+  let configured_streams =
+    read("JETSTREAM_URLS") |> default(read("JETSTREAM_URL")) |> string.trim
+  let streams = case configured_streams {
+    "" -> default_streams()
+    value -> string.split(value, ",") |> list.map(string.trim) |> list.unique
+  }
+  let stream_setting = case string.trim(read("JETSTREAM_URLS")) {
+    "" -> "JETSTREAM_URL"
+    _ -> "JETSTREAM_URLS"
+  }
   let required = case mode {
     Server -> ["S3_BUCKET", "S3_PUBLIC_URL"]
     Indexer -> []
@@ -78,9 +88,9 @@ pub fn validate(
       False -> ["SERVICE_DID must be a valid did:web or did:plc identifier"]
     })
   let errors =
-    list.append(errors, case valid_stream(stream) {
+    list.append(errors, case list.all(streams, valid_stream) {
       True -> []
-      False -> ["JETSTREAM_URL must use WSS (WS is allowed on loopback)"]
+      False -> [stream_setting <> " must use WSS (WS is allowed on loopback)"]
     })
   let errors =
     list.append(errors, case valid_database(database) {
@@ -130,7 +140,7 @@ pub fn validate(
         port:,
         database_url: database,
         service_did: did,
-        jetstream_url: stream,
+        jetstream_urls: streams,
       ))
     _ -> Error(errors)
   }

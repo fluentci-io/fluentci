@@ -8,9 +8,9 @@ pub type Page =
   models.RegistryListPackagesOutput
 
 pub type Event {
-  Upsert(package: Package, time_us: Int)
-  Delete(uri: String, author: String, time_us: Int)
-  Account(author: String, active: Bool, time_us: Int)
+  Upsert(package: Package, time_us: Int, event_id: String)
+  Delete(uri: String, author: String, time_us: Int, event_id: String)
+  Account(author: String, active: Bool, time_us: Int, event_id: String)
   Checkpoint(time_us: Int)
 }
 

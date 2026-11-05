@@ -2,7 +2,7 @@ amends "../../../../schema/lexicon.pkl"
 
 lexicon = 1
 id = "io.fluentci.registry.searchPackages"
-description = "Search indexed package versions."
+description = "Full-text search plugin names and descriptions, with token prefix matching."
 defs = new Mapping {
   ["main"] = new Query {
     parameters = new Parameters {

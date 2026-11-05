@@ -5,7 +5,7 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "Published Wasm plugin. The record key is name-version; author must equal the repository DID. Records are immutable releases.",
+      "description": "Published Wasm plugin. Package identity is author DID plus name, stable across handle changes. The record key is name-version; author must equal the repository DID. Records are immutable releases.",
       "key": "any",
       "record": {
         "type": "object",

@@ -15,7 +15,7 @@ export const schemas = [
     "defs": {
       "main": {
         "type": "record",
-        "description": "Published Wasm plugin. The record key is name-version; author must equal the repository DID. Records are immutable releases.",
+        "description": "Published Wasm plugin. Package identity is author DID plus name, stable across handle changes. The record key is name-version; author must equal the repository DID. Records are immutable releases.",
         "key": "any",
         "record": {
           "type": "object",
@@ -321,7 +321,7 @@ export const schemas = [
   {
     "lexicon": 1,
     "id": "io.fluentci.registry.searchPackages",
-    "description": "Search indexed package versions.",
+    "description": "Full-text search plugin names and descriptions, with token prefix matching.",
     "defs": {
       "main": {
         "type": "query",

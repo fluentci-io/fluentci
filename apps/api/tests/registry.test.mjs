@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {fileURLToPath} from 'node:url';
 import {once} from 'node:events';
-import {mkdtempSync,rmSync} from 'node:fs';
+import {mkdtempSync,rmSync,mkdirSync,writeFileSync,readFileSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {createHash} from 'node:crypto';
@@ -10,7 +10,8 @@ import {Secp256k1Keypair} from '@atproto/crypto';
 import {createServiceJwt} from '@atproto/xrpc-server';
 import {WebSocketServer} from 'ws';
 process.env.FLUENTCI_API_ROOT=fileURLToPath(new URL('..',import.meta.url));
-const db=await import('../build/dev/javascript/fluentci_api/fluentci_api/db/client_ffi.mjs');
+const db=await import('../build/dev/javascript/fluentci_api/fluentci_api/db/client.mjs');
+const nativeDb=await import('../build/dev/javascript/fluentci_api/fluentci_api/db/client_ffi.mjs');
 const runtime=await import('../build/dev/javascript/fluentci_api/fluentci_api/node/runtime_ffi.mjs');
 const {register}=await import('../build/dev/javascript/fluentci_api/fluentci_api/xrpc/routes.mjs');
 const {ingest}=await import('../build/dev/javascript/fluentci_api/fluentci_api/jetstream/client.mjs');
@@ -25,7 +26,7 @@ function event(name='hello',version='1.0.0',time=100,author=did,overrides={}) {
  return {did:author,time_us:time,kind:'commit',commit:{operation:'create',collection:'io.fluentci.plugin',rkey:`${name}-${version}`,cid,
  record:{$type:'io.fluentci.plugin',name,version,description:'Useful build pipeline',author,license:'MIT',publishedAt:'2026-11-05T00:00:00.000Z',url:`https://plugins.example/${name}.wasm`,sha256:digest,size:8,...overrides}}};
 }
-async function fixture(t){const dir=mkdtempSync(join(tmpdir(),'fluentci-api-test-'));const connection=await db.open({url:`file:${join(dir,'registry.sqlite')}`});t.after(async()=>{await db.close(connection);rmSync(dir,{recursive:true,force:true});});return connection;}
+async function fixture(t){const dir=mkdtempSync(join(tmpdir(),'fluentci-api-test-'));const connection=await nativeDb.open({url:`file:${join(dir,'registry.sqlite')}`});connection.testUrl=`file:${join(dir,'registry.sqlite')}`;t.after(async()=>{await db.close(connection);rmSync(dir,{recursive:true,force:true});});return connection;}
 async function add(connection,...events){for(const e of events)await ingest(connection,JSON.stringify(e));}
 async function server(t,connection,options={}) {
  const instance=runtime.create(connection,options);register(instance,connection);
@@ -37,35 +38,35 @@ async function server(t,connection,options={}) {
 test('migrations, search, SemVer latest selection, and stable query-bound pagination',async t=>{
  const connection=await fixture(t);
  await add(connection,event('alpha','1.9.0',100),event('alpha','1.10.0',101),event('alpha','2.0.0-beta.1',102),event('beta','1.0.0',103));
- assert.equal((await db.getPackage(connection,'alpha','',did)).version,'1.10.0');
- let page=await db.listPackages(connection,'','',2,'');assert.equal(page.packages.toArray().length,2);
- const next=await db.listPackages(connection,'','',2,page.cursor[0]);assert.equal(next.packages.toArray().length,2);
+ assert.equal((await db.get_package(connection,'alpha','',did)).version,'1.10.0');
+ let page=await db.list_packages(connection,'','',2,'');assert.equal(page.packages.toArray().length,2);
+ const next=await db.list_packages(connection,'','',2,page.cursor[0]);assert.equal(next.packages.toArray().length,2);
  assert.equal(new Set([...page.packages.toArray(),...next.packages.toArray()].map(p=>p.uri)).size,4);
- await assert.rejects(db.listPackages(connection,'alpha','',2,page.cursor[0]),/Cursor/);
- assert.equal((await db.listPackages(connection,'%','',20,'')).packages.toArray().length,0);
- assert.equal((await db.listPackages(connection,'Useful','',20,'')).packages.toArray().length,4);
+ assert.throws(()=>db.list_packages(connection,'alpha','',2,page.cursor[0]),/Cursor/);
+ assert.equal((await db.list_packages(connection,'%','',20,'')).packages.toArray().length,0);
+ assert.equal((await db.list_packages(connection,'Useful','',20,'')).packages.toArray().length,4);
 });
 
 test('Jetstream is idempotent, rejects forged records, and persists delete tombstones and account state',async t=>{
  const connection=await fixture(t);const first=event();await add(connection,first,first);
- assert.equal((await db.listPackages(connection,'','',20,'')).packages.toArray().length,1);
+ assert.equal((await db.list_packages(connection,'','',20,'')).packages.toArray().length,1);
  await add(connection,event('forged','1.0.0',110,did,{author:other}),event('bad-url','1.0.0',111,did,{url:'https://example.com/archive.zip'}));
- assert.equal((await db.listPackages(connection,'','',20,'')).packages.toArray().length,1);
+ assert.equal((await db.list_packages(connection,'','',20,'')).packages.toArray().length,1);
  const deleted={...first,time_us:200,commit:{...first.commit,operation:'delete'}};
  await add(connection,deleted,{...first,time_us:150});
- assert.equal((await db.listPackages(connection,'','',20,'')).packages.toArray().length,0);
+ assert.equal((await db.list_packages(connection,'','',20,'')).packages.toArray().length,0);
  assert.equal(await db.cursor(connection),200);
  await add(connection,{...first,time_us:300});
  await add(connection,{kind:'account',did,time_us:400,account:{active:false}});
- assert.equal((await db.listPackages(connection,'','',20,'')).packages.toArray().length,0);
+ assert.equal((await db.list_packages(connection,'','',20,'')).packages.toArray().length,0);
  await add(connection,{kind:'account',did,time_us:500,account:{active:true}});
- assert.equal((await db.listPackages(connection,'','',20,'')).packages.toArray().length,1);
+ assert.equal((await db.list_packages(connection,'','',20,'')).packages.toArray().length,1);
 });
 
 test('package names are publisher scoped and getPackage rejects ambiguous names',async t=>{
  const connection=await fixture(t);await add(connection,event(),event('hello','1.0.0',101,other));
- await assert.rejects(db.getPackage(connection,'hello','',''),/disambiguate/);
- assert.equal((await db.getPackage(connection,'hello','1.0.0',other)).author,other);
+ await assert.rejects(db.get_package(connection,'hello','',''),/disambiguate/);
+ assert.equal((await db.get_package(connection,'hello','1.0.0',other)).author,other);
 });
 
 test('real XRPC query routes return validated schemas, pagination, and useful errors',async t=>{
@@ -104,9 +105,112 @@ test('Jetstream subscribes to the collection and indexes a real WebSocket messag
  const connection=await fixture(t);const ws=new WebSocketServer({port:0,host:'127.0.0.1'});await once(ws,'listening');
  let query;
  ws.on('connection',(socket,request)=>{query=new URL(request.url,'http://localhost');socket.send(JSON.stringify(event('socket-plugin','1.0.0',123)));});
- const stop=wire.start(connection,message=>ingest(connection,message),{url:`ws://127.0.0.1:${ws.address().port}`});
+ const stop=wire.start(connection,ingest,{url:`ws://127.0.0.1:${ws.address().port}`});
  t.after(async()=>{stop();await stop.drain();for(const client of ws.clients)client.terminate();await new Promise(resolve=>ws.close(resolve));});
- for(let i=0;i<100;i++){if(await db.cursor(connection)===123)break;await new Promise(resolve=>setTimeout(resolve,20));}
+ for(let i=0;i<100;i++){if(await db.cursor({...connection,source:`ws://127.0.0.1:${ws.address().port}/`} )===123)break;await new Promise(resolve=>setTimeout(resolve,20));}
  assert.equal(query.searchParams.get('wantedCollections'),'io.fluentci.plugin');
- assert.equal((await db.getPackage(connection,'socket-plugin','1.0.0',did)).name,'socket-plugin');
+ assert.equal((await db.get_package(connection,'socket-plugin','1.0.0',did)).name,'socket-plugin');
+});
+
+test('FTS5 supports prefixes, accents and literal input, and follows updates and tombstones',async t=>{
+ const connection=await fixture(t);
+ await add(connection,event('rust-build','1.0.0',100,did,{description:'Café compiler tooling'}));
+ const search=async(q)=> (await db.list_packages(connection,q,'',20,'')).packages.toArray();
+ assert.equal((await search('comp')).length,1);
+ assert.equal((await search('cafe')).length,1);
+ assert.equal((await search('rust tool')).length,1);
+ assert.equal((await search('omp')).length,0);
+ assert.equal((await search('" OR * --')).length,0);
+ assert.equal((await search('*()')).length,0);
+ await add(connection,event('rust-build','1.0.0',200,did,{description:'Formatter workflow'}));
+ assert.equal((await search('compiler')).length,0);
+ assert.equal((await search('format')).length,1);
+ const deleted=event('rust-build','1.0.0',300);deleted.commit.operation='delete';await add(connection,deleted);
+ assert.equal((await search('format')).length,0);
+ await add(connection,event('rust-build','1.0.0',250,did,{description:'Obsolete compiler'}));
+ assert.equal((await search('compiler')).length,0);
+});
+
+async function waitFor(check){for(let i=0;i<250;i++){if(await check())return;await new Promise(resolve=>setTimeout(resolve,20));}assert.fail('Timed out waiting for Jetstream');}
+async function stream(t){
+ const ws=new WebSocketServer({port:0,host:'127.0.0.1'});await once(ws,'listening');
+ t.after(async()=>{for(const client of ws.clients)client.terminate();await new Promise(resolve=>ws.close(resolve));});
+ return {ws,url:`ws://127.0.0.1:${ws.address().port}/subscribe`};
+}
+
+test('multiple Jetstreams deduplicate revisions, keep independent cursors and reconnect after failure',async t=>{
+ const connection=await fixture(t);const first=await stream(t),second=await stream(t);
+ const one=event('first','1.0.0',20_000_000);one.commit.rev='3l3qo2vutsw2b';
+ const overlapping={...one,time_us:30_000_000};
+ const two=event('second','1.0.0',15_000_000);two.commit.rev='3l3qo2vutsw2c';
+ let firstConnections=0,secondConnections=0,replayCursor;let writes=0;
+ await connection.client.execute('CREATE TABLE test_writes (uri TEXT)');
+ await connection.client.execute('CREATE TRIGGER test_plugin_insert AFTER INSERT ON plugin_records BEGIN INSERT INTO test_writes(uri) VALUES(new.uri); END');
+ await connection.client.execute('CREATE TRIGGER test_plugin_update AFTER UPDATE ON plugin_records BEGIN INSERT INTO test_writes(uri) VALUES(new.uri); END');
+ first.ws.on('connection',socket=>{firstConnections++;socket.send(JSON.stringify(one));});
+ second.ws.on('connection',(socket,request)=>{
+  secondConnections++;
+  if(secondConnections===1){socket.send(JSON.stringify(overlapping));socket.send(JSON.stringify(two));}
+  else replayCursor=new URL(request.url,'http://localhost').searchParams.get('cursor');
+ });
+ const stop=wire.start(connection,ingest,{urls:[first.url,first.url,second.url],retryDelayMs:20});
+ t.after(async()=>{stop();await stop.drain();});
+ await waitFor(async()=>await db.cursor({...connection,source:first.url})===20_000_000&&await db.cursor({...connection,source:second.url})===30_000_000);
+ assert.equal((await db.list_packages(connection,'','',20,'')).packages.toArray().length,2);
+ writes=Number((await connection.client.execute('SELECT count(*) AS n FROM test_writes')).rows[0].n);assert.equal(writes,2);
+ assert.equal(Number((await connection.client.execute('SELECT count(*) AS n FROM jetstream_events')).rows[0].n),2);
+ for(const client of second.ws.clients)client.terminate();
+ await waitFor(()=>secondConnections===2);
+ assert.equal(replayCursor,'20000000');assert.equal(firstConnections,1);
+ const third=event('third','1.0.0',40_000_000);
+ for(const client of first.ws.clients)client.send(JSON.stringify(third));
+ await waitFor(async()=>await db.cursor({...connection,source:first.url})===40_000_000);
+ assert.equal((await db.get_package(connection,'third','1.0.0',did)).name,'third');
+});
+
+test('dedup survives reopening SQLite and a failed transaction leaves identity and cursor retryable',async t=>{
+ const connection=await fixture(t);const original=event('durable','1.0.0',100);original.commit.rev='3l3qo2vutsw2b';
+ await add(connection,original);
+ await db.close(connection);
+ Object.assign(connection,await nativeDb.open({url:connection.testUrl}));
+ await add({...connection,source:'second-source'},{...original,time_us:200});
+ assert.equal(Number((await connection.client.execute('SELECT count(*) AS n FROM jetstream_events')).rows[0].n),1);
+ assert.equal(Number((await connection.client.execute('SELECT event_time FROM plugin_records')).rows[0].event_time),100);
+ assert.equal(await db.cursor({...connection,source:'second-source'}),200);
+ await connection.client.execute("CREATE TRIGGER test_checkpoint_failure BEFORE INSERT ON checkpoints BEGIN SELECT RAISE(ABORT, 'checkpoint failed'); END");
+ const next=event('retry','1.0.0',300);
+ await assert.rejects(add(connection,next),error=>{assert.match(error.cause?.message ?? '',/checkpoint failed/);return true;});
+ assert.equal(Number((await connection.client.execute('SELECT count(*) AS n FROM jetstream_events')).rows[0].n),1);
+ assert.equal((await db.list_packages(connection,'','',20,'')).packages.toArray().length,1);
+ assert.equal(await db.cursor(connection),100);
+ await connection.client.execute('DROP TRIGGER test_checkpoint_failure');
+ await add(connection,next);
+ assert.equal(await db.cursor(connection),300);
+ assert.equal((await db.get_package(connection,'retry','1.0.0',did)).name,'retry');
+});
+
+test('publisher-scoped identity permits other publishers and new versions but rejects duplicate versions',async t=>{
+ const connection=await fixture(t);
+ await add(connection,event('same-name','1.0.0',100),event('same-name','2.0.0',101),event('same-name','1.0.0',102,other));
+ assert.equal((await db.list_packages(connection,'',did,20,'')).packages.toArray().length,2);
+ assert.equal((await db.get_package(connection,'same-name','1.0.0',other)).author,other);
+ const duplicate=event('same-name','1.0.0',103);duplicate.commit.rkey='alternate-key';await add(connection,duplicate);
+ assert.equal((await db.list_packages(connection,'','',20,'')).packages.toArray().length,3);
+ await assert.rejects(connection.client.execute({sql:'INSERT INTO plugin_records(uri, author, name, version, deleted, event_time) VALUES (?, ?, ?, ?, ?, ?)',args:['at://alternate/record',did,'same-name','1.0.0',0,104]}),/UNIQUE/);
+});
+
+test('upgrading an existing registry backfills the FTS5 index',async t=>{
+ const directory=mkdtempSync(join(tmpdir(),'fluentci-upgrade-'));
+ const migrations=join(directory,'old-migrations');mkdirSync(join(migrations,'meta'),{recursive:true});
+ const apiRoot=fileURLToPath(new URL('..',import.meta.url));
+ writeFileSync(join(migrations,'0000_registry.sql'),readFileSync(join(apiRoot,'drizzle/0000_registry.sql')));
+ const journal=JSON.parse(readFileSync(join(apiRoot,'drizzle/meta/_journal.json'),'utf8'));journal.entries=journal.entries.slice(0,1);
+ writeFileSync(join(migrations,'meta/_journal.json'),JSON.stringify(journal));
+ const url=`file:${join(directory,'registry.sqlite')}`;let connection=await nativeDb.open({url,migrationsFolder:migrations});
+ t.after(async()=>{await db.close(connection);rmSync(directory,{recursive:true,force:true});});
+ const plugin=event('preexisting','1.0.0',100).commit.record;
+ await connection.client.execute({sql:'INSERT INTO plugin_records(uri,cid,author,name,description,version,published_at,license,url,sha256,size,deleted,event_time) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',args:[`at://${did}/io.fluentci.plugin/preexisting-1.0.0`,cid,did,plugin.name,plugin.description,plugin.version,plugin.publishedAt,plugin.license,plugin.url,plugin.sha256,plugin.size,0,100]});
+ await db.close(connection);connection=await nativeDb.open({url});
+ const matches=(await db.list_packages(connection,'preexist','',20,'')).packages.toArray();
+ assert.equal(matches.length,1);assert.equal(matches[0].name,'preexisting');
 });

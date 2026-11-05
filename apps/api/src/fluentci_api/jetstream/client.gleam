@@ -9,7 +9,7 @@ import gleam/javascript/promise.{type Promise}
 pub fn decode_event(message: String) -> Result(Event, String)
 
 @external(javascript, "./client_ffi.mjs", "start")
-pub fn start(db: Db, ingest: fn(String) -> Promise(Nil)) -> fn() -> Nil
+pub fn start(db: Db, ingest: fn(Db, String) -> Promise(Nil)) -> fn() -> Nil
 
 @external(javascript, "./client_ffi.mjs", "standalone")
 fn standalone(db: Db, stop: fn() -> Nil) -> Nil
@@ -28,7 +28,7 @@ pub fn main() -> Nil {
       env.apply(config)
       let _ =
         promise.tap(db.open(), fn(database) {
-          let stop = start(database, ingest(database, _))
+          let stop = start(database, ingest)
           standalone(database, stop)
         })
       Nil
