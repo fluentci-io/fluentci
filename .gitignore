@@ -1,4 +1,5 @@
 result
+.DS_Store
 demo*
 kview
 /target/
