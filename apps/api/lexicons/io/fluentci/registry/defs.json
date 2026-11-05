@@ -1,0 +1,75 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.registry.defs",
+  "description": "Indexed plugin metadata with its repository record URI and CID.",
+  "defs": {
+    "packageView": {
+      "type": "object",
+      "required": [
+        "name",
+        "description",
+        "version",
+        "publishedAt",
+        "author",
+        "license",
+        "url",
+        "sha256",
+        "size",
+        "uri",
+        "cid"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "version": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "publishedAt": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "author": {
+          "type": "string",
+          "format": "did"
+        },
+        "license": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "url": {
+          "type": "string",
+          "format": "uri",
+          "maxLength": 2048
+        },
+        "sha256": {
+          "type": "string",
+          "minLength": 64,
+          "maxLength": 64
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 8,
+          "maximum": 67108864
+        },
+        "uri": {
+          "type": "string",
+          "format": "at-uri"
+        },
+        "cid": {
+          "type": "string",
+          "format": "cid"
+        }
+      }
+    }
+  }
+}

@@ -61,9 +61,6 @@ pub struct RunArgs {
     /// Execute the pipeline as a WebAssembly plugin
     #[arg(short = 'w', long)]
     pub wasm: bool,
-    /// Run on a hosted agent (requires FLUENTCI_PROJECT_ID)
-    #[arg(long)]
-    pub remote_exec: bool,
     /// Working directory for the pipeline
     #[arg(long)]
     pub work_dir: Option<PathBuf>,
@@ -130,17 +127,38 @@ pub enum Command {
     Doctor,
     /// Show environment variables from .fluentci/.env
     Env,
-    /// Save an access token for hosted FluentCI services
-    Login,
-    /// Show the currently authenticated user
+    /// Authenticate with FLUENTCI_ACCOUNT and FLUENTCI_APP_PASSWORD and show account information
+    #[command(
+        long_about = "Authenticate using an AT Protocol app password and show the account handle and DID. Set FLUENTCI_ACCOUNT to a handle or DID and FLUENTCI_APP_PASSWORD to an app password. Identity is remembered in ~/.fluentci/account.json; credentials are never saved. Tangled repositories sync in the background for Studio suggestions."
+    )]
     Whoami,
     /// Install the latest published CLI release
     Upgrade,
-    /// Publish the current package to the registry
+    /// Publish a Wasm plugin to your AT Protocol PDS
+    #[command(
+        long_about = "Publish using FLUENTCI_ACCOUNT (handle or DID) and FLUENTCI_APP_PASSWORD. Builds the selected local module, uploads to S3 via the registry, then creates io.fluentci.plugin in your PDS. Use --url to skip upload: the public URL must end in .wasm and return HTTP 200. Metadata comes from [package] in fluentci.toml. Identity is remembered in ~/.fluentci/account.json; passwords are never saved."
+    )]
     Publish {
         /// Build and publish a WebAssembly plugin
         #[arg(short = 'w', long)]
         wasm: bool,
+        /// Public .wasm URL; validate and publish without uploading
+        #[arg(long, value_name = "URL", conflicts_with_all = ["file", "module"])]
+        url: Option<String>,
+        /// Existing Wasm artifact to upload without building
+        #[arg(long, value_name = "WASM", conflicts_with = "module")]
+        file: Option<PathBuf>,
+        /// Workspace module to build and publish
+        #[arg(long)]
+        module: Option<String>,
+    },
+    /// Sync Tangled repositories in a detached background worker
+    #[command(name = "__index-tangled", hide = true)]
+    IndexTangled {
+        #[arg(long)]
+        account_file: PathBuf,
+        #[arg(long)]
+        did: String,
     },
     /// Start a hosted runner agent or list registered agents
     Agent {

@@ -421,6 +421,112 @@ impl Db {
         sqlx::query_with(&sql, values).execute(&self.0).await?;
         Ok(())
     }
+
+    pub fn filename(&self) -> std::path::PathBuf {
+        self.0.connect_options().get_filename().to_path_buf()
+    }
+
+    pub async fn acquire_tangled_sync(&self, did: &str) -> Result<bool> {
+        let now = chrono::Utc::now().timestamp_millis();
+        let (query, values) = Query::insert()
+            .into_table("tangled_sync")
+            .columns(["account_did", "started_at", "updated_at"])
+            .values([did.into(), now.into(), 0i64.into()])?
+            .on_conflict(OnConflict::column("account_did").do_nothing().to_owned())
+            .build_sqlx(SqliteQueryBuilder);
+        if sqlx::query_with(&query, values)
+            .execute(&self.0)
+            .await?
+            .rows_affected()
+            > 0
+        {
+            return Ok(true);
+        }
+        let (query, values) = Query::update()
+            .table("tangled_sync")
+            .value("started_at", now)
+            .and_where(Expr::col("account_did").eq(did))
+            .and_where(Expr::col("started_at").lt(now - 300_000))
+            .and_where(Expr::col("updated_at").lt(now - 900_000))
+            .build_sqlx(SqliteQueryBuilder);
+        Ok(sqlx::query_with(&query, values)
+            .execute(&self.0)
+            .await?
+            .rows_affected()
+            > 0)
+    }
+
+    pub async fn fail_tangled_sync(&self, did: &str, error: &str) -> Result<()> {
+        let (query, values) = Query::update()
+            .table("tangled_sync")
+            .value("started_at", 0i64)
+            .value("error", error)
+            .and_where(Expr::col("account_did").eq(did))
+            .build_sqlx(SqliteQueryBuilder);
+        sqlx::query_with(&query, values).execute(&self.0).await?;
+        Ok(())
+    }
+
+    pub async fn replace_tangled_repositories(
+        &self,
+        did: &str,
+        repositories: &[crate::tangled::TangledRepository],
+    ) -> Result<()> {
+        let mut transaction = self.0.begin().await?;
+        let (query, values) = Query::delete()
+            .from_table("tangled_repositories")
+            .and_where(Expr::col("account_did").eq(did))
+            .build_sqlx(SqliteQueryBuilder);
+        sqlx::query_with(&query, values)
+            .execute(&mut *transaction)
+            .await?;
+        for repository in repositories {
+            let (query, values) = Query::insert()
+                .into_table("tangled_repositories")
+                .columns(["uri", "account_did", "name", "data"])
+                .values([
+                    repository.uri.clone().into(),
+                    did.into(),
+                    repository.name.clone().into(),
+                    serde_json::to_string(repository)?.into(),
+                ])?
+                .build_sqlx(SqliteQueryBuilder);
+            sqlx::query_with(&query, values)
+                .execute(&mut *transaction)
+                .await?;
+        }
+        let (query, values) = Query::update()
+            .table("tangled_sync")
+            .value("started_at", 0i64)
+            .value("updated_at", chrono::Utc::now().timestamp_millis())
+            .value("error", Option::<String>::None)
+            .and_where(Expr::col("account_did").eq(did))
+            .build_sqlx(SqliteQueryBuilder);
+        sqlx::query_with(&query, values)
+            .execute(&mut *transaction)
+            .await?;
+        transaction.commit().await?;
+        Ok(())
+    }
+
+    pub async fn tangled_repositories(
+        &self,
+        did: &str,
+    ) -> Result<Vec<crate::tangled::TangledRepository>> {
+        let (query, values) = Query::select()
+            .column("data")
+            .from("tangled_repositories")
+            .and_where(Expr::col("account_did").eq(did))
+            .order_by("name", Order::Asc)
+            .limit(1000)
+            .build_sqlx(SqliteQueryBuilder);
+        let rows: Vec<String> = sqlx::query_scalar_with(&query, values)
+            .fetch_all(&self.0)
+            .await?;
+        rows.iter()
+            .map(|row| serde_json::from_str(row).map_err(Into::into))
+            .collect()
+    }
 }
 
 fn conflicting_name(name: &str, project_id: &str) -> SelectStatement {

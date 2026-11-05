@@ -1,6 +1,6 @@
 //! Compatibility with FluentCI's hosted runner protocol.
 
-use crate::{archive, auth, cli::RunArgs, db::Db, registry};
+use crate::{archive, db::Db, registry};
 use anyhow::{Context, Result, bail};
 use futures_util::{SinkExt, StreamExt};
 use std::path::Path;
@@ -9,52 +9,9 @@ use tokio::{
     process::Command,
 };
 
-pub async fn run(args: &RunArgs, root: &Path, db: &Db) -> Result<()> {
-    let project = std::env::var("FLUENTCI_PROJECT_ID")
-        .context("--remote-exec requires FLUENTCI_PROJECT_ID")?;
-    let token = auth::token(db).await?;
-    let root = root.to_path_buf();
-    let bytes = tokio::task::spawn_blocking(move || archive::bundle(&root)).await??;
-    let query=serde_json::json!({"pipeline":args.pipeline.as_deref().unwrap_or("."),"jobs":args.jobs,"wasm":args.wasm,"workDir":"."}).to_string();
-    let result: serde_json::Value = registry::client()
-        .post(registry::RUNNER)
-        .query(&[("project_id", project), ("query", query)])
-        .bearer_auth(token)
-        .header("Content-Type", "application/zip")
-        .body(bytes)
-        .send()
-        .await?
-        .error_for_status()?
-        .json()
-        .await?;
-    let id = result["runId"]
-        .as_str()
-        .context("Runner returned no runId")?;
-    let mut url = reqwest::Url::parse(registry::WEBSOCKET)?;
-    url.query_pairs_mut().append_pair("client_id", id);
-    let (mut ws, _) = tokio_tungstenite::connect_async(url.as_str()).await?;
-    while let Some(message) = ws.next().await {
-        let message = message?;
-        if message.is_text() {
-            let text = message.to_text()?;
-            if text == "fluentci_exit=0" {
-                return Ok(());
-            }
-            if text.starts_with("fluentci_exit=") {
-                bail!("Remote pipeline failed: {text}");
-            }
-            println!("{text}");
-        } else if let tokio_tungstenite::tungstenite::Message::Ping(data) = message {
-            ws.send(tokio_tungstenite::tungstenite::Message::Pong(data))
-                .await?;
-        }
-    }
-    bail!("Runner disconnected before reporting an exit status")
-}
-
 pub async fn list_agents(db: &Db) -> Result<()> {
-    let token = auth::token(db).await?;
-    let id = auth::user_id(&token).await?;
+    let token = legacy_token(db).await?;
+    let id = legacy_user_id(&token).await?;
     let data: serde_json::Value = registry::client()
         .get(format!("{}/agents", registry::EVENTS))
         .query(&[("id", id)])
@@ -68,7 +25,7 @@ pub async fn list_agents(db: &Db) -> Result<()> {
 }
 
 pub async fn agent(db: &Db) -> Result<()> {
-    let token = auth::token(db).await?;
+    let token = legacy_token(db).await?;
     let id = if let Some(id) = db.setting("agent_id").await? {
         id
     } else {
@@ -218,4 +175,21 @@ async fn send(id: &str, token: &str, body: String) -> Result<()> {
         .await?
         .error_for_status()?;
     Ok(())
+}
+
+// Legacy hosted-agent credentials are independent of AT Protocol publishing.
+async fn legacy_token(_db: &Db) -> Result<String> {
+    std::env::var("FLUENTCI_ACCESS_TOKEN")
+        .context("Legacy hosted agents require FLUENTCI_ACCESS_TOKEN")
+}
+
+async fn legacy_user_id(token: &str) -> Result<String> {
+    Ok(registry::client()
+        .get("https://api.fluentci.io/validate")
+        .query(&[("token", token)])
+        .send()
+        .await?
+        .error_for_status()?
+        .text()
+        .await?)
 }

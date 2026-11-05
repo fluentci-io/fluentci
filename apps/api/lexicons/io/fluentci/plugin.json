@@ -1,0 +1,70 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.plugin",
+  "description": "A FluentCI Wasm plugin published by its AT Protocol author.",
+  "defs": {
+    "main": {
+      "type": "record",
+      "key": "any",
+      "description": "Published Wasm plugin. The record key is name-version; author must equal the repository DID. Records are immutable releases.",
+      "record": {
+        "type": "object",
+        "required": [
+          "name",
+          "description",
+          "version",
+          "publishedAt",
+          "author",
+          "license",
+          "url",
+          "sha256",
+          "size"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "description": {
+            "type": "string",
+            "maxLength": 2048
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "datetime"
+          },
+          "author": {
+            "type": "string",
+            "format": "did"
+          },
+          "license": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "url": {
+            "type": "string",
+            "format": "uri",
+            "maxLength": 2048
+          },
+          "sha256": {
+            "type": "string",
+            "minLength": 64,
+            "maxLength": 64
+          },
+          "size": {
+            "type": "integer",
+            "minimum": 8,
+            "maximum": 67108864
+          }
+        }
+      }
+    }
+  }
+}

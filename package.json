@@ -17,7 +17,8 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "test:browser": "turbo run test:browser"
+    "test:browser": "turbo run test:browser",
+    "dev:api": "turbo run dev --filter=@fluentci/api"
   },
   "devDependencies": {
     "turbo": "^2.5.0",

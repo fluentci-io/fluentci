@@ -1,0 +1,16 @@
+name = "fluentci_api"
+version = "0.1.0"
+target = "javascript"
+description = "FluentCI XRPC package registry and Jetstream indexer"
+licences = ["MPL-2.0"]
+
+[javascript]
+runtime = "nodejs"
+
+[dependencies]
+gleam_stdlib = ">= 0.71.0 and < 2.0.0"
+gleam_javascript = ">= 1.0.0 and < 2.0.0"
+gleam_json = ">= 3.1.0 and < 4.0.0"
+
+[dev-dependencies]
+gleeunit = ">= 1.2.0 and < 2.0.0"

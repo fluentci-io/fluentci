@@ -1,58 +1,135 @@
-use crate::{db::Db, registry};
+//! Environment-based AT Protocol authentication with in-memory Jacquard sessions.
+
+use crate::{
+    account::{self, AccountIdentity},
+    db::Db,
+    tangled,
+};
 use anyhow::{Context, Result};
+use jacquard::{
+    api::com_atproto::server::{get_service_auth::GetServiceAuth, get_session::GetSession},
+    client::{AtpSession, MemoryCredentialSession},
+    deps::fluent_uri::Uri,
+    prelude::XrpcClient,
+    types::string::{Did, Handle, Nsid},
+};
+use std::time::Duration;
 
-pub async fn token(db: &Db) -> Result<String> {
-    if let Ok(token) = std::env::var("FLUENTCI_ACCESS_TOKEN") {
-        return Ok(token);
-    }
-    if let Some(token) = db.setting("access_token").await? {
-        return Ok(token);
-    }
+pub const AUTH_HELP: &str = "Set FLUENTCI_ACCOUNT to your handle or DID and FLUENTCI_APP_PASSWORD to your account app password.";
 
-    // Import the previous CLI's token once; subsequent writes use SQLite.
-    if let Some(home) = dirs::home_dir()
-        && let Ok(token) = tokio::fs::read_to_string(home.join(".fluentci/access-token")).await
-    {
-        db.set_setting("access_token", token.trim()).await?;
-        return Ok(token.trim().into());
-    }
-    anyhow::bail!("You are not logged in. Run fluentci login or set FLUENTCI_ACCESS_TOKEN")
+pub struct Publisher {
+    pub session: MemoryCredentialSession,
+    pub identity: AtpSession,
 }
 
-pub async fn user_id(token: &str) -> Result<String> {
-    Ok(registry::client()
-        .get("https://api.fluentci.io/validate")
-        .query(&[("token", token)])
-        .send()
-        .await?
-        .error_for_status()
-        .context("Invalid access token")?
-        .text()
-        .await?)
+pub async fn authenticate_with(
+    account: &str,
+    password: &str,
+    pds: Option<&str>,
+) -> Result<Publisher> {
+    if account.starts_with("did:") {
+        Did::new(account)?;
+    } else {
+        Handle::new(account)?;
+    }
+    anyhow::ensure!(!password.trim().is_empty(), "{AUTH_HELP}");
+    let endpoint = pds
+        .map(|value| -> Result<Uri<String>> {
+            let url = reqwest::Url::parse(value)?;
+            anyhow::ensure!(
+                url.scheme() == "https"
+                    || (url.scheme() == "http"
+                        && matches!(url.host_str(), Some("localhost" | "127.0.0.1" | "[::1]"))),
+                "PDS URL must use HTTPS (HTTP is allowed on loopback)"
+            );
+            anyhow::ensure!(
+                url.username().is_empty()
+                    && url.password().is_none()
+                    && url.query().is_none()
+                    && url.fragment().is_none(),
+                "Invalid PDS URL"
+            );
+            Ok(Uri::parse(value)?.to_owned())
+        })
+        .transpose()?;
+    let (session, identity) = tokio::time::timeout(
+        Duration::from_secs(30),
+        MemoryCredentialSession::authenticated(account, password, None, endpoint),
+    )
+    .await
+    .context("Account authentication timed out")?
+    .map_err(|_| anyhow::anyhow!("AT Protocol authentication failed. {AUTH_HELP}"))?;
+    anyhow::ensure!(
+        !account.starts_with("did:") || identity.did.as_str() == account,
+        "Authenticated account DID did not match FLUENTCI_ACCOUNT"
+    );
+    let info = session.send(GetSession).await?.into_output()?;
+    anyhow::ensure!(info.active != Some(false), "The account is inactive");
+    Ok(Publisher { session, identity })
 }
 
-pub async fn login(db: &Db) -> Result<()> {
-    println!("Generate an access token at https://app.fluentci.io/settings/tokens");
-    let token =
-        tokio::task::spawn_blocking(|| rpassword::prompt_password("Enter your access token: "))
-            .await??;
-    user_id(&token).await?;
-    db.set_setting("access_token", &token).await?;
-    println!("Logged in successfully");
-    Ok(())
+pub async fn authenticate(db: &Db) -> Result<Publisher> {
+    let account = std::env::var("FLUENTCI_ACCOUNT").unwrap_or_default();
+    let password = std::env::var("FLUENTCI_APP_PASSWORD").unwrap_or_default();
+    anyhow::ensure!(
+        !account.trim().is_empty() && !password.trim().is_empty(),
+        "You are not logged in. {AUTH_HELP}"
+    );
+    let publisher = authenticate_with(
+        account.trim(),
+        &password,
+        std::env::var("FLUENTCI_PDS_URL").ok().as_deref(),
+    )
+    .await?;
+    let identity = AccountIdentity {
+        account: account.trim().into(),
+        did: publisher.identity.did.to_string(),
+        handle: publisher.identity.handle.to_string(),
+        pds: publisher.session.endpoint().await.to_string(),
+    };
+    let path = account::path()?;
+    account::save(&path, &identity)?;
+    if let Err(error) = tangled::schedule(db, &identity, &path).await {
+        tracing::debug!(%error, "Could not schedule Tangled repository sync");
+    }
+    Ok(publisher)
+}
+
+impl Publisher {
+    pub async fn upload_token(&self) -> Result<String> {
+        let request = GetServiceAuth {
+            aud: std::env::var("FLUENTCI_REGISTRY_DID")
+                .unwrap_or_else(|_| "did:web:api.fluentci.io".into()),
+            exp: Some(chrono::Utc::now().timestamp() + 60),
+            lxm: Some(Nsid::new("io.fluentci.registry.publish".to_owned())?),
+        };
+        Ok(self
+            .session
+            .send(request)
+            .await?
+            .into_output()?
+            .token
+            .to_string())
+    }
 }
 
 pub async fn whoami(db: &Db) -> Result<()> {
-    let id = user_id(&token(db).await?).await?;
-    let mut request = registry::client().get(format!("https://api.github.com/user/{}", id.trim()));
-    if let Ok(token) = std::env::var("GITHUB_ACCESS_TOKEN") {
-        request = request.bearer_auth(token);
+    if std::env::var("FLUENTCI_ACCOUNT")
+        .unwrap_or_default()
+        .trim()
+        .is_empty()
+        || std::env::var("FLUENTCI_APP_PASSWORD")
+            .unwrap_or_default()
+            .trim()
+            .is_empty()
+    {
+        println!("You are not logged in. {AUTH_HELP}");
+        return Ok(());
     }
-    let user: serde_json::Value = request.send().await?.error_for_status()?.json().await?;
+    let publisher = authenticate(db).await?;
     println!(
         "You are logged in as {} ({})",
-        user["login"].as_str().unwrap_or_default(),
-        user["name"].as_str().unwrap_or_default()
+        publisher.identity.handle, publisher.identity.did
     );
     Ok(())
 }

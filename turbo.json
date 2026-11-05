@@ -2,30 +2,49 @@
   "$schema": "https://turbo.build/schema.json",
   "tasks": {
     "build": {
-      "dependsOn": ["^build"],
-      "outputs": ["dist/**"],
-      "env": ["VITE_*"]
+      "dependsOn": [
+        "^build"
+      ],
+      "outputs": [
+        "dist/**"
+      ],
+      "env": [
+        "VITE_*"
+      ]
     },
     "fluentci-desktop#build": {
-      "dependsOn": ["fluentci-studio#build"],
+      "dependsOn": [
+        "fluentci-studio#build"
+      ],
       "cache": false,
-      "passThroughEnv": ["*"]
+      "passThroughEnv": [
+        "*"
+      ]
     },
     "dev": {
       "cache": false,
       "persistent": true
     },
     "lint": {
-      "dependsOn": ["^lint"]
+      "dependsOn": [
+        "^lint"
+      ]
     },
     "typecheck": {
-      "dependsOn": ["^typecheck"]
+      "dependsOn": [
+        "^typecheck"
+      ]
     },
     "test": {
       "cache": false
     },
     "test:browser": {
       "cache": false
+    },
+    "@fluentci/api#build": {
+      "outputs": [
+        "build/dev/javascript/**"
+      ]
     }
   }
 }

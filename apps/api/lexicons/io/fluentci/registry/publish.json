@@ -1,0 +1,52 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.registry.publish",
+  "description": "Upload a Wasm plugin to public S3 storage using a scoped AT Protocol service-auth token. The publisher then creates io.fluentci.plugin in their own PDS.",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "input": {
+        "encoding": "application/wasm"
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "url",
+            "sha256",
+            "size"
+          ],
+          "properties": {
+            "url": {
+              "type": "string",
+              "format": "uri",
+              "maxLength": 2048
+            },
+            "sha256": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64
+            },
+            "size": {
+              "type": "integer",
+              "minimum": 8,
+              "maximum": 67108864
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "InvalidWasm"
+        },
+        {
+          "name": "AuthRequired"
+        },
+        {
+          "name": "StorageUnavailable"
+        }
+      ]
+    }
+  }
+}
