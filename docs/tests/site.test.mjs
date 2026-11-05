@@ -30,7 +30,11 @@ const pages = new Map(
 );
 
 test("all documented navigation entries have rendered pages and consistent active navigation", async () => {
-  assert.equal(navigation.length, 36);
+  assert.ok(navigation.length >= 36);
+  assert.equal(
+    new Set(navigation.map((page) => page.url)).size,
+    navigation.length,
+  );
   assert.equal(htmlFiles.length, navigation.length);
   for (const page of navigation) {
     const html = pages.get(join(output, page.url, "index.html"));

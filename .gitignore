@@ -23,3 +23,6 @@ apps/*/dist/
 apps/*/test-results/
 *.tsbuildinfo
 apps/*/playwright-report/
+
+# Advisory guard for atomic FluentCI dependency lock updates
+fluentci.lock.guard

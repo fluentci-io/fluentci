@@ -52,8 +52,11 @@ pub async fn run(args: &RunArgs, db: &Db) -> Result<()> {
             for command in action_commands(action)? {
                 let mut action = action.clone();
                 action.commands = command;
-                process::run(&mut action_command_at(&action, root, working_directory).await?)
-                    .await?;
+                process::run(
+                    &mut action_command_at(&action, root, working_directory, args.frozen_lockfile)
+                        .await?,
+                )
+                .await?;
             }
         }
         return Ok(());
@@ -93,7 +96,9 @@ async fn command_with_config(args: &RunArgs, root: &Path, config_root: &Path) ->
             "Specify a function: fluentci run {} <function> [args...]; use fluentci modules to list exports",
             module.name
         );
-        let wasm = module.prepare().await?;
+        let wasm = module
+            .prepare_with_lock(config_root, args.frozen_lockfile)
+            .await?;
         let mut command = engine_command(&wasm.to_string_lossy(), &args.jobs)?;
         command
             .current_dir(root)
@@ -101,13 +106,22 @@ async fn command_with_config(args: &RunArgs, root: &Path, config_root: &Path) ->
         return Ok(command);
     }
     let wasm = args.wasm
+        || pipeline.starts_with("http://")
+        || pipeline.starts_with("https://")
         || pipeline.ends_with(".wasm")
         || pipeline.ends_with("?wasm=1")
         || ["ghcr.io/", "gcr.io/", "azurecr.io/"]
             .iter()
             .any(|p| pipeline.starts_with(p));
     let mut command = if wasm || (pipeline == "." && !root.join(".fluentci/mod.ts").is_file()) {
-        wasm_command(pipeline, &args.jobs, root).await?
+        wasm_command(
+            pipeline,
+            &args.jobs,
+            root,
+            config_root,
+            args.frozen_lockfile,
+        )
+        .await?
     } else {
         let (import_map, entry) = if pipeline == "." {
             let entry = [".fluentci/src/runner.ts", ".fluentci/src/dagger/runner.ts"]
@@ -116,7 +130,7 @@ async fn command_with_config(args: &RunArgs, root: &Path, config_root: &Path) ->
                 .context("No TypeScript runner found; run fluentci init")?;
             (".fluentci/import_map.json".into(), entry.into())
         } else {
-            let pkg = registry::resolve(pipeline).await?;
+            let pkg = crate::lockfile::resolve(config_root, pipeline, args.frozen_lockfile).await?;
             if pkg.metadata.url.is_some() {
                 let artifact = registry::wasm_artifact(&pkg).await?;
                 let mut command = engine_command(&artifact.to_string_lossy(), &args.jobs)?;
@@ -132,8 +146,14 @@ async fn command_with_config(args: &RunArgs, root: &Path, config_root: &Path) ->
                 .status()
                 == reqwest::StatusCode::NOT_FOUND
             {
-                return wasm_command(&format!("{}@{}", pkg.name, pkg.version), &args.jobs, root)
-                    .await;
+                return wasm_command(
+                    &format!("{}@{}", pkg.name, pkg.version),
+                    &args.jobs,
+                    root,
+                    config_root,
+                    args.frozen_lockfile,
+                )
+                .await;
             }
             let entry = if registry::client()
                 .get(pkg.url("src/dagger/runner.ts"))
@@ -170,7 +190,13 @@ async fn command_with_config(args: &RunArgs, root: &Path, config_root: &Path) ->
     Ok(command)
 }
 
-async fn wasm_command(pipeline: &str, jobs: &[String], root: &Path) -> Result<Command> {
+async fn wasm_command(
+    pipeline: &str,
+    jobs: &[String],
+    root: &Path,
+    config_root: &Path,
+    frozen: bool,
+) -> Result<Command> {
     let module = if pipeline == "." {
         let dir = [".fluentci/plugin", ".fluentci", "plugin", "."]
             .into_iter()
@@ -178,6 +204,12 @@ async fn wasm_command(pipeline: &str, jobs: &[String], root: &Path) -> Result<Co
             .find(|p| p.join("Cargo.toml").is_file())
             .context("This directory does not contain a FluentCI plugin")?;
         modules::build(&dir.join("Cargo.toml"))
+            .await?
+            .to_string_lossy()
+            .into_owned()
+    } else if pipeline.starts_with("https://") || pipeline.starts_with("http://") {
+        let url = config::validate_module_url(pipeline)?;
+        modules::download(&url)
             .await?
             .to_string_lossy()
             .into_owned()
@@ -189,7 +221,7 @@ async fn wasm_command(pipeline: &str, jobs: &[String], root: &Path) -> Result<Co
     {
         pipeline.into()
     } else {
-        let package = registry::resolve(pipeline).await?;
+        let package = crate::lockfile::resolve(config_root, pipeline, frozen).await?;
         if package.metadata.url.is_some() {
             registry::wasm_artifact(&package)
                 .await?
@@ -212,13 +244,14 @@ fn engine_command(module: &str, jobs: &[String]) -> Result<Command> {
 }
 
 pub async fn action_command(action: &crate::models::Action, root: &Path) -> Result<Command> {
-    action_command_at(action, root, root).await
+    action_command_at(action, root, root, false).await
 }
 
 async fn action_command_at(
     action: &crate::models::Action,
     root: &Path,
     default_directory: &Path,
+    frozen_lockfile: bool,
 ) -> Result<Command> {
     let cwd = action
         .working_directory
@@ -241,6 +274,7 @@ async fn action_command_at(
     } else {
         command_with_config(
             &RunArgs {
+                frozen_lockfile,
                 wasm: action.use_wasm,
                 pipeline: Some(action.plugin.clone()),
                 jobs,
@@ -259,6 +293,45 @@ async fn action_command_at(
     Ok(c)
 }
 
+async fn render_readme(readme: Option<std::path::PathBuf>) -> Result<()> {
+    if let Some(readme) = readme {
+        process::run(Command::new("glow").arg(readme).arg("-p")).await
+    } else {
+        println!("No README.md is available for this module.");
+        Ok(())
+    }
+}
+
+fn source_readme(source: &Path) -> Result<Option<std::path::PathBuf>> {
+    let directory = if source.is_dir() {
+        source
+    } else {
+        source.parent().context("Module has no source directory")?
+    };
+    let readme = directory.join("README.md");
+    if !readme.is_file() {
+        return Ok(None);
+    }
+    let readme = readme.canonicalize()?;
+    anyhow::ensure!(
+        readme.starts_with(directory.canonicalize()?),
+        "README must stay inside the module source directory"
+    );
+    Ok(Some(readme))
+}
+
+async fn package_readme(
+    package: &registry::Resolved,
+    repository: Option<&str>,
+    subdir: Option<&Path>,
+) -> Result<Option<std::path::PathBuf>> {
+    let Some(repository) = repository.or(package.metadata.repository.as_deref()) else {
+        return Ok(None);
+    };
+    let subdir = subdir.or_else(|| package.metadata.subdir.as_deref().map(Path::new));
+    crate::git_source::readme(repository, subdir, None).await
+}
+
 pub async fn inspect(pipeline: Option<&str>, mode: &str) -> Result<()> {
     let workspace = Workspace::current()?;
     let root = &workspace.root;
@@ -275,6 +348,52 @@ pub async fn inspect(pipeline: Option<&str>, mode: &str) -> Result<()> {
             println!("{}", step.name);
         }
         return Ok(());
+    }
+    if mode == "docs" {
+        let declared = if pipeline == "." {
+            let mut found = modules::discover(&workspace)?;
+            if found.len() == 1 { found.pop() } else { None }
+        } else {
+            modules::resolve(root, pipeline)?
+        };
+        if let Some(module) = declared {
+            let readme = match &module.source {
+                modules::ModuleSource::Git(_) => {
+                    let source =
+                        crate::lockfile::git_source(root, &module.definition, false, false).await?;
+                    source_readme(&source)?
+                }
+                modules::ModuleSource::Path(source) => source_readme(source)?,
+                modules::ModuleSource::Registry(reference) => {
+                    let package = crate::lockfile::resolve(root, reference, false).await?;
+                    package_readme(
+                        &package,
+                        module.definition.repository.as_deref(),
+                        module.definition.subdir.as_deref(),
+                    )
+                    .await?
+                }
+                modules::ModuleSource::Url(_) => {
+                    if let Some(repository) = module.definition.repository.as_deref() {
+                        crate::git_source::readme(
+                            repository,
+                            module.definition.subdir.as_deref(),
+                            None,
+                        )
+                        .await?
+                    } else {
+                        None
+                    }
+                }
+            };
+            return render_readme(readme).await;
+        }
+        if pipeline != "." && !pipeline.contains("://") {
+            let package = crate::lockfile::resolve(root, pipeline, false).await?;
+            if package.metadata.url.is_some() {
+                return render_readme(package_readme(&package, None, None).await?).await;
+            }
+        }
     }
     let mut c = Command::new(if mode == "docs" { "glow" } else { "deno" });
     if mode == "docs" {

@@ -23,6 +23,12 @@ pub const MAX_WASM_BYTES: usize = 64 * 1024 * 1024;
 
 #[derive(Debug, Default, clap::Args)]
 pub struct MetadataOptions {
+    /// Optional module source directory inside the Git repository
+    #[arg(long, value_name = "PATH")]
+    pub subdir: Option<std::path::PathBuf>,
+    /// Optional source Git repository URL
+    #[arg(long, value_name = "URL")]
+    pub repository: Option<String>,
     /// JSON function metadata manifest, supported by every SDK
     #[arg(long, value_name = "JSON")]
     pub manifest: Option<std::path::PathBuf>,
@@ -55,6 +61,10 @@ pub struct PluginRecord {
     pub sha256: String,
     pub size: usize,
     pub functions: Vec<crate::plugin_metadata::Function>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub subdir: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -227,6 +237,8 @@ fn metadata(
         .filter(|_| module.is_none())
         .and_then(|config| config.package.as_ref());
     let fields = MetadataOptions {
+        subdir: None,
+        repository: None,
         manifest: None,
         name: overrides.name.clone().or_else(|| {
             if artifact {
@@ -407,21 +419,41 @@ pub async fn publish(
         tokio::fs::read(artifact).await?
     };
     validate_wasm(&bytes)?;
+    let config = config::find(&workspace.root)
+        .map(|path| config::Config::read(&path))
+        .transpose()?;
+    let definition = config.as_ref().and_then(|config| {
+        let selected = module.or(metadata_options.name.as_deref());
+        selected
+            .and_then(|name| config.modules.iter().find(|m| m.name == name))
+            .or_else(|| (config.modules.len() == 1).then(|| &config.modules[0]))
+    });
+    let repository = metadata_options.repository.clone().or_else(|| {
+        definition.and_then(|module| module.repository.clone().or_else(|| module.git.clone()))
+    });
+    if let Some(repository) = &repository {
+        config::validate_repository(repository)?;
+    }
+    let subdir = metadata_options
+        .subdir
+        .as_deref()
+        .or_else(|| definition.and_then(|module| module.subdir.as_deref()));
+    let subdir = subdir
+        .map(|subdir| -> Result<String> {
+            config::validate_subdir(subdir)?;
+            anyhow::ensure!(repository.is_some(), "subdir requires a repository URL");
+            Ok(subdir
+                .to_str()
+                .context("subdir must be valid UTF-8")?
+                .to_owned())
+        })
+        .transpose()?;
     let declared = if let Some(path) = &metadata_options.manifest {
         Some(crate::plugin_metadata::read_manifest(path, &bytes)?)
     } else {
-        let config = config::find(&workspace.root)
-            .map(|path| config::Config::read(&path))
-            .transpose()?;
-        config.as_ref().and_then(|config| {
-            let selected = module.or(metadata_options.name.as_deref());
-            let definition = selected
-                .and_then(|name| config.modules.iter().find(|m| m.name == name))
-                .or_else(|| (config.modules.len() == 1).then(|| &config.modules[0]));
-            definition
-                .filter(|m| !m.functions.is_empty())
-                .map(|m| m.functions.clone())
-        })
+        definition
+            .filter(|m| !m.functions.is_empty())
+            .map(|m| m.functions.clone())
     };
     let functions = crate::plugin_metadata::inspect(&bytes, declared)?;
     let publisher = auth::authenticate(db).await?;
@@ -463,6 +495,8 @@ pub async fn publish(
         sha256: digest,
         size,
         functions,
+        repository,
+        subdir,
     };
     let key = format!("{}-{}", record.name, record.version);
     let request: CreateRecord<String> = CreateRecord {

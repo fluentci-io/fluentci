@@ -8,6 +8,8 @@ pub mod db;
 pub mod detection;
 pub mod executor;
 pub mod export;
+pub(crate) mod git_source;
+pub mod lockfile;
 pub mod models;
 pub mod modules;
 pub mod pipeline;

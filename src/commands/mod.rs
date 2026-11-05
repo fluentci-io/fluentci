@@ -54,6 +54,12 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
     match cli.command {
         None => run::execute(&cli.run, &db).await,
         Some(Command::Run(args)) => run::execute(&args, &db).await,
+        Some(Command::Install { frozen_lockfile }) => {
+            crate::lockfile::install(frozen_lockfile, false, None).await
+        }
+        Some(Command::Update { module }) => {
+            crate::lockfile::install(false, true, module.as_deref()).await
+        }
         Some(Command::Init {
             name,
             template,

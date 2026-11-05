@@ -74,6 +74,8 @@ fn package(row: p.Row) -> Package {
     sha256,
     option.map(row.functions, function_metadata.from_string),
     size,
+    row.repository,
+    row.subdir,
     row.uri,
     cid,
   )
@@ -237,6 +239,8 @@ fn package_values(plugin: Package, time: Int) -> List(Assignment) {
     set(p.url(table), Some(plugin.url)),
     set(p.sha256(table), Some(plugin.sha256)),
     set(p.size(table), Some(plugin.size)),
+    set(p.repository(table), plugin.repository),
+    set(p.subdir(table), plugin.subdir),
     set(
       p.functions(table),
       option.map(plugin.functions, function_metadata.to_string),

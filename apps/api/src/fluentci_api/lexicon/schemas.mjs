@@ -83,6 +83,18 @@ export const schemas = [
               minimum: 8,
               maximum: 67108864,
             },
+            repository: {
+              type: 'string',
+              description: 'Optional source Git repository URL.',
+              maxLength: 2048,
+              format: 'uri',
+            },
+            subdir: {
+              type: 'string',
+              description: 'Relative module source directory inside the Git repository.',
+              minLength: 1,
+              maxLength: 2048,
+            },
           },
         },
       },
@@ -218,6 +230,18 @@ export const schemas = [
             type: 'integer',
             minimum: 8,
             maximum: 67108864,
+          },
+          repository: {
+            type: 'string',
+            description: 'Optional source Git repository URL.',
+            maxLength: 2048,
+            format: 'uri',
+          },
+          subdir: {
+            type: 'string',
+            description: 'Relative module source directory inside the Git repository.',
+            minLength: 1,
+            maxLength: 2048,
           },
           uri: {
             type: 'string',

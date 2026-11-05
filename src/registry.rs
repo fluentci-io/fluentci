@@ -26,7 +26,7 @@ pub fn client() -> &'static reqwest::Client {
     &CLIENT
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Default, serde::Serialize, Deserialize)]
 pub struct Package {
     pub name: Option<String>,
     pub version: Option<String>,
@@ -37,6 +37,10 @@ pub struct Package {
     pub author: Option<String>,
     pub url: Option<String>,
     pub sha256: Option<String>,
+    pub uri: Option<String>,
+    pub cid: Option<String>,
+    pub repository: Option<String>,
+    pub subdir: Option<String>,
 }
 
 pub struct Resolved {
@@ -56,15 +60,77 @@ impl Resolved {
     }
 }
 
+#[derive(Debug, PartialEq, Eq)]
+pub(crate) struct PackageReference<'a> {
+    pub qualified: &'a str,
+    pub name: &'a str,
+    pub author: &'a str,
+    pub version: &'a str,
+    pub scoped: bool,
+}
+
+pub(crate) fn package_reference(value: &str) -> Result<PackageReference<'_>> {
+    let scoped = value.starts_with('@');
+    let body = value.strip_prefix('@').unwrap_or(value);
+    let (qualified, version) = body.rsplit_once('@').unwrap_or((body, "latest"));
+    let (author, name) = qualified.rsplit_once('/').unwrap_or(("", qualified));
+    anyhow::ensure!(
+        !name.is_empty() && !version.is_empty(),
+        "Expected @handle/module[@version]"
+    );
+    if scoped {
+        anyhow::ensure!(
+            !author.is_empty() && !author.contains('/') && !author.chars().any(char::is_whitespace),
+            "Expected @handle/module[@version]"
+        );
+        anyhow::ensure!(
+            name.len() <= 64
+                && name.as_bytes()[0].is_ascii_lowercase()
+                && name
+                    .bytes()
+                    .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == b'-'),
+            "Invalid registry module name"
+        );
+    }
+    let version = if version == "latest" {
+        version
+    } else {
+        version.strip_prefix('v').unwrap_or(version)
+    };
+    if scoped && version != "latest" {
+        let parsed = semver::Version::parse(version)
+            .context("Expected an exact SemVer version or latest")?;
+        anyhow::ensure!(
+            parsed.build.is_empty(),
+            "Package versions cannot include build metadata"
+        );
+    }
+    Ok(PackageReference {
+        qualified,
+        name,
+        author,
+        version,
+        scoped,
+    })
+}
+
 pub async fn resolve(pipeline: &str) -> Result<Resolved> {
+    resolve_at(pipeline, &base_url()).await
+}
+
+async fn resolve_at(pipeline: &str, registry_url: &str) -> Result<Resolved> {
     #[derive(Deserialize)]
     struct Output {
         package: Package,
     }
-    let (qualified, version) = pipeline.rsplit_once('@').unwrap_or((pipeline, "latest"));
-    let (author, name) = qualified
-        .rsplit_once('/')
-        .map_or(("", qualified), |(author, name)| (author, name));
+    let reference = package_reference(pipeline)?;
+    let PackageReference {
+        qualified,
+        name,
+        author,
+        version,
+        scoped,
+    } = reference;
     let mut query = vec![("name", name)];
     if version != "latest" {
         query.push(("version", version));
@@ -75,13 +141,14 @@ pub async fn resolve(pipeline: &str) -> Result<Resolved> {
     let response = client()
         .get(format!(
             "{}/xrpc/io.fluentci.registry.getPackage",
-            base_url()
+            registry_url.trim_end_matches('/')
         ))
         .query(&query)
         .send()
         .await?;
-    if response.status() != reqwest::StatusCode::NOT_FOUND
-        && response.status() != reqwest::StatusCode::METHOD_NOT_ALLOWED
+    if scoped
+        || response.status() != reqwest::StatusCode::NOT_FOUND
+            && response.status() != reqwest::StatusCode::METHOD_NOT_ALLOWED
     {
         let output: Output = response.error_for_status()?.json().await?;
         let version = output
@@ -90,11 +157,18 @@ pub async fn resolve(pipeline: &str) -> Result<Resolved> {
             .clone()
             .context("Registry returned no version")?;
         return Ok(Resolved {
-            name: qualified.into(),
+            name: if scoped {
+                format!("@{qualified}")
+            } else {
+                qualified.into()
+            },
             version,
             metadata: output.package,
         });
     }
+    let version = pipeline
+        .rsplit_once('@')
+        .map_or("latest", |(_, version)| version);
     // Older registries still serve legacy TypeScript packages through /v1.
     let metadata: Package = client()
         .get(format!("{API}/pipeline/{name}"))
@@ -225,4 +299,64 @@ pub async fn check_update(db: &crate::db::Db) -> Result<()> {
         eprintln!("Latest published FluentCI release: {tag}; run fluentci upgrade to install it");
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use axum::{Json, Router, extract::Query, routing::get};
+    use std::collections::HashMap;
+
+    #[test]
+    fn scoped_package_references_support_pinned_and_latest_versions() -> Result<()> {
+        for (input, version) in [
+            ("@tsiry-sandratraina.com/sccache@v0.1.0", "0.1.0"),
+            ("@tsiry-sandratraina.com/sccache@0.1.0", "0.1.0"),
+            ("@tsiry-sandratraina.com/sccache@latest", "latest"),
+            ("@tsiry-sandratraina.com/sccache", "latest"),
+        ] {
+            let reference = package_reference(input)?;
+            assert_eq!(reference.name, "sccache");
+            assert_eq!(reference.author, "tsiry-sandratraina.com");
+            assert_eq!(reference.version, version);
+        }
+        for invalid in [
+            "@handle",
+            "@/module",
+            "@handle/",
+            "@handle/module@",
+            "@handle/module@main",
+            "@handle/one/two",
+        ] {
+            assert!(package_reference(invalid).is_err(), "{invalid}");
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn scoped_references_send_the_canonical_author_and_version_to_xrpc() -> Result<()> {
+        let router = Router::new().route("/xrpc/io.fluentci.registry.getPackage", get(|Query(query): Query<HashMap<String, String>>| async move {
+            assert_eq!(query.get("author").map(String::as_str), Some("tsiry-sandratraina.com"));
+            assert_eq!(query.get("name").map(String::as_str), Some("sccache"));
+            assert!(query.get("version").is_none_or(|version| version == "0.1.0"));
+            Json(serde_json::json!({"package": {"name":"sccache","version":"0.1.0","url":"https://example.com/sccache.wasm"}}))
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let address = listener.local_addr()?;
+        let server = tokio::spawn(async move { axum::serve(listener, router).await });
+        for reference in [
+            "@tsiry-sandratraina.com/sccache@v0.1.0",
+            "@tsiry-sandratraina.com/sccache@latest",
+            "@tsiry-sandratraina.com/sccache",
+        ] {
+            let package = resolve_at(reference, &format!("http://{address}")).await?;
+            assert_eq!(package.version, "0.1.0");
+            assert_eq!(
+                package.metadata.url.as_deref(),
+                Some("https://example.com/sccache.wasm")
+            );
+        }
+        server.abort();
+        Ok(())
+    }
 }

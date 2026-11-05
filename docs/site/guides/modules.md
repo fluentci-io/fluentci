@@ -23,7 +23,7 @@ name = "shared"
 url = "https://example.com/plugins/shared.wasm"
 ```
 
-Names must be unique. Each declaration needs exactly one of `path` or `url`.
+Names must be unique. Each declaration needs exactly one of `path`, `url`, `package`, or `git`.
 SDK defaults to Rust. Precompiled paths do not need a language compiler to rebuild
 the artifact. URL modules cannot specify a build command or artifact override.
 
@@ -78,3 +78,34 @@ fluentci run ci hello
 The root declaration continues to work. Relative paths belong to the config
 file. With multiple modules, select a name explicitly instead of relying on an
 ambiguous `.` selection. See [configuration reference](/reference/configuration/).
+
+## Registry aliases and Git monorepos
+
+```toml
+[[modules]]
+name = "sccache"
+package = "@tsiry-sandratraina.com/sccache"
+
+[[modules]]
+name = "checks"
+git = "https://github.com/example/pipelines.git"
+rev = "main"
+subdir = "modules/checks"
+sdk = "purescript"
+```
+
+```sh
+fluentci install
+fluentci run sccache build ...
+fluentci run checks check
+fluentci docs checks
+```
+
+`subdir` selects the SDK source directory inside a repository. `rev` defaults to
+`HEAD`; the exact commit is saved in `fluentci.lock`. Registry versions are also
+locked, including an omitted version or `@latest`. Commit the lockfile and use
+`fluentci install --frozen-lockfile` in CI. Update deliberately with
+`fluentci update checks` or `fluentci update sccache`.
+
+See the [field reference](/reference/configuration/) and
+[lockfile reference](/reference/lockfile/) for validation and frozen-mode behavior.

@@ -21,6 +21,8 @@ pub type Row {
     sha256: Option(String),
     size: Option(Int),
     functions: Option(String),
+    repository: Option(String),
+    subdir: Option(String),
     deleted: Bool,
     event_time: Int,
   )
@@ -42,6 +44,8 @@ pub fn decoder() -> Decoder(Row) {
   use sha256 <- decode.field("sha256", decode.optional(decode.string))
   use size <- decode.field("size", decode.optional(decode.int))
   use functions <- decode.field("functions", decode.optional(decode.string))
+  use repository <- decode.field("repository", decode.optional(decode.string))
+  use subdir <- decode.field("subdir", decode.optional(decode.string))
   use deleted <- decode.field("deleted", decode.bool)
   use event_time <- decode.field("event_time", decode.int)
   decode.success(Row(
@@ -57,6 +61,8 @@ pub fn decoder() -> Decoder(Row) {
     sha256,
     size,
     functions,
+    repository,
+    subdir,
     deleted,
     event_time,
   ))
@@ -78,6 +84,8 @@ pub fn table() -> Table(Row) {
       text_column("sha256", True, False),
       integer_column("size", True, False),
       text_column("functions", True, False),
+      text_column("repository", True, False),
+      text_column("subdir", True, False),
       boolean_column("deleted"),
       integer_column("event_time", False, False),
     ],
@@ -144,4 +152,12 @@ pub fn event_time(table: Table(Row)) -> Expression(Int) {
 
 pub fn functions(table: Table(Row)) -> Expression(Option(String)) {
   column(table, "functions", optional(text()))
+}
+
+pub fn repository(table: Table(Row)) -> Expression(Option(String)) {
+  column(table, "repository", optional(text()))
+}
+
+pub fn subdir(table: Table(Row)) -> Expression(Option(String)) {
+  column(table, "subdir", optional(text()))
 }

@@ -59,6 +59,20 @@ Cursors belong to their original search/filter; do not reuse one with a changed
 query or author. The SQL constraint prevents duplicate publisher/name/version
 records while allowing different publishers and new versions.
 
+## Package metadata fields
+
+Records and package views include `name`, `description`, `version`, `publishedAt`,
+`author`, `license`, `url`, `sha256`, and `size`. Package views also include `uri`
+and `cid`. Optional `repository` and `subdir` describe the source Git repository
+and module directory. Optional `functions` contains exported jobs with `name`,
+`wasmParams`, `wasmResults`, and optional `description`, `args`, and `returnType`.
+Each argument has `name` and `type`, with an optional description.
+
+Function ABI data comes from the Wasm artifact. Source-level inputs and outputs
+come from declarations or a manifest; omission means unknown. Existing records
+without the new optional fields remain valid. See [publishing](/registry/publishing/)
+for the portable metadata format shared by all SDKs.
+
 ## Upload
 
 `POST /xrpc/io.fluentci.registry.publish` receives raw `application/wasm` bytes,

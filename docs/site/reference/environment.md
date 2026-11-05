@@ -14,6 +14,7 @@ source: "reference/environment.md"
 | `FLUENTCI_NO_OPEN`       | Set to suppress Studio's automatic browser opening                                  |
 | `RUST_LOG`               | Rust diagnostic logging filter                                                      |
 | `FLUENTCI_PROJECT_ID`    | Associate supported local execution with a saved project                            |
+| `FLUENTCI_GIT_CACHE`     | Override the Git checkout cache directory                                           |
 | `FLUENTCI_PACKAGE_CACHE` | Override verified registry Wasm download cache directory                            |
 
 Workspace `.fluentci/.env` values are separate from application command-line

@@ -395,6 +395,46 @@ and [publishing](./docs/site/registry/publishing.md) for SDK-independent functio
 metadata (`[[modules.functions]]` or `--manifest`), module builds, and public
 Wasm URL publishing.
 
+### Registry and Git modules
+
+Run a published module without creating `fluentci.toml`:
+
+```sh
+fluentci @tsiry-sandratraina.com/sccache@v0.1.0 build ...
+fluentci @tsiry-sandratraina.com/sccache build ...
+fluentci https://plugins.example/shared.wasm hello
+```
+
+Declare reusable dependencies with aliases or Git subdirectories:
+
+```toml
+[[modules]]
+name = "sccache"
+package = "@tsiry-sandratraina.com/sccache"
+
+[[modules]]
+name = "checks"
+git = "https://github.com/example/pipelines.git"
+rev = "main"
+subdir = "modules/checks"
+sdk = "purescript"
+```
+
+```sh
+fluentci install
+fluentci run sccache build ...
+fluentci update sccache
+fluentci install --frozen-lockfile
+fluentci docs checks
+```
+
+Commit `fluentci.lock` to pin registry versions/checksums and Git commits. Omitted
+versions and `@latest` remain at their locked release until updated. `docs`
+renders the module's README with `glow`, using its Git subdirectory when present.
+Publishing supports optional `repository` and `subdir` metadata on every module.
+See the [configuration](./docs/site/reference/configuration.md) and
+[lockfile](./docs/site/reference/lockfile.md) references.
+
 ### Environment providers and built-in functions
 
 The engine's Rust PDK exposes `dag()` for environment setup, commands, pipelines,

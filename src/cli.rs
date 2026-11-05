@@ -55,6 +55,9 @@ fn default_database() -> PathBuf {
 
 #[derive(Debug, Clone, Default, Args)]
 pub struct RunArgs {
+    /// Require registry dependencies to match fluentci.lock without changing it
+    #[arg(long)]
+    pub frozen_lockfile: bool,
     /// Reload cached TypeScript pipeline sources
     #[arg(short = 'r', long)]
     pub reload: bool,
@@ -73,6 +76,17 @@ pub struct RunArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Resolve registry modules, download Wasm, and generate fluentci.lock
+    Install {
+        /// Reject missing or changed dependency locks
+        #[arg(long)]
+        frozen_lockfile: bool,
+    },
+    /// Refresh locked registry modules to their requested versions
+    Update {
+        /// Declared module alias or package reference (defaults to all)
+        module: Option<String>,
+    },
     /// Run a local or registry pipeline
     Run(RunArgs),
     /// Create a root fluentci.toml and a default module under .fluentci

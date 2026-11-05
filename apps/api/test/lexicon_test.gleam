@@ -22,6 +22,8 @@ pub fn generated_encoder_preserves_json_field_names_test() {
     sha256: "0000000000000000000000000000000000000000000000000000000000000000",
     size: 8,
     functions: None,
+    repository: None,
+    subdir: None,
   )
   |> models.encode_plugin
   |> json.to_string

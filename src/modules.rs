@@ -27,6 +27,8 @@ pub struct LocalModule {
 pub enum ModuleSource {
     Path(PathBuf),
     Url(reqwest::Url),
+    Registry(String),
+    Git(String),
 }
 
 impl ModuleSource {
@@ -34,20 +36,28 @@ impl ModuleSource {
         match self {
             Self::Path(path) => path.display().to_string(),
             Self::Url(url) => url.to_string(),
+            Self::Registry(package) => package.clone(),
+            Self::Git(url) => url.clone(),
         }
     }
 
     fn path(&self) -> Result<&Path> {
         match self {
             Self::Path(path) => Ok(path),
-            Self::Url(_) => anyhow::bail!("URL modules do not have a local source directory"),
+            Self::Url(_) | Self::Registry(_) | Self::Git(_) => {
+                anyhow::bail!("URL modules do not have a local source directory")
+            }
         }
     }
 }
 
 impl LocalModule {
     pub fn resolve(config: &Path, module: &Module) -> Result<Self> {
-        let source = if let Some(url) = &module.url {
+        let source = if let Some(url) = &module.git {
+            ModuleSource::Git(url.clone())
+        } else if let Some(package) = module.registry_package() {
+            ModuleSource::Registry(package.into())
+        } else if let Some(url) = &module.url {
             ModuleSource::Url(crate::config::validate_module_url(url)?)
         } else {
             let path = config
@@ -73,6 +83,14 @@ impl LocalModule {
     /// Read exports without builds, downloads, or SDK setup.
     pub async fn cached_functions(&self) -> Result<Vec<String>> {
         let artifact = match &self.source {
+            ModuleSource::Registry(_) | ModuleSource::Git(_) => {
+                return Ok(self
+                    .definition
+                    .functions
+                    .iter()
+                    .map(|f| f.name.clone())
+                    .collect());
+            }
             ModuleSource::Url(url) => dirs::cache_dir()
                 .context("Cache directory is unavailable")?
                 .join("fluentci/modules")
@@ -141,7 +159,33 @@ impl LocalModule {
         functions(&tokio::fs::read(artifact).await?)
     }
 
+    pub async fn prepare_with_lock(&self, root: &Path, frozen: bool) -> Result<PathBuf> {
+        if let ModuleSource::Registry(reference) = &self.source {
+            let package = crate::lockfile::resolve(root, reference, frozen).await?;
+            return crate::registry::wasm_artifact(&package).await;
+        }
+        if let ModuleSource::Git(_) = &self.source {
+            let source = crate::lockfile::git_source(root, &self.definition, frozen, false).await?;
+            let local = Self {
+                name: self.name.clone(),
+                definition: self.definition.clone(),
+                source: ModuleSource::Path(source),
+            };
+            return Box::pin(local.prepare()).await;
+        }
+        self.prepare().await
+    }
+
     pub async fn prepare(&self) -> Result<PathBuf> {
+        if let ModuleSource::Git(_) = &self.source {
+            let workspace = Workspace::current()?;
+            return Box::pin(self.prepare_with_lock(&workspace.root, false)).await;
+        }
+        if let ModuleSource::Registry(reference) = &self.source {
+            let workspace = Workspace::current()?;
+            let package = crate::lockfile::resolve(&workspace.root, reference, false).await?;
+            return crate::registry::wasm_artifact(&package).await;
+        }
         if let ModuleSource::Url(url) = &self.source {
             return download(url).await;
         }
@@ -300,6 +344,11 @@ pub fn discover(workspace: &Workspace) -> Result<Vec<LocalModule>> {
             name: ".".into(),
             definition: Module {
                 name: ".".into(),
+                package: None,
+                git: None,
+                rev: None,
+                subdir: None,
+                repository: None,
                 functions: vec![],
                 version: None,
                 description: None,
@@ -533,6 +582,11 @@ pub async fn add(
     }
     let definition = Module {
         name: name.into(),
+        package: None,
+        git: None,
+        rev: None,
+        subdir: None,
+        repository: None,
         functions: vec![],
         version: None,
         description: None,
@@ -612,7 +666,7 @@ pub async fn add(
     Ok(())
 }
 
-async fn download(url: &reqwest::Url) -> Result<PathBuf> {
+pub(crate) async fn download(url: &reqwest::Url) -> Result<PathBuf> {
     let directory = dirs::cache_dir()
         .context("Cache directory is unavailable")?
         .join("fluentci/modules");

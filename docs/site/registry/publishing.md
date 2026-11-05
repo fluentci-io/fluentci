@@ -18,6 +18,8 @@ sdk = "clojurescript"
 version = "1.0.0"
 description = "Reusable build checks"
 license = "MIT"
+repository = "https://github.com/example/pipelines.git"
+subdir = "modules/ci"
 ```
 
 Names start with a lowercase letter and contain lowercase letters, digits, and
@@ -85,6 +87,18 @@ overwrite a previously published release.
 If storage succeeds but PDS creation fails, the object may exist without an
 indexed package record. Check the error before retrying; upload and PDS write are
 separate remote operations.
+
+## Source repository and monorepo directory
+
+Each module may set optional `repository` and `subdir` fields. Git source modules
+publish their `git` URL as the repository when no explicit override is set.
+`--repository URL` and `--subdir PATH` provide publishing overrides. Subdirectories
+must stay inside the repository: absolute paths and parent traversal are rejected.
+
+These optional fields are part of `io.fluentci.plugin`, survive SQLite indexing,
+and appear in registry responses. `fluentci docs` uses them to find the module's
+`README.md` and render it with `glow` when available. They describe the source;
+the registry still distributes the verified Wasm artifact.
 
 ## Functions, arguments, and return types
 

@@ -183,13 +183,35 @@ test('function signatures survive Jetstream, SQLite and every registry response'
       wasmResults: ['i32'],
     },
   ];
-  await add(connection, event('sccache', '1.0.0', 100, did, { functions }));
+  await add(
+    connection,
+    event('sccache', '1.0.0', 100, did, {
+      functions,
+      repository: 'https://github.com/fluentci-io/fluentci',
+      subdir: 'examples/sccache',
+    }),
+  );
   const { url } = await server(t, connection);
   for (const method of ['getPackage?name=sccache', 'listPackages', 'searchPackages?q=sccache']) {
     const response = await fetch(`${url}/xrpc/io.fluentci.registry.${method}`);
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.deepEqual((body.package ?? body.packages[0]).functions, functions);
+    assert.equal((body.package ?? body.packages[0]).subdir, 'examples/sccache');
+    assert.equal(
+      (body.package ?? body.packages[0]).repository,
+      'https://github.com/fluentci-io/fluentci',
+    );
+  }
+  for (const overrides of [
+    { repository: 'https://example.com/repo', subdir: '../outside' },
+    { subdir: 'modules/cache' },
+    { repository: 'https://user:secret@example.com/repo' },
+  ]) {
+    assert.equal(
+      wire.decodeEvent(JSON.stringify(event('unsafe-source', '1.0.0', 102, did, overrides))).isOk(),
+      false,
+    );
   }
   const malformed = event('bad-signature', '1.0.0', 101, did, {
     functions: [

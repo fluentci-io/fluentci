@@ -30,6 +30,8 @@ pub type Plugin {
     sha256: String,
     functions: Option(List(PluginFunction)),
     size: Int,
+    repository: Option(String),
+    subdir: Option(String),
   )
 }
 
@@ -54,6 +56,16 @@ pub fn encode_plugin(value: Plugin) -> json.Json {
           json.array(item, fn(item) { encode_plugin_function(item) }),
         ),
       ]
+    })
+  let fields =
+    list.append(fields, case value.repository {
+      None -> []
+      Some(item) -> [#("repository", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.subdir {
+      None -> []
+      Some(item) -> [#("subdir", json.string(item))]
     })
   json.object(fields)
 }
@@ -130,6 +142,8 @@ pub type RegistryPackageView {
     sha256: String,
     functions: Option(List(PluginFunction)),
     size: Int,
+    repository: Option(String),
+    subdir: Option(String),
     uri: String,
     cid: String,
   )
@@ -158,6 +172,16 @@ pub fn encode_registry_package_view(value: RegistryPackageView) -> json.Json {
           json.array(item, fn(item) { encode_plugin_function(item) }),
         ),
       ]
+    })
+  let fields =
+    list.append(fields, case value.repository {
+      None -> []
+      Some(item) -> [#("repository", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.subdir {
+      None -> []
+      Some(item) -> [#("subdir", json.string(item))]
     })
   json.object(fields)
 }

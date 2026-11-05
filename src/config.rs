@@ -23,6 +23,16 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct Module {
     pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub package: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub git: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub rev: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subdir: Option<PathBuf>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub repository: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub functions: Vec<crate::plugin_metadata::Function>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -43,6 +53,43 @@ pub struct Module {
     pub artifact: Option<PathBuf>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub build: Option<Vec<String>>,
+}
+
+impl Module {
+    pub fn registry_package(&self) -> Option<&str> {
+        self.package.as_deref().or_else(|| {
+            (self.name.starts_with('@')
+                && self.path.is_none()
+                && self.url.is_none()
+                && self.git.is_none())
+            .then_some(self.name.as_str())
+        })
+    }
+}
+
+pub fn validate_subdir(path: &Path) -> Result<()> {
+    anyhow::ensure!(
+        !path.as_os_str().is_empty()
+            && !path.to_string_lossy().contains(['\\', ':'])
+            && path.components().all(|part| matches!(
+                part,
+                std::path::Component::Normal(_) | std::path::Component::CurDir
+            )),
+        "subdir must stay inside the repository (no absolute paths or ..)"
+    );
+    Ok(())
+}
+
+pub fn validate_repository(value: &str) -> Result<()> {
+    let url = reqwest::Url::parse(value).context("Invalid repository URL")?;
+    anyhow::ensure!(
+        matches!(url.scheme(), "http" | "https" | "ssh" | "git")
+            && url.host_str().is_some()
+            && url.password().is_none()
+            && (url.username().is_empty() || url.scheme() == "ssh"),
+        "Repository must be an HTTP(S), ssh://, or git:// URL without passwords"
+    );
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, Default, Deserialize, Serialize, ValueEnum, PartialEq, Eq)]
@@ -113,10 +160,52 @@ impl Config {
         let config: Self = toml::from_str(content).context("Invalid fluentci.toml")?;
         let mut names = HashSet::new();
         for module in &config.modules {
-            validate_module_name(&module.name)?;
+            if module.name.starts_with('@') {
+                crate::registry::package_reference(&module.name)?;
+            } else {
+                validate_module_name(&module.name)?;
+            }
+            if let Some(git) = &module.git {
+                validate_repository(git)?;
+            }
+            if let Some(rev) = &module.rev {
+                anyhow::ensure!(
+                    module.git.is_some()
+                        && !rev.is_empty()
+                        && !rev.starts_with('-')
+                        && !rev.chars().any(char::is_whitespace)
+                        && !rev.contains(':'),
+                    "rev requires git and must be a Git branch, tag, or commit"
+                );
+            }
+            if let Some(subdir) = &module.subdir {
+                validate_subdir(subdir)?;
+                anyhow::ensure!(
+                    module.git.is_some() || module.repository.is_some(),
+                    "subdir requires git or repository"
+                );
+            }
+            if let Some(repository) = &module.repository {
+                validate_repository(repository)?;
+            }
+            if let Some(package) = module.registry_package() {
+                anyhow::ensure!(
+                    package.starts_with('@'),
+                    "Registry module references must use @handle/module[@version]"
+                );
+                crate::registry::package_reference(package)?;
+                anyhow::ensure!(
+                    module.build.is_none() && module.artifact.is_none() && module.entry.is_none(),
+                    "Registry modules cannot override build, entry, or artifact"
+                );
+            }
             anyhow::ensure!(
-                module.path.is_some() != module.url.is_some(),
-                "Module {:?} must specify exactly one of path or url",
+                (module.path.is_some() as u8
+                    + module.url.is_some() as u8
+                    + module.registry_package().is_some() as u8
+                    + module.git.is_some() as u8)
+                    == 1,
+                "Module {:?} must specify exactly one of path, url, package, or git",
                 module.name
             );
             if let Some(path) = &module.path {
@@ -151,7 +240,8 @@ impl Config {
                     module.name
                 );
             }
-            let precompiled = module.url.is_some()
+            let precompiled = module.registry_package().is_some()
+                || module.url.is_some()
                 || module.path.as_ref().is_some_and(|path| {
                     path.extension()
                         .is_some_and(|extension| extension == "wasm")

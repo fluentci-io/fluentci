@@ -50,6 +50,7 @@ const navigation = [
     items: [
       { title: "CLI commands", url: "/reference/cli/" },
       { title: "fluentci.toml", url: "/reference/configuration/" },
+      { title: "fluentci.lock", url: "/reference/lockfile/" },
       { title: "Environment variables", url: "/reference/environment/" },
       { title: "GraphQL and events", url: "/reference/graphql/" },
       { title: "Registry XRPC API", url: "/reference/registry-api/" },

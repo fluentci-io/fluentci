@@ -84,3 +84,37 @@ sdk = "typescript"
         assert!(Config::parse(declaration).is_err(), "{declaration}");
     }
 }
+
+#[test]
+fn registry_module_aliases_and_repository_metadata_are_supported() -> anyhow::Result<()> {
+    let config = fluentci::config::Config::parse(
+        r#"
+[[modules]]
+name = "sccache"
+package = "@tsiry-sandratraina.com/sccache@v0.1.0"
+repository = "https://github.com/fluentci-io/fluentci"
+[[modules]]
+name = "@tsiry-sandratraina.com/sccache"
+"#,
+    )?;
+    for module in &config.modules {
+        let resolved = fluentci::modules::LocalModule::resolve(
+            std::path::Path::new("/tmp/fluentci.toml"),
+            module,
+        )?;
+        assert!(matches!(
+            resolved.source,
+            fluentci::modules::ModuleSource::Registry(_)
+        ));
+    }
+    for source in [
+        "name='test'\npackage='@handle/module'\npath='.'",
+        "name='test'\npackage='@handle/module'\nurl='https://example.com/mod.wasm'",
+        "name='test'\npackage='@handle/module'\nbuild=['sh']",
+        "name='test'\npackage='unscoped'",
+        "name='test'\npath='.'\nrepository='https://user:password@example.com/repo'",
+    ] {
+        assert!(fluentci::config::Config::parse(&format!("[[modules]]\n{source}")).is_err());
+    }
+    Ok(())
+}

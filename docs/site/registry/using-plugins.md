@@ -24,13 +24,21 @@ Package identity is publisher plus plugin name. Use a handle or DID to avoid
 ambiguity:
 
 ```sh
-fluentci run --wasm alice.example/hello-ci@1.0.0 hello
+fluentci @tsiry-sandratraina.com/sccache@v0.1.0 build ...
+fluentci run @tsiry-sandratraina.com/sccache@latest build ...
+fluentci @tsiry-sandratraina.com/sccache build ...
 ```
+
+No `fluentci.toml` or `--wasm` flag is required for these invocations. Use a
+complete AT Protocol handle, including the domain; a shortened display name
+is not an account handle. The first argument after the module is its exported
+function; remaining arguments are forwarded to that function.
 
 A declared local module wins over a registry package with the same selector.
 Without an explicit version, package resolution chooses the latest stable
 SemVer release, using a prerelease only when no stable release exists. Explicit
-versions make reproducible automation easier.
+versions and [fluentci.lock](/reference/lockfile/) make reproducible automation easier.
+After the initial resolution, a locked `latest` stays pinned until explicitly updated.
 
 ## Download and execution
 
@@ -55,3 +63,31 @@ url = "https://plugins.example/shared.wasm"
 Then run `fluentci run shared hello`. A direct URL module and a registry package
 are different inputs: registry metadata carries publisher/version/checksum
 information, while a URL declaration identifies a compiled artifact directly.
+
+## Declare a registry dependency
+
+```toml
+[[modules]]
+name = "sccache"
+package = "@tsiry-sandratraina.com/sccache@v0.1.0"
+```
+
+```sh
+fluentci install
+fluentci run sccache build ...
+fluentci docs sccache
+```
+
+`docs` uses the published repository URL and optional subdirectory to find
+`README.md`, rendered with `glow` when available. Older records without source
+metadata may have no documentation available.
+
+## Invoke an artifact URL directly
+
+```sh
+fluentci https://plugins.example/shared.wasm hello
+fluentci run https://plugins.example/shared.wasm hello
+```
+
+These commands also work without configuration. URL modules use their artifact
+cache; registry references use publisher/version metadata and checksum locks.
