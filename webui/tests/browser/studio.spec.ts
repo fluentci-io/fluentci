@@ -185,9 +185,17 @@ test("validates forms, suggests project paths, and inspects pipeline spans", asy
   await expect(
     page.getByRole("region", { name: "Pipeline spans" }),
   ).toBeVisible();
+  if (testInfo.project.name === "desktop") {
+    const bounds = await page.getByTestId("span-timeline").boundingBox();
+    await page.mouse.move(
+      bounds!.x + 172 + (bounds!.width - 252) * 0.6,
+      bounds!.y + 40,
+    );
+    await expect(page.getByTestId("span-hover-guide")).toBeVisible();
+  }
   await page.screenshot({
     path: `test-results/spans-${testInfo.project.name}.png`,
-    fullPage: true,
+    fullPage: testInfo.project.name !== "desktop",
   });
   expect(
     await page.evaluate(
@@ -199,4 +207,39 @@ test("validates forms, suggests project paths, and inspects pipeline spans", asy
     page.getByRole("button", { name: /Build Studio/ }),
   ).toHaveAttribute("aria-expanded", "true");
   await expect(page.getByText("✓ 148 modules transformed")).toBeVisible();
+});
+
+test("live logs follow the tail, pause on upward scrolling, and resume", async ({
+  page,
+}) => {
+  await page.goto("/project/local-fluentci?fixture=large");
+  const output = page.getByLabel("Test engine output");
+  const distanceFromEnd = () =>
+    output.evaluate(
+      (element) =>
+        element.scrollHeight - element.clientHeight - element.scrollTop,
+    );
+  await expect(
+    page.getByRole("button", { name: "Following", exact: true }),
+  ).toBeVisible();
+  await expect.poll(distanceFromEnd).toBeLessThan(4);
+  await output.evaluate((element) => {
+    element.scrollTop -= 400;
+  });
+  await expect(
+    page.getByRole("button", { name: "Paused", exact: true }),
+  ).toBeVisible();
+  await expect.poll(distanceFromEnd).toBeGreaterThan(100);
+  const top = await output.evaluate((element) => element.scrollTop);
+  const summary = page.getByText(/steps finished.*log lines/);
+  const previous = await summary.textContent();
+  await expect(summary).not.toHaveText(previous!);
+  expect(
+    Math.abs((await output.evaluate((element) => element.scrollTop)) - top),
+  ).toBeLessThan(4);
+  await page.getByRole("button", { name: "Paused", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Following", exact: true }),
+  ).toBeVisible();
+  await expect.poll(distanceFromEnd).toBeLessThan(4);
 });

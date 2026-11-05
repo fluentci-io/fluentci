@@ -1,3 +1,4 @@
+import { useRef, useState } from "react";
 import type { Job, Run } from "../types";
 import { isActive } from "../api";
 import { StatusIcon, statusLabel } from "./ui";
@@ -23,6 +24,8 @@ export function PipelineSpans({
   now: number;
   onSelect: (job: Job) => void;
 }) {
+  const plot = useRef<HTMLDivElement>(null);
+  const [hover, setHover] = useState<number | null>(null);
   const { spans, total } = pipelineTimings(run, now);
   const scale = Math.max(total, 1);
   const slowest = spans
@@ -81,7 +84,42 @@ export function PipelineSpans({
         ))}
       </div>
       <div className="overflow-x-auto">
-        <div className="min-w-[560px]">
+        <div
+          data-testid="span-timeline"
+          className="relative min-w-[560px]"
+          onPointerMove={(event) => {
+            const bounds = plot.current?.getBoundingClientRect();
+            if (!bounds || !bounds.width || event.pointerType === "touch") {
+              setHover(null);
+              return;
+            }
+            const position = (event.clientX - bounds.left) / bounds.width;
+            setHover(position >= 0 && position <= 1 ? position : null);
+          }}
+          onPointerLeave={() => setHover(null)}
+        >
+          <div
+            ref={plot}
+            aria-hidden="true"
+            className="pointer-events-none absolute inset-y-0 left-[172px] right-20 z-20"
+          >
+            {hover !== null && (
+              <div
+                data-testid="span-hover-guide"
+                className="absolute inset-y-0 w-px bg-accent/90 shadow-[0_0_5px_#a68ae188]"
+                style={{ left: `${hover * 100}%` }}
+              >
+                <span
+                  className="absolute top-0 whitespace-nowrap rounded border border-accent/40 bg-accent px-1.5 py-0.5 font-mono text-[10px] font-medium tabular-nums text-canvas shadow-md"
+                  style={{
+                    transform: `translateX(${hover > 0.85 ? "-100%" : hover < 0.15 ? "0" : "-50%"})`,
+                  }}
+                >
+                  {spanDuration(hover * total)}
+                </span>
+              </div>
+            )}
+          </div>
           <div className="grid grid-cols-[160px_minmax(0,1fr)_68px] gap-3 pb-2 text-[10px] text-muted">
             <span>Span / step</span>
             <div className="flex justify-between">

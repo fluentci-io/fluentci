@@ -566,3 +566,9 @@ build and validate changes to the unified Rust CLI.
 
 FluentCI is licensed under the [Mozilla Public License 2.0](./LICENSE). Imported
 engine and Studio sources retain their license notices.
+
+## Desktop app
+
+FluentCI Studio also runs as a native Tauri app. It uses its own automatically
+assigned API port, so it can run alongside `fluentci studio`. See the
+[desktop setup and build guide](desktop/README.md).

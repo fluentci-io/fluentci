@@ -236,5 +236,5 @@ async fn update_stats(db: &Db, project: &Project) -> Result<()> {
             .count() as i32,
     );
     p.recent_runs = Some(recent);
-    db.save_project(&p).await
+    db.save_project_stats(&p).await
 }

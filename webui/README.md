@@ -7,6 +7,9 @@ API and WebSocket event stream. No hosted account is required.
 - One pipeline control: **Run** before the first execution, **Cancel** while
   queued/running, **Restart** after completion, failure, or cancellation.
 - Collapsible steps with live elapsed times and ANSI terminal output.
+- Live log streaming automatically follows new output and the next active step.
+  Scrolling upward, touching back through output, or inspecting a step pauses
+  following; **Paused** resumes it. New runs start in Follow mode.
 - Live log streaming with follow/pause scrolling, timestamps, instant filtering,
   match navigation, and full-run `.txt` downloads.
 - Build-history bars with hover/focus tooltips and links to previous executions.

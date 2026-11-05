@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type Ref,
+} from "react";
 import { useQueries, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAtom } from "jotai";
@@ -95,6 +102,7 @@ export function Step({
   focusedLogId,
   logError,
   now,
+  tailRef,
 }: {
   job: Job;
   logs: Log[];
@@ -105,6 +113,7 @@ export function Step({
   focusedLogId?: string;
   logError?: unknown;
   now: number;
+  tailRef?: Ref<HTMLDivElement>;
 }) {
   const elapsed =
     job.status === "RUNNING" && job.startedAt
@@ -121,6 +130,7 @@ export function Step({
   );
   const viewport = useRef<HTMLDivElement>(null);
   const [follow, setFollow] = useAtom(followLogsAtom);
+  const previousScrollTop = useRef(0);
   const virtual = lines.length > 300;
   const virtualizer = useVirtualizer({
     count: virtual ? lines.length : 0,
@@ -134,10 +144,12 @@ export function Step({
     () => new Map(logs.map((log, index) => [log.id, index + 1])),
     [logs],
   );
-  useEffect(() => {
-    if (follow && !search && open && viewport.current)
+  useLayoutEffect(() => {
+    if (follow && !search && open && !focusedLogId && viewport.current) {
       viewport.current.scrollTop = viewport.current.scrollHeight;
-  }, [logs.length, follow, search, open]);
+      previousScrollTop.current = viewport.current.scrollTop;
+    }
+  }, [logs.length, follow, search, open, focusedLogId]);
   useEffect(() => {
     if (!focusedLogId || !open) return;
     const index = lines.findIndex((line) => line.id === focusedLogId);
@@ -229,14 +241,9 @@ export function Step({
               tabIndex={0}
               onScroll={(event) => {
                 const element = event.currentTarget;
-                if (
-                  follow &&
-                  element.scrollHeight -
-                    element.clientHeight -
-                    element.scrollTop >
-                    48
-                )
+                if (follow && element.scrollTop < previousScrollTop.current - 1)
                   setFollow(false);
+                previousScrollTop.current = element.scrollTop;
               }}
             >
               {lines.length ? (
@@ -269,6 +276,7 @@ export function Step({
               )}
             </div>
           )}
+          <div ref={tailRef} className="scroll-mb-12" />
         </div>
       )}
     </section>
@@ -301,6 +309,8 @@ export function RunView({ run }: { run: Run | null | undefined }) {
   const [exporting, setExporting] = useState(false);
   const [exportError, setExportError] = useState<unknown>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const liveTail = useRef<HTMLDivElement>(null);
+  const touchY = useRef<number | null>(null);
   const jobs = run?.jobs || [];
   const results = useQueries({
     queries: jobs.map((job) => ({
@@ -338,6 +348,59 @@ export function RunView({ run }: { run: Run | null | undefined }) {
     (total, result) => total + (result.data?.length || 0),
     0,
   );
+  const liveJobId = jobs.find((job) => job.status === "RUNNING")?.id;
+  const runActive = isActive(run?.status);
+  useEffect(() => {
+    setFollow(!focusJob && !focusLog);
+  }, [run?.id, focusJob, focusLog, setFollow]);
+  useEffect(() => {
+    if (follow && view === "steps" && !search && liveJobId) {
+      setExpanded((old) =>
+        old[liveJobId] === true ? old : { ...old, [liveJobId]: true },
+      );
+    }
+  }, [follow, view, search, liveJobId]);
+  useEffect(() => {
+    if (
+      follow &&
+      runActive &&
+      view === "steps" &&
+      !search &&
+      !focusJob &&
+      !focusLog
+    )
+      liveTail.current?.scrollIntoView({
+        block: "nearest",
+        behavior: "auto",
+      });
+  }, [
+    follow,
+    runActive,
+    view,
+    search,
+    totalLines,
+    liveJobId,
+    expanded,
+    focusJob,
+    focusLog,
+  ]);
+  useEffect(() => {
+    const pause = (event: KeyboardEvent) => {
+      if (
+        event.target instanceof HTMLInputElement ||
+        event.target instanceof HTMLTextAreaElement
+      )
+        return;
+      if (
+        view === "steps" &&
+        (["PageUp", "Home", "ArrowUp"].includes(event.key) ||
+          (event.key === " " && event.shiftKey))
+      )
+        setFollow(false);
+    };
+    window.addEventListener("keydown", pause);
+    return () => window.removeEventListener("keydown", pause);
+  }, [view, setFollow]);
   useEffect(() => {
     setExpanded(focusJob ? { [focusJob]: true } : {});
     setMatchIndex(0);
@@ -389,7 +452,25 @@ export function RunView({ run }: { run: Run | null | undefined }) {
       </Empty>
     );
   return (
-    <div>
+    <div
+      onWheel={(event) => {
+        if (view === "steps" && event.deltaY < 0) setFollow(false);
+      }}
+      onTouchStart={(event) => {
+        touchY.current = event.touches[0]?.clientY ?? null;
+      }}
+      onTouchMove={(event) => {
+        const current = event.touches[0]?.clientY;
+        if (
+          view === "steps" &&
+          current !== undefined &&
+          touchY.current !== null &&
+          current > touchY.current + 4
+        )
+          setFollow(false);
+        touchY.current = current ?? null;
+      }}
+    >
       <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <StatusBadge status={run.status} />
@@ -519,7 +600,29 @@ export function RunView({ run }: { run: Run | null | undefined }) {
           <button
             className={`toolbar-btn ${follow ? "text-accent" : ""}`}
             aria-pressed={follow}
-            onClick={() => setFollow((value) => !value)}
+            title={
+              follow
+                ? "Following live output. Scroll up to pause."
+                : "Resume automatic scrolling to live output"
+            }
+            onClick={() => {
+              if (follow) {
+                setFollow(false);
+                return;
+              }
+              setSearch("");
+              setFollow(true);
+              if (focusJob || focusLog)
+                setParams(
+                  (previous) => {
+                    const next = new URLSearchParams(previous);
+                    next.delete("job");
+                    next.delete("log");
+                    return next;
+                  },
+                  { replace: true },
+                );
+            }}
           >
             {follow ? <Radio size={14} /> : <Pause size={14} />}
             <span>{follow ? "Following" : "Paused"}</span>
@@ -544,11 +647,12 @@ export function RunView({ run }: { run: Run | null | undefined }) {
           <button
             className="toolbar-btn"
             aria-label="Collapse all steps"
-            onClick={() =>
+            onClick={() => {
+              setFollow(false);
               setExpanded(
                 Object.fromEntries(jobs.map((job) => [job.id, false])),
-              )
-            }
+              );
+            }}
           >
             <ChevronsDownUp size={14} />
           </button>
@@ -608,6 +712,7 @@ export function RunView({ run }: { run: Run | null | undefined }) {
                 search={search}
                 open={open}
                 onToggle={() => {
+                  setFollow(false);
                   if (search) setSearch("");
                   setExpanded((old) => ({ ...old, [job.id]: !open }));
                 }}
@@ -621,6 +726,7 @@ export function RunView({ run }: { run: Run | null | undefined }) {
                 }
                 logError={results[index].error}
                 now={now}
+                tailRef={job.id === liveJobId ? liveTail : undefined}
               />
             );
           })}

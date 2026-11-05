@@ -484,3 +484,32 @@ describe("pipeline spans", () => {
     expect(await screen.findByText("✓ 148 modules transformed")).toBeVisible();
   });
 });
+
+it("follows the next active step and resumes after inspecting older output", async () => {
+  const { api } = renderApp();
+  await screen.findByRole("button", { name: /Test engine/ });
+  const scroll = vi.spyOn(Element.prototype, "scrollIntoView");
+  fireEvent.wheel(screen.getByLabelText("Test engine output"), {
+    deltaY: -100,
+  });
+  await screen.findByRole("button", { name: "Paused" });
+  scroll.mockClear();
+  act(() => {
+    api.runs[0].jobs[1].status = "SUCCESS";
+    api.runs[0].jobs[2].status = "RUNNING";
+    api.runs[0].jobs[2].startedAt = new Date().toISOString();
+    api.publish("job", api.runs[0].jobs[1]);
+    api.publish("job", api.runs[0].jobs[2]);
+  });
+  await waitFor(() =>
+    expect(
+      screen.getByRole("button", { name: /Build release/ }),
+    ).toHaveAttribute("aria-expanded", "true"),
+  );
+  expect(scroll).not.toHaveBeenCalled();
+  await userEvent.click(screen.getByRole("button", { name: "Paused" }));
+  await waitFor(() =>
+    expect(scroll).toHaveBeenCalledWith({ block: "nearest", behavior: "auto" }),
+  );
+  expect(screen.getByRole("button", { name: "Following" })).toBeVisible();
+});

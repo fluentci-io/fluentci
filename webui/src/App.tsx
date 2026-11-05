@@ -12,6 +12,7 @@ import {
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { repositorySchema, type RepositoryValues } from "./forms";
+import { isDesktop, isMacDesktop, openDesktopProject } from "./desktop";
 import { useAtom, useAtomValue } from "jotai";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import {
@@ -291,7 +292,10 @@ export default function App() {
         </div>
       </aside>
       <div className={sidebarOpen ? "pt-14 lg:pl-60" : "pt-14"}>
-        <header className="fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between gap-4 border-b border-line bg-panel px-4">
+        <header
+          data-tauri-drag-region={isMacDesktop() ? "deep" : undefined}
+          className={`fixed inset-x-0 top-0 z-50 flex h-14 items-center justify-between gap-4 border-b border-line bg-panel pr-4 ${isMacDesktop() ? "select-none pl-20" : "pl-4"}`}
+        >
           <button
             className="icon-btn"
             aria-label={sidebarOpen ? "Hide left panel" : "Show left panel"}
@@ -928,7 +932,25 @@ function NewProject({ onClose }: { onClose: () => void }) {
           </button>
         ))}
       </div>
-      {mode === "local" ? (
+      {mode === "local" && isDesktop() ? (
+        <div>
+          <p className="text-sm leading-6 text-muted">
+            Choose a project folder. Studio discovers its pipeline modules and
+            saves it to your local workspace.
+          </p>
+          <button
+            type="button"
+            className="btn-primary mt-5 w-full"
+            onClick={openDesktopProject}
+          >
+            <Folder size={15} />
+            Open project folder
+          </button>
+          <p className="mt-3 text-xs text-muted">
+            You can also use File → Open Project or ⌘O / Ctrl+O.
+          </p>
+        </div>
+      ) : mode === "local" ? (
         <>
           <p className="text-sm leading-6 text-muted">
             Open a terminal in your project directory and start Studio. Your

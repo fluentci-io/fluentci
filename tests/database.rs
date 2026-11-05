@@ -117,3 +117,31 @@ async fn same_timestamp_runs_are_not_lost() -> anyhow::Result<()> {
     assert_eq!(db.runs(&p.id).await?.len(), 3);
     Ok(())
 }
+
+#[tokio::test]
+async fn finishing_a_run_does_not_overwrite_project_metadata_edits() -> anyhow::Result<()> {
+    let directory = tempfile::tempdir()?;
+    let db = Db::open(&directory.path().join("db")).await?;
+    let mut original = Project::new("/workspace".into());
+    db.save_project(&original).await?;
+    let mut edited = original.clone();
+    edited.name = "renamed".into();
+    edited.display_name = Some("New display name".into());
+    edited.description = Some("Edited while running".into());
+    edited.archived = Some(true);
+    db.save_project_with_unique_name(&edited).await?;
+    original.speed = Some(42.0);
+    original.reliability = Some(100.0);
+    original.builds_per_week = Some(1);
+    original.recent_runs = Some(vec![]);
+    db.save_project_stats(&original).await?;
+    let saved = db.project(&original.id).await?.unwrap();
+    assert_eq!(saved.name, edited.name);
+    assert_eq!(saved.display_name, edited.display_name);
+    assert_eq!(saved.description, edited.description);
+    assert_eq!(saved.archived, Some(true));
+    assert_eq!(saved.speed, Some(42.0));
+    assert_eq!(saved.builds_per_week, Some(1));
+    assert_eq!(saved.recent_runs.unwrap().len(), 0);
+    Ok(())
+}

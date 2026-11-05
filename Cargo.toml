@@ -41,6 +41,8 @@ toml_edit = "0.25"
 uuid = { version = "1", features = ["v4"] }
 wasmparser = "0.243"
 zip = { version = "4", default-features = false, features = ["deflate"] }
+sea-query = { version = "1", default-features = false, features = ["backend-sqlite", "thread-safe"] }
+sea-query-sqlx = { version = "=0.8.1", default-features = false, features = ["sqlx-sqlite"] }
 
 [dev-dependencies]
 wat = "1"

@@ -2,9 +2,12 @@ import { useEffect } from "react";
 import { useSetAtom } from "jotai";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { connectionAtom } from "./state";
+import { isDesktop } from "./desktop";
 import type { Action, Job, Log, Project, Run } from "./types";
 
-export const endpoint = import.meta.env.VITE_APP_API_URL || "/graphql";
+export const endpoint = isDesktop()
+  ? "/graphql"
+  : import.meta.env.VITE_APP_API_URL || "/graphql";
 export const projectFields =
   "id name displayName description path archived tags";
 export const jobFields = "id name status createdAt startedAt duration";
@@ -167,7 +170,7 @@ export function useLiveEvents() {
     const connect = () => {
       if (disposed) return;
       const url = new URL(
-        import.meta.env.VITE_APP_WS_URL || "/ws",
+        isDesktop() ? "/ws" : import.meta.env.VITE_APP_WS_URL || "/ws",
         new URL(endpoint, location.origin),
       );
       if (url.protocol === "https:") url.protocol = "wss:";

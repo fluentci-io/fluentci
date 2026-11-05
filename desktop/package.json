@@ -1,0 +1,14 @@
+{
+  "name": "fluentci-desktop",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "bun scripts/tauri.ts dev",
+    "build": "bun scripts/tauri.ts build",
+    "icons": "tauri icon ../webui/public/favicon.svg --output src-tauri/icons"
+  },
+  "devDependencies": {
+    "@tauri-apps/cli": "^2.11.0"
+  }
+}
