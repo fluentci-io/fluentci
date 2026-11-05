@@ -56,23 +56,36 @@ pub async fn execute(db: Db, project: Project, events: Option<Events>) -> Result
     execute_prepared(db, project, run, events).await
 }
 
+/// Prepare a new run containing only the requested saved action.
+pub async fn prepare_job(db: &Db, project: &Project, name: &str) -> Result<Run> {
+    let mut actions = db.actions(&project.id).await?;
+    if actions.is_empty() {
+        actions = crate::detection::actions(Path::new(&project.path))?;
+        db.save_actions(&project.id, &actions).await?;
+    }
+    let action = actions
+        .iter()
+        .find(|action| action.name == name)
+        .with_context(|| format!("Job {name:?} not found"))?;
+    anyhow::ensure!(action.enabled, "Job {name:?} is disabled");
+    let mut run = prepare(db, project).await?;
+    for job in &mut run.jobs {
+        if job.name != name {
+            job.status = "SKIPPED".into();
+        }
+    }
+    run.title = format!("Re-run {name}");
+    db.save_run(&run).await?;
+    Ok(run)
+}
+
 pub async fn execute_job(
     db: Db,
     project: Project,
     name: &str,
     events: Option<Events>,
 ) -> Result<Job> {
-    let mut run = prepare(&db, &project).await?;
-    anyhow::ensure!(
-        run.jobs.iter().any(|job| job.name == name),
-        "Job {name:?} not found"
-    );
-    for job in &mut run.jobs {
-        if job.name != name {
-            job.status = "SKIPPED".into();
-        }
-    }
-    db.save_run(&run).await?;
+    let run = prepare_job(&db, &project, name).await?;
     let run = execute_prepared(db, project, run, events).await?;
     run.jobs
         .into_iter()

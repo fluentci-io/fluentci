@@ -18,6 +18,7 @@ fluentci run main build      # Studio + host release CLI
 | --- | --- | --- |
 | `main` | `check`, `build` | Standard repository checks and release CLI build |
 | `rust` | `format`, `lint`, `test`, `check`, `build` | Cargo formatting, linting, tests, and builds |
+| `desktop` | `build`, `sign`, `package`, `upload` | macOS Studio builds, verified ad hoc signatures, installers, and release uploads |
 | `studio` | `install`, `build` | Frozen Bun dependency install and embedded Studio web assets |
 | `release` | `prepare`, `build`, `buildPrepared`, `check`, `package`, `upload`, `bsd*` | Release inputs, native builds, verification, and uploads |
 | `nix` | `check`, `metadata`, `flakehub`, `flakestry` | Flake validation, inspection, and explicit publishing |
@@ -145,3 +146,35 @@ executables verify command arguments, working directories, ordering, and failure
 propagation. Packaging uses real tar and SHA-256 operations against a temporary
 fixture. Upload and Nix commands use mocks and do not publish anything.
 `FLUENTCI_BIN` can select another release CLI binary.
+
+## Desktop releases
+
+The **Studio desktop** workflow (`.github/workflows/desktop-release.yml`) runs on
+published releases and through **Actions → Studio desktop → Run workflow**.
+Select any branch and leave `tag` empty for a standalone build; installers remain
+available as workflow artifacts for 14 days and nothing is published. Supply an
+existing release tag to build that tag and upload its installers to the release.
+Both paths build `aarch64-apple-darwin` on Apple Silicon and
+`x86_64-apple-darwin` on Intel macOS runners.
+
+The Ubuntu preparation job compiles `desktop` once to portable Wasm; macOS jobs
+need Bun and Rust, without the PureScript compiler toolchain. The module uses
+the desktop wrapper's release/locked build and Studio asset hook. It signs with
+`codesign --force --deep --sign -` and verifies with
+`codesign --verify --deep --strict --verbose=2`, matching Rocksky Desktop.
+These builds are ad hoc signed, without Apple Developer signing or notarization.
+
+To build and package locally on macOS:
+
+```sh
+export TARGET=aarch64-apple-darwin # or x86_64-apple-darwin
+export RELEASE_VERSION=2026.11.04
+fluentci run desktop build
+fluentci run desktop package     # signs, verifies, creates DMG + app ZIP + SHA-256
+# Explicit publication to an existing release (requires GH_TOKEN):
+fluentci run desktop upload
+```
+
+Outputs are `desktop/release-assets/FluentCI-Studio_<tag>_<target>.dmg`,
+`.app.zip`, and individual `.sha256` files. Packaging refuses to create archives
+if signing or verification fails. `sign` is also available as a separate job.

@@ -7,6 +7,8 @@ API and WebSocket event stream. No hosted account is required.
 - One pipeline control: **Run** before the first execution, **Cancel** while
   queued/running, **Restart** after completion, failure, or cancellation.
 - Collapsible steps with live elapsed times and ANSI terminal output.
+- Hover or focus a job to reveal **Re-run job**. It starts a new run using that
+  job's saved action, skips the other jobs, and preserves the original logs.
 - Live log streaming automatically follows new output and the next active step.
   Scrolling upward, touching back through output, or inspecting a step pauses
   following; **Paused** resumes it. New runs start in Follow mode.

@@ -243,3 +243,32 @@ test("live logs follow the tail, pause on upward scrolling, and resume", async (
   ).toBeVisible();
   await expect.poll(distanceFromEnd).toBeLessThan(4);
 });
+
+test("re-runs a single job from its hover control", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/project/local-fluentci");
+  const job = page.getByRole("button", { name: /Build Studio/ });
+  await expect(job).toHaveAttribute("aria-expanded", "false");
+  await job.hover();
+  const restart = page
+    .getByRole("button", { name: "Re-run job", exact: true })
+    .first();
+  await expect(restart).toHaveAttribute("title", "Re-run job");
+  await expect(restart).toHaveCSS("opacity", "1");
+  await restart.click();
+  await expect(page).toHaveURL(/\/run\//);
+  await expect(
+    page.getByRole("button", { name: /Build Studio/ }),
+  ).toHaveAttribute("aria-expanded", "true");
+  await expect(page.getByRole("button", { name: /Test engine/ })).toContainText(
+    "Skipped",
+  );
+  await expect(
+    page.getByRole("button", { name: "Re-run job", exact: true }).first(),
+  ).toBeDisabled();
+  await page.screenshot({
+    path: `test-results/rerun-job-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+});

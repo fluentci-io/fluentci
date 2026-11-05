@@ -6,10 +6,10 @@ import {
   useState,
   type Ref,
 } from "react";
-import { useQueries, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useAtom } from "jotai";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   IconArrowDown as ArrowDown,
   IconArrowUp as ArrowUp,
@@ -23,13 +23,19 @@ import {
   IconPlayerPause as Pause,
   IconBroadcast as Radio,
   IconSearch as Search,
+  IconRefresh as Refresh,
   IconTerminal2 as Terminal,
   IconX as X,
 } from "@tabler/icons-react";
 import Ansi from "ansi-to-react";
 import { PipelineSpans } from "./PipelineSpans";
-import { graphql, isActive, mergeLogs } from "../api";
-import { followLogsAtom, logSearchAtom, timestampsAtom } from "../state";
+import { graphql, isActive, mergeLogs, runFields } from "../api";
+import {
+  actionDraftsAtom,
+  followLogsAtom,
+  logSearchAtom,
+  timestampsAtom,
+} from "../state";
 import type { Job, Log, Run } from "../types";
 import {
   date,
@@ -103,6 +109,9 @@ export function Step({
   logError,
   now,
   tailRef,
+  onRerun,
+  rerunning = false,
+  rerunDisabled = false,
 }: {
   job: Job;
   logs: Log[];
@@ -114,6 +123,9 @@ export function Step({
   logError?: unknown;
   now: number;
   tailRef?: Ref<HTMLDivElement>;
+  onRerun?: () => void;
+  rerunning?: boolean;
+  rerunDisabled?: boolean;
 }) {
   const elapsed =
     job.status === "RUNNING" && job.startedAt
@@ -198,32 +210,50 @@ export function Step({
     <section
       className={`overflow-hidden rounded-lg border ${job.status === "RUNNING" ? "border-accent/35" : job.status === "FAILURE" ? "border-danger/30" : "border-line"}`}
     >
-      <button
-        className="flex w-full items-center gap-3 bg-panel px-4 py-3.5 text-left transition-colors hover:bg-elevated"
-        aria-expanded={open}
-        aria-controls={`step-${job.id}`}
-        onClick={onToggle}
-      >
-        <ChevronDown
-          size={15}
-          className={`shrink-0 text-muted transition-transform ${open ? "" : "-rotate-90"}`}
-        />
-        <StatusIcon status={job.status} />
-        <span className="min-w-0 flex-1 truncate text-sm font-medium">
-          {job.name}
-        </span>
-        {search && (
-          <span className="text-xs text-muted">
-            {lines.length} matching lines
+      <div className="group flex items-center bg-panel pr-3 transition-colors hover:bg-elevated">
+        <button
+          className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left"
+          aria-expanded={open}
+          aria-controls={`step-${job.id}`}
+          onClick={onToggle}
+        >
+          <ChevronDown
+            size={15}
+            className={`shrink-0 text-muted transition-transform ${open ? "" : "-rotate-90"}`}
+          />
+          <StatusIcon status={job.status} />
+          <span
+            id={`job-name-${job.id}`}
+            className="min-w-0 flex-1 truncate text-sm font-medium"
+          >
+            {job.name}
           </span>
+          {search && (
+            <span className="text-xs text-muted">
+              {lines.length} matching lines
+            </span>
+          )}
+          <span className="hidden text-xs text-muted sm:inline">
+            {statusLabel(job.status)}
+          </span>
+          <span className="min-w-14 text-right font-mono text-xs text-muted">
+            {elapsed != null ? duration(elapsed) : "—"}
+          </span>
+        </button>
+        {onRerun && (
+          <button
+            type="button"
+            className={`icon-btn shrink-0 text-muted transition-opacity hover:text-accent sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100 ${rerunning ? "sm:opacity-100" : ""}`}
+            aria-label="Re-run job"
+            aria-describedby={`job-name-${job.id}`}
+            title="Re-run job"
+            disabled={rerunDisabled}
+            onClick={onRerun}
+          >
+            <Refresh size={16} className={rerunning ? "animate-spin" : ""} />
+          </button>
         )}
-        <span className="hidden text-xs text-muted sm:inline">
-          {statusLabel(job.status)}
-        </span>
-        <span className="min-w-14 text-right font-mono text-xs text-muted">
-          {elapsed != null ? duration(elapsed) : "—"}
-        </span>
-      </button>
+      </div>
       {open && (
         <div id={`step-${job.id}`}>
           {logError ? (
@@ -285,6 +315,32 @@ export function Step({
 
 export function RunView({ run }: { run: Run | null | undefined }) {
   const client = useQueryClient();
+  const navigate = useNavigate();
+  const [drafts] = useAtom(actionDraftsAtom);
+  const rerun = useMutation({
+    mutationFn: async (job: Job) => {
+      if (!run) throw new Error("Select a run first.");
+      if (drafts[run.projectId])
+        throw new Error("Save your action changes before re-running a job.");
+      return (
+        await graphql<{ runPipeline: Run }>(
+          `mutation($id: ID!, $name: String!) { runPipeline(projectId: $id, jobName: $name, wait: false) { ${runFields} } }`,
+          { id: run.projectId, name: job.name },
+        )
+      ).runPipeline;
+    },
+    onSuccess: (next) => {
+      client.setQueryData(["run", next.id], next);
+      client.setQueryData<Run[]>(["runs", next.projectId], (old) => [
+        next,
+        ...(old || []).filter((item) => item.id !== next.id),
+      ]);
+      void client.invalidateQueries({ queryKey: ["runs", next.projectId] });
+      setSearch("");
+      setFollow(true);
+      navigate(`/project/${next.projectId}/run/${next.id}`);
+    },
+  });
   const [params, setParams] = useSearchParams();
   const view = params.get("view") === "spans" ? "spans" : "steps";
   const setView = (value: "steps" | "spans") => {
@@ -501,6 +557,7 @@ export function RunView({ run }: { run: Run | null | undefined }) {
       </div>
       {run.message && <ErrorNotice error={run.message} />}
       {!!exportError && <ErrorNotice error={exportError} />}
+      {rerun.isError && <ErrorNotice error={rerun.error} />}
       <div
         className="mb-3 inline-flex gap-1 rounded-lg border border-line bg-panel p-1"
         role="group"
@@ -726,6 +783,9 @@ export function RunView({ run }: { run: Run | null | undefined }) {
                 }
                 logError={results[index].error}
                 now={now}
+                onRerun={() => rerun.mutate(job)}
+                rerunning={rerun.isPending && rerun.variables?.id === job.id}
+                rerunDisabled={rerun.isPending || isActive(job.status)}
                 tailRef={job.id === liveJobId ? liveTail : undefined}
               />
             );

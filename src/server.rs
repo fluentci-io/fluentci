@@ -477,13 +477,18 @@ impl Mutation {
         ctx: &Context<'_>,
         project_id: ID,
         wait: Option<bool>,
+        job_name: Option<String>,
     ) -> async_graphql::Result<Run> {
         let s = ctx.data::<AppState>()?.clone();
         let project =
             s.db.project(&project_id)
                 .await?
                 .context("Project not found")?;
-        let run = executor::prepare(&s.db, &project).await?;
+        let run = if let Some(name) = job_name {
+            executor::prepare_job(&s.db, &project, &name).await?
+        } else {
+            executor::prepare(&s.db, &project).await?
+        };
         if wait.unwrap_or(false) {
             return Ok(executor::execute_prepared(s.db, project, run, Some(s.events)).await?);
         }

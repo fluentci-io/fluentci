@@ -1,0 +1,110 @@
+name: Studio desktop
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to upload to (leave empty for a branch build with workflow artifacts only)
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release-${{ github.event.release.tag_name || inputs.tag || github.ref }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.tag || format('manual-{0}', github.run_number) }}
+  FLUENTCI_VERSION: '2026.11.04'
+  DESKTOP_MODULE: .fluentci/desktop/dist/plugin.wasm
+
+jobs:
+  prepare:
+    name: Compile the desktop release module
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name && format('refs/tags/{0}', github.event.release.tag_name) || inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+      - name: Set up FluentCI
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install the PureScript Wasm compiler toolchain
+        run: sh .fluentci/scripts/install-sdk-tools.sh
+      - name: Compile the desktop module with FluentCI
+        run: fluentci --check-update=false modules desktop --json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-release-module
+          path: .fluentci/desktop/dist/plugin.wasm
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+  desktop:
+    name: Release Studio desktop (${{ matrix.target }})
+    needs: prepare
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-15
+            target: aarch64-apple-darwin
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+    env:
+      TARGET: ${{ matrix.target }}
+      MACOSX_DEPLOYMENT_TARGET: '11.0'
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TERM_COLOR: always
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.release.tag_name && format('refs/tags/{0}', github.event.release.tag_name) || inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+      - name: Set up FluentCI
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-release-module
+          path: .
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: desktop/src-tauri
+          key: desktop-release-${{ matrix.target }}
+      - name: Build the desktop app with FluentCI
+        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" build
+      - name: Ad hoc sign, verify, and package the desktop app
+        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" package
+      - name: Preserve desktop installers
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluentci-studio-${{ matrix.target }}
+          path: desktop/release-assets/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload desktop GitHub release assets with FluentCI
+        if: github.event_name == 'release' || inputs.tag != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" upload

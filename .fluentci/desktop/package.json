@@ -1,0 +1,11 @@
+{
+  "devDependencies": {
+    "esbuild": "0.25.3"
+  },
+  "name": "fluentci-ci-desktop",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "type": "module"
+}

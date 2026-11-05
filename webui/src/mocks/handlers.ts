@@ -142,6 +142,12 @@ export function createMockApi({
         } else if (/\brunPipeline\s*\(/.test(query)) {
           const run = makeRun("RUNNING", crypto.randomUUID());
           run.date = new Date().toISOString();
+          if (v.name) {
+            run.title = `Re-run ${v.name}`;
+            run.jobs.forEach((job) => {
+              job.status = job.name === v.name ? "RUNNING" : "SKIPPED";
+            });
+          }
           runs.unshift(run);
           data = { runPipeline: run };
           publish("run", run);

@@ -23,12 +23,14 @@ import { basename } from "node:path";
 const command = basename(process.argv[1]);
 appendFileSync(process.env.CI_TEST_LOG, JSON.stringify({command, args: process.argv.slice(2), cwd: process.cwd()}) + "\\n");
 if (process.env.CI_TEST_FAIL === command + ":" + process.argv[2]) process.exit(7);
+if (command === "hdiutil") writeFileSync(process.argv.at(-1), "fixture dmg");
+if (command === "ditto" && process.argv.includes("-c")) writeFileSync(process.argv.at(-1), "fixture zip");
 if (command === "bun" && process.argv[2] === "run") {
   mkdirSync("dist", { recursive: true });
   writeFileSync("dist/index.html", "studio fixture");
 }
 `);
-  for (const program of ["cargo", "bun", "gh", "nix", "flakehub-push", "sudo", "python3"]) {
+  for (const program of ["cargo", "bun", "gh", "nix", "flakehub-push", "sudo", "python3", "codesign", "hdiutil", "ditto"]) {
     const path = join(bin, program);
     // The mock keeps the real program name while executing the same JS body.
     writeFileSync(path, `#!/usr/bin/env node\n${readFileSync(mock, "utf8")}`);
@@ -196,4 +198,67 @@ test("compiled BSD functions invoke the native helper and copied-back verifier",
   assert.equal(readFileSync(join(f.directory, "bsd-built"), "utf8"), "bsd-build");
   success(f.run(module, "bsdVerify", { TARGET: "x86_64-unknown-openbsd", RELEASE_VERSION: "2026.11.04" }));
   assert.deepEqual(f.commands().at(-1).args, [".github/scripts/verify-bsd-release.py", "dist/bsd/x86_64-unknown-openbsd", "2026.11.04", "x86_64-unknown-openbsd"]);
+});
+
+
+test("desktop builds both macOS targets with frozen dependencies and the locked release wrapper", t => {
+  for (const target of ["aarch64-apple-darwin", "x86_64-apple-darwin"]) {
+    const f = fixture(t);
+    mkdirSync(join(f.directory, "desktop"));
+    success(f.run(join(root, ".fluentci/desktop/dist/plugin.wasm"), "build", { TARGET: target }));
+    assert.deepEqual(f.commands().map(({command, args}) => [command, ...args]), [
+      ["bun", "install", "--frozen-lockfile", "--ignore-scripts"],
+      ["bun", "run", "build", "--target", target, "--bundles", "app", "--no-sign"],
+    ]);
+    assert.ok(f.commands().every(({cwd}) => cwd === join(f.directory, "desktop")));
+  }
+});
+
+test("desktop packaging signs and verifies before creating installers and checksums", t => {
+  const f = fixture(t);
+  const env = { TARGET: "aarch64-apple-darwin", RELEASE_VERSION: "2026.11.04" };
+  const app = `desktop/src-tauri/target/${env.TARGET}/release/bundle/macos/FluentCI Studio.app`;
+  mkdirSync(join(f.directory, app), {recursive: true});
+  const module = join(root, ".fluentci/desktop/dist/plugin.wasm");
+  success(f.run(module, "package", env));
+  const commands = f.commands();
+  assert.deepEqual(commands.slice(0, 2).map(({command, args}) => [command, ...args]), [
+    ["codesign", "--force", "--deep", "--sign", "-", app],
+    ["codesign", "--verify", "--deep", "--strict", "--verbose=2", app],
+  ]);
+  for (const extension of [".dmg", ".app.zip"]) {
+    const asset = `FluentCI-Studio_${env.RELEASE_VERSION}_${env.TARGET}${extension}`;
+    const path = join(f.directory, "desktop/release-assets", asset);
+    const checksum = createHash("sha256").update(readFileSync(path)).digest("hex");
+    assert.equal(readFileSync(path + ".sha256", "utf8").trim(), `${checksum}  ${asset}`);
+  }
+  success(f.run(module, "upload", env));
+  const asset = `desktop/release-assets/FluentCI-Studio_${env.RELEASE_VERSION}_${env.TARGET}`;
+  assert.deepEqual(f.commands().at(-1).args, ["release", "upload", env.RELEASE_VERSION,
+    asset + ".dmg", asset + ".dmg.sha256", asset + ".app.zip", asset + ".app.zip.sha256", "--clobber"]);
+});
+
+test("desktop packaging stops when signature verification fails", t => {
+  const f = fixture(t);
+  const target = "x86_64-apple-darwin";
+  mkdirSync(join(f.directory, `desktop/src-tauri/target/${target}/release/bundle/macos/FluentCI Studio.app`), {recursive:true});
+  const result = f.run(join(root, ".fluentci/desktop/dist/plugin.wasm"), "package", {
+    TARGET: target, RELEASE_VERSION: "v0.1.0", CI_TEST_FAIL: "codesign:--verify"
+  });
+  assert.notEqual(result.status, 0);
+  assert.deepEqual(f.commands().map(({command}) => command), ["codesign", "codesign"]);
+  assert.equal(existsSync(join(f.directory, "desktop/release-assets")), false);
+});
+
+test("desktop jobs reject invalid targets and unsafe release tags", t => {
+  const module = join(root, ".fluentci/desktop/dist/plugin.wasm");
+  for (const env of [
+    {TARGET: "../invalid", RELEASE_VERSION: "v0.1.0"},
+    {TARGET: "aarch64-apple-darwin", RELEASE_VERSION: "../../invalid"},
+    {TARGET: "aarch64-apple-darwin", RELEASE_VERSION: null},
+  ]) {
+    const f = fixture(t);
+    assert.notEqual(f.run(module, "package", env).status, 0);
+    assert.deepEqual(f.commands(), []);
+  }
 });

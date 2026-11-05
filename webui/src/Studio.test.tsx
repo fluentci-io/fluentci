@@ -77,6 +77,55 @@ describe("one state-aware pipeline control", () => {
 });
 
 describe("local execution", () => {
+  it("re-runs the selected job without expanding it or running the other jobs", async () => {
+    renderApp("/project/local-fluentci", { status: "SUCCESS" });
+    await screen.findByRole("button", { name: "Restart pipeline" });
+    const buttons = await screen.findAllByRole("button", {
+      name: "Re-run job",
+    });
+    expect(buttons).toHaveLength(3);
+    expect(buttons[0]).toHaveAttribute("title", "Re-run job");
+    await userEvent.click(buttons[0]);
+    expect(
+      await screen.findByText("Re-run Build Studio", { exact: false }),
+    ).toBeVisible();
+    await waitFor(() =>
+      expect(
+        screen.getByRole("button", { name: /Build Studio/ }),
+      ).toHaveAttribute("aria-expanded", "true"),
+    );
+    expect(
+      screen.getAllByRole("button", { name: "Re-run job" })[0],
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: /Test engine/ }),
+    ).toHaveTextContent("Skipped");
+  });
+
+  it("shows a job re-run error and keeps the original output", async () => {
+    renderApp("/project/local-fluentci", { status: "SUCCESS" });
+    const buttons = await screen.findAllByRole("button", {
+      name: "Re-run job",
+    });
+    server.use(
+      http.post("*/graphql", async ({ request }) => {
+        const body = (await request.json()) as { query: string };
+        if (body.query.includes("jobName:"))
+          return HttpResponse.json({
+            errors: [{ message: "Job was removed" }],
+          });
+      }),
+    );
+    await userEvent.click(buttons[0]);
+    expect(await screen.findByRole("alert")).toHaveTextContent(
+      "Job was removed",
+    );
+    expect(
+      screen.getByRole("button", { name: /Build Studio/ }),
+    ).toHaveAttribute("aria-expanded", "false");
+    expect(buttons[0]).toBeEnabled();
+  });
+
   it("opens the active step, collapses completed steps, and lets users toggle output", async () => {
     renderApp();
     const active = await screen.findByRole("button", { name: /Test engine/ });

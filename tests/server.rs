@@ -261,3 +261,55 @@ async fn simultaneous_renames_cannot_claim_the_same_name() -> anyhow::Result<()>
     );
     Ok(())
 }
+
+#[tokio::test]
+async fn rerunning_a_job_executes_only_that_action_and_preserves_history() -> anyhow::Result<()> {
+    let (temp, db) = setup().await?;
+    let project = Project::new(temp.path().to_string_lossy().into_owned());
+    db.save_project(&project).await?;
+    db.save_actions(
+        &project.id,
+        &[
+            Action {
+                name: "first".into(),
+                plugin: "shell".into(),
+                commands: "echo first".into(),
+                enabled: true,
+                ..Default::default()
+            },
+            Action {
+                name: "second".into(),
+                plugin: "shell".into(),
+                commands: "echo second".into(),
+                enabled: true,
+                ..Default::default()
+            },
+        ],
+    )
+    .await?;
+    let original = fluentci::executor::execute(db.clone(), project.clone(), None).await?;
+    let schema = server::schema(AppState::new(db.clone()));
+    let response = schema.execute(format!(r#"mutation {{ runPipeline(projectId:"{}",jobName:"second",wait:true) {{ id status jobs {{ name status logs {{ message }} }} }} }}"#, project.id)).await;
+    assert!(response.errors.is_empty(), "{:?}", response.errors);
+    let data = response.data.into_json()?;
+    let run = &data["runPipeline"];
+    assert_ne!(run["id"].as_str(), Some(original.id.as_str()));
+    assert_eq!(run["status"], "SUCCESS");
+    assert_eq!(run["jobs"][0]["status"], "SKIPPED");
+    assert!(run["jobs"][0]["logs"].is_null());
+    assert_eq!(run["jobs"][1]["status"], "SUCCESS");
+    assert_eq!(run["jobs"][1]["logs"][0]["message"], "second");
+    assert_eq!(
+        db.run(&original.id).await?.unwrap().jobs[0].status,
+        "SUCCESS"
+    );
+    let invalid = schema
+        .execute(format!(
+            r#"mutation {{ runPipeline(projectId:"{}",jobName:"removed",wait:false) {{ id }} }}"#,
+            project.id
+        ))
+        .await;
+    assert!(!invalid.errors.is_empty());
+    assert_eq!(db.runs(&project.id).await?.len(), 2);
+    Ok(())
+}
