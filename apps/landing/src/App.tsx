@@ -6,7 +6,7 @@ const github = "https://github.com/fluentci-io/fluentci";
 const docs = `${github}#readme`;
 const discord = "https://discord.gg/H7M28d9dRk";
 const install =
-  "curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh";
+  "curl -fsSL https://cli.fluentci.io | sh";
 const pipeline = `# fluentci.toml
 [[steps]]
 name = "install"

@@ -57,7 +57,7 @@ through Axum, and persists application data in SQLite through SQLx.
 Install the prebuilt CLI for your platform with curl:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh
+curl -fsSL https://cli.fluentci.io | sh
 export PATH="$HOME/.local/bin:$PATH"
 fluentci --version
 ```
@@ -71,7 +71,7 @@ Override the release with `FLUENTCI_VERSION` and the destination with
 `FLUENTCI_INSTALL_DIR`. Set these variables on `sh` when piping from curl:
 
 ```sh
-curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | \
+curl -fsSL https://cli.fluentci.io | \
   FLUENTCI_VERSION=2026.11.04 FLUENTCI_INSTALL_DIR="$HOME/bin" sh
 ```
 

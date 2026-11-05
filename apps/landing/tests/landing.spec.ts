@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 const install =
-  "curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh";
+  "curl -fsSL https://cli.fluentci.io | sh";
 
 test("SDK tabs show highlighted samples, matching scaffold commands, and support the keyboard", async ({
   page,
