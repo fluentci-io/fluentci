@@ -1,0 +1,19 @@
+amends "../../../../schema/lexicon.pkl"
+
+import "../plugin.pkl" as plugin
+
+id = "io.fluentci.registry.defs"
+description = "Indexed plugin metadata with its repository record URI and CID."
+defs = new Mapping {
+  ["packageView"] = new ObjectField {
+    required = plugin.defs["main"].`record`.required + List("uri", "cid")
+    properties = (plugin.defs["main"].`record`.properties) {
+      ["uri"] = new StringField {
+        format = "at-uri"
+      }
+      ["cid"] = new StringField {
+        format = "cid"
+      }
+    }
+  }
+}

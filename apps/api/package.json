@@ -7,11 +7,13 @@
     "node": ">=24"
   },
   "scripts": {
-    "build": "gleam build --target javascript",
-    "dev": "gleam build --target javascript && node --watch entry/server.mjs",
+    "lexicons:generate": "node scripts/lexicons.mjs",
+    "lexicons:check": "node scripts/lexicons.mjs --check",
+    "build": "bun run lexicons:generate && gleam build --target javascript",
+    "dev": "bun run build && node --watch entry/server.mjs",
     "start": "node entry/server.mjs",
     "test": "gleam test && node --test tests/*.test.mjs",
-    "lint": "gleam format --check src test",
+    "lint": "bun run lexicons:check && gleam format --check src test",
     "typecheck": "gleam check",
     "db:migrate": "gleam build --target javascript && node scripts/migrate.mjs",
     "jetstream": "gleam build --target javascript && node entry/jetstream.mjs"

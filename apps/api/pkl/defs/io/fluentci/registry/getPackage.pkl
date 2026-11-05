@@ -1,0 +1,42 @@
+amends "../../../../schema/lexicon.pkl"
+
+lexicon = 1
+id = "io.fluentci.registry.getPackage"
+description = "Get a package version; omitted version selects the latest SemVer release, excluding prereleases unless no stable release exists."
+defs = new Mapping {
+  ["main"] = new Query {
+    parameters = new Parameters {
+      required = List("name")
+      properties = new Mapping {
+        ["name"] = new StringField {
+          minLength = 1
+          maxLength = 64
+        }
+        ["version"] = new StringField {
+          minLength = 1
+          maxLength = 128
+        }
+        ["author"] = new StringField {
+          format = "at-identifier"
+        }
+      }
+    }
+    output = new Body {
+      encoding = "application/json"
+      schema = new ObjectField {
+        required = List("package")
+        properties = new Mapping {
+          ["package"] = new RefField {
+            ref = "io.fluentci.registry.defs#packageView"
+          }
+        }
+      }
+    }
+    errors = List(new Error {
+      name = "PackageNotFound"
+    }, new Error {
+      name = "AmbiguousPackage"
+      description = "Specify an author to disambiguate publishers."
+    })
+  }
+}

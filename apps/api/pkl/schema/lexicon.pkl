@@ -1,0 +1,83 @@
+/// The Lexicon subset supported by FluentCI's Gleam generator.
+/// Extend this schema and the generator together when adding new field types.
+open class Field {
+  type: String
+  description: String?
+}
+
+class StringField extends Field {
+  type = "string"
+  minLength: Int?
+  maxLength: Int?
+  format: "uri" | "datetime" | "cid" | "at-uri" | "at-identifier" | "did" | Null = null
+}
+
+class IntegerField extends Field {
+  type = "integer"
+  minimum: Int?
+  maximum: Int?
+  default: Int?
+}
+
+class RefField extends Field {
+  type = "ref"
+  ref: String
+}
+
+class ArrayField extends Field {
+  type = "array"
+  items: StringField | IntegerField | RefField
+}
+
+class ObjectField extends Field {
+  type = "object"
+  required: List<String> = List()
+  properties: Mapping<String, StringField | IntegerField | RefField | ArrayField>
+}
+
+class Parameters {
+  type = "params"
+  required: List<String> = List()
+  properties: Mapping<String, StringField | IntegerField>
+}
+
+class Body {
+  encoding: "application/json" | "application/wasm"
+  schema: ObjectField?
+}
+
+class Error {
+  name: String
+  description: String?
+}
+
+class Query extends Field {
+  type = "query"
+  parameters: Parameters
+  output: Body
+  errors: List<Error> = List()
+}
+
+class Procedure extends Field {
+  type = "procedure"
+  input: Body
+  output: Body
+  errors: List<Error> = List()
+}
+
+class Record extends Field {
+  type = "record"
+  key: "any" = "any"
+  `record`: ObjectField
+}
+
+lexicon: Int(this == 1) = 1
+id: String(matches(Regex("io\\.fluentci\\.[A-Za-z0-9.]+")))
+description: String?
+defs: Mapping<String, Record | ObjectField | Query | Procedure>
+
+output {
+  renderer = new JsonRenderer {
+    omitNullProperties = true
+  }
+}

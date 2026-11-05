@@ -38,3 +38,38 @@ must not contain credentials, query strings, or fragments. In-memory databases
 are unsupported: records and replay checkpoints must persist on disk.
 
 Run `bun run lint`, `bun run typecheck`, and `bun run test` to validate the API.
+
+## Lexicons and generated code
+
+All `io.fluentci.*` lexicons are defined in `pkl/defs/io/fluentci/`, using the
+typed schema in `pkl/schema/lexicon.pkl`. Install the Pkl CLI alongside Gleam to
+generate artifacts:
+
+```sh
+bun run lexicons:generate
+bun run lexicons:check
+```
+
+Generation evaluates Pkl, validates the complete set with AT Protocol's Lexicon
+validator, and writes JSON to `lexicons/`, Gleam types and JSON encoders to
+`src/fluentci_api/lexicon/models.gleam`, and the JavaScript runtime schema bundle
+to `src/fluentci_api/lexicon/schemas.mjs`. Commit these generated files together
+with their Pkl sources; edit the Pkl definitions rather than generated artifacts.
+`lexicons:check` fails if generated files are missing, stale, or have no Pkl
+source. Builds regenerate them automatically, and lint checks for drift.
+
+## Source layout
+
+| Directory | Purpose |
+| --- | --- |
+| `src/fluentci_api/xrpc/` | Central route registration and one handler per endpoint under `io/fluentci/registry/` |
+| `src/fluentci_api/node/` | Node HTTP, XRPC transport, authentication and S3 bindings |
+| `src/fluentci_api/db/` | Typed Gleam database bindings and Drizzle queries |
+| `src/fluentci_api/schema/` | Drizzle SQLite table definitions |
+| `src/fluentci_api/jetstream/` | Jetstream validation, subscription and indexing |
+| `src/fluentci_api/lexicon/` | Generated Gleam models, encoders and runtime schemas |
+| `pkl/schema/` | Typed Pkl Lexicon schema |
+| `pkl/defs/` | Authoritative FluentCI Lexicon definitions |
+| `drizzle/` | SQLite migrations |
+
+For Linux deployment, see [the systemd service instructions](../../systemd/README.md).

@@ -5,8 +5,8 @@
   "defs": {
     "main": {
       "type": "record",
-      "key": "any",
       "description": "Published Wasm plugin. The record key is name-version; author must equal the repository DID. Records are immutable releases.",
+      "key": "any",
       "record": {
         "type": "object",
         "required": [
@@ -50,8 +50,8 @@
           },
           "url": {
             "type": "string",
-            "format": "uri",
-            "maxLength": 2048
+            "maxLength": 2048,
+            "format": "uri"
           },
           "sha256": {
             "type": "string",

@@ -1,0 +1,34 @@
+[Unit]
+Description=FluentCI Gleam XRPC registry API
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=fluentci
+Group=fluentci
+WorkingDirectory=/opt/fluentci/apps/api
+ExecStart=/usr/bin/node /opt/fluentci/apps/api/entry/server.mjs
+Environment=NODE_ENV=production
+Environment=HOST=127.0.0.1
+Environment=PORT=3001
+Environment=DATABASE_URL=file:/var/lib/fluentci/registry.sqlite
+EnvironmentFile=/etc/fluentci/api.env
+StateDirectory=fluentci
+StateDirectoryMode=0750
+UMask=0027
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=30
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=fluentci-api
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target

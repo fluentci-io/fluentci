@@ -3,8 +3,8 @@ import {createServer,AuthRequiredError,InvalidRequestError,XRPCError,verifyJwt} 
 import {IdResolver} from '@atproto/identity';
 import {S3Client,PutObjectCommand} from '@aws-sdk/client-s3';
 import {createHash} from 'node:crypto';
-import {lexicons,PUBLISH,MAX_WASM_BYTES} from './config_ffi.mjs';
-import {close} from './db_ffi.mjs';
+import {lexicons,PUBLISH,MAX_WASM_BYTES} from '../config_ffi.mjs';
+import {close} from '../db/client_ffi.mjs';
 const identity=new IdResolver();
 export function create(database,options={}){return {xrpc:createServer(lexicons(),{validateResponse:true,payload:{blobLimit:MAX_WASM_BYTES,jsonLimit:16384}}),database,options};}
 export function method(server,nsid,handler){

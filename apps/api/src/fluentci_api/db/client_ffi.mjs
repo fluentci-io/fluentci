@@ -1,3 +1,4 @@
+import {RegistryPackageView as Package,RegistryListPackagesOutput as Page} from '../lexicon/models.mjs';
 import {createClient} from '@libsql/client';
 import {drizzle} from 'drizzle-orm/libsql';
 import {migrate} from 'drizzle-orm/libsql/migrator';
@@ -7,13 +8,13 @@ import {createHash} from 'node:crypto';
 import {mkdirSync} from 'node:fs';
 import {resolve,dirname} from 'node:path';
 import semver from 'semver';
-import {Package,Page,Upsert,Delete,Account,Checkpoint} from './model.mjs';
-import {Some,None} from '../../gleam_stdlib/gleam/option.mjs';
-import {toList} from '../gleam.mjs';
-import * as schema from './schema_ffi.mjs';
-import {root,source} from './config_ffi.mjs';
+import {Upsert,Delete,Account,Checkpoint} from '../model.mjs';
+import {Some,None} from '../../../gleam_stdlib/gleam/option.mjs';
+import {toList} from '../../gleam.mjs';
+import * as schema from '../schema/registry.mjs';
+import {root,source} from '../config_ffi.mjs';
 const {records,checkpoints,accounts}=schema;
-const present=p=>new Package(p.uri,p.cid,p.name,p.description,p.version,p.publishedAt,p.author,p.license,p.url,p.sha256,p.size);
+const present=p=>new Package(p.name,p.description,p.version,p.publishedAt,p.author,p.license,p.url,p.sha256,p.size,p.uri,p.cid);
 export async function open(options={}) {
  const directory=root();const url=options.url ?? process.env.DATABASE_URL ?? `file:${resolve(directory,'data/registry.sqlite')}`;
  if(url.startsWith('file:')&&!url.includes(':memory:'))mkdirSync(dirname(resolve(url.slice(5))),{recursive:true});

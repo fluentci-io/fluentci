@@ -1,17 +1,17 @@
 //// Jetstream records and checkpoints are committed atomically through Drizzle.
 
-import fluentci_api/db.{type Db}
+import fluentci_api/db/client.{type Db} as db
 import fluentci_api/env
 import fluentci_api/model.{type Event}
 import gleam/javascript/promise.{type Promise}
 
-@external(javascript, "./jetstream_ffi.mjs", "decodeEvent")
+@external(javascript, "./client_ffi.mjs", "decodeEvent")
 pub fn decode_event(message: String) -> Result(Event, String)
 
-@external(javascript, "./jetstream_ffi.mjs", "start")
+@external(javascript, "./client_ffi.mjs", "start")
 pub fn start(db: Db, ingest: fn(String) -> Promise(Nil)) -> fn() -> Nil
 
-@external(javascript, "./jetstream_ffi.mjs", "standalone")
+@external(javascript, "./client_ffi.mjs", "standalone")
 fn standalone(db: Db, stop: fn() -> Nil) -> Nil
 
 pub fn ingest(database: Db, message: String) -> Promise(Nil) {

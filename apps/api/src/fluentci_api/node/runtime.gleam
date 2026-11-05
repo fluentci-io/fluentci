@@ -1,6 +1,6 @@
 //// Node HTTP / XRPC bindings. Application handlers are registered from Gleam.
 
-import fluentci_api/db.{type Db}
+import fluentci_api/db/client.{type Db}
 import gleam/javascript/promise.{type Promise}
 
 pub type Server

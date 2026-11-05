@@ -48,8 +48,8 @@
         },
         "url": {
           "type": "string",
-          "format": "uri",
-          "maxLength": 2048
+          "maxLength": 2048,
+          "format": "uri"
         },
         "sha256": {
           "type": "string",

@@ -1,0 +1,39 @@
+amends "../../../../schema/lexicon.pkl"
+
+lexicon = 1
+id = "io.fluentci.registry.publish"
+description = "Upload a Wasm plugin to public S3 storage using a scoped AT Protocol service-auth token. The publisher then creates io.fluentci.plugin in their own PDS."
+defs = new Mapping {
+  ["main"] = new Procedure {
+    input = new Body {
+      encoding = "application/wasm"
+    }
+    output = new Body {
+      encoding = "application/json"
+      schema = new ObjectField {
+        required = List("url", "sha256", "size")
+        properties = new Mapping {
+          ["url"] = new StringField {
+            format = "uri"
+            maxLength = 2048
+          }
+          ["sha256"] = new StringField {
+            minLength = 64
+            maxLength = 64
+          }
+          ["size"] = new IntegerField {
+            minimum = 8
+            maximum = 67108864
+          }
+        }
+      }
+    }
+    errors = List(new Error {
+      name = "InvalidWasm"
+    }, new Error {
+      name = "AuthRequired"
+    }, new Error {
+      name = "StorageUnavailable"
+    })
+  }
+}

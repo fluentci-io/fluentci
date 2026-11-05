@@ -1,0 +1,49 @@
+amends "../../../schema/lexicon.pkl"
+
+lexicon = 1
+id = "io.fluentci.plugin"
+description = "A FluentCI Wasm plugin published by its AT Protocol author."
+defs = new Mapping {
+  ["main"] = new Record {
+    key = "any"
+    description = "Published Wasm plugin. The record key is name-version; author must equal the repository DID. Records are immutable releases."
+    `record` = new ObjectField {
+      required = List("name", "description", "version", "publishedAt", "author", "license", "url", "sha256", "size")
+      properties = new Mapping {
+        ["name"] = new StringField {
+          minLength = 1
+          maxLength = 64
+        }
+        ["description"] = new StringField {
+          maxLength = 2048
+        }
+        ["version"] = new StringField {
+          minLength = 1
+          maxLength = 128
+        }
+        ["publishedAt"] = new StringField {
+          format = "datetime"
+        }
+        ["author"] = new StringField {
+          format = "did"
+        }
+        ["license"] = new StringField {
+          minLength = 1
+          maxLength = 128
+        }
+        ["url"] = new StringField {
+          format = "uri"
+          maxLength = 2048
+        }
+        ["sha256"] = new StringField {
+          minLength = 64
+          maxLength = 64
+        }
+        ["size"] = new IntegerField {
+          minimum = 8
+          maximum = 67108864
+        }
+      }
+    }
+  }
+}

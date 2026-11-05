@@ -1,9 +1,10 @@
+import {RegistryPackageView as Package} from '../lexicon/models.mjs';
 import WebSocket from 'ws';
 import {Lexicons} from '@atproto/lexicon';
-import {Package,Upsert,Delete,Account,Checkpoint} from './model.mjs';
-import {Ok,Error as GError} from '../gleam.mjs';
-import {lexicons,COLLECTION,source} from './config_ffi.mjs';
-import {cursor,close} from './db_ffi.mjs';
+import {Upsert,Delete,Account,Checkpoint} from '../model.mjs';
+import {Ok,Error as GError} from '../../gleam.mjs';
+import {lexicons,COLLECTION,source} from '../config_ffi.mjs';
+import {cursor,close} from '../db/client_ffi.mjs';
 import semver from 'semver';
 let validators;
 export function decodeEvent(message){
@@ -22,7 +23,7 @@ export function decodeEvent(message){
   if(!/^[a-f0-9]{64}$/.test(p.sha256))throw new Error('Invalid checksum');
   const url=new URL(p.url);if(!['https:','http:'].includes(url.protocol)||!url.pathname.endsWith('.wasm')||url.username||url.password)throw new Error('Invalid Wasm URL');
   if(typeof c.cid!=='string'||!c.cid.length)throw new Error('Missing record CID');
-  return new Ok(new Upsert(new Package(uri,c.cid,p.name,p.description,p.version,new Date(p.publishedAt).toISOString(),p.author,p.license,p.url,p.sha256,p.size),event.time_us));
+  return new Ok(new Upsert(new Package(p.name,p.description,p.version,new Date(p.publishedAt).toISOString(),p.author,p.license,p.url,p.sha256,p.size,uri,c.cid),event.time_us));
  }catch(error){return new GError(error.message);}
 }
 export function start(connection,ingest,options={}){

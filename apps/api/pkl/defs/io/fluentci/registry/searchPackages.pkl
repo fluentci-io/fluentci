@@ -1,0 +1,48 @@
+amends "../../../../schema/lexicon.pkl"
+
+lexicon = 1
+id = "io.fluentci.registry.searchPackages"
+description = "Search indexed package versions."
+defs = new Mapping {
+  ["main"] = new Query {
+    parameters = new Parameters {
+      required = List("q")
+      properties = new Mapping {
+        ["limit"] = new IntegerField {
+          minimum = 1
+          maximum = 100
+          default = 20
+        }
+        ["cursor"] = new StringField {
+          maxLength = 4096
+        }
+        ["author"] = new StringField {
+          format = "at-identifier"
+        }
+        ["q"] = new StringField {
+          minLength = 1
+          maxLength = 200
+        }
+      }
+    }
+    output = new Body {
+      encoding = "application/json"
+      schema = new ObjectField {
+        required = List("packages")
+        properties = new Mapping {
+          ["packages"] = new ArrayField {
+            items = new RefField {
+              ref = "io.fluentci.registry.defs#packageView"
+            }
+          }
+          ["cursor"] = new StringField {
+          }
+        }
+      }
+    }
+    errors = List(new Error {
+      name = "InvalidCursor"
+      description = "The cursor is invalid or belongs to a different query."
+    })
+  }
+}
