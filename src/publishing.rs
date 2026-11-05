@@ -12,10 +12,30 @@ use jacquard::{
     },
 };
 use serde::{Deserialize, Serialize};
-use std::{path::Path, time::Duration};
+use std::{
+    io::{self, IsTerminal},
+    path::Path,
+    time::Duration,
+};
 
 pub const COLLECTION: &str = "io.fluentci.plugin";
 pub const MAX_WASM_BYTES: usize = 64 * 1024 * 1024;
+
+#[derive(Debug, Default, clap::Args)]
+pub struct MetadataOptions {
+    /// Published package name (required for file/URL publishing; prompts if omitted)
+    #[arg(long, value_name = "NAME")]
+    pub name: Option<String>,
+    /// Published package SemVer version
+    #[arg(long, value_name = "VERSION")]
+    pub version: Option<String>,
+    /// Published package description
+    #[arg(long, value_name = "TEXT")]
+    pub description: Option<String>,
+    /// Published package license (for example MIT)
+    #[arg(long, value_name = "LICENSE")]
+    pub license: Option<String>,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -66,7 +86,7 @@ pub fn validate_metadata(
     );
     anyhow::ensure!(
         !license.trim().is_empty() && license.len() <= 128,
-        "Set package.license in fluentci.toml (for example MIT or MPL-2.0)"
+        "Set license in the selected module in fluentci.toml (for example MIT or MPL-2.0)"
     );
     Ok(())
 }
@@ -126,44 +146,210 @@ pub async fn download(value: &str) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
-fn metadata(root: &Path) -> Result<(String, String, String, String)> {
-    let package = config::find(root)
-        .map(|path| config::Config::read(&path))
-        .transpose()?
-        .and_then(|c| c.package);
-    let cargo = [root.join("Cargo.toml"), root.join("plugin/Cargo.toml")]
+fn metadata(
+    root: &Path,
+    selected: Option<&str>,
+    overrides: &MetadataOptions,
+    artifact: bool,
+) -> Result<(String, String, String, String)> {
+    let config_path = config::find(root);
+    let config = config_path
+        .as_ref()
+        .map(|path| config::Config::read(path))
+        .transpose()?;
+    let module = if let Some(config) = &config {
+        if let Some(selected) = selected {
+            Some(
+                config
+                    .modules
+                    .iter()
+                    .find(|module| module.name == selected)
+                    .context("Module not found")?,
+            )
+        } else if config.modules.len() == 1 {
+            config.modules.first()
+        } else if config.modules.is_empty() {
+            None
+        } else {
+            let matched = config
+                .modules
+                .iter()
+                .find(|module| Some(module.name.as_str()) == overrides.name.as_deref());
+            anyhow::ensure!(
+                artifact || matched.is_some(),
+                "Specify --module to select publishing metadata when the project declares multiple modules"
+            );
+            matched
+        }
+    } else {
+        anyhow::ensure!(selected.is_none(), "Module not found");
+        None
+    };
+    let source = module.and_then(|module| module.path.as_ref()).map(|path| {
+        config_path
+            .as_ref()
+            .and_then(|path| path.parent())
+            .unwrap_or(root)
+            .join(path)
+    });
+    let mut manifests = Vec::new();
+    if let Some(source) = source {
+        manifests.push(
+            if source.file_name().is_some_and(|name| name == "Cargo.toml") {
+                source
+            } else {
+                source.join("Cargo.toml")
+            },
+        );
+    } else if module.is_none() {
+        manifests.extend([root.join("Cargo.toml"), root.join("plugin/Cargo.toml")]);
+    }
+    let cargo = manifests
         .into_iter()
-        .find(|p| p.is_file())
-        .map(|p| -> Result<toml::Value> { Ok(toml::from_str(&std::fs::read_to_string(p)?)?) })
+        .find(|path| path.is_file())
+        .map(|path| -> Result<toml::Value> { Ok(toml::from_str(&std::fs::read_to_string(path)?)?) })
         .transpose()?;
     let cargo_field = |name: &str| {
         cargo
             .as_ref()
-            .and_then(|c| c.get("package"))
-            .and_then(|p| p.get(name))
-            .and_then(|v| v.as_str())
+            .and_then(|cargo| cargo.get("package"))
+            .and_then(|package| package.get(name))
+            .and_then(|value| value.as_str())
             .map(str::to_owned)
     };
-    let name = package
+    // Keep legacy package metadata only for configurations without module declarations.
+    let package = config
         .as_ref()
-        .map(|p| p.name.clone())
-        .or_else(|| cargo_field("name"))
-        .context("Set package.name in fluentci.toml")?;
-    let version = package
-        .as_ref()
-        .map(|p| p.version.clone())
-        .or_else(|| cargo_field("version"))
-        .context("Set package.version in fluentci.toml")?;
-    let description = package
-        .as_ref()
-        .and_then(|p| p.description.clone())
-        .or_else(|| cargo_field("description"))
-        .unwrap_or_default();
-    let license = package
-        .as_ref()
-        .and_then(|p| p.license.clone())
-        .or_else(|| cargo_field("license"))
-        .unwrap_or_default();
+        .filter(|_| module.is_none())
+        .and_then(|config| config.package.as_ref());
+    let fields = MetadataOptions {
+        name: overrides.name.clone().or_else(|| {
+            if artifact {
+                None
+            } else {
+                module
+                    .map(|module| module.name.clone())
+                    .or_else(|| package.map(|package| package.name.clone()))
+                    .or_else(|| cargo_field("name"))
+            }
+        }),
+        version: overrides
+            .version
+            .clone()
+            .or_else(|| module.and_then(|module| module.version.clone()))
+            .or_else(|| package.map(|package| package.version.clone()))
+            .or_else(|| cargo_field("version")),
+        description: overrides
+            .description
+            .clone()
+            .or_else(|| module.and_then(|module| module.description.clone()))
+            .or_else(|| package.and_then(|package| package.description.clone()))
+            .or_else(|| cargo_field("description")),
+        license: overrides
+            .license
+            .clone()
+            .or_else(|| module.and_then(|module| module.license.clone()))
+            .or_else(|| package.and_then(|package| package.license.clone()))
+            .or_else(|| cargo_field("license")),
+    };
+    complete_metadata(
+        fields,
+        io::stdin().is_terminal() && io::stderr().is_terminal(),
+        |label, required| {
+            let mut prompt = inquire::Text::new(label).with_validator(move |value: &str| {
+                Ok(if required && value.trim().is_empty() {
+                    inquire::validator::Validation::Invalid("This field is required".into())
+                } else {
+                    inquire::validator::Validation::Valid
+                })
+            });
+            if label == "License" {
+                prompt = prompt
+                    .with_help_message("Type to filter common SPDX licenses; Tab completes. Custom values are allowed.")
+                    .with_autocomplete(|input: &str| Ok(license_suggestions(input)));
+            }
+            prompt
+                .prompt()
+                .map(|value| value.trim().to_owned())
+                .context("Publishing cancelled while entering metadata")
+        },
+    )
+}
+
+fn license_suggestions(input: &str) -> Vec<String> {
+    const LICENSES: &[&str] = &[
+        "MIT",
+        "Apache-2.0",
+        "MPL-2.0",
+        "BSD-2-Clause",
+        "BSD-3-Clause",
+        "ISC",
+        "0BSD",
+        "Unlicense",
+        "CC0-1.0",
+        "AGPL-3.0-only",
+        "AGPL-3.0-or-later",
+        "GPL-2.0-only",
+        "GPL-2.0-or-later",
+        "GPL-3.0-only",
+        "GPL-3.0-or-later",
+        "LGPL-2.1-only",
+        "LGPL-2.1-or-later",
+        "LGPL-3.0-only",
+        "LGPL-3.0-or-later",
+        "BSL-1.0",
+        "EPL-2.0",
+        "EUPL-1.2",
+        "Zlib",
+        "Artistic-2.0",
+    ];
+    let prefix = input.trim().to_ascii_lowercase();
+    LICENSES
+        .iter()
+        .filter(|license| license.to_ascii_lowercase().starts_with(&prefix))
+        .map(|license| (*license).to_owned())
+        .collect()
+}
+
+fn complete_metadata(
+    mut fields: MetadataOptions,
+    interactive: bool,
+    mut prompt: impl FnMut(&str, bool) -> Result<String>,
+) -> Result<(String, String, String, String)> {
+    let missing = [
+        ("--name", fields.name.as_deref()),
+        ("--version", fields.version.as_deref()),
+        ("--license", fields.license.as_deref()),
+    ]
+    .into_iter()
+    .filter(|(_, value)| value.is_none_or(|value| value.trim().is_empty()))
+    .map(|(flag, _)| flag)
+    .collect::<Vec<_>>();
+    anyhow::ensure!(
+        interactive || missing.is_empty(),
+        "Missing publishing metadata: {}. Supply these flags or set module metadata in fluentci.toml; run in an interactive terminal to enter missing fields",
+        missing.join(", ")
+    );
+    if interactive {
+        for (label, field, required) in [
+            ("Package name", &mut fields.name, true),
+            ("Version", &mut fields.version, true),
+            ("Description (optional)", &mut fields.description, false),
+            ("License", &mut fields.license, true),
+        ] {
+            if field
+                .as_ref()
+                .is_some_and(|value| !required || !value.trim().is_empty())
+            {
+                continue;
+            }
+            *field = Some(prompt(label, required)?);
+        }
+    }
+    let name = fields.name.unwrap_or_default();
+    let version = fields.version.unwrap_or_default();
+    let description = fields.description.unwrap_or_default();
+    let license = fields.license.unwrap_or_default();
     validate_metadata(&name, &version, &description, &license)?;
     Ok((name, version, description, license))
 }
@@ -173,9 +359,15 @@ pub async fn publish(
     external: Option<&str>,
     file: Option<&Path>,
     module: Option<&str>,
+    metadata_options: &MetadataOptions,
 ) -> Result<()> {
     let workspace = Workspace::current()?;
-    let (name, version, description, license) = metadata(&workspace.root)?;
+    let (name, version, description, license) = metadata(
+        &workspace.root,
+        module,
+        metadata_options,
+        external.is_some() || file.is_some(),
+    )?;
     let bytes = if let Some(url) = external {
         download(url).await?
     } else {
@@ -267,4 +459,161 @@ pub async fn publish(
         record.name, record.version, output.uri, record.url
     );
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{MetadataOptions, complete_metadata, license_suggestions};
+
+    #[test]
+    fn publishing_license_suggestions_match_case_insensitively() {
+        assert_eq!(license_suggestions("mit"), ["MIT"]);
+        assert_eq!(license_suggestions("apache"), ["Apache-2.0"]);
+        assert!(license_suggestions("BSD").contains(&"BSD-3-Clause".to_owned()));
+        assert!(license_suggestions("custom-license").is_empty());
+    }
+
+    fn metadata(
+        root: &std::path::Path,
+        module: Option<&str>,
+        name: Option<&str>,
+    ) -> anyhow::Result<(String, String, String, String)> {
+        super::metadata(
+            root,
+            module,
+            &MetadataOptions {
+                name: name.map(str::to_owned),
+                ..Default::default()
+            },
+            false,
+        )
+    }
+
+    #[test]
+    fn publishing_prompts_for_missing_artifact_metadata() -> anyhow::Result<()> {
+        let mut replies = ["hello-ci", "1.0.0", "", "MIT"].into_iter();
+        let mut labels = Vec::new();
+        let fields = complete_metadata(MetadataOptions::default(), true, |label, required| {
+            labels.push((label.to_owned(), required));
+            Ok(replies.next().unwrap().to_owned())
+        })?;
+        assert_eq!(
+            fields,
+            ("hello-ci".into(), "1.0.0".into(), "".into(), "MIT".into())
+        );
+        assert_eq!(
+            labels
+                .iter()
+                .map(|(_, required)| *required)
+                .collect::<Vec<_>>(),
+            [true, true, false, true]
+        );
+        let error = complete_metadata(MetadataOptions::default(), false, |_, _| {
+            panic!("must not prompt without a terminal")
+        })
+        .unwrap_err();
+        assert!(error.to_string().contains("--name, --version, --license"));
+        Ok(())
+    }
+
+    #[test]
+    fn publishing_cargo_fallback_uses_the_module_directory() -> anyhow::Result<()> {
+        let root = tempfile::tempdir()?;
+        let config_dir = root.path().join(".fluentci");
+        let module_dir = config_dir.join("ci");
+        std::fs::create_dir_all(&module_dir)?;
+        std::fs::write(
+            config_dir.join("fluentci.toml"),
+            "[[modules]]\nname = 'ci'\npath = 'ci'\n",
+        )?;
+        std::fs::write(
+            module_dir.join("Cargo.toml"),
+            "[package]\nname = 'internal_name'\nversion = '1.2.3'\nlicense = 'MIT'\ndescription = 'Module checks'\n",
+        )?;
+        std::fs::write(
+            root.path().join("Cargo.toml"),
+            "[package]\nname = 'workspace'\nversion = '9.9.9'\nlicense = 'Other'\n",
+        )?;
+        assert_eq!(
+            metadata(root.path(), None, None)?,
+            (
+                "ci".into(),
+                "1.2.3".into(),
+                "Module checks".into(),
+                "MIT".into()
+            )
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn publishing_uses_selected_module_metadata() -> anyhow::Result<()> {
+        let root = tempfile::tempdir()?;
+        std::fs::write(
+            root.path().join("fluentci.toml"),
+            r#"
+[package]
+name = "legacy"
+version = "9.9.9"
+license = "Legacy"
+[[modules]]
+name = "build"
+path = ".fluentci/build"
+version = "1.0.0"
+description = "Build checks"
+license = "MIT"
+[[modules]]
+name = "deploy"
+path = ".fluentci/deploy"
+version = "2.0.0"
+description = "Deploy jobs"
+license = "Apache-2.0"
+"#,
+        )?;
+        assert_eq!(
+            metadata(root.path(), Some("deploy"), None)?,
+            (
+                "deploy".into(),
+                "2.0.0".into(),
+                "Deploy jobs".into(),
+                "Apache-2.0".into()
+            )
+        );
+        assert_eq!(
+            metadata(root.path(), Some("build"), Some("public-build"))?,
+            (
+                "public-build".into(),
+                "1.0.0".into(),
+                "Build checks".into(),
+                "MIT".into()
+            )
+        );
+        assert!(metadata(root.path(), None, None).is_err());
+        assert!(metadata(root.path(), Some("missing"), None).is_err());
+        assert_eq!(metadata(root.path(), None, Some("build"))?.0, "build");
+        Ok(())
+    }
+
+    #[test]
+    fn package_name_override_is_validated_before_publishing() -> anyhow::Result<()> {
+        let root = tempfile::tempdir()?;
+        let manifest = root.path().join("Cargo.toml");
+        let contents = "[package]\nname = 'internal_name'\nversion = '1.2.3'\ndescription = 'Build checks'\nlicense = 'MIT'\n";
+        std::fs::write(&manifest, contents)?;
+        assert!(metadata(root.path(), None, None).is_err());
+        assert_eq!(
+            metadata(root.path(), None, Some("public-plugin"))?,
+            (
+                "public-plugin".into(),
+                "1.2.3".into(),
+                "Build checks".into(),
+                "MIT".into()
+            )
+        );
+        for invalid in ["", "Bad_Name", "../plugin"] {
+            assert!(metadata(root.path(), None, Some(invalid)).is_err());
+        }
+        assert_eq!(std::fs::read_to_string(manifest)?, contents);
+        Ok(())
+    }
 }

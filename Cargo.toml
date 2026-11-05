@@ -44,6 +44,7 @@ sea-query = { version = "1", default-features = false, features = ["backend-sqli
 sea-query-sqlx = { version = "=0.8.1", default-features = false, features = ["sqlx-sqlite"] }
 jacquard = { version = "0.12.2", default-features = false, features = ["api", "derive"] }
 semver = "1"
+inquire = "0.9.4"
 
 [dev-dependencies]
 wat = "1"

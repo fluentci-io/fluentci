@@ -1,6 +1,6 @@
 use crate::{
     archive,
-    config::{self, Commands, Config, Module, Package, Sdk, Step},
+    config::{self, Commands, Config, Module, Sdk, Step},
     registry, scaffold,
     workspace::Workspace,
 };
@@ -84,14 +84,12 @@ pub(super) async fn execute(
         destination.strip_prefix(&root)?.to_path_buf()
     };
     let config = Config {
-        package: Some(Package {
-            name: name.into(),
-            version: "0.1.0".into(),
-            description: None,
-            license: None,
-        }),
+        package: None,
         modules: vec![Module {
             name: name.into(),
+            version: Some("0.1.0".into()),
+            description: None,
+            license: None,
             path: Some(path),
             url: None,
             sdk,

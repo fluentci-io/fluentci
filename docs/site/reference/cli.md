@@ -66,16 +66,20 @@ SDK selectors: `rust`, `clojurescript`, `purescript`, `typescript`, `python`,
 
 ## Registry and account
 
-| Command                    | Purpose                                                              |
-| -------------------------- | -------------------------------------------------------------------- |
-| `search QUERY --limit 20`  | Search registry package versions                                     |
-| `whoami`                   | Authenticate with account/app-password environment and show identity |
-| `publish --module NAME`    | Build a module, upload Wasm, and create PDS metadata                 |
-| `publish --file FILE.wasm` | Publish an existing artifact                                         |
-| `publish --url URL.wasm`   | Validate and publish a public artifact without uploading             |
-| `upgrade`                  | Install the latest published CLI release                             |
+| Command                                | Purpose                                                              |
+| -------------------------------------- | -------------------------------------------------------------------- |
+| `search QUERY --limit 20`              | Search registry package versions                                     |
+| `whoami`                               | Authenticate with account/app-password environment and show identity |
+| `publish --module NAME`                | Build a module, upload Wasm, and create PDS metadata                 |
+| `publish --name NAME --file FILE.wasm` | Publish an existing artifact                                         |
+| `publish --name NAME --url URL.wasm`   | Validate and publish a public artifact without uploading             |
+| `upgrade`                              | Install the latest published CLI release                             |
 
-`--module`, `--file`, and `--url` are mutually exclusive publish inputs.
+`--file` and `--url` are mutually exclusive. Supply their package name with
+`--name` or enter it at the prompt. Missing name, version, and license must be
+supplied in non-interactive runs. Description is optional.
+`--name`, `--version`, `--description`, and `--license` override module metadata.
+`--module` selects module metadata and builds that module when no artifact is supplied.
 `publish --wasm` remains an accepted compatibility flag; publishing uses Wasm.
 There is no `login` command, and `run --remote-exec` is unsupported.
 

@@ -77,7 +77,17 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
             url,
             file,
             module,
-        }) => publish::execute(&db, url.as_deref(), file.as_deref(), module.as_deref()).await,
+            metadata,
+        }) => {
+            publish::execute(
+                &db,
+                url.as_deref(),
+                file.as_deref(),
+                module.as_deref(),
+                &metadata,
+            )
+            .await
+        }
         Some(Command::IndexTangled { account_file, did }) => {
             crate::tangled::index(&db, &account_file, &did).await
         }

@@ -184,10 +184,6 @@ legacy `.fluentci/fluentci.toml` layout. Commands can be a string or an array
 executed in order:
 
 ```toml
-[package]
-name = "my-pipeline"
-version = "0.1.0"
-
 [[steps]]
 name = "check"
 command = ["cargo fmt --all --check", "cargo clippy --release -- -D warnings"]
@@ -384,8 +380,14 @@ in the current directory. Publishing uses an AT Protocol account and app passwor
 export FLUENTCI_ACCOUNT='alice.example'
 export FLUENTCI_APP_PASSWORD='replace-with-an-app-password'
 fluentci whoami
-fluentci publish --file ./dist/plugin.wasm
+fluentci publish --name hello-ci --file ./dist/plugin.wasm
 ```
+
+Package metadata (`name`, `version`, `description`, `license`) belongs to each
+`[[modules]]` entry in `fluentci.toml`. `--name` overrides the published name and
+can also be entered at a prompt with `--file` or `--url`. Missing metadata is
+prompted interactively; only name, version, and license are required. Use
+`--name`, `--version`, `--description`, and `--license` for non-interactive runs.
 
 The CLI remembers non-secret identity in `~/.fluentci/account.json`, without
 saving the password or session tokens. See [authentication](./docs/site/registry/authentication.md)

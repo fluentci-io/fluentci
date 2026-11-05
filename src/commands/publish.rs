@@ -7,6 +7,7 @@ pub(super) async fn execute(
     url: Option<&str>,
     file: Option<&Path>,
     module: Option<&str>,
+    metadata: &publishing::MetadataOptions,
 ) -> Result<()> {
-    publishing::publish(db, url, file, module).await
+    publishing::publish(db, url, file, module, metadata).await
 }

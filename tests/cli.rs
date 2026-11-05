@@ -7,6 +7,59 @@ fn clap_definition_is_valid() {
 }
 
 #[test]
+fn publish_accepts_metadata_flags_and_missing_fields_for_prompts() {
+    for (flag, value) in [
+        ("--file", "plugin.wasm"),
+        ("--url", "https://example.com/plugin.wasm"),
+    ] {
+        assert!(Cli::try_parse_from(["fluentci", "publish", flag, value]).is_ok());
+        let cli = Cli::try_parse_from(["fluentci", "publish", flag, value, "--name", "my-plugin"])
+            .unwrap();
+        assert!(
+            matches!(cli.command, Some(Command::Publish { metadata, .. }) if metadata.name.as_deref() == Some("my-plugin"))
+        );
+        assert!(
+            Cli::try_parse_from([
+                "fluentci",
+                "publish",
+                flag,
+                value,
+                "--module",
+                "ci",
+                "--name",
+                "my-plugin"
+            ])
+            .is_ok()
+        );
+    }
+    assert!(Cli::try_parse_from(["fluentci", "publish", "--module", "ci"]).is_ok());
+    assert!(
+        Cli::try_parse_from([
+            "fluentci",
+            "publish",
+            "--module",
+            "ci",
+            "--name",
+            "my-plugin"
+        ])
+        .is_ok()
+    );
+    assert!(
+        Cli::try_parse_from([
+            "fluentci",
+            "publish",
+            "--name",
+            "my-plugin",
+            "--file",
+            "plugin.wasm",
+            "--url",
+            "https://example.com/plugin.wasm"
+        ])
+        .is_err()
+    );
+}
+
+#[test]
 fn forwards_plugin_flags_verbatim() {
     let c = Cli::try_parse_from([
         "fluentci",

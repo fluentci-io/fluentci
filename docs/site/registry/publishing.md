@@ -8,26 +8,24 @@ source: "registry/publishing.md"
 
 ## Set package metadata
 
-Add metadata to the workspace's `fluentci.toml`:
+Add metadata to each module in `fluentci.toml`:
 
 ```toml
-[package]
-name = "hello-ci"
-version = "1.0.0"
-description = "Reusable build checks"
-license = "MIT"
-
 [[modules]]
 name = "ci"
 path = ".fluentci/ci"
 sdk = "clojurescript"
+version = "1.0.0"
+description = "Reusable build checks"
+license = "MIT"
 ```
 
 Names start with a lowercase letter and contain lowercase letters, digits, and
 hyphens, up to 64 characters. Versions are valid SemVer, up to 128 characters;
 `+build` metadata is rejected because it is incompatible with the chosen record
 key. A non-empty license is required. Descriptions allow up to 2048 characters.
-Cargo package metadata is a fallback where supported; explicit TOML metadata
+The selected module's Cargo manifest provides fallback version, description, and
+license for Rust modules; explicit TOML metadata
 makes the publishing intent clear.
 
 ## Choose an artifact source
@@ -36,11 +34,32 @@ After [setting account credentials](/registry/authentication/):
 
 ```sh
 fluentci publish --module ci
-fluentci publish --file ./dist/plugin.wasm
-fluentci publish --url https://plugins.example/hello-ci.wasm
+fluentci publish --name hello-ci --file ./dist/plugin.wasm
+fluentci publish --name hello-ci --url https://plugins.example/hello-ci.wasm
 ```
 
-These are alternatives. `--module` builds a declared source module, `--file`
+Use `--name` to override the published name. File and URL publishing require an
+explicit name, provided with `--name` or entered at the prompt. `--version`,
+`--description`, and `--license` override module metadata as well. Overrides apply
+to the upload path and PDS record without modifying local configuration.
+
+In an interactive terminal, missing metadata is requested with prompts, including
+when a module's configuration is incomplete. Only name, version, and license are
+required; press Enter to skip the optional description. The license prompt
+suggests common SPDX identifiers as you type; use Tab to complete a selection
+or enter a custom license value. Non-interactive runs
+report missing required fields instead of prompting.
+
+Use `--module ci --name public-ci --file ./dist/plugin.wasm` to select metadata
+explicitly when publishing an artifact from a workspace with multiple modules.
+Without a matching or selected module, provide metadata with flags or prompts:
+
+```sh
+fluentci publish --file ./dist/plugin.wasm \
+  --name hello-ci --version 1.0.0 --license MIT
+```
+
+Without `--file` or `--url`, the CLI builds the selected module. `--file`
 uses an existing artifact, and `--url` skips the S3 upload. The URL path must end
 in `.wasm`, use HTTP(S), contain no credentials/query/fragment, and return exactly
 HTTP 200. Redirect destinations are validated too. The CLI downloads and

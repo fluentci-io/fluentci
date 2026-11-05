@@ -3,36 +3,50 @@
 name = "check"
 command = "fluentci run main check"
 
-[package]
-name = "fluentci"
-version = "0.16.8"
-
 [[modules]]
 name = "main"
+version = "0.17.0"
+description = "Standard FluentCI CI checks"
+license = "MPL-2.0"
 path = ".fluentci/main"
 sdk = "purescript"
 
 [[modules]]
 name = "rust"
+version = "0.17.0"
+description = "FluentCI Rust build and validation jobs"
+license = "MPL-2.0"
 path = ".fluentci/rust"
 sdk = "purescript"
 
 [[modules]]
 name = "studio"
+version = "0.17.0"
+description = "FluentCI Studio web build jobs"
+license = "MPL-2.0"
 path = ".fluentci/studio"
 sdk = "purescript"
 
 [[modules]]
 name = "release"
+version = "0.17.0"
+description = "FluentCI CLI release packaging"
+license = "MPL-2.0"
 path = ".fluentci/release"
 sdk = "purescript"
 
 [[modules]]
 name = "nix"
+version = "0.17.0"
+description = "FluentCI Nix checks and publishing"
+license = "MPL-2.0"
 path = ".fluentci/nix"
 sdk = "purescript"
 
 [[modules]]
 name = "desktop"
+version = "0.17.0"
+description = "FluentCI Studio desktop builds and packaging"
+license = "MPL-2.0"
 path = ".fluentci/desktop"
 sdk = "purescript"

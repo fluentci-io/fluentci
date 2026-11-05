@@ -300,6 +300,9 @@ pub fn discover(workspace: &Workspace) -> Result<Vec<LocalModule>> {
             name: ".".into(),
             definition: Module {
                 name: ".".into(),
+                version: None,
+                description: None,
+                license: None,
                 path: Some(source.clone()),
                 url: None,
                 sdk: Sdk::Rust,
@@ -529,6 +532,9 @@ pub async fn add(
     }
     let definition = Module {
         name: name.into(),
+        version: None,
+        description: None,
+        license: None,
         path: url
             .is_none()
             .then(|| crate::workspace::relative_path(parent, &destination)),
