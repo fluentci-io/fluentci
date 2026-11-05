@@ -1,0 +1,56 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.registry.getPackage",
+  "description": "Get a package version; omitted version selects the latest SemVer release, excluding prereleases unless no stable release exists.",
+  "defs": {
+    "main": {
+      "type": "query",
+      "parameters": {
+        "type": "params",
+        "required": [
+          "name"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 64
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          },
+          "author": {
+            "type": "string",
+            "format": "at-identifier"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "package"
+          ],
+          "properties": {
+            "package": {
+              "type": "ref",
+              "ref": "io.fluentci.registry.defs#packageView"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "PackageNotFound"
+        },
+        {
+          "name": "AmbiguousPackage",
+          "description": "Specify an author to disambiguate publishers."
+        }
+      ]
+    }
+  }
+}

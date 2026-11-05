@@ -18,9 +18,6 @@ pub async fn run(args: &RunArgs, db: &Db) -> Result<()> {
         root
     };
     let pipeline = args.pipeline.as_deref().unwrap_or(".");
-    if args.remote_exec {
-        return crate::remote::run(args, root, db).await;
-    }
     if pipeline == "."
         && let Ok(key) = std::env::var("FLUENTCI_PROJECT_ID")
     {
@@ -120,6 +117,14 @@ async fn command_with_config(args: &RunArgs, root: &Path, config_root: &Path) ->
             (".fluentci/import_map.json".into(), entry.into())
         } else {
             let pkg = registry::resolve(pipeline).await?;
+            if pkg.metadata.url.is_some() {
+                let artifact = registry::wasm_artifact(&pkg).await?;
+                let mut command = engine_command(&artifact.to_string_lossy(), &args.jobs)?;
+                command
+                    .current_dir(root)
+                    .envs(config::environment(config_root)?);
+                return Ok(command);
+            }
             if registry::client()
                 .get(pkg.url("import_map.json"))
                 .send()
@@ -184,13 +189,15 @@ async fn wasm_command(pipeline: &str, jobs: &[String], root: &Path) -> Result<Co
     {
         pipeline.into()
     } else {
-        format!(
-            "{}?wasm=1",
-            registry::resolve(pipeline)
+        let package = registry::resolve(pipeline).await?;
+        if package.metadata.url.is_some() {
+            registry::wasm_artifact(&package)
                 .await?
-                .url("")
-                .trim_end_matches('/')
-        )
+                .to_string_lossy()
+                .into_owned()
+        } else {
+            format!("{}?wasm=1", package.url("").trim_end_matches('/'))
+        }
     };
     engine_command(&module, jobs)
 }

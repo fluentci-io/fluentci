@@ -1,0 +1,64 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.registry.searchPackages",
+  "description": "Full-text search plugin names and descriptions, with token prefix matching.",
+  "defs": {
+    "main": {
+      "type": "query",
+      "parameters": {
+        "type": "params",
+        "required": [
+          "q"
+        ],
+        "properties": {
+          "limit": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100,
+            "default": 20
+          },
+          "cursor": {
+            "type": "string",
+            "maxLength": 4096
+          },
+          "author": {
+            "type": "string",
+            "format": "at-identifier"
+          },
+          "q": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 200
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "packages"
+          ],
+          "properties": {
+            "packages": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "io.fluentci.registry.defs#packageView"
+              }
+            },
+            "cursor": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "InvalidCursor",
+          "description": "The cursor is invalid or belongs to a different query."
+        }
+      ]
+    }
+  }
+}

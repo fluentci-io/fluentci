@@ -1,0 +1,1 @@
+CREATE TABLE jetstream_events (id TEXT PRIMARY KEY NOT NULL);

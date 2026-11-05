@@ -128,6 +128,26 @@ pub struct Query;
 
 #[Object]
 impl Query {
+    async fn current_account(
+        &self,
+    ) -> async_graphql::Result<Option<crate::account::AccountIdentity>> {
+        Ok(crate::account::current()?)
+    }
+
+    async fn tangled_repositories(
+        &self,
+        ctx: &Context<'_>,
+    ) -> async_graphql::Result<Vec<crate::tangled::TangledRepository>> {
+        let Some(account) = crate::account::current()? else {
+            return Ok(Vec::new());
+        };
+        Ok(ctx
+            .data::<AppState>()?
+            .db
+            .tangled_repositories(&account.did)
+            .await?)
+    }
+
     async fn search(
         &self,
         ctx: &Context<'_>,

@@ -16,7 +16,6 @@ mod echo;
 mod engine_call;
 mod env;
 mod init;
-mod login;
 mod ls;
 mod modules;
 mod project;
@@ -47,6 +46,7 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
     }
     let db = Db::open(&cli.database).await?;
     if cli.check_update
+        && !matches!(cli.command, Some(Command::IndexTangled { .. }))
         && let Err(error) = registry::check_update(&db).await
     {
         tracing::debug!(%error, "Update check failed");
@@ -71,9 +71,16 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
         Some(Command::Docs { pipeline }) => docs::execute(pipeline.as_deref()).await,
         Some(Command::Doctor) => doctor::execute().await,
         Some(Command::Env) => env::execute(),
-        Some(Command::Login) => login::execute(&db).await,
         Some(Command::Whoami) => whoami::execute(&db).await,
-        Some(Command::Publish { wasm }) => publish::execute(&db, wasm).await,
+        Some(Command::Publish {
+            wasm: _,
+            url,
+            file,
+            module,
+        }) => publish::execute(&db, url.as_deref(), file.as_deref(), module.as_deref()).await,
+        Some(Command::IndexTangled { account_file, did }) => {
+            crate::tangled::index(&db, &account_file, &did).await
+        }
         Some(Command::Agent { command }) => agent::execute(&db, command).await,
         Some(Command::Repl { debug, pipeline }) => {
             repl::execute(&db, debug, pipeline.as_deref()).await

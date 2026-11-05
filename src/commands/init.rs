@@ -87,6 +87,8 @@ pub(super) async fn execute(
         package: Some(Package {
             name: name.into(),
             version: "0.1.0".into(),
+            description: None,
+            license: None,
         }),
         modules: vec![Module {
             name: name.into(),

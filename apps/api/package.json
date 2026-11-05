@@ -1,0 +1,38 @@
+{
+  "name": "@fluentci/api",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "lexicons:generate": "node scripts/lexicons.mjs",
+    "lexicons:check": "node scripts/lexicons.mjs --check",
+    "build": "bun run lexicons:generate && gleam build --target javascript",
+    "dev": "bun run build && node --watch entry/server.mjs",
+    "start": "node entry/server.mjs",
+    "test": "gleam test && node --test tests/*.test.mjs",
+    "format": "gleam format src test && prettier --write \"{entry,scripts,src,tests}/**/*.mjs\"",
+    "format:check": "prettier --check \"{entry,scripts,src,tests}/**/*.mjs\"",
+    "lint": "bun run lexicons:check && gleam format --check src test && bun run format:check",
+    "typecheck": "gleam check",
+    "db:migrate": "gleam build --target javascript && node scripts/migrate.mjs",
+    "jetstream": "gleam build --target javascript && node entry/jetstream.mjs"
+  },
+  "dependencies": {
+    "@atproto/identity": "^0.4.5",
+    "@atproto/xrpc-server": "^0.7.8",
+    "@atproto/lexicon": "^0.4.5",
+    "@aws-sdk/client-s3": "^3.1052.0",
+    "@libsql/client": "^0.15.0",
+    "drizzle-orm": "^0.45.0",
+    "express": "^5.1.0",
+    "semver": "^7.7.3",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@atproto/crypto": "^0.4.4",
+    "prettier": "^3.6.0"
+  }
+}

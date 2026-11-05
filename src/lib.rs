@@ -1,3 +1,4 @@
+pub mod account;
 pub mod archive;
 pub mod auth;
 pub mod cli;
@@ -11,11 +12,13 @@ pub mod models;
 pub mod modules;
 pub mod pipeline;
 pub mod process;
+pub mod publishing;
 pub mod registry;
 pub mod remote;
 pub mod repl;
 pub mod scaffold;
 pub mod server;
 pub mod services;
+pub mod tangled;
 pub mod tools;
 pub mod workspace;

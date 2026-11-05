@@ -30,7 +30,7 @@ fn main() -> ExitCode {
     // Pipeline workers relaunch current_exe. Handle these before opening a window.
     if matches!(
         std::env::args().nth(1).as_deref(),
-        Some("__engine-call" | "provider-worker")
+        Some("__engine-call" | "provider-worker" | "__index-tangled")
     ) {
         return match runtime.block_on(commands::dispatch(Cli::parse())) {
             Ok(()) => ExitCode::SUCCESS,
