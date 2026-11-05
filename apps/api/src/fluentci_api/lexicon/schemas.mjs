@@ -270,6 +270,22 @@ export const schemas = [
     defs: {
       main: {
         type: 'procedure',
+        parameters: {
+          type: 'params',
+          required: [],
+          properties: {
+            name: {
+              type: 'string',
+              minLength: 1,
+              maxLength: 64,
+            },
+            version: {
+              type: 'string',
+              minLength: 1,
+              maxLength: 128,
+            },
+          },
+        },
         input: {
           encoding: 'application/wasm',
         },
@@ -300,6 +316,15 @@ export const schemas = [
         errors: [
           {
             name: 'InvalidWasm',
+          },
+          {
+            name: 'InvalidPackageMetadata',
+          },
+          {
+            name: 'PublisherHandleUnavailable',
+          },
+          {
+            name: 'PackageVersionExists',
           },
           {
             name: 'AuthRequired',

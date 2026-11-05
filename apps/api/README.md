@@ -4,6 +4,18 @@ The API targets Node.js and validates its environment before opening SQLite,
 connecting to Jetstream, or listening for requests. Invalid configuration exits
 with status 1 and lists every problem without printing secret values.
 
+`GET /` shows the FluentCI ASCII welcome page, site/documentation links, and the
+`/xrpc` API prefix. Browsers receive HTML; command-line clients receive plain text.
+`GET /xrpc/_health` returns `{ "status": "ok" }` for liveness checks; `/health`
+remains available for existing probes.
+
+Uploads can provide `name` and a bare SemVer `version` as query parameters. The
+API resolves the authenticated DID's verified handle and returns a public URL
+such as `https://mod.fluentci.io/@alice.example/hello-ci/v1.0.0/hello-ci.wasm`.
+Conditional S3 writes reject overwrites of that publisher/module/version.
+Requests without either parameter retain content-addressed storage for older
+clients. The current CLI supplies both values from package metadata.
+
 From the repository root, install dependencies with
 `bun install --frozen-lockfile --ignore-scripts`. With Gleam and Node.js 24 or
 newer installed:

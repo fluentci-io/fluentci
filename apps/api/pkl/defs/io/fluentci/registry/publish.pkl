@@ -5,6 +5,18 @@ id = "io.fluentci.registry.publish"
 description = "Upload a Wasm plugin to public S3 storage using a scoped AT Protocol service-auth token. The publisher then creates io.fluentci.plugin in their own PDS."
 defs = new Mapping {
   ["main"] = new Procedure {
+    parameters = new Parameters {
+      properties = new Mapping {
+        ["name"] = new StringField {
+          minLength = 1
+          maxLength = 64
+        }
+        ["version"] = new StringField {
+          minLength = 1
+          maxLength = 128
+        }
+      }
+    }
     input = new Body {
       encoding = "application/wasm"
     }
@@ -30,6 +42,12 @@ defs = new Mapping {
     }
     errors = List(new Error {
       name = "InvalidWasm"
+    }, new Error {
+      name = "InvalidPackageMetadata"
+    }, new Error {
+      name = "PublisherHandleUnavailable"
+    }, new Error {
+      name = "PackageVersionExists"
     }, new Error {
       name = "AuthRequired"
     }, new Error {

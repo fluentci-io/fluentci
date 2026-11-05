@@ -15,7 +15,11 @@ with record key `name-version`. Its author must match the repository DID.
 Package views include record `uri`, `cid`, `name`, `description`, `version`,
 `publishedAt`, `author`, `license`, `url`, `sha256`, and `size`.
 
-`GET /health` returns `{ "status": "ok" }` when the HTTP application is running.
+`GET /` displays the FluentCI ASCII welcome page with website and documentation
+links. API methods are under `/xrpc`.
+
+`GET /xrpc/_health` returns `{ "status": "ok" }` when the HTTP application is running.
+`GET /health` remains available as a compatibility alias.
 It is a liveness check, not a test of S3 permissions or Jetstream connectivity.
 
 ## Search packages
@@ -62,8 +66,16 @@ not multipart form data. It requires a short-lived AT Protocol service-auth
 Bearer token scoped to that method and the configured service DID. It does not
 accept an app password as its upload credential.
 
+Supply `name` and `version` together as query parameters for a versioned URL:
+`https://mod.fluentci.io/@alice.example/hello-ci/v1.0.0/hello-ci.wasm`. The
+server resolves and verifies the handle from the authenticated DID; callers
+cannot choose another publisher's path. Metadata uses bare SemVer (`1.0.0`),
+while URL version segments include `v`. Existing versioned objects cannot be
+overwritten (`PackageVersionExists`). Omitting both parameters preserves legacy
+content-addressed upload URLs.
+
 ```sh
-curl -sS https://api.fluentci.io/xrpc/io.fluentci.registry.publish \
+curl -sS 'https://api.fluentci.io/xrpc/io.fluentci.registry.publish?name=hello-ci&version=1.0.0' \
   -H "Authorization: Bearer $SERVICE_AUTH_TOKEN" \
   -H 'Content-Type: application/wasm' \
   --data-binary @dist/plugin.wasm

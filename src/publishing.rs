@@ -225,6 +225,7 @@ pub async fn publish(
                 registry::base_url()
             ))
             .bearer_auth(token)
+            .query(&[("name", name.as_str()), ("version", version.as_str())])
             .header("Content-Type", "application/wasm")
             .body(bytes)
             .timeout(Duration::from_secs(120))

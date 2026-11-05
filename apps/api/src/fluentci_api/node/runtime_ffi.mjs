@@ -11,6 +11,8 @@ import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createHash } from 'node:crypto';
 import { lexicons, PUBLISH, MAX_WASM_BYTES } from '../config_ffi.mjs';
 import { close } from '../db/client_ffi.mjs';
+import { index } from './welcome.mjs';
+import semver from 'semver';
 const identity = new IdResolver();
 export function create(database, options = {}) {
   return {
@@ -72,11 +74,54 @@ export async function upload(server, request) {
     throw new InvalidRequestError('Upload a valid Wasm module (maximum 64 MiB)', 'InvalidWasm');
   const author = request.auth.credentials.did;
   const digest = createHash('sha256').update(bytes).digest('hex');
-  const key = `plugins/${createHash('sha256').update(author).digest('hex')}/${digest}.wasm`;
+  const { name, version } = request.params;
+  const versioned = name !== undefined || version !== undefined;
+  let key;
+  if (versioned) {
+    if (
+      typeof name !== 'string' ||
+      !/^[a-z][a-z0-9-]{0,63}$/.test(name) ||
+      typeof version !== 'string' ||
+      version.length > 128 ||
+      semver.valid(version) !== version ||
+      version.includes('+')
+    )
+      throw new InvalidRequestError(
+        'Provide a valid package name and bare SemVer version together',
+        'InvalidPackageMetadata',
+      );
+    let handle;
+    try {
+      if (server.options.resolvePublisherHandle)
+        handle = await server.options.resolvePublisherHandle(author);
+      else {
+        const account = await identity.did.resolveAtprotoData(author);
+        if ((await identity.handle.resolve(account.handle)) !== author)
+          throw Error('Handle did not resolve to the publisher');
+        handle = account.handle;
+      }
+      handle = handle.toLowerCase();
+      if (
+        handle.length > 253 ||
+        !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(
+          handle,
+        )
+      )
+        throw Error('Invalid handle');
+    } catch {
+      throw new InvalidRequestError(
+        'Could not resolve a verified publisher handle',
+        'PublisherHandleUnavailable',
+      );
+    }
+    key = `@${handle}/${name}/v${version}/${name}.wasm`;
+  } else {
+    key = `plugins/${createHash('sha256').update(author).digest('hex')}/${digest}.wasm`;
+  }
   const bucket = process.env.S3_BUCKET;
   const publicOrigin = process.env.S3_PUBLIC_URL;
   if (!bucket || !publicOrigin)
-    throw new XRPCError(503, 'StorageUnavailable', 'Configure S3_BUCKET and S3_PUBLIC_URL');
+    throw new XRPCError(503, 'Configure S3_BUCKET and S3_PUBLIC_URL', 'StorageUnavailable');
   const base = new URL(publicOrigin.endsWith('/') ? publicOrigin : publicOrigin + '/');
   if (
     !['https:', 'http:'].includes(base.protocol) ||
@@ -85,7 +130,7 @@ export async function upload(server, request) {
     base.search ||
     base.hash
   )
-    throw new XRPCError(503, 'StorageUnavailable', 'Invalid public storage URL');
+    throw new XRPCError(503, 'Invalid public storage URL', 'StorageUnavailable');
   const url = new URL(key, base).href;
   server.s3 ??= new S3Client({
     region: process.env.S3_REGION ?? process.env.AWS_REGION ?? 'us-east-1',
@@ -101,17 +146,30 @@ export async function upload(server, request) {
         ContentType: 'application/wasm',
         CacheControl: 'public, max-age=31536000, immutable',
         ChecksumSHA256: createHash('sha256').update(bytes).digest('base64'),
+        ...(versioned ? { IfNoneMatch: '*' } : {}),
       }),
     );
-  } catch {
-    throw new XRPCError(503, 'StorageUnavailable', 'Could not store the Wasm artifact');
+  } catch (error) {
+    if (
+      versioned &&
+      (error.$metadata?.httpStatusCode === 412 || error.$metadata?.httpStatusCode === 409)
+    ) {
+      throw new XRPCError(
+        409,
+        'This publisher/module/version already has a Wasm artifact',
+        'PackageVersionExists',
+      );
+    }
+    throw new XRPCError(503, 'Could not store the Wasm artifact', 'StorageUnavailable');
   }
   return { encoding: 'application/json', body: { url, sha256: digest, size: bytes.length } };
 }
 export function app(server) {
   const app = express();
   app.disable('x-powered-by');
+  app.get('/', index);
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+  app.get('/xrpc/_health', (_req, res) => res.json({ status: 'ok' }));
   app.use(server.xrpc.router);
   return app;
 }

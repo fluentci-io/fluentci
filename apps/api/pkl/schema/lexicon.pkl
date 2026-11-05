@@ -60,6 +60,7 @@ class Query extends Field {
 
 class Procedure extends Field {
   type = "procedure"
+  parameters: Parameters?
   input: Body
   output: Body
   errors: List<Error> = List()
