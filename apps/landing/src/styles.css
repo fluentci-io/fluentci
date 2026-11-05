@@ -1,0 +1,199 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Lexend";
+  src: url("@fontsource-variable/lexend/files/lexend-latin-wght-normal.woff2")
+    format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Inconsolata";
+  src: url("@fontsource-variable/inconsolata/files/inconsolata-latin-wght-normal.woff2")
+    format("woff2");
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+}
+
+html,
+body,
+#root {
+  font-family: "Lexend", sans-serif;
+}
+button,
+input,
+select,
+textarea {
+  font-family: inherit;
+}
+code,
+pre {
+  font-family: "Inconsolata", monospace;
+}
+
+@theme {
+  --font-sans: "Lexend", sans-serif;
+  --font-mono: "Inconsolata", monospace;
+  --color-paper: #09090d;
+  --color-panel: #101017;
+  --color-raised: #191922;
+  --color-accent: #c3a6ff;
+  --color-cyan: #73d9ea;
+  --color-ink: #efeff5;
+  --color-muted: #a1a1b3;
+  --color-soft: #baafcf;
+  --color-line: #292934;
+}
+
+@layer base {
+  :root {
+    color-scheme: dark;
+    font-synthesis: none;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply m-0 bg-paper font-sans text-ink;
+    min-width: 320px;
+  }
+  button,
+  a {
+    -webkit-tap-highlight-color: transparent;
+  }
+  button {
+    cursor: pointer;
+  }
+  code,
+  pre {
+    @apply font-mono;
+    font-variant-ligatures: none;
+  }
+  ::selection {
+    background: #634483;
+    color: #ffffff;
+  }
+  :focus-visible {
+    outline: 2px solid #c3a6ff;
+    outline-offset: 5px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    * {
+      transition: none !important;
+    }
+  }
+}
+
+@layer components {
+  .page-width {
+    @apply mx-auto w-[calc(100%-2.5rem)] max-w-[1100px] sm:w-[calc(100%-5rem)];
+  }
+  .section-space {
+    @apply py-14 sm:py-20;
+  }
+  .section-label {
+    @apply text-[10px] font-medium uppercase tracking-[0.16em] text-muted sm:text-xs;
+  }
+  .section-title {
+    @apply text-3xl font-normal leading-[1.22] tracking-[-0.045em] sm:text-[38px];
+  }
+  .nav-link {
+    @apply text-muted transition-colors hover:text-accent;
+  }
+  .text-link {
+    @apply underline decoration-accent/40 underline-offset-4 transition-colors hover:text-accent hover:decoration-accent;
+  }
+  .button-primary {
+    @apply rounded-md border border-accent bg-accent px-5 py-3 text-xs font-medium text-paper transition-colors hover:border-[#d4c0ff] hover:bg-[#d4c0ff];
+  }
+  .copy-button {
+    @apply rounded border border-line bg-raised px-2.5 py-1.5 text-[11px] text-muted transition-colors hover:border-accent/60 hover:text-accent;
+  }
+  .sdk-tab {
+    @apply relative shrink-0 px-3 py-4 text-xs text-muted transition-colors hover:text-ink sm:px-5 sm:text-sm;
+  }
+  .sdk-tab.selected {
+    @apply text-cyan;
+  }
+  .sdk-tab.selected::after {
+    content: "";
+    @apply absolute inset-x-3 bottom-0 h-0.5 bg-cyan sm:inset-x-5;
+  }
+  .code {
+    @apply m-0 font-mono text-[15px] leading-[1.7];
+    tab-size: 2;
+  }
+  .sdk-code {
+    min-height: 390px;
+  }
+  .studio-preview-frame {
+    @apply relative overflow-hidden rounded-xl border border-line bg-paper;
+    aspect-ratio: 2560 / 1640;
+  }
+  /* Show only the app window, excluding the screenshot's black surround. */
+  .studio-preview-image {
+    position: absolute;
+    max-width: none;
+    width: 108.75%;
+    height: auto;
+    left: -4.375%;
+    top: -4.634146%;
+  }
+  .skip-link {
+    @apply fixed left-4 top-4 z-50 rounded bg-raised px-4 py-3 text-sm text-ink;
+    opacity: 0;
+    pointer-events: none;
+  }
+  .skip-link:focus {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+.hljs-comment {
+  color: #858598;
+}
+.hljs-keyword,
+.hljs-operator,
+.hljs-built_in {
+  color: #c3a6ff;
+}
+.hljs-string,
+.hljs-meta .hljs-string {
+  color: #9cdbaf;
+}
+.hljs-title,
+.hljs-title.function_,
+.hljs-name {
+  color: #73d9ea;
+}
+.hljs-type,
+.hljs-title.class_,
+.hljs-section {
+  color: #e9bd8a;
+}
+.hljs-number,
+.hljs-literal,
+.hljs-symbol {
+  color: #ffa6bf;
+}
+.hljs-attr,
+.hljs-variable,
+.hljs-params {
+  color: #c9c9d6;
+}
+
+@media (max-width: 639px) {
+  .sdk-code {
+    min-height: 355px;
+    font-size: 14px;
+  }
+}

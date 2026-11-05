@@ -1,0 +1,36 @@
+[package]
+authors = ["Tsiry Sandratraina <tsiry.sndr@fluentci.io>"]
+categories = ["command-line-utilities", "development-tools"]
+description = "Programmable CI/CD engine without Containers, built on top of Nix ❄️"
+edition = "2021"
+keywords = ["nix", "environment", "ci", "wasm", "devops"]
+license = "MPL-2.0"
+name = "fluentci-ext"
+repository = "https://github.com/fluentci-io/fluentci-engine"
+version = "0.2.10"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0.80"
+async-trait = "0.1.79"
+# Match fluentci-engine's OpenBSD-compatible AWS SDK baseline.
+aws-config = "=1.5.5"
+aws-sdk-s3 = {version = "=1.45.0", features = ["rt-tokio"]}
+cloud-storage = {version = "0.11.1", features = ["global-client", "rustls-tls"], default-features = false}
+dirs = "5.0.1"
+fluentci-logging = {path = "../logging", version = "0.1.2"}
+fluentci-types = {path = "../types", version = "0.1.10"}
+futures = "0.3.30"
+md5 = "0.7.0"
+mime_guess = "2.0.4"
+owo-colors = "4.0.0"
+regex = "1.10.3"
+sha2 = "0.10.8"
+sha256 = "1.5.0"
+superconsole = { workspace = true }
+tokio = {version = "1.36.0", features = ["tokio-macros", "macros", "rt", "rt-multi-thread"]}
+users = "0.11.0"
+tempfile = "3"

@@ -1,0 +1,56 @@
+[package]
+name = "fluentci"
+version = "0.16.8"
+edition = "2024"
+# OpenBSD uses its native Rust 1.90 package; other targets need the newer Wasmtime compiler.
+rust-version = "1.90"
+description = "FluentCI command line and local CI server"
+license = "MPL-2.0"
+
+[dependencies]
+fluentci-engine = { path = "engine/crates/cli" }
+fluentci-ext = { path = "engine/crates/ext" }
+rust-embed = { version = "8", features = ["debug-embed"] }
+mime_guess = "2"
+anyhow = "1"
+async-graphql = "7"
+async-graphql-axum = "7"
+axum = { version = "0.8", features = ["ws"] }
+chrono = { version = "0.4", features = ["serde"] }
+clap = { version = "4", features = ["derive", "env"] }
+dirs = "6"
+dotenvy = "0.15"
+futures-util = "0.3"
+ignore = "0.4"
+open = "5"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "stream"] }
+rpassword = "7"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+serde_yaml = "0.9"
+shlex = "1"
+sha256 = "1.5"
+sqlx = { version = "0.8", default-features = false, features = ["runtime-tokio", "sqlite", "migrate", "macros"] }
+tempfile = "3"
+tokio = { version = "1", features = ["full"] }
+tokio-tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+toml = "0.9"
+toml_edit = "0.25"
+uuid = { version = "1", features = ["v4"] }
+wasmparser = "0.243"
+zip = { version = "4", default-features = false, features = ["deflate"] }
+sea-query = { version = "1", default-features = false, features = ["backend-sqlite", "thread-safe"] }
+sea-query-sqlx = { version = "=0.8.1", default-features = false, features = ["sqlx-sqlite"] }
+
+[dev-dependencies]
+wat = "1"
+tower = { version = "0.5", features = ["util"] }
+
+[profile.release]
+lto = "thin"
+strip = true
+
+[patch.crates-io]
+wasmtime = { path = "engine/vendor/wasmtime" }

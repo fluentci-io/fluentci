@@ -1,0 +1,49 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -4 +4 @@
+-name = "superconsole"
++name = "fluentci-superconsole"
+@@ -8 +8 @@
+-description = "A simple but powerful Text-based User Interface (TUI) framework"
++description = "FluentCI BSD-compatible fork of Meta SuperConsole"
+@@ -14,0 +15,3 @@
++[lib]
++name = "superconsole"
++
+@@ -19 +22 @@
+-crossterm = { version = "0.29", features = ["serde"] }
++crossterm = { version = "0.29", default-features = false, features = ["serde", "windows"] }
+@@ -37,8 +40,3 @@
+-[target.'cfg(target_os = "linux")'.dependencies]
+-nix = { version = "0.31.3", features = ["fs"] }
+-
+-[target.'cfg(target_os = "macos")'.dependencies]
+-nix = { version = "0.31.3", features = ["fs"] }
+-
+-[workspace]
+-members = ["."]
++# RawReader is compiled on every Unix target, including all three BSDs.
++[target.'cfg(unix)'.dependencies]
++nix = { version = "0.31.3", default-features = false, features = ["fs"] }
+--- a/src/stdin.rs
++++ b/src/stdin.rs
+@@ -179,0 +180,19 @@
++
++#[cfg(all(test, unix))]
++mod fluentci_bsd_tests {
++    use super::raw_reader::RawReader;
++    use std::io::{Read, Write};
++    use std::os::unix::net::UnixStream;
++
++    #[test]
++    fn raw_reader_preserves_binary_bytes_and_eof_on_unix() {
++        let (input, mut output) = UnixStream::pair().unwrap();
++        let expected = "héllo BSD\0\n".as_bytes();
++        output.write_all(expected).unwrap();
++        drop(output);
++        let mut reader = RawReader::new(input);
++        let mut actual = Vec::new();
++        reader.read_to_end(&mut actual).unwrap();
++        assert_eq!(actual, expected);
++    }
++}

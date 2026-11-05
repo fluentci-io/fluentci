@@ -1,3 +1,9 @@
 {
-  "deno.enable": true
+  "rust-analyzer.check.command": "clippy",
+  "rust-analyzer.check.extraArgs": ["--release", "--locked"],
+  "files.exclude": {
+    "**/target": true,
+    "**/node_modules": true,
+    "**/.spago": true
+  }
 }

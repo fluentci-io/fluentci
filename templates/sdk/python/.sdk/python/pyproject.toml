@@ -1,0 +1,26 @@
+[project]
+name = "fluentci-pdk"
+version = "0.1.0"
+description = "Typed Python plugin-authoring PDK for FluentCI"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+fluentci-plugin = "fluentci.build:main"
+
+[build-system]
+requires = ["hatchling>=1.27,<2"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = ["mypy>=1.15,<2"]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/fluentci"]
+
+[tool.mypy]
+strict = true
+python_version = "3.12"
+mypy_path = "typings"
+files = ["src/fluentci", "demo"]
+exclude = ["_imports.py$"]

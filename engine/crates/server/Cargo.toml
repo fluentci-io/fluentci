@@ -1,0 +1,37 @@
+[package]
+authors = ["Tsiry Sandratraina <tsiry.sndr@fluentci.io>"]
+categories = ["command-line-utilities", "development-tools"]
+description = "Programmable CI/CD engine without Containers, built on top of Nix ❄️"
+edition = "2021"
+keywords = ["nix", "environment", "ci", "wasm", "devops"]
+license = "MPL-2.0"
+name = "fluentci-server"
+repository = "https://github.com/fluentci-io/fluentci-engine"
+version = "0.3.12"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+actix-cors = "0.7.0"
+actix-web = "4.5.1"
+anyhow = "1.0.81"
+async-graphql = "7.0.2"
+async-graphql-actix-web = "7.0.2"
+fluentci-core = {path = "../core", version = "0.3.11"}
+fluentci-ext = {path = "../ext", version = "0.2.10"}
+fluentci-graphql = {path = "../graphql", version = "0.3.12"}
+mime_guess = "2.0.4"
+owo-colors = "4.0.0"
+tokio = { version = "1.36.0", features = ["fs", "io-util"] }
+
+fluentci-executor = { path = "../executor", version = "0.1.2" }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+sha2 = "0.10"
+uuid = { version = "1", features = ["v4"] }
+tempfile = "3"
+opentelemetry = "0.22"
+opentelemetry_sdk = "0.22"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"

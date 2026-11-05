@@ -1,0 +1,36 @@
+[package]
+authors = ["Tsiry Sandratraina <tsiry.sndr@fluentci.io>"]
+categories = ["command-line-utilities", "development-tools"]
+description = "Programmable CI/CD engine without Containers, built on top of Nix ❄️"
+edition = "2021"
+keywords = ["nix", "environment", "ci", "wasm", "devops"]
+license = "MPL-2.0"
+name = "fluentci-shared"
+repository = "https://github.com/fluentci-io/fluentci-engine"
+version = "0.2.12"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+fluentci-executor = { path = "../executor", version = "0.1.2" }
+serde_json = "1.0"
+anyhow = "1.0.82"
+extism-pdk = { workspace = true }
+fluentci-common = {path = "../common", version = "0.2.12"}
+fluentci-core = {path = "../core", version = "0.3.11"}
+fluentci-ext = {path = "../ext", version = "0.2.10"}
+fluentci-secrets = {path = "../secrets", version = "0.1.2"}
+fluentci-types = {path = "../types", version = "0.1.10"}
+serde = {version = "1.0.197", features = ["serde_derive", "derive"]}
+uuid = {version = "1.8.0", features = [
+  "v4",
+  "fast-rng",
+  "macro-diagnostics",
+]}
+
+[target.'cfg(not(target_os = "openbsd"))'.dependencies]
+extism = { workspace = true }
+
+# Wasmtime 41 is the newest runtime line supported by OpenBSD's Rust 1.90.
+[target.'cfg(target_os = "openbsd")'.dependencies]
+extism-openbsd = { package = "fluentci-extism-openbsd", path = "../../vendor/extism-openbsd", version = "=1.21.1" }

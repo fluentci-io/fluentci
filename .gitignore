@@ -1,3 +1,25 @@
 result
+.DS_Store
 demo*
 kview
+/target/
+*.db
+*.db-shm
+*.db-wal
+
+# PureScript editor state
+.psc-ide-port
+
+# Native BSD release caches and fixtures
+/.ci-cache/
+/.release-smoke/
+/.bsd-release-smoke.*/
+/dist/bsd/
+
+# Bun workspaces and Turborepo
+node_modules/
+.turbo/
+apps/*/dist/
+apps/*/test-results/
+*.tsbuildinfo
+apps/*/playwright-report/

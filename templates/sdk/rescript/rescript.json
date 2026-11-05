@@ -1,0 +1,14 @@
+{
+  "name": "fluentci-main",
+  "sources": [
+    "src"
+  ],
+  "package-specs": {
+    "module": "esmodule",
+    "in-source": true
+  },
+  "suffix": ".res.mjs",
+  "dependencies": [
+    "rescript-fluentci"
+  ]
+}

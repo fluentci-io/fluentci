@@ -1,0 +1,8 @@
+[project]
+name = "fluentci-main"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["fluentci-pdk"]
+
+[tool.uv.sources]
+fluentci-pdk = { path = ".sdk/python" }

@@ -1,0 +1,72 @@
+{
+  "name": "fluentci-studio",
+  "private": true,
+  "version": "0.3.0",
+  "type": "module",
+  "author": "Tsiry Sandratraina <tsiry.sndr@fluentci.io>",
+  "scripts": {
+    "dev": "vite --port 5174",
+    "dev:mock": "VITE_STUDIO_MOCKS=true vite",
+    "start": "vite preview",
+    "build:web": "tsc --noEmit && vite build",
+    "build": "bun run build:web",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "preview": "vite preview",
+    "test": "vitest run",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "test:browser": "playwright test",
+    "format": "prettier --write src tests .storybook vite.config.ts playwright.config.ts tsconfig.json tsconfig.node.json package.json",
+    "format:check": "prettier --check src tests .storybook vite.config.ts playwright.config.ts tsconfig.json tsconfig.node.json package.json"
+  },
+  "dependencies": {
+    "@fontsource-variable/geist": "^5.2.0",
+    "@fontsource-variable/geist-mono": "^5.2.0",
+    "@hookform/resolvers": "^7.0.2",
+    "@tabler/icons-react": "^3.50.0",
+    "@tanstack/react-query": "^5.90.0",
+    "@tanstack/react-virtual": "^3.13.0",
+    "ansi-to-react": "^6.1.6",
+    "highlight.js": "^11.12.0",
+    "jotai": "^2.15.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-hook-form": "^7.91.0",
+    "react-router-dom": "^6.30.0",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.56.0",
+    "@storybook/addon-essentials": "^8.6.0",
+    "@storybook/addon-interactions": "^8.6.0",
+    "@storybook/react-vite": "^8.6.0",
+    "@storybook/test": "^8.6.0",
+    "@tailwindcss/vite": "^4.1.0",
+    "@testing-library/jest-dom": "^6.4.6",
+    "@testing-library/react": "^16.0.0",
+    "@testing-library/user-event": "^14.6.0",
+    "@types/react": "^18.3.0",
+    "@types/react-dom": "^18.3.0",
+    "@typescript-eslint/eslint-plugin": "^6.21.0",
+    "@typescript-eslint/parser": "^6.21.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "eslint": "^8.56.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
+    "eslint-plugin-react-refresh": "^0.4.5",
+    "jsdom": "^27.0.0",
+    "msw": "^2.12.0",
+    "msw-storybook-addon": "^2.0.6",
+    "storybook": "^8.6.0",
+    "tailwindcss": "^4.1.0",
+    "typescript": "^5.7.0",
+    "vite": "^6.1.0",
+    "vitest": "^4.0.0",
+    "prettier": "^3.6.0"
+  },
+  "msw": {
+    "workerDirectory": [
+      "public"
+    ]
+  }
+}

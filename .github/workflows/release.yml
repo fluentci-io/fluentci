@@ -1,55 +1,233 @@
-name: release
+name: Release
+
 on:
   release:
-    types: [created]
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing GitHub release tag to build and upload
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.event.release.tag_name || inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.tag }}
+  BSD_RUST_VERSION: '1.99.1'
+  FLUENTCI_VERSION: '2026.11.04'
+  RELEASE_MODULE: .fluentci/release/dist/plugin.wasm
 
 jobs:
-  build:
-    name: release
-    runs-on: macos-13
-    strategy:
-      matrix:
-        target:
-          - x86_64-unknown-linux-gnu
-          - aarch64-unknown-linux-gnu
-          - x86_64-apple-darwin
-          - aarch64-apple-darwin
+  studio:
+    name: Build Studio and portable release inputs
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v3
-      - name: Setup Fluent CI
-        uses: fluentci-io/setup-fluentci@v5
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+      - name: Set up FluentCI
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: oven-sh/setup-bun@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install the PureScript Wasm compiler toolchain
+        run: sh .fluentci/scripts/install-sdk-tools.sh
+      - name: Prepare release inputs with FluentCI
         env:
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Compile
-        run: |
-            rm deno.lock
-            deno install -A -g -f -r --unstable-kv https://github.com/fluentci-io/fluentci/raw/refs/heads/main/main.ts -n fluentci
-            deno compile -A --no-check --output fluentci --target ${{ matrix.target }} main.ts
-      - name: Set env
-        run: echo "RELEASE_VERSION=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
-      - name: Archive assets
-        run: |
-          tar czvf fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz fluentci
-          shasum -a 256 fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz > fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz.sha256
-      - name: Upload assets to Cloudflare R2
-        run: |
-          mkdir -p r2/fluentci/${{ env.RELEASE_VERSION }}
-          cp fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz r2/fluentci/${{ env.RELEASE_VERSION }}
-          cp fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.tar.gz.sha256 r2/fluentci/${{ env.RELEASE_VERSION }}
-          cd r2 && fluentci run --wasm r2-sync upload --endpoint-url https://$ACCOUNT_ID.r2.cloudflarestorage.com s3://assets || exit 0
+          GH_TOKEN: ${{ github.token }}
+        run: fluentci --check-update=false run release prepare
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-inputs
+          path: |
+            webui/dist/
+            .release-smoke/*.wasm
+            .fluentci/release/dist/plugin.wasm
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Release ${{ matrix.target }}
+    needs: studio
+    runs-on: ${{ matrix.os }}
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+          - os: macos-15
+            target: aarch64-apple-darwin
+    env:
+      TARGET: ${{ matrix.target }}
+      CARGO_BUILD_JOBS: '2'
+      CARGO_TERM_COLOR: always
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+      - name: Set up FluentCI
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-inputs
+          path: .
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+      - name: Install Linux build dependencies with FluentCI
+        if: runner.os == 'Linux'
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" linuxDependencies
+      - name: Build release binary with FluentCI
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" buildPrepared
+      - name: Check release binary with FluentCI
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" check
+      - name: Package release assets with FluentCI
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" package
+      - name: Upload GitHub release assets with FluentCI
         env:
-          TAG: ${{ env.RELEASE_VERSION }}
-          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          ACCOUNT_ID: fe5b1e2ce9f94f4c0415ab94ce402012
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Upload release assets
-        run: |
-          for ext in tar.gz tar.gz.sha256; do
-            export FILE=fluentci_${{ env.RELEASE_VERSION }}_${{ matrix.target }}.$ext
-            fluentci run --wasm github release_upload $TAG $FILE
-          done
+          GH_TOKEN: ${{ github.token }}
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" upload
+
+  bsd:
+    name: Release ${{ matrix.target }}
+    needs: studio
+    runs-on: ubuntu-24.04
+    timeout-minutes: 180
+    permissions:
+      contents: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: freebsd
+            version: '14.3'
+            target: x86_64-unknown-freebsd
+          - os: netbsd
+            version: '10.1'
+            target: x86_64-unknown-netbsd
+          - os: openbsd
+            version: '7.8'
+            target: x86_64-unknown-openbsd
+    env:
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+      - name: Set up FluentCI
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-inputs
+          path: .
+      - name: Reserve BSD runner disk space with FluentCI
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" reserveBsdDisk
+      - name: Cache native BSD toolchains and Cargo artifacts
+        uses: actions/cache@v4
+        with:
+          path: .ci-cache/bsd-rust
+          key: bsd-release-v1-${{ matrix.os }}-${{ matrix.version }}-${{ env.BSD_RUST_VERSION }}-${{ hashFiles('Cargo.lock', 'Cargo.toml', 'engine/**/Cargo.toml', '.github/scripts/*bsd*') }}-${{ hashFiles('src/**/*.rs', 'engine/**/*.rs', 'webui/dist/**') }}
+          restore-keys: |
+            bsd-release-v1-${{ matrix.os }}-${{ matrix.version }}-${{ env.BSD_RUST_VERSION }}-${{ hashFiles('Cargo.lock', 'Cargo.toml', 'engine/**/Cargo.toml', '.github/scripts/*bsd*') }}-
+            bsd-release-v1-${{ matrix.os }}-${{ matrix.version }}-${{ env.BSD_RUST_VERSION }}-
+      - name: Build and smoke-test FreeBSD release
+        if: matrix.os == 'freebsd'
+        uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc
+        with:
+          release: ${{ matrix.version }}
+          arch: x86_64
+          mem: 8192
+          cpu: 2
+          copyback: true
+          envs: 'RELEASE_VERSION TARGET BSD_RUST_VERSION FLUENTCI_VERSION RELEASE_MODULE'
+          prepare: |
+            set -eu
+            export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+            sh .github/scripts/prepare-bsd-release.sh
+            curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh
+          run: |
+            set -eu
+            export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsdBuild
+      - name: Build and smoke-test NetBSD release
+        if: matrix.os == 'netbsd'
+        uses: vmactions/netbsd-vm@c8a0d7ddb84619a7a8cc4e652efa7950b3fd9f92
+        with:
+          release: ${{ matrix.version }}
+          arch: x86_64
+          mem: 8192
+          cpu: 2
+          copyback: true
+          envs: 'RELEASE_VERSION TARGET BSD_RUST_VERSION FLUENTCI_VERSION RELEASE_MODULE'
+          prepare: |
+            set -eu
+            export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+            sh .github/scripts/prepare-bsd-release.sh
+            curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh
+          run: |
+            set -eu
+            export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsdBuild
+      - name: Build and smoke-test OpenBSD release
+        if: matrix.os == 'openbsd'
+        uses: vmactions/openbsd-vm@f1ca8bc8ecc5b6ef7218e5b914836e067e1546d3
+        with:
+          release: ${{ matrix.version }}
+          arch: x86_64
+          mem: 8192
+          cpu: 2
+          copyback: true
+          envs: 'RELEASE_VERSION TARGET BSD_RUST_VERSION FLUENTCI_VERSION RELEASE_MODULE'
+          prepare: |
+            set -eu
+            export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+            sh .github/scripts/prepare-bsd-release.sh
+            curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh
+          run: |
+            set -eu
+            export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsdBuild
+      - name: Verify copied-back BSD assets with FluentCI
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsdVerify
+      - name: Preserve BSD failure diagnostics
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bsd-release-failure-${{ matrix.target }}
+          path: |
+            .release-smoke/*.log
+            dist/bsd/${{ matrix.target }}/
+          include-hidden-files: true
+          if-no-files-found: ignore
+      - name: Upload BSD GitHub release assets with FluentCI
         env:
-          TAG: ${{ env.RELEASE_VERSION }}
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          GITHUB_ACCESS_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsdUpload
