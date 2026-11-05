@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to upload to (leave empty for a branch build with workflow artifacts only)
+        description: Existing release to upload to; always builds the selected branch (empty = artifacts only)
         required: false
         type: string
 
@@ -27,9 +27,11 @@ jobs:
     name: Compile the desktop release module
     runs-on: ubuntu-24.04
     steps:
+      # Pin both jobs to this event's source commit. A manual tag only selects
+      # the upload destination, so older releases cannot replace the build tools.
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name && format('refs/tags/{0}', github.event.release.tag_name) || inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          ref: ${{ github.sha }}
       - name: Set up FluentCI
         uses: fluentci-io/setup-fluentci@next
         with:
@@ -72,7 +74,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.release.tag_name && format('refs/tags/{0}', github.event.release.tag_name) || inputs.tag && format('refs/tags/{0}', inputs.tag) || github.ref }}
+          ref: ${{ github.sha }}
       - name: Set up FluentCI
         uses: fluentci-io/setup-fluentci@next
         with:

@@ -84,6 +84,8 @@ The [Studio desktop workflow](../.github/workflows/desktop-release.yml) builds
 Apple Silicon and Intel macOS installers when a GitHub release is published.
 It can also be run manually from any branch: leave its optional tag empty to
 create workflow artifacts, or supply an existing release tag to upload there.
+Manual runs always build the selected branch at its triggering commit; the tag
+input only selects the upload destination. Published releases build their tag.
 The PureScript `desktop` module applies and verifies an ad hoc signature before
 creating a DMG, app ZIP, and SHA-256 checksums. These builds are not notarized.
 See the [CI module guide](../.fluentci/README.md#desktop-releases) for local commands.

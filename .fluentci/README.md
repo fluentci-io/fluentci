@@ -153,7 +153,10 @@ The **Studio desktop** workflow (`.github/workflows/desktop-release.yml`) runs o
 published releases and through **Actions → Studio desktop → Run workflow**.
 Select any branch and leave `tag` empty for a standalone build; installers remain
 available as workflow artifacts for 14 days and nothing is published. Supply an
-existing release tag to build that tag and upload its installers to the release.
+existing release tag to upload the selected branch's installers to that release.
+Manual runs always build the selected branch, pinned to the triggering commit;
+the optional tag selects only the upload destination. Published-release events
+build the release tag's commit.
 Both paths build `aarch64-apple-darwin` on Apple Silicon and
 `x86_64-apple-darwin` on Intel macOS runners.
 
