@@ -168,6 +168,19 @@ pub(crate) fn satisfied(result: &TaskResult, task: &Task) -> bool {
     matches!(result.status, Status::Succeeded | Status::Ready)
         || (task.policy.allow_failure && matches!(result.status, Status::Failed | Status::TimedOut))
 }
+
+pub(crate) fn condition_skipped(
+    task: &Task,
+    parents: &[usize],
+    results: &[TaskResult],
+    tasks: &[Task],
+) -> bool {
+    task.policy.when != Condition::Success
+        || parents.iter().all(|&parent| {
+            results[parent].condition_skipped || satisfied(&results[parent], &tasks[parent])
+        })
+}
+
 pub(crate) fn resolve(task: &Task, results: &[TaskResult]) -> Result<Task, String> {
     let mut task = task.clone();
     for (key, reference) in &task.policy.bindings {

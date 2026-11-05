@@ -679,6 +679,7 @@ impl Plan {
                 && task.policy.retry.is_none()
         });
         let mut frontier = incremental.then(|| graph::Frontier::new(graph));
+        let mut pending_aborted = false;
         let mut failed = false;
         let mut stalled = false;
         loop {
@@ -1249,14 +1250,36 @@ impl Plan {
                         frontier.complete(index, graph);
                     }
                 }
-                if cancel.is_cancelled() || (self.fail_fast && failed) {
-                    for (index, result) in results.iter_mut().enumerate() {
-                        if result.status == Status::Pending {
-                            result.status = Status::Cancelled;
+                if !pending_aborted && (cancel.is_cancelled() || (self.fail_fast && failed)) {
+                    // Preserve the general scheduler's dependency-first gates.
+                    // Topological order also propagates skips when task storage
+                    // lists a descendant before its failed prerequisite.
+                    for &index in &graph.order {
+                        if results[index].status == Status::Pending {
+                            if matches!(
+                                workflow::gate(
+                                    &self.tasks[index],
+                                    &graph.dependencies[index],
+                                    &results,
+                                    &self.tasks
+                                ),
+                                workflow::Gate::Skip
+                            ) {
+                                results[index].condition_skipped = workflow::condition_skipped(
+                                    &self.tasks[index],
+                                    &graph.dependencies[index],
+                                    &results,
+                                    &self.tasks,
+                                );
+                                results[index].status = Status::Skipped;
+                            } else {
+                                results[index].status = Status::Cancelled;
+                            }
                             frontier.complete(index, graph);
                             touched.push(index);
                         }
                     }
+                    pending_aborted = true;
                 }
             }
             // Complex lifecycle policies retain their established topological sweep.
@@ -1304,12 +1327,12 @@ impl Plan {
                     results[i].status = Status::Skipped;
                 } else if matches!(gate, workflow::Gate::Skip) {
                     results[i].status = Status::Skipped;
-                    results[i].condition_skipped = self.tasks[i].policy.when
-                        != workflow::Condition::Success
-                        || graph.dependencies[i].iter().all(|&p| {
-                            results[p].condition_skipped
-                                || workflow::satisfied(&results[p], &self.tasks[p])
-                        });
+                    results[i].condition_skipped = workflow::condition_skipped(
+                        &self.tasks[i],
+                        &graph.dependencies[i],
+                        &results,
+                        &self.tasks,
+                    );
                 } else if stalled
                     || (cancel.is_cancelled() || (self.fail_fast && failed))
                         && !self.tasks[i].policy.when.finalizer()

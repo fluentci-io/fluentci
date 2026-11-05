@@ -317,3 +317,91 @@ fn explicit_environment_and_task_working_directories_are_respected() {
         "two\n"
     );
 }
+
+#[test]
+fn incremental_abort_states_match_the_general_scheduler() {
+    for pre_cancel in [false, true] {
+        for descendant_first in [false, true] {
+            let mut outcomes = vec![];
+            for general in [false, true] {
+                let dir = TempDir::new().unwrap();
+                let mut tasks = vec![
+                    task("bad", "exit 7", dir.path(), &[]),
+                    task("child", "touch unexpected-child", dir.path(), &["bad"]),
+                    task(
+                        "grandchild",
+                        "touch unexpected-grandchild",
+                        dir.path(),
+                        &["child"],
+                    ),
+                    task(
+                        "independent",
+                        "touch unexpected-independent",
+                        dir.path(),
+                        &[],
+                    ),
+                ];
+                if descendant_first {
+                    tasks[..3].reverse();
+                }
+                let mut p = plan(tasks);
+                p.jobs = 1;
+                if general {
+                    // An uncontended resource selects the established scheduler
+                    // without changing eligibility or order with one job slot.
+                    p.tasks
+                        .iter_mut()
+                        .find(|t| t.id == "bad")
+                        .unwrap()
+                        .resources = vec!["force-general".into()];
+                    p.resource_dir = Some(dir.path().join("resources"));
+                }
+                let cancel = Cancellation::default();
+                if pre_cancel {
+                    cancel.cancel();
+                }
+                let result = p
+                    .compile()
+                    .unwrap()
+                    .execute(&dir.path().join("run"), &cancel)
+                    .unwrap();
+                let states: BTreeMap<_, _> = result
+                    .tasks
+                    .iter()
+                    .map(|t| {
+                        (
+                            t.id.clone(),
+                            (t.status.clone(), t.exit_code, t.condition_skipped),
+                        )
+                    })
+                    .collect();
+                assert_eq!(
+                    states["bad"].0,
+                    if pre_cancel {
+                        Status::Cancelled
+                    } else {
+                        Status::Failed
+                    }
+                );
+                assert_eq!(states["child"].0, Status::Skipped);
+                assert_eq!(states["grandchild"].0, Status::Skipped);
+                assert_eq!(states["independent"].0, Status::Cancelled);
+                if !pre_cancel {
+                    assert_eq!(states["bad"].1, Some(7));
+                }
+                for file in [
+                    "unexpected-child",
+                    "unexpected-grandchild",
+                    "unexpected-independent",
+                ] {
+                    assert!(!dir.path().join(file).exists());
+                }
+                outcomes.push((result.outcome, states));
+            }
+            assert_eq!(
+                outcomes[0], outcomes[1],
+                "pre_cancel={pre_cancel}, descendant_first={descendant_first}"
+            );
+        }
+    }
+}

@@ -26,7 +26,13 @@ fn plan(tasks: Vec<Task>) -> Plan {
 
 fn fake(root: &Path, tool: &str, body: &str) {
     let file = root.join(tool);
-    fs::write(&file, format!("#!/bin/sh\n{body}\n")).unwrap();
+    // OpenBSD sh uses an external printf. Keep mock clients first, but make
+    // standard POSIX utilities available even with an otherwise isolated PATH.
+    fs::write(
+        &file,
+        format!("#!/bin/sh\nPATH=\"$PATH:/bin:/usr/bin\"\nexport PATH\n{body}\n"),
+    )
+    .unwrap();
     fs::set_permissions(file, fs::Permissions::from_mode(0o755)).unwrap();
 }
 
@@ -311,4 +317,36 @@ fn native_client_timeout_stops_the_process_group() {
         .unwrap();
     assert_eq!(result.tasks[0].status, fluentci_executor::Status::TimedOut);
     assert!(started.elapsed() < std::time::Duration::from_secs(5));
+}
+
+#[test]
+fn fake_clients_can_resolve_external_posix_utilities_with_an_isolated_path() {
+    let dir = TempDir::new().unwrap();
+    fs::write(dir.path().join("payload"), "portable fixture").unwrap();
+    // cat is external on the supported shells, so this catches the missing
+    // system PATH even on hosts where printf happens to be a shell builtin.
+    fake(dir.path(), "aws", "cat payload");
+    let mut task = remote::task(
+        "fixture",
+        Operation::S3 {
+            bucket: "modules".into(),
+            key: String::new(),
+            action: Action::List,
+            path: None,
+            endpoint: None,
+            region: None,
+            install: false,
+        },
+        dir.path(),
+    );
+    task.env
+        .insert("PATH".into(), dir.path().to_string_lossy().into_owned());
+    let result = plan(vec![task])
+        .execute(&dir.path().join("run"), &Cancellation::default())
+        .unwrap();
+    assert!(result.success(), "{result:?}");
+    assert_eq!(
+        fs::read_to_string(&result.tasks[0].stdout).unwrap(),
+        "portable fixture"
+    );
 }
