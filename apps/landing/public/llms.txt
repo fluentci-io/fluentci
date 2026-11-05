@@ -1,0 +1,50 @@
+# FluentCI
+
+> FluentCI is an open-source, programmable CI/CD tool for building, testing, and deploying locally or on runners, with reusable WebAssembly plugins and a local Studio UI.
+
+Website: https://fluentci.io
+Repository: https://github.com/fluentci-io/fluentci
+
+Define pipelines in TOML or write Wasm plugins with the Rust, ClojureScript,
+PureScript, TypeScript, Python, Gleam, Elixir, or ReScript SDK. Wasm contains the
+pipeline logic; commands execute on the host using its installed tools and files.
+SDK builds require their language toolchains. ClojureScript starters check shared
+`.cljc` source with Typed Clojure before compiling to JavaScript and Wasm.
+
+Install the CLI:
+
+```sh
+curl -fsSL https://cli.fluentci.io | sh
+export PATH="$HOME/.local/bin:$PATH"
+fluentci --version
+```
+
+Create and run a ClojureScript pipeline:
+
+```sh
+fluentci init --sdk clojurescript
+fluentci run main hello
+```
+
+Add a module to an existing workspace with
+`fluentci modules add ci --sdk purescript`, then run `fluentci run ci hello`.
+The root `fluentci.toml` declares modules and steps. Module paths are relative to
+that configuration file. Local execution requires no account.
+
+Run `fluentci studio` to manage projects, inspect execution history, follow live
+logs, view pipeline spans, and export CI configuration. Studio is available in a
+browser and as a desktop app.
+
+## Documentation
+
+- [CLI documentation](https://raw.githubusercontent.com/fluentci-io/fluentci/main/README.md): Installation, configuration, workspace modules, commands, Studio, and CI exports.
+- [SDK starter templates](https://raw.githubusercontent.com/fluentci-io/fluentci/main/templates/README.md): Embedded starter projects and build requirements.
+- [ClojureScript starter](https://raw.githubusercontent.com/fluentci-io/fluentci/main/templates/sdk/clojurescript/README.md): Static checking, compilation, Wasm exports, and local SDK layout.
+- [Engine documentation](https://raw.githubusercontent.com/fluentci-io/fluentci-engine/main/README.md): Pipeline runtime, host execution, environment providers, and engine usage.
+- [Guest SDKs](https://raw.githubusercontent.com/fluentci-io/fluentci-engine/main/sdk/README.md): Language SDK documentation and examples.
+
+## Optional
+
+- [Registry API](https://raw.githubusercontent.com/fluentci-io/fluentci/main/apps/api/README.md): Gleam XRPC API, AT Protocol plugin records, SQLite indexing, and publishing storage configuration.
+- [Contributing](https://github.com/fluentci-io/fluentci#contributing): Development and contribution guidance.
+- [Community](https://discord.gg/H7M28d9dRk): FluentCI Discord.
