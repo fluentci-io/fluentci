@@ -11,6 +11,7 @@ pub mod export;
 pub mod models;
 pub mod modules;
 pub mod pipeline;
+pub mod plugin_metadata;
 pub mod process;
 pub mod publishing;
 pub mod registry;

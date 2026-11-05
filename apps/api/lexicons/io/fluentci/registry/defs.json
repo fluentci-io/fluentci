@@ -56,6 +56,14 @@
           "minLength": 64,
           "maxLength": 64
         },
+        "functions": {
+          "type": "array",
+          "description": "Exported jobs with optional source-level signatures and their actual Wasm ABI. Missing args or returnType means unknown, not zero arguments or void.",
+          "items": {
+            "type": "ref",
+            "ref": "io.fluentci.plugin#function"
+          }
+        },
         "size": {
           "type": "integer",
           "minimum": 8,

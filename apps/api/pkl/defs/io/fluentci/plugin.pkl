@@ -39,6 +39,10 @@ defs = new Mapping {
           minLength = 64
           maxLength = 64
         }
+        ["functions"] = new ArrayField {
+          description = "Exported jobs with optional source-level signatures and their actual Wasm ABI. Missing args or returnType means unknown, not zero arguments or void."
+          items = new RefField { ref = "io.fluentci.plugin#function" }
+        }
         ["size"] = new IntegerField {
           minimum = 8
           maximum = 67108864
@@ -46,4 +50,28 @@ defs = new Mapping {
       }
     }
   }
+  ["argument"] = new ObjectField {
+    required = List("name", "type")
+    properties = new Mapping {
+      ["name"] = new StringField { minLength = 1
+maxLength = 128 }
+      ["type"] = new StringField { minLength = 1
+maxLength = 1024 }
+      ["description"] = new StringField { maxLength = 2048 }
+    }
+  }
+  ["function"] = new ObjectField {
+    required = List("name", "wasmParams", "wasmResults")
+    properties = new Mapping {
+      ["name"] = new StringField { minLength = 1
+maxLength = 256 }
+      ["description"] = new StringField { maxLength = 2048 }
+      ["args"] = new ArrayField { items = new RefField { ref = "io.fluentci.plugin#argument" } }
+      ["returnType"] = new StringField { minLength = 1
+maxLength = 1024 }
+      ["wasmParams"] = new ArrayField { items = new StringField {} }
+      ["wasmResults"] = new ArrayField { items = new StringField {} }
+    }
+  }
+
 }

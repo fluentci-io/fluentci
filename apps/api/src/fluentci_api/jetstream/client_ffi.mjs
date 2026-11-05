@@ -1,3 +1,5 @@
+import { Some, None } from '../../../gleam_stdlib/gleam/option.mjs';
+import { decode_wire } from '../function_metadata.mjs';
 import { RegistryPackageView as Package } from '../lexicon/models.mjs';
 import WebSocket from 'ws';
 import { Lexicons } from '@atproto/lexicon';
@@ -79,6 +81,7 @@ export function decodeEvent(message) {
           p.license,
           p.url,
           p.sha256,
+          p.functions == null ? new None() : new Some(decode_wire(p.functions)),
           p.size,
           uri,
           c.cid,

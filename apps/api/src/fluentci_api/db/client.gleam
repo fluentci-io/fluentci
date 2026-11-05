@@ -7,6 +7,7 @@ import fluentci_api/drizzle/orm.{
   matches, on_conflict_do_nothing, on_conflict_do_update, or, order_by, set,
   transaction, where,
 }
+import fluentci_api/function_metadata
 import fluentci_api/lexicon/models.{
   RegistryListPackagesOutput, RegistryPackageView,
 }
@@ -71,6 +72,7 @@ fn package(row: p.Row) -> Package {
     license,
     url,
     sha256,
+    option.map(row.functions, function_metadata.from_string),
     size,
     row.uri,
     cid,
@@ -235,6 +237,10 @@ fn package_values(plugin: Package, time: Int) -> List(Assignment) {
     set(p.url(table), Some(plugin.url)),
     set(p.sha256(table), Some(plugin.sha256)),
     set(p.size(table), Some(plugin.size)),
+    set(
+      p.functions(table),
+      option.map(plugin.functions, function_metadata.to_string),
+    ),
     set(p.deleted(table), False),
     set(p.event_time(table), time),
   ]

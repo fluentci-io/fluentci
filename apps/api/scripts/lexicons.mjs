@@ -16,7 +16,8 @@ const snake = (value) =>
   value
     .replace(/([a-z0-9])([A-Z])/g, '$1_$2')
     .replaceAll('.', '_')
-    .toLowerCase();
+    .toLowerCase()
+    .replace(/^(type|fn|case|let|pub|import|const|use|assert|as|opaque)$/, '$1_');
 const pascal = (value) =>
   value
     .split(/[._]/)

@@ -89,6 +89,9 @@ test('welcome page has ASCII art, site links and an XRPC health route', async (t
   const html = await fetch(url, { headers: { Accept: 'text/html' } });
   assert.match(html.headers.get('content-type'), /text\/html/);
   assert.ok((await html.text()).includes('href="https://docs.fluentci.io"'));
+  const icon = await fetch(url + '/favicon.ico');
+  assert.equal(icon.status, 200);
+  assert.equal(Buffer.from(await icon.arrayBuffer()).readUInt16LE(2), 1);
   for (const path of ['/xrpc/_health', '/health']) {
     const health = await fetch(url + path);
     assert.equal(health.status, 200);
@@ -167,6 +170,33 @@ test('real XRPC query routes return validated schemas, pagination, and useful er
   assert.equal(invalid.status, 400);
   const missing = await fetch(`${url}/xrpc/io.fluentci.registry.getPackage?name=missing`);
   assert.equal((await missing.json()).error, 'PackageNotFound');
+});
+
+test('function signatures survive Jetstream, SQLite and every registry response', async (t) => {
+  const connection = await fixture(t);
+  const functions = [
+    {
+      name: 'build',
+      args: [{ name: 'directory', type: 'String' }],
+      returnType: 'Effect String',
+      wasmParams: [],
+      wasmResults: ['i32'],
+    },
+  ];
+  await add(connection, event('sccache', '1.0.0', 100, did, { functions }));
+  const { url } = await server(t, connection);
+  for (const method of ['getPackage?name=sccache', 'listPackages', 'searchPackages?q=sccache']) {
+    const response = await fetch(`${url}/xrpc/io.fluentci.registry.${method}`);
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.deepEqual((body.package ?? body.packages[0]).functions, functions);
+  }
+  const malformed = event('bad-signature', '1.0.0', 101, did, {
+    functions: [
+      { name: 'build', args: [{ name: 'missing-type' }], wasmParams: [], wasmResults: [] },
+    ],
+  });
+  assert.equal(wire.decodeEvent(JSON.stringify(malformed)).isOk(), false);
 });
 
 test('publish requires scoped service auth, validates Wasm, and sends immutable objects to S3', async (t) => {

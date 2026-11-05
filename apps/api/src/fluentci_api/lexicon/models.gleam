@@ -28,6 +28,7 @@ pub type Plugin {
     license: String,
     url: String,
     sha256: String,
+    functions: Option(List(PluginFunction)),
     size: Int,
   )
 }
@@ -44,7 +45,76 @@ pub fn encode_plugin(value: Plugin) -> json.Json {
     #("sha256", json.string(value.sha256)),
     #("size", json.int(value.size)),
   ]
+  let fields =
+    list.append(fields, case value.functions {
+      None -> []
+      Some(item) -> [
+        #(
+          "functions",
+          json.array(item, fn(item) { encode_plugin_function(item) }),
+        ),
+      ]
+    })
+  json.object(fields)
+}
 
+pub type PluginArgument {
+  PluginArgument(name: String, type_: String, description: Option(String))
+}
+
+pub fn encode_plugin_argument(value: PluginArgument) -> json.Json {
+  let fields = [
+    #("name", json.string(value.name)),
+    #("type", json.string(value.type_)),
+  ]
+  let fields =
+    list.append(fields, case value.description {
+      None -> []
+      Some(item) -> [#("description", json.string(item))]
+    })
+  json.object(fields)
+}
+
+pub type PluginFunction {
+  PluginFunction(
+    name: String,
+    description: Option(String),
+    args: Option(List(PluginArgument)),
+    return_type: Option(String),
+    wasm_params: List(String),
+    wasm_results: List(String),
+  )
+}
+
+pub fn encode_plugin_function(value: PluginFunction) -> json.Json {
+  let fields = [
+    #("name", json.string(value.name)),
+    #(
+      "wasmParams",
+      json.array(value.wasm_params, fn(item) { json.string(item) }),
+    ),
+    #(
+      "wasmResults",
+      json.array(value.wasm_results, fn(item) { json.string(item) }),
+    ),
+  ]
+  let fields =
+    list.append(fields, case value.description {
+      None -> []
+      Some(item) -> [#("description", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.args {
+      None -> []
+      Some(item) -> [
+        #("args", json.array(item, fn(item) { encode_plugin_argument(item) })),
+      ]
+    })
+  let fields =
+    list.append(fields, case value.return_type {
+      None -> []
+      Some(item) -> [#("returnType", json.string(item))]
+    })
   json.object(fields)
 }
 
@@ -58,6 +128,7 @@ pub type RegistryPackageView {
     license: String,
     url: String,
     sha256: String,
+    functions: Option(List(PluginFunction)),
     size: Int,
     uri: String,
     cid: String,
@@ -78,7 +149,16 @@ pub fn encode_registry_package_view(value: RegistryPackageView) -> json.Json {
     #("uri", json.string(value.uri)),
     #("cid", json.string(value.cid)),
   ]
-
+  let fields =
+    list.append(fields, case value.functions {
+      None -> []
+      Some(item) -> [
+        #(
+          "functions",
+          json.array(item, fn(item) { encode_plugin_function(item) }),
+        ),
+      ]
+    })
   json.object(fields)
 }
 

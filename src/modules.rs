@@ -300,6 +300,7 @@ pub fn discover(workspace: &Workspace) -> Result<Vec<LocalModule>> {
             name: ".".into(),
             definition: Module {
                 name: ".".into(),
+                functions: vec![],
                 version: None,
                 description: None,
                 license: None,
@@ -532,6 +533,7 @@ pub async fn add(
     }
     let definition = Module {
         name: name.into(),
+        functions: vec![],
         version: None,
         description: None,
         license: None,

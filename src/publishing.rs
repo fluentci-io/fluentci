@@ -23,6 +23,9 @@ pub const MAX_WASM_BYTES: usize = 64 * 1024 * 1024;
 
 #[derive(Debug, Default, clap::Args)]
 pub struct MetadataOptions {
+    /// JSON function metadata manifest, supported by every SDK
+    #[arg(long, value_name = "JSON")]
+    pub manifest: Option<std::path::PathBuf>,
     /// Published package name (required for file/URL publishing; prompts if omitted)
     #[arg(long, value_name = "NAME")]
     pub name: Option<String>,
@@ -51,6 +54,7 @@ pub struct PluginRecord {
     pub url: String,
     pub sha256: String,
     pub size: usize,
+    pub functions: Vec<crate::plugin_metadata::Function>,
 }
 
 #[derive(Deserialize)]
@@ -223,6 +227,7 @@ fn metadata(
         .filter(|_| module.is_none())
         .and_then(|config| config.package.as_ref());
     let fields = MetadataOptions {
+        manifest: None,
         name: overrides.name.clone().or_else(|| {
             if artifact {
                 None
@@ -402,6 +407,23 @@ pub async fn publish(
         tokio::fs::read(artifact).await?
     };
     validate_wasm(&bytes)?;
+    let declared = if let Some(path) = &metadata_options.manifest {
+        Some(crate::plugin_metadata::read_manifest(path, &bytes)?)
+    } else {
+        let config = config::find(&workspace.root)
+            .map(|path| config::Config::read(&path))
+            .transpose()?;
+        config.as_ref().and_then(|config| {
+            let selected = module.or(metadata_options.name.as_deref());
+            let definition = selected
+                .and_then(|name| config.modules.iter().find(|m| m.name == name))
+                .or_else(|| (config.modules.len() == 1).then(|| &config.modules[0]));
+            definition
+                .filter(|m| !m.functions.is_empty())
+                .map(|m| m.functions.clone())
+        })
+    };
+    let functions = crate::plugin_metadata::inspect(&bytes, declared)?;
     let publisher = auth::authenticate(db).await?;
     let digest = sha256::digest(bytes.as_slice());
     let size = bytes.len();
@@ -440,6 +462,7 @@ pub async fn publish(
         url,
         sha256: digest,
         size,
+        functions,
     };
     let key = format!("{}-{}", record.name, record.version);
     let request: CreateRecord<String> = CreateRecord {

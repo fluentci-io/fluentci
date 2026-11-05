@@ -86,6 +86,62 @@ If storage succeeds but PDS creation fails, the object may exist without an
 indexed package record. Check the error before retrying; upload and PDS write are
 separate remote operations.
 
+## Functions, arguments, and return types
+
+Publishing inspects the actual Wasm exports for every SDK: Rust, PureScript,
+ClojureScript, TypeScript, Python, Gleam, Elixir, and ReScript. Records include a
+`functions` array with each job's `name`, `wasmParams`, and `wasmResults`. Wasm
+ABI types describe the compiled boundary, not the JSON values passed through
+Extism input/output. Missing source-level `args` or `returnType` means unknown.
+
+Describe the public job inputs and output on its module, using the same format
+for every SDK:
+
+```toml
+[[modules]]
+name = "sccache"
+path = ".fluentci/sccache"
+sdk = "purescript"
+version = "0.1.1"
+license = "MIT"
+
+[[modules.functions]]
+name = "build"
+description = "Build a project with compiler caching"
+args = [{ name = "arguments", type = "Array String" }]
+returnType = "String"
+```
+
+The declarations document the job's contract; they do not change its implementation.
+PureScript jobs that read `P.input` must describe that input explicitly: an
+`Effect Unit` wrapper does not reveal the JSON argument names or result type.
+
+For files or URLs, pass `--module sccache` to use its declarations, or supply
+an SDK-independent JSON manifest with `--manifest plugin.metadata.json`:
+
+```json
+{
+  "functions": [
+    {
+      "name": "build",
+      "args": [{ "name": "arguments", "type": "Array String" }],
+      "returnType": "String"
+    }
+  ]
+}
+```
+
+SDK tools may embed the same JSON in a `fluentci:metadata` Wasm custom section.
+Explicit `--manifest` overrides module declarations, which override embedded
+metadata. A file manifest may include `sha256` to bind it to an artifact.
+Publishing rejects references to missing exports, duplicate names, invalid fields,
+and mismatched checksums. ABI types always come from the Wasm artifact.
+
+Registry search, get, and list responses preserve the function metadata through
+SQLite indexing. Older records remain readable without `functions`. Existing
+published releases are immutable; publish a new version with the updated CLI
+and declarations to add function metadata.
+
 ## Indexing and registry overrides
 
 Jetstream indexes valid records asynchronously. A successful PDS write can take

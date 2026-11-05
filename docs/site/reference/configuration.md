@@ -41,18 +41,19 @@ Both `steps` and `modules` default to empty lists when omitted.
 
 ## Module fields
 
-| Field         | Type             | Contract                                                                              |
-| ------------- | ---------------- | ------------------------------------------------------------------------------------- |
-| `name`        | string           | Required and unique; ASCII letters, digits, `-`, `_`; `shell` is reserved             |
-| `version`     | optional string  | SemVer version for publishing                                                         |
-| `description` | optional string  | Published package description                                                         |
-| `license`     | optional string  | Required non-empty license when publishing                                            |
-| `path`        | path string      | Source directory, local `.wasm`, or Rust manifest; exactly one of `path`/`url`        |
-| `url`         | string           | HTTP(S) URL whose path ends in `.wasm`; URL modules cannot override build/artifact    |
-| `sdk`         | string           | Defaults to `rust`; see [SDK selectors](/sdks/)                                       |
-| `entry`       | string           | Required for source Elixir without custom build; Python entry defaults to `plugin.py` |
-| `artifact`    | path string      | Output relative to source; JavaScript SDK default is `dist/plugin.wasm`               |
-| `build`       | array of strings | Executable and literal arguments; must not be empty                                   |
+| Field         | Type                     | Contract                                                                                                    |
+| ------------- | ------------------------ | ----------------------------------------------------------------------------------------------------------- |
+| `name`        | string                   | Required and unique; ASCII letters, digits, `-`, `_`; `shell` is reserved                                   |
+| `functions`   | optional array of tables | Job metadata: `name`, optional `args`, `returnType`, `description`; see [publishing](/registry/publishing/) |
+| `version`     | optional string          | SemVer version for publishing                                                                               |
+| `description` | optional string          | Published package description                                                                               |
+| `license`     | optional string          | Required non-empty license when publishing                                                                  |
+| `path`        | path string              | Source directory, local `.wasm`, or Rust manifest; exactly one of `path`/`url`                              |
+| `url`         | string                   | HTTP(S) URL whose path ends in `.wasm`; URL modules cannot override build/artifact                          |
+| `sdk`         | string                   | Defaults to `rust`; see [SDK selectors](/sdks/)                                                             |
+| `entry`       | string                   | Required for source Elixir without custom build; Python entry defaults to `plugin.py`                       |
+| `artifact`    | path string              | Output relative to source; JavaScript SDK default is `dist/plugin.wasm`                                     |
+| `build`       | array of strings         | Executable and literal arguments; must not be empty                                                         |
 
 Module declarations reject unknown fields. Rust artifacts normally resolve from
 Cargo metadata; a Rust artifact override requires an explicit build command.

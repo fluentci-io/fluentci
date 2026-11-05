@@ -1,4 +1,5 @@
 import express from 'express';
+import { resolve } from 'node:path';
 import {
   createServer,
   AuthRequiredError,
@@ -9,7 +10,7 @@ import {
 import { IdResolver } from '@atproto/identity';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
 import { createHash } from 'node:crypto';
-import { lexicons, PUBLISH, MAX_WASM_BYTES } from '../config_ffi.mjs';
+import { root, lexicons, PUBLISH, MAX_WASM_BYTES } from '../config_ffi.mjs';
 import { close } from '../db/client_ffi.mjs';
 import { index } from './welcome.mjs';
 import semver from 'semver';
@@ -168,6 +169,7 @@ export function app(server) {
   const app = express();
   app.disable('x-powered-by');
   app.get('/', index);
+  app.get('/favicon.ico', (_req, res) => res.sendFile(resolve(root(), 'public/favicon.ico')));
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
   app.get('/xrpc/_health', (_req, res) => res.json({ status: 'ok' }));
   app.use(server.xrpc.router);

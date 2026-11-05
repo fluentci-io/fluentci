@@ -391,7 +391,8 @@ prompted interactively; only name, version, and license are required. Use
 
 The CLI remembers non-secret identity in `~/.fluentci/account.json`, without
 saving the password or session tokens. See [authentication](./docs/site/registry/authentication.md)
-and [publishing](./docs/site/registry/publishing.md) for module builds and public
+and [publishing](./docs/site/registry/publishing.md) for SDK-independent function
+metadata (`[[modules.functions]]` or `--manifest`), module builds, and public
 Wasm URL publishing.
 
 ### Environment providers and built-in functions

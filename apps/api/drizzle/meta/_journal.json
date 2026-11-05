@@ -29,6 +29,13 @@
       "when": 1793923200002,
       "tag": "0003_package_identity",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1793923200003,
+      "tag": "0004_function_metadata",
+      "breakpoints": true
     }
   ]
 }

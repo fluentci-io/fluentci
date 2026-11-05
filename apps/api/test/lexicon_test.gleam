@@ -21,6 +21,7 @@ pub fn generated_encoder_preserves_json_field_names_test() {
     url: "https://plugins.example/hello.wasm",
     sha256: "0000000000000000000000000000000000000000000000000000000000000000",
     size: 8,
+    functions: None,
   )
   |> models.encode_plugin
   |> json.to_string

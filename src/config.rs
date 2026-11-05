@@ -23,6 +23,8 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct Module {
     pub name: String,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub functions: Vec<crate::plugin_metadata::Function>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub version: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

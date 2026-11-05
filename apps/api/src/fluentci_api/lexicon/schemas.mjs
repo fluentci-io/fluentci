@@ -69,10 +69,78 @@ export const schemas = [
               minLength: 64,
               maxLength: 64,
             },
+            functions: {
+              type: 'array',
+              description:
+                'Exported jobs with optional source-level signatures and their actual Wasm ABI. Missing args or returnType means unknown, not zero arguments or void.',
+              items: {
+                type: 'ref',
+                ref: 'io.fluentci.plugin#function',
+              },
+            },
             size: {
               type: 'integer',
               minimum: 8,
               maximum: 67108864,
+            },
+          },
+        },
+      },
+      argument: {
+        type: 'object',
+        required: ['name', 'type'],
+        properties: {
+          name: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 128,
+          },
+          type: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 1024,
+          },
+          description: {
+            type: 'string',
+            maxLength: 2048,
+          },
+        },
+      },
+      function: {
+        type: 'object',
+        required: ['name', 'wasmParams', 'wasmResults'],
+        properties: {
+          name: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 256,
+          },
+          description: {
+            type: 'string',
+            maxLength: 2048,
+          },
+          args: {
+            type: 'array',
+            items: {
+              type: 'ref',
+              ref: 'io.fluentci.plugin#argument',
+            },
+          },
+          returnType: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 1024,
+          },
+          wasmParams: {
+            type: 'array',
+            items: {
+              type: 'string',
+            },
+          },
+          wasmResults: {
+            type: 'array',
+            items: {
+              type: 'string',
             },
           },
         },
@@ -136,6 +204,15 @@ export const schemas = [
             type: 'string',
             minLength: 64,
             maxLength: 64,
+          },
+          functions: {
+            type: 'array',
+            description:
+              'Exported jobs with optional source-level signatures and their actual Wasm ABI. Missing args or returnType means unknown, not zero arguments or void.',
+            items: {
+              type: 'ref',
+              ref: 'io.fluentci.plugin#function',
+            },
           },
           size: {
             type: 'integer',
