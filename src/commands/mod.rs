@@ -27,6 +27,7 @@ mod restart;
 mod run;
 mod search;
 mod server;
+mod services;
 mod start;
 mod status;
 mod stop;
@@ -41,6 +42,7 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
         Some(Command::EngineCall { module, commands }) => {
             return engine_call::execute(module, commands).await;
         }
+        Some(Command::ServiceManager { root }) => return crate::services::daemon(root).await,
         Some(Command::ProviderWorker { request }) => return provider_worker::execute(request),
         _ => {}
     }
@@ -104,6 +106,20 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
         Some(Command::Server { port }) => server::execute(db, port).await,
         Some(Command::Studio { port }) => studio::execute(db, port).await,
         Some(Command::Project { command }) => project::execute(&db, command).await,
+        Some(Command::Services { command }) => services::execute(command).await,
+        Some(Command::Logs {
+            service,
+            follow,
+            tail,
+        }) => {
+            crate::services::logs(
+                &crate::workspace::Workspace::current()?.root,
+                &service,
+                follow,
+                tail,
+            )
+            .await
+        }
         Some(Command::Up) => up::execute().await,
         Some(Command::Down) => down::execute().await,
         Some(Command::Ps) => ps::execute().await,
@@ -114,7 +130,11 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
         Some(Command::Echo { service }) => echo::execute(&service).await,
         Some(Command::Community) => community::execute(),
         Some(Command::Upgrade) => upgrade::execute().await,
-        Some(Command::EngineCall { .. } | Command::ProviderWorker { .. }) => {
+        Some(
+            Command::EngineCall { .. }
+            | Command::ProviderWorker { .. }
+            | Command::ServiceManager { .. },
+        ) => {
             unreachable!("Worker modes handled before opening database")
         }
     }

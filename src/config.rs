@@ -11,6 +11,8 @@ use std::{
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub services: Vec<crate::services::definition::Definition>,
     #[serde(default)]
     pub steps: Vec<Step>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -158,6 +160,15 @@ impl Commands {
 impl Config {
     pub fn parse(content: &str) -> Result<Self> {
         let config: Self = toml::from_str(content).context("Invalid fluentci.toml")?;
+        let mut service_names = HashSet::new();
+        for service in &config.services {
+            service.validate()?;
+            anyhow::ensure!(
+                service_names.insert(&service.name),
+                "Duplicate service name {:?}",
+                service.name
+            );
+        }
         let mut names = HashSet::new();
         for module in &config.modules {
             if module.name.starts_with('@') {

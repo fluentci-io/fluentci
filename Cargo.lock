@@ -3346,6 +3346,7 @@ dependencies = [
  "ignore",
  "inquire",
  "jacquard",
+ "libc",
  "mime_guess",
  "open",
  "reqwest 0.12.28",

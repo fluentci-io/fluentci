@@ -207,35 +207,56 @@ pub enum Command {
         #[command(subcommand)]
         command: ProjectCommand,
     },
-    /// Start all services discovered in Procfiles
+    /// Programmatic service definitions, scoped CI commands, and JSON status
+    Services {
+        #[command(subcommand)]
+        command: ServiceCommand,
+    },
+    /// Read or follow service stdout and stderr
+    Logs {
+        /// Service name
+        service: String,
+        /// Follow live output
+        #[arg(short, long)]
+        follow: bool,
+        /// Number of recent lines to display
+        #[arg(long, default_value_t = 200)]
+        tail: usize,
+    },
+    #[command(name = "__service-manager", hide = true)]
+    ServiceManager {
+        #[arg(long)]
+        root: PathBuf,
+    },
+    /// Start all services declared in TOML or Procfiles
     Up,
-    /// Stop all services discovered in Procfiles
+    /// Stop workspace services and the built-in manager
     Down,
     /// List services and their process status
     Ps,
     /// Show the status of a service
     Status {
-        /// Service name from a Procfile
+        /// Service name from TOML, Procfile, or code
         service: String,
     },
     /// Start or restart a service
     Start {
-        /// Service name from a Procfile
+        /// Service name from TOML, Procfile, or code
         service: String,
     },
     /// Restart a service
     Restart {
-        /// Service name from a Procfile
+        /// Service name from TOML, Procfile, or code
         service: String,
     },
     /// Stop a service
     Stop {
-        /// Service name from a Procfile
+        /// Service name from TOML, Procfile, or code
         service: String,
     },
     /// Stream the logs of a service
     Echo {
-        /// Service name from a Procfile
+        /// Service name from TOML, Procfile, or code
         service: String,
     },
     /// Open the FluentCI community Discord
@@ -249,6 +270,34 @@ pub enum Command {
     },
     #[command(name = "provider-worker", hide = true)]
     ProviderWorker { request: PathBuf },
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ServiceCommand {
+    /// Start definitions supplied by code, using the same schema as TOML services
+    Apply {
+        /// JSON array of service definitions
+        #[arg(long, conflicts_with = "file", required_unless_present = "file")]
+        json: Option<String>,
+        /// JSON definition file; use - for stdin
+        #[arg(long, conflicts_with = "json", required_unless_present = "json")]
+        file: Option<PathBuf>,
+    },
+    /// Print structured service states and allocated ports
+    Status {
+        /// Output machine-readable JSON
+        #[arg(long)]
+        json: bool,
+    },
+    /// Run a command with ready services and release them afterward
+    Run {
+        /// Limit services to this name and its dependencies (repeatable)
+        #[arg(long = "service")]
+        services: Vec<String>,
+        /// Program and literal arguments after --
+        #[arg(required = true, trailing_var_arg = true, allow_hyphen_values = true)]
+        command: Vec<String>,
+    },
 }
 
 #[derive(Debug, Subcommand)]

@@ -84,6 +84,7 @@ pub(super) async fn execute(
         destination.strip_prefix(&root)?.to_path_buf()
     };
     let config = Config {
+        services: vec![],
         package: None,
         modules: vec![Module {
             name: name.into(),

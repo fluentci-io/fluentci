@@ -156,3 +156,16 @@ flag or prompt. See [publishing](/registry/publishing/).
 
 Command arrays run sequentially. Use [native plans](/guides/native-plans/) for
 explicit task dependencies, parallelism, and matrices.
+
+## Service definitions
+
+`[[services]]` declares persistent or CI-scoped background programs alongside
+modules and steps. The `services` array defaults to empty. Definitions support
+`name`, `command`, `backend`, `working_directory`, `env`, `depends_on`, `setup`,
+`readiness`, `health`, `restart`, `max_restarts`, `restart_backoff_ms`,
+`startup_timeout_ms`, `stop_timeout_ms`, and `log_max_bytes`. Nix/pkgx use
+`packages`; Nix can also use `flake`. Docker uses `image`, `ports`, and `volumes`.
+
+Commands are literal argv arrays or explicit POSIX shell strings. See the
+[services guide](/guides/services/) for database examples, environment backends,
+Docker port allocation, scoped CI commands, and definitions supplied from code.

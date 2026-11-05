@@ -26,3 +26,6 @@ apps/*/playwright-report/
 
 # Advisory guard for atomic FluentCI dependency lock updates
 fluentci.lock.guard
+
+# Built-in service manager runtime state and rotated logs
+.fluentci/services/

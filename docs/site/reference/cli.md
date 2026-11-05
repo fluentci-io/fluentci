@@ -90,8 +90,12 @@ There is no `login` command, and `run --remote-exec` is unsupported.
 ## Tools and services
 
 `doctor` checks external tools; `env` prints workspace environment values;
-`community` opens the community link. Procfile commands are `up`, `down`, `ps`,
+`community` opens the community link. Built-in service commands are `up`, `down`, `ps`,
 `status NAME`, `start NAME`, `restart NAME`, `stop NAME`, and `echo NAME`.
+`logs NAME [--follow] [--tail N]` reads captured output.
+`services status --json`, `services apply --json JSON`, and
+`services run [--service NAME] -- COMMAND...` support code and CI.
+See the [services guide](/guides/services/).
 
 The legacy `agent` and `agent list` commands belong to hosted runner compatibility,
 not the AT Protocol publishing authentication flow. Internal worker commands are

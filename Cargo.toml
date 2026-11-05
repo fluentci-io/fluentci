@@ -56,3 +56,6 @@ strip = true
 
 [patch.crates-io]
 wasmtime = { path = "engine/vendor/wasmtime" }
+
+[target."cfg(unix)".dependencies]
+libc = "0.2.191"
