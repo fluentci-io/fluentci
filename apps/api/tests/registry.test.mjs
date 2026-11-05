@@ -75,6 +75,27 @@ async function server(t, connection, options = {}) {
   return { instance, url: `http://127.0.0.1:${http.address().port}` };
 }
 
+test('welcome page has ASCII art, site links and an XRPC health route', async (t) => {
+  const connection = await fixture(t);
+  const { url } = await server(t, connection);
+  const plain = await fetch(url);
+  assert.equal(plain.status, 200);
+  assert.match(plain.headers.get('content-type'), /text\/plain/);
+  const text = await plain.text();
+  assert.ok(text.includes('| |_|'));
+  assert.ok(text.includes('https://fluentci.io'));
+  assert.ok(text.includes('https://docs.fluentci.io'));
+  assert.ok(text.includes('API endpoints are under /xrpc'));
+  const html = await fetch(url, { headers: { Accept: 'text/html' } });
+  assert.match(html.headers.get('content-type'), /text\/html/);
+  assert.ok((await html.text()).includes('href="https://docs.fluentci.io"'));
+  for (const path of ['/xrpc/_health', '/health']) {
+    const health = await fetch(url + path);
+    assert.equal(health.status, 200);
+    assert.deepEqual(await health.json(), { status: 'ok' });
+  }
+});
+
 test('migrations, search, SemVer latest selection, and stable query-bound pagination', async (t) => {
   const connection = await fixture(t);
   await add(
@@ -468,4 +489,67 @@ test('upgrading an existing registry backfills the FTS5 index', async (t) => {
   const matches = (await db.list_packages(connection, 'preexist', '', 20, '')).packages.toArray();
   assert.equal(matches.length, 1);
   assert.equal(matches[0].name, 'preexisting');
+});
+
+test('versioned upload paths use the verified handle, bare SemVer metadata and conditional writes', async (t) => {
+  const connection = await fixture(t);
+  const keypair = await Secp256k1Keypair.create();
+  const { instance, url } = await server(t, connection, {
+    resolveSigningKey: async () => keypair.did(),
+    resolvePublisherHandle: async () => 'alice.example',
+  });
+  const oldBucket = process.env.S3_BUCKET;
+  const oldUrl = process.env.S3_PUBLIC_URL;
+  process.env.S3_BUCKET = 'modules';
+  process.env.S3_PUBLIC_URL = 'https://mod.fluentci.io';
+  t.after(() => {
+    if (oldBucket === undefined) delete process.env.S3_BUCKET;
+    else process.env.S3_BUCKET = oldBucket;
+    if (oldUrl === undefined) delete process.env.S3_PUBLIC_URL;
+    else process.env.S3_PUBLIC_URL = oldUrl;
+  });
+  const commands = [];
+  instance.s3 = { send: async (command) => commands.push(command) };
+  const jwt = await createServiceJwt({
+    iss: did,
+    aud: 'did:web:api.fluentci.io',
+    lxm: 'io.fluentci.registry.publish',
+    keypair,
+  });
+  const endpoint = `${url}/xrpc/io.fluentci.registry.publish`;
+  const upload = (params) =>
+    fetch(`${endpoint}?${new URLSearchParams(params)}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/wasm', Authorization: `Bearer ${jwt}` },
+      body: wasm,
+    });
+  const valid = await upload({ name: 'hello-ci', version: '1.0.0-beta.1' });
+  assert.equal(valid.status, 200);
+  assert.equal(
+    (await valid.json()).url,
+    'https://mod.fluentci.io/@alice.example/hello-ci/v1.0.0-beta.1/hello-ci.wasm',
+  );
+  assert.equal(commands[0].input.Key, '@alice.example/hello-ci/v1.0.0-beta.1/hello-ci.wasm');
+  assert.equal(commands[0].input.IfNoneMatch, '*');
+  for (const params of [
+    { name: 'hello-ci' },
+    { name: '../escape', version: '1.0.0' },
+    { name: 'hello-ci', version: 'v1.0.0' },
+    { name: 'hello-ci', version: '1.0.0+build' },
+  ]) {
+    assert.equal((await upload(params)).status, 400);
+  }
+  assert.equal(commands.length, 1);
+  instance.s3 = {
+    send: async () => {
+      const error = new Error('exists');
+      error.$metadata = { httpStatusCode: 412 };
+      throw error;
+    },
+  };
+  const conflict = await upload({ name: 'hello-ci', version: '1.0.0' });
+  assert.equal(conflict.status, 409);
+  assert.equal((await conflict.json()).error, 'PackageVersionExists');
+  instance.options.resolvePublisherHandle = async () => '../../escape';
+  assert.equal((await upload({ name: 'hello-ci', version: '1.0.0' })).status, 400);
 });

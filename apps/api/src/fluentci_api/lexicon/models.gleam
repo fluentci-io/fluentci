@@ -173,6 +173,27 @@ pub fn encode_registry_list_packages_output(
   json.object(fields)
 }
 
+pub type RegistryPublishParameters {
+  RegistryPublishParameters(name: Option(String), version: Option(String))
+}
+
+pub fn encode_registry_publish_parameters(
+  value: RegistryPublishParameters,
+) -> json.Json {
+  let fields = []
+  let fields =
+    list.append(fields, case value.name {
+      None -> []
+      Some(item) -> [#("name", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.version {
+      None -> []
+      Some(item) -> [#("version", json.string(item))]
+    })
+  json.object(fields)
+}
+
 pub type RegistryPublishOutput {
   RegistryPublishOutput(url: String, sha256: String, size: Int)
 }
