@@ -24,9 +24,10 @@ Names start with a lowercase letter and contain lowercase letters, digits, and
 hyphens, up to 64 characters. Versions are valid SemVer, up to 128 characters;
 `+build` metadata is rejected because it is incompatible with the chosen record
 key. A non-empty license is required. Descriptions allow up to 2048 characters.
-The selected module's Cargo manifest provides fallback version, description, and
-license for Rust modules; explicit TOML metadata
-makes the publishing intent clear.
+Set `version` directly on each `[[modules]]` entry. Publishing never uses
+`package.version` from a global configuration or Cargo manifest. Override it with
+`--version`, or enter it when prompted if the module version is missing.
+The selected module's Cargo manifest can provide fallback description and license.
 
 ## Choose an artifact source
 

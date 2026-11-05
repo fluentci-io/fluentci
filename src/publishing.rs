@@ -236,9 +236,7 @@ fn metadata(
         version: overrides
             .version
             .clone()
-            .or_else(|| module.and_then(|module| module.version.clone()))
-            .or_else(|| package.map(|package| package.version.clone()))
-            .or_else(|| cargo_field("version")),
+            .or_else(|| module.and_then(|module| module.version.clone())),
         description: overrides
             .description
             .clone()
@@ -524,7 +522,7 @@ mod tests {
         std::fs::create_dir_all(&module_dir)?;
         std::fs::write(
             config_dir.join("fluentci.toml"),
-            "[[modules]]\nname = 'ci'\npath = 'ci'\n",
+            "[[modules]]\nname = 'ci'\npath = 'ci'\nversion = '1.2.3'\n",
         )?;
         std::fs::write(
             module_dir.join("Cargo.toml"),
@@ -543,6 +541,34 @@ mod tests {
                 "MIT".into()
             )
         );
+        Ok(())
+    }
+
+    #[test]
+    fn publishing_requires_module_version_instead_of_package_version() -> anyhow::Result<()> {
+        let root = tempfile::tempdir()?;
+        std::fs::write(
+            root.path().join("Cargo.toml"),
+            "[package]\nname = 'ci'\nversion = '9.9.9'\nlicense = 'MIT'\n",
+        )?;
+        for config in [
+            "[package]\nname = 'ci'\nversion = '8.8.8'\nlicense = 'MIT'\n",
+            "[package]\nname = 'ci'\nversion = '8.8.8'\n[[modules]]\nname = 'ci'\npath = '.'\nlicense = 'MIT'\n",
+        ] {
+            std::fs::write(root.path().join("fluentci.toml"), config)?;
+            let error = metadata(root.path(), None, None).unwrap_err();
+            assert!(error.to_string().contains("--version"));
+            let fields = super::metadata(
+                root.path(),
+                None,
+                &MetadataOptions {
+                    version: Some("1.2.3".into()),
+                    ..Default::default()
+                },
+                false,
+            )?;
+            assert_eq!(fields.1, "1.2.3");
+        }
         Ok(())
     }
 
@@ -600,6 +626,10 @@ license = "Apache-2.0"
         let manifest = root.path().join("Cargo.toml");
         let contents = "[package]\nname = 'internal_name'\nversion = '1.2.3'\ndescription = 'Build checks'\nlicense = 'MIT'\n";
         std::fs::write(&manifest, contents)?;
+        std::fs::write(
+            root.path().join("fluentci.toml"),
+            "[[modules]]\nname = 'internal_name'\npath = '.'\nversion = '1.2.3'\n",
+        )?;
         assert!(metadata(root.path(), None, None).is_err());
         assert_eq!(
             metadata(root.path(), None, Some("public-plugin"))?,
