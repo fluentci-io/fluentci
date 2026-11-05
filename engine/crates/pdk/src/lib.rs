@@ -25,6 +25,7 @@ pub mod pipeline;
 pub mod pixi;
 pub mod pkgx;
 pub mod proto;
+pub mod remote;
 pub mod secret;
 pub mod secret_manager;
 
@@ -216,4 +217,18 @@ pub fn run_plan(plan_json: &str, run_directory: &str) -> Result<String, Error> {
     let plan: serde_json::Value = serde_json::from_str(plan_json)?;
     let request = serde_json::json!({ "plan": plan, "run_dir": run_directory });
     unsafe { execute_plan(request.to_string()) }
+}
+
+/// Execute a typed plan directly; JSON conversion occurs once at the Wasm boundary.
+pub fn run_plan_value<T: serde::Serialize>(plan: &T, run_directory: &str) -> Result<String, Error> {
+    #[derive(serde::Serialize)]
+    struct Request<'a, T> {
+        plan: &'a T,
+        run_dir: &'a str,
+    }
+    let request = serde_json::to_string(&Request {
+        plan,
+        run_dir: run_directory,
+    })?;
+    unsafe { execute_plan(request) }
 }

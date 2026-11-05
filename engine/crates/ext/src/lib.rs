@@ -1,13 +1,12 @@
+use anyhow::Error;
+use console::Console;
+use fluentci_types::Output;
 use std::{
     io::{BufRead, BufReader},
     process::{Command, ExitStatus, Stdio},
     sync::mpsc::Sender,
     thread,
 };
-
-use anyhow::Error;
-use console::Console;
-use fluentci_types::Output;
 
 mod console;
 
@@ -58,7 +57,7 @@ pub trait Extension {
         Ok(ExitStatus::default())
     }
     fn format_command(&self, cmd: &str) -> String {
-        format!("{}", cmd)
+        cmd.to_string()
     }
 }
 

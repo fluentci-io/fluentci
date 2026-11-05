@@ -269,10 +269,11 @@ pub async fn install(frozen: bool, update: bool, selected: Option<&str>) -> Resu
         .filter(|(_, reference)| !reference.starts_with("git:"))
         .map(|(_, reference)| reference.clone())
         .collect();
-    if let Some(selected) = selected {
-        if references.is_empty() && !selected_git {
-            references.push(key(selected)?);
-        }
+    if let Some(selected) = selected
+        && references.is_empty()
+        && !selected_git
+    {
+        references.push(key(selected)?);
     }
     let _guard = guard(root).await?;
     let mut lock = read(root)?;

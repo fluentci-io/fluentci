@@ -1,8 +1,7 @@
-use std::{path::Path, process::ExitStatus, sync::mpsc::Sender};
-
 use crate::{exec, pkgx::Pkgx, Extension};
 use anyhow::Error;
 use fluentci_types::Output;
+use std::{path::Path, process::ExitStatus, sync::mpsc::Sender};
 
 #[derive(Default)]
 pub struct Git {}
@@ -43,7 +42,7 @@ impl Extension for Git {
             return Err(Error::msg("Invalid URL"));
         }
 
-        let repo = url.split('/').last().unwrap().replace(".git", "");
+        let repo = url.split('/').next_back().unwrap().replace(".git", "");
         let git_dir = format!("{}/{}/.git", work_dir, repo);
         if Path::new(&git_dir).exists() {
             let cmd = format!("git pull {}", url);

@@ -1,11 +1,9 @@
-use std::sync::{Arc, Mutex};
-
+use super::directory::Directory;
 use async_graphql::{Context, Error, Object, ID};
 use fluentci_common::git as common_git;
 use fluentci_core::deps::Graph;
 use fluentci_types::git as types;
-
-use super::directory::Directory;
+use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, Default)]
 pub struct Git {
@@ -21,7 +19,7 @@ impl Git {
     async fn branch(&self, ctx: &Context<'_>, name: String) -> Result<&Git, Error> {
         let graph = ctx.data::<Arc<Mutex<Graph>>>().unwrap();
         common_git::branch(graph.clone(), name)?;
-        Ok(&self)
+        Ok(self)
     }
 
     async fn commit(&self, ctx: &Context<'_>) -> Result<String, Error> {

@@ -1,9 +1,3 @@
-use std::{
-    fs::canonicalize,
-    path::Path,
-    sync::{mpsc::Receiver, Arc, Mutex},
-};
-
 use anyhow::Error;
 use fluentci_core::deps::{Graph, GraphCommand};
 use fluentci_ext::cache::Cache as CacheExt;
@@ -12,6 +6,11 @@ use fluentci_ext::{archive::tar::czvf::TarCzvf as TarCzvfExt, runner::Runner};
 use fluentci_ext::{archive::zip::Zip as ZipExt, pkgx::Pkgx as PkgxExt};
 use fluentci_secrets::Provider;
 use fluentci_types::{file::File, secret::Secret, service::Service, Output};
+use std::{
+    fs::canonicalize,
+    path::Path,
+    sync::{mpsc::Receiver, Arc, Mutex},
+};
 use uuid::Uuid;
 
 pub fn with_exec(
@@ -116,7 +115,7 @@ pub fn with_cache(graph: Arc<Mutex<Graph>>, cache_id: String, path: String) -> R
         return Ok(());
     }
 
-    return Err(Error::msg("Cache not found"));
+    Err(Error::msg("Cache not found"))
 }
 
 pub fn with_file(graph: Arc<Mutex<Graph>>, file_id: String, path: String) -> Result<(), Error> {
@@ -150,7 +149,7 @@ pub fn with_file(graph: Arc<Mutex<Graph>>, file_id: String, path: String) -> Res
         return Ok(());
     }
 
-    return Err(Error::msg("File not found"));
+    Err(Error::msg("File not found"))
 }
 
 pub fn stdout(
@@ -213,7 +212,7 @@ pub fn zip(graph: Arc<Mutex<Graph>>, path: String) -> Result<File, Error> {
 
     graph.execute_vertex(&id)?;
 
-    let output_file = match path.split('/').last() {
+    let output_file = match path.split('/').next_back() {
         Some(file) => format!("{}.zip", file),
         None => format!("{}.zip", path),
     };
@@ -257,7 +256,7 @@ pub fn tar_czvf(graph: Arc<Mutex<Graph>>, path: String) -> Result<File, Error> {
 
     graph.execute_vertex(&id)?;
 
-    let output_file = match path.split('/').last() {
+    let output_file = match path.split('/').next_back() {
         Some(file) => format!("{}.tar.gz", file),
         None => format!("{}.tar.gz", path),
     };
@@ -361,7 +360,7 @@ pub fn wait_on(graph: Arc<Mutex<Graph>>, port: u32, timeout: Option<u32>) -> Res
     }
 
     graph.runner = runner;
-    return Ok(());
+    Ok(())
 }
 
 pub fn add_secretmanager(graph: Arc<Mutex<Graph>>, provider: Provider) -> Result<String, Error> {

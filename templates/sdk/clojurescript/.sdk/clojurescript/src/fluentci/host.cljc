@@ -46,7 +46,7 @@
                           :needs (t/Vec t/Str) :resources (t/Vec t/Str) :shared_resources (t/Vec t/Str)
                           :env_files (t/Vec t/Str) :package_environment (t/Vec Provider) :policy Policy}
                :optional {:timeout_ms t/Int :resource_wait_timeout_ms t/Int :cache Cache :service Service
-                          :file_operation FileOperation
+                          :primitive t/Any :file_operation FileOperation
                           :package_install (t/HMap :mandatory {:provider Provider :packages (t/Vec t/Str)})}))
      (t/defalias Plan
        (t/HMap :mandatory {:version (t/Val 1) :tasks (t/Vec Task) :jobs t/Int :max_services t/Int :fail_fast t/Bool :inherit_env t/Bool}
@@ -196,7 +196,7 @@
       (throw (ex-info "Plan requires positive limits and unique nonempty task IDs" {:kind :invalid-plan})))
     (doseq [task (:tasks plan)]
       (when (or (empty? (:cwd task))
-                            (and (empty? (:program task)) (nil? (:file_operation task)) (nil? (:package_install task)))
+                            (and (empty? (:program task)) (nil? (:file_operation task)) (nil? (:package_install task)) (nil? (:primitive task)))
                             (some #(not (contains? (set ids) %)) (:needs task)))
         (throw (ex-info "Invalid task or missing dependency" {:kind :invalid-plan :task (:id task)})))))
   plan)

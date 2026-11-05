@@ -4010,13 +4010,16 @@ dependencies = [
 name = "fluentci-executor"
 version = "0.1.2"
 dependencies = [
+ "fluentci-primitives",
  "hex",
  "libc",
  "opentelemetry",
+ "rmp-serde",
  "serde",
  "serde_json",
  "sha2 0.10.9",
  "tempfile",
+ "url 2.5.8",
 ]
 
 [[package]]
@@ -4099,6 +4102,14 @@ dependencies = [
  "serde",
  "serde_json",
  "uuid",
+]
+
+[[package]]
+name = "fluentci-primitives"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "url 2.5.8",
 ]
 
 [[package]]

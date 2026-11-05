@@ -1,3 +1,4 @@
+use super::{convert::decode_env_from_json, Vault, VaultConfig};
 use async_trait::async_trait;
 use base64::{engine::general_purpose::STANDARD as base64, Engine as _};
 use google_secretmanager1::{
@@ -7,8 +8,6 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::PathBuf;
 use thiserror::Error;
-
-use super::{convert::decode_env_from_json, Vault, VaultConfig};
 
 type SecretManager = google_secretmanager1::SecretManager<HttpsConnector<HttpConnector>>;
 
@@ -24,7 +23,7 @@ pub enum GoogleError {
     #[error("Google SA configuration is invalid")]
     ConfigurationError(#[source] std::io::Error),
     #[error("secret manager operation failed")]
-    SecretManagerError(#[source] google_secretmanager1::Error),
+    SecretManagerError(#[source] Box<google_secretmanager1::Error>),
     #[error("the secret is empty")]
     EmptySecret,
     #[error("there are no secrets in the project")]
@@ -107,7 +106,7 @@ impl Vault for GoogleConfig {
             .page_size(250)
             .doit()
             .await
-            .map_err(GoogleError::SecretManagerError)?;
+            .map_err(|error| GoogleError::SecretManagerError(Box::new(error)))?;
         let secrets: Vec<_> = response
             .1
             .secrets
@@ -173,7 +172,7 @@ impl GoogleConfig {
             .secrets_versions_access(&format!("{name}/versions/latest"))
             .doit()
             .await
-            .map_err(GoogleError::SecretManagerError)?
+            .map_err(|error| GoogleError::SecretManagerError(Box::new(error)))?
             .1
             .payload
             .ok_or(GoogleError::EmptySecret)?

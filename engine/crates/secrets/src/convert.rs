@@ -5,10 +5,7 @@ pub fn as_valid_env_name(name: String) -> Result<String> {
     let is_valid = |c: char| c.is_ascii_alphanumeric() || c == '_';
     if !name.is_empty()
         && name.chars().all(is_valid)
-        && name
-            .chars()
-            .next()
-            .map_or(false, |c| c.is_ascii_alphabetic())
+        && name.chars().next().is_some_and(|c| c.is_ascii_alphabetic())
     {
         Ok(name)
     } else {
@@ -56,7 +53,7 @@ mod tests {
 
     macro_rules! assert_invalid_secret {
         ($a:expr) => {
-            assert!(matches!($a, Err(_)));
+            assert!(($a).is_err());
         };
     }
 

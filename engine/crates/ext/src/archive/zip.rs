@@ -1,8 +1,7 @@
-use std::{env, path::Path, process::ExitStatus, sync::mpsc::Sender};
-
 use crate::{exec, pkgx::Pkgx, Extension};
 use anyhow::Error;
 use fluentci_types::Output;
+use std::{env, path::Path, process::ExitStatus, sync::mpsc::Sender};
 
 #[derive(Default)]
 pub struct Zip {}
@@ -22,7 +21,7 @@ impl Extension for Zip {
     ) -> Result<ExitStatus, Error> {
         self.setup()?;
 
-        let output_file = match path.split('/').last() {
+        let output_file = match path.split('/').next_back() {
             Some(file) => format!("{}.zip", file),
             None => format!("{}.zip", path),
         };

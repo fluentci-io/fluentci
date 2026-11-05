@@ -1,17 +1,15 @@
+use crate::state::State;
 use extism::{convert::Json, *};
 use fluentci_common::git::{
     branch as common_branch, commit as common_commit, git as common_git, tree as common_tree,
 };
-use fluentci_types::git::Git;
-
-use crate::state::State;
 
 host_fn!(pub git(user_data: State; url: String) -> Json<Git> {
     let state = user_data.get()?;
     let state = state.lock().unwrap();
     let graph = state.graph.clone();
     let git = common_git(graph, url, true)?;
-    Ok(Json(Git::from(git)))
+    Ok(Json(git))
 });
 
 host_fn!(pub branch(user_data: State; name: String) {

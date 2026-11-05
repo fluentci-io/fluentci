@@ -1,7 +1,7 @@
 (ns check (:require [typed.clojure :as t]))
 
 (defn -main [& namespaces]
-  (doseq [namespace (concat '[fluentci.bridge fluentci.pdk fluentci.host fluentci.files fluentci.matrix fluentci.plugin]
+  (doseq [namespace (concat '[fluentci.bridge fluentci.pdk fluentci.host fluentci.files fluentci.remote fluentci.matrix fluentci.plugin]
                            (if (seq namespaces) (map symbol namespaces) '[demo.plugin]))]
     (t/check-ns-clj namespace))
   (doseq [namespace '[fluentci.type-errors.argv fluentci.type-errors.resource

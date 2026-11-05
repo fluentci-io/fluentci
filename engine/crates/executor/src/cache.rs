@@ -191,10 +191,22 @@ fn copy_blob(source: &Path, destination: &Path, cancel: &Cancellation) -> Result
 }
 
 fn encoded_digest<T: Serialize>(value: &T) -> Result<String, String> {
-    Ok(digest(
-        &serde_json::to_vec(value).map_err(|e| e.to_string())?,
-    ))
+    struct HashWriter(Sha256);
+    impl Write for HashWriter {
+        fn write(&mut self, bytes: &[u8]) -> std::io::Result<usize> {
+            self.0.update(bytes);
+            Ok(bytes.len())
+        }
+        fn flush(&mut self) -> std::io::Result<()> {
+            Ok(())
+        }
+    }
+    let mut writer = HashWriter(Sha256::new());
+    writer.0.update(b"fluentci-canonical-msgpack-v2\0");
+    rmp_serde::encode::write_named(&mut writer, value).map_err(|error| error.to_string())?;
+    Ok(hex::encode(writer.0.finalize()))
 }
+
 fn valid_digest(value: &str) -> bool {
     value.len() == 64
         && value
@@ -620,7 +632,7 @@ pub(crate) fn prepare_cancellable(
     check_cancel(cancel)?;
     let policy = task.cache.as_ref().ok_or("missing cache policy")?;
     policy.validate()?;
-    let executable = if task.file_operation.is_some() {
+    let executable = if task.file_operation.is_some() || task.primitive.is_some() {
         PathBuf::new()
     } else if Path::new(&task.program).is_absolute() {
         PathBuf::from(&task.program)
@@ -653,6 +665,11 @@ pub(crate) fn prepare_cancellable(
         components.insert(
             "file_operation".into(),
             encoded_digest(&("fluentci-files-v1", operation))?,
+        );
+    } else if let Some(operation) = &task.primitive {
+        components.insert(
+            "primitive".into(),
+            encoded_digest(&("fluentci-primitives-v1", operation))?,
         );
     } else {
         components.insert("executable".into(), file_digest(&executable, cancel)?);
@@ -689,7 +706,7 @@ pub(crate) fn prepare_cancellable(
         "platform".into(),
         encoded_digest(&(std::env::consts::OS, std::env::consts::ARCH))?,
     );
-    components.insert("cache_format".into(), digest(b"fluentci-action-v1"));
+    components.insert("cache_format".into(), digest(b"fluentci-action-v2-msgpack"));
     let key = encoded_digest(&components)?;
     for dir in ["actions", "blobs", "locks"] {
         fs::create_dir_all(root.join(dir)).map_err(|e| e.to_string())?;
@@ -814,6 +831,7 @@ impl Prepared {
         crate::cache_worker_tests::pause_save(&task.cwd, &self.cancel)?;
         let policy = task.cache.as_ref().ok_or("missing cache policy")?;
         if task.file_operation.is_none()
+            && task.primitive.is_none()
             && (file_digest(&self.executable, &self.cancel)? != self.components["executable"]
                 || encoded_digest(&mode(
                     &fs::metadata(&self.executable).map_err(|e| e.to_string())?,

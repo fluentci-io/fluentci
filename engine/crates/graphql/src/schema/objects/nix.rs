@@ -1,22 +1,20 @@
-use std::sync::{mpsc::Receiver, Arc, Mutex};
-
+use super::service::Service;
 use async_graphql::{Context, Error, InputObject, Object, ID};
 use fluentci_common::common;
 use fluentci_core::deps::Graph;
 use fluentci_ext::nix::Nix as NixExt;
 use fluentci_types::nix as types;
-
-use super::service::Service;
+use std::sync::{mpsc::Receiver, Arc, Mutex};
 
 #[derive(InputObject, Default)]
 pub struct NixArgs {
     pub impure: Option<bool>,
 }
 
-impl Into<types::NixArgs> for NixArgs {
-    fn into(self) -> types::NixArgs {
+impl From<NixArgs> for types::NixArgs {
+    fn from(val: NixArgs) -> Self {
         types::NixArgs {
-            impure: self.impure.unwrap_or_default(),
+            impure: val.impure.unwrap_or_default(),
         }
     }
 }

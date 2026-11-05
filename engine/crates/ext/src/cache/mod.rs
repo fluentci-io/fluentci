@@ -1,3 +1,8 @@
+use crate::{exec, pkgx::Pkgx, Extension};
+use anyhow::{Context, Error};
+use async_trait::async_trait;
+use fluentci_types::Output;
+use owo_colors::OwoColorize;
 use std::{
     env,
     fs::{self, metadata},
@@ -6,12 +11,6 @@ use std::{
     sync::mpsc::Sender,
     thread,
 };
-
-use crate::{exec, pkgx::Pkgx, Extension};
-use anyhow::{Context, Error};
-use async_trait::async_trait;
-use fluentci_types::Output;
-use owo_colors::OwoColorize;
 
 pub mod gcs;
 pub mod s3;
@@ -35,15 +34,15 @@ pub struct Cache {
 }
 
 pub fn detect_cache_backend() -> Option<CacheBackendType> {
-    if let Ok(_) = std::env::var("FLUENTCI_CACHE_CDN_ENDPOINT") {
+    if std::env::var("FLUENTCI_CACHE_CDN_ENDPOINT").is_ok() {
         return Some(CacheBackendType::CDN);
     }
 
-    if let Ok(_) = std::env::var("FLUENTCI_CACHE_S3_ENDPOINT") {
+    if std::env::var("FLUENTCI_CACHE_S3_ENDPOINT").is_ok() {
         return Some(CacheBackendType::S3);
     }
 
-    if let Ok(_) = std::env::var("FLUENTCI_CACHE_GCS_BUCKET") {
+    if std::env::var("FLUENTCI_CACHE_GCS_BUCKET").is_ok() {
         return Some(CacheBackendType::GCS);
     }
 
@@ -112,11 +111,11 @@ pub async fn download(key: &str) -> Result<(), Error> {
 pub async fn upload(key: &str) -> Result<(), Error> {
     let mut default_backend: Option<&str> = None;
 
-    if let Ok(_) = std::env::var("FLUENTCI_CACHE_S3_ENDPOINT") {
+    if std::env::var("FLUENTCI_CACHE_S3_ENDPOINT").is_ok() {
         default_backend = Some("S3");
     }
 
-    if let Ok(_) = std::env::var("FLUENTCI_CACHE_GCS_BUCKET") {
+    if std::env::var("FLUENTCI_CACHE_GCS_BUCKET").is_ok() {
         default_backend = Some("GCS");
     }
 

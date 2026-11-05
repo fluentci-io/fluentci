@@ -338,18 +338,16 @@ impl Display {
                         buffer.drain(..=end);
                     }
                 }
-                fluentci_executor::events::EventKind::TaskState { id, status, .. }
-                    if matches!(
-                        status,
+                fluentci_executor::events::EventKind::TaskState {
+                    id,
+                    status:
                         fluentci_executor::Status::Succeeded
-                            | fluentci_executor::Status::Failed
-                            | fluentci_executor::Status::Skipped
-                            | fluentci_executor::Status::Cancelled
-                            | fluentci_executor::Status::TimedOut
-                    ) =>
-                {
-                    self.flush_task(Some(&id))?
-                }
+                        | fluentci_executor::Status::Failed
+                        | fluentci_executor::Status::Skipped
+                        | fluentci_executor::Status::Cancelled
+                        | fluentci_executor::Status::TimedOut,
+                    ..
+                } => self.flush_task(Some(&id))?,
                 fluentci_executor::events::EventKind::RunFinished { .. } => {
                     self.flush_task(None)?
                 }

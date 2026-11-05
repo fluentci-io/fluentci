@@ -1,12 +1,11 @@
+use crate::{exec, Extension};
+use anyhow::Error;
+use fluentci_types::Output;
 use std::{
     env,
     process::{Command, ExitStatus, Stdio},
     sync::mpsc::Sender,
 };
-
-use crate::{exec, Extension};
-use anyhow::Error;
-use fluentci_types::Output;
 
 #[derive(Default)]
 pub struct Mise {}
@@ -63,11 +62,7 @@ impl Extension for Mise {
     }
 
     fn setup(&self) -> Result<(), Error> {
-        let path = format!(
-            "{}:{}",
-            env::var("PATH")?,
-            format!("{}/.local/bin", env::var("HOME")?)
-        );
+        let path = format!("{}:{}/.local/bin", env::var("PATH")?, env::var("HOME")?);
         env::set_var("PATH", &path);
         crate::bootstrap::install("mise", "https://mise.run", "/bin/sh", &[], &[])?;
         Ok(())

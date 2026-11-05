@@ -29,6 +29,8 @@ defmodule FluentCI.Host do
           | {:invalid_task, String.t()}
 
   @spec task(String.t(), String.t(), String.t()) :: Task.t()
+  def primitive_task(id, operation, cwd), do: task(id, "", cwd) |> put(:primitive, operation)
+
   def file_task(id, operation, cwd), do: task(id, "", cwd) |> put(:file_operation, operation)
 
   def env_file(task, path),
@@ -223,6 +225,7 @@ defmodule FluentCI.Host do
   defp task_schema do
     {:object, %{id: :nonempty, program: :string, cwd: :nonempty},
      %{
+       primitive: :primitive,
        file_operation: :file_operation,
        env_files: {:list, :nonempty},
        args: {:list, :string},
@@ -360,6 +363,7 @@ defmodule FluentCI.Host do
     )
   end
 
+  defp validate(%{kind: kind}, :primitive, path), do: checked(kind in ["os", "arch", "digest", "ssh", "scp", "sftp", "rsync", "ftp", "ftps", "s3"], path)
   defp validate(_, _, path), do: {:error, {:invalid_field, path}}
   defp checked(true, _), do: :ok
   defp checked(false, path), do: {:error, {:invalid_field, path}}
@@ -377,7 +381,7 @@ defmodule FluentCI.Host do
             not Map.has_key?(task, :cache) and not Map.has_key?(task, :service) and
             Map.get(task, :package_environment, []) == []
         else
-          if Map.has_key?(task, :file_operation) do
+          if Map.has_key?(task, :file_operation) or Map.has_key?(task, :primitive) do
             task.program == "" and Map.get(task, :args, []) == [] and
               not Map.has_key?(task, :service) and Map.get(task, :package_environment, []) == []
           else

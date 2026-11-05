@@ -26,6 +26,7 @@ pub fn exec(
         shared_resources: vec![],
         package_install: None,
         file_operation: None,
+        primitive: None,
         env_files: vec![],
         package_environment: vec![],
         resource_wait_timeout_ms: None,

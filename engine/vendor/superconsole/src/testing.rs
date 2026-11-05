@@ -10,7 +10,6 @@
 
 //! Testing utilities for Superconsole.
 use std::any::Any;
-
 use crate::Dimensions;
 use crate::error::OutputError;
 use crate::output::OutputTarget;
@@ -57,7 +56,7 @@ impl SuperConsoleOutput for TestOutput {
                     .as_bytes()
                     .iter()
                     .copied()
-                    .chain(buffer.into_iter())
+                    .chain(buffer)
                     .collect::<Vec<u8>>();
                 self.frames.push(output);
                 Ok(())

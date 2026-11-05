@@ -58,3 +58,10 @@ for pipeline and native-plan integration.
 
 A Rust plugin and the Rust CLI are separate build targets. Rebuilding a guest
 module does not require rebuilding Studio; compiling the CLI itself does.
+
+## Host and transfer tasks
+
+The bundled SDK includes composable OS/architecture detection, SHA-256/SHA-512,
+SSH, SCP, SFTP, rsync, FTP/FTPS, and S3 tasks. See the
+[primitive guide](/guides/primitives/) for this SDK’s entry point and example,
+plus provisioning, credential, cancellation, and caching behavior.

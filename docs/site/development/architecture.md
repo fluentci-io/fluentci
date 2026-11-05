@@ -33,6 +33,13 @@ exposes engine commands; internal worker invocations isolate engine calls from
 the normal CLI command parser. Preserve platform-specific patches when syncing
 instead of replacing the directory blindly.
 
+Run `python3 scripts/sync-engine.py` from the repository root to compare shared
+engine crates, selected vendored fixes, and bundled SDK sources with `../fluentci-engine`.
+Use `--write` to copy these sources to that checkout, then update its Cargo
+lockfile and run release checks. The script preserves the CLI integration
+wrapper and integration-specific manifests, and excludes build output. It does not sync the entire repositories or
+delete sibling files; review removals separately.
+
 Wasm source templates contain only their necessary guest SDK/build source. Their
 language-level exports are adapted to the common plugin ABI. Compiler/runtime
 helper exports are filtered during discovery.

@@ -1,8 +1,7 @@
-use std::{env, process::ExitStatus, sync::mpsc::Sender};
-
 use crate::{exec, pkgx::Pkgx, Extension};
 use anyhow::Error;
 use fluentci_types::Output;
+use std::{env, process::ExitStatus, sync::mpsc::Sender};
 
 #[derive(Default)]
 pub struct Proto {}
@@ -26,7 +25,7 @@ impl Extension for Proto {
             return Ok(ExitStatus::default());
         }
 
-        exec(&cmd, tx, out, last_cmd, work_dir)
+        exec(cmd, tx, out, last_cmd, work_dir)
     }
 
     fn setup(&self) -> Result<(), Error> {
@@ -36,12 +35,7 @@ impl Extension for Proto {
         let proto_home = format!("{}/.proto", env::var("HOME")?);
         env::set_var("PROTO_HOME", &proto_home);
 
-        let path = format!(
-            "{}:{}:{}",
-            format!("{}/shims", proto_home),
-            format!("{}/bin", proto_home),
-            env::var("PATH")?,
-        );
+        let path = format!("{proto_home}/shims:{proto_home}/bin:{}", env::var("PATH")?);
 
         env::set_var("PATH", &path);
 

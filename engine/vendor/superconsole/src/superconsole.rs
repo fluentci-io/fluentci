@@ -11,7 +11,6 @@
 use std::cmp;
 use std::env;
 use std::io;
-
 use crossterm::QueueableCommand;
 use crossterm::cursor;
 use crossterm::cursor::MoveToColumn;
@@ -19,7 +18,6 @@ use crossterm::cursor::MoveUp;
 use crossterm::terminal::Clear;
 use crossterm::terminal::ClearType;
 use crossterm::tty::IsTty;
-
 use crate::Dimensions;
 use crate::Direction;
 use crate::Lines;
@@ -243,7 +241,7 @@ impl SuperConsole {
         Self::clear_canvas_pre(&mut buffer, self.canvas_contents.len())?;
         self.canvas_contents = Lines::new();
         Self::clear_canvas_post(&mut buffer)?;
-        self.output_mut().output(buffer).map_err(Into::into)
+        self.output_mut().output(buffer)
     }
 
     /// Helper method to share render + finalize behavior by specifying mode.

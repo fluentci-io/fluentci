@@ -1,12 +1,11 @@
+use crate::{exec, Extension};
+use anyhow::Error;
+use fluentci_types::Output;
 use std::{
     env,
     process::{Command, ExitStatus, Stdio},
     sync::mpsc::Sender,
 };
-
-use crate::{exec, Extension};
-use anyhow::Error;
-use fluentci_types::Output;
 
 #[derive(Default)]
 pub struct Pixi {}
@@ -45,11 +44,7 @@ impl Extension for Pixi {
     }
 
     fn setup(&self) -> Result<(), Error> {
-        let path = format!(
-            "{}:{}",
-            env::var("PATH")?,
-            format!("{}/.pixi/bin", env::var("HOME")?)
-        );
+        let path = format!("{}:{}/.pixi/bin", env::var("PATH")?, env::var("HOME")?);
         env::set_var("PATH", &path);
         crate::bootstrap::install("pixi", "https://pixi.sh/install.sh", "/bin/bash", &[], &[])?;
         Ok(())

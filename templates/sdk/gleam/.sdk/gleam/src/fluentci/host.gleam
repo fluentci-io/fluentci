@@ -77,6 +77,8 @@ fn default_policy() -> Policy {
   Policy(OnSuccess, None, False, [], [], [])
 }
 
+pub type Primitive
+
 pub opaque type Task {
   Task(
     id: String,
@@ -94,6 +96,7 @@ pub opaque type Task {
     installation: Option(#(Provider, List(String))),
     packages: List(Provider),
     policy: Option(Policy),
+    primitive: Option(Primitive),
     file_operation: Option(FileOperation),
     env_files: List(String),
   )
@@ -135,6 +138,7 @@ pub fn task(id: String, program: String, cwd: String) -> Task {
     installation: None,
     packages: [],
     policy: None,
+    primitive: None,
     file_operation: None,
     env_files: [],
   )
@@ -547,6 +551,7 @@ fn encode_task(task: Task) -> String {
       ),
       optional(task.cache, "cache", encode_cache),
       optional(task.policy, "policy", encode_policy),
+      optional(task.primitive, "primitive", encode_primitive),
       optional(task.file_operation, "file_operation", encode_file_operation),
       case task.env_files {
         [] -> []
@@ -590,6 +595,7 @@ pub fn compile(plan: Plan) -> Result(String, PlanError) {
         task.program != ""
         || task.installation != None
         || task.file_operation != None
+        || task.primitive != None
       }
       && option.unwrap(task.timeout_ms, 1) > 0
       && option.unwrap(task.resource_wait_timeout_ms, 1) > 0
@@ -737,4 +743,11 @@ fn encode_file_operation(operation: FileOperation) -> String {
         #("path", quote(path)),
       ])
   }
+}
+
+@external(javascript, "../remote_ffi.mjs", "primitiveJson")
+fn encode_primitive(value: Primitive) -> String
+
+pub fn with_primitive(task: Task, value: Primitive) -> Task {
+  Task(..task, primitive: Some(value))
 }

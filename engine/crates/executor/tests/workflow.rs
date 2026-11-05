@@ -247,3 +247,84 @@ fn signal_termination_reports_the_signal_and_is_not_retried() {
         .contains("signal 15"));
     assert_eq!(report.failure().unwrap().exit_code, 143);
 }
+
+#[test]
+fn incremental_allowed_failures_release_dependents_after_publication_failure() {
+    for allowed in [false, true] {
+        let dir = tempfile::tempdir().unwrap();
+        let producer = p::allow_failure(
+            p::output(
+                command(dir.path(), "produce", "printf ready"),
+                "value",
+                "missing-output",
+            ),
+            allowed,
+        );
+        let consumer = p::needs(
+            command(dir.path(), "consume", "touch consumed"),
+            vec![producer.id.clone()],
+        );
+        let report = p::plan(vec![producer, consumer])
+            .compile()
+            .unwrap()
+            .execute(&dir.path().join("run"), &Cancellation::default())
+            .unwrap();
+        assert_eq!(report.tasks[0].status, Status::Failed);
+        assert_eq!(report.success(), allowed, "{report:?}");
+        assert_eq!(dir.path().join("consumed").exists(), allowed);
+    }
+}
+
+#[test]
+fn incremental_publication_and_output_bindings_work_across_reused_runs() {
+    let dir = tempfile::tempdir().unwrap();
+    let mut tasks = vec![];
+    for index in 0..24 {
+        let filename = format!("value-{index}");
+        let producer = p::artifact(
+            p::output(
+                command(
+                    dir.path(),
+                    &format!("producer-{index}"),
+                    &format!("printf literal-{index} > {filename}"),
+                ),
+                "value",
+                &filename,
+            ),
+            "copy",
+            &filename,
+        );
+        let consumer = p::output_env(
+            command(
+                dir.path(),
+                &format!("consumer-{index}"),
+                "printf '%s' \"$VALUE\"",
+            ),
+            "VALUE",
+            &producer,
+            "value",
+        );
+        tasks.extend([producer, consumer]);
+    }
+    let compiled = p::jobs(p::plan(tasks), 3).compile().unwrap();
+    for round in 0..2 {
+        let report = compiled
+            .execute(
+                &dir.path().join(format!("run-{round}")),
+                &Cancellation::default(),
+            )
+            .unwrap();
+        assert!(report.success(), "{report:?}");
+        for index in 0..24 {
+            let producer = &report.tasks[2 * index];
+            let consumer = &report.tasks[2 * index + 1];
+            let expected = format!("literal-{index}");
+            assert_eq!(producer.outputs["value"], expected);
+            assert_eq!(
+                fs::read_to_string(&producer.artifacts["copy"].path).unwrap(),
+                expected
+            );
+            assert_eq!(fs::read_to_string(&consumer.stdout).unwrap(), expected);
+        }
+    }
+}

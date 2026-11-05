@@ -438,8 +438,8 @@ impl Manager {
                 worker.state.exit_code = status.code();
                 anyhow::bail!("Service exited before becoming ready: {status}");
             }
-            if worker.definition.backend == Backend::Docker {
-                if let Ok(Ok(output)) = tokio::time::timeout(
+            if worker.definition.backend == Backend::Docker
+                && let Ok(Ok(output)) = tokio::time::timeout(
                     Duration::from_secs(2),
                     Command::new("docker")
                         .args(["port", &worker.container])
@@ -447,15 +447,13 @@ impl Manager {
                         .output(),
                 )
                 .await
-                {
-                    if output.status.success() {
-                        worker.state.ports = String::from_utf8_lossy(&output.stdout)
-                            .lines()
-                            .filter_map(|line| line.split_once(" -> "))
-                            .map(|(key, value)| (key.into(), value.into()))
-                            .collect();
-                    }
-                }
+                && output.status.success()
+            {
+                worker.state.ports = String::from_utf8_lossy(&output.stdout)
+                    .lines()
+                    .filter_map(|line| line.split_once(" -> "))
+                    .map(|(key, value)| (key.into(), value.into()))
+                    .collect();
             }
             let ready = match &worker.definition.readiness {
                 Some(probe) => Self::probe(root, worker, probe).await,

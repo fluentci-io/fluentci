@@ -8,6 +8,7 @@ pub mod graph;
 pub mod matrix;
 pub mod packages;
 pub mod primitives;
+pub mod remote;
 mod resources;
 pub mod service;
 mod telemetry;
@@ -15,7 +16,6 @@ mod worker;
 pub mod workflow;
 pub mod workspace;
 mod workspace_copy;
-
 use graph::DependencyGraph;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -46,6 +46,8 @@ pub struct Task {
     pub cwd: PathBuf,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub file_operation: Option<files::Operation>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub primitive: Option<remote::Operation>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub env_files: Vec<PathBuf>,
     #[serde(default)]
@@ -292,7 +294,53 @@ fn release_resources(
     }
 }
 
+/// Immutable compiled native IR. JSON is produced only when explicitly requested.
+pub struct CompiledPlan {
+    plan: Plan,
+    graph: DependencyGraph,
+    ancestors: graph::Edges,
+}
+
+impl CompiledPlan {
+    pub fn plan(&self) -> &Plan {
+        &self.plan
+    }
+    pub fn graph(&self) -> &DependencyGraph {
+        &self.graph
+    }
+    pub fn execute(&self, run_dir: &Path, cancel: &Cancellation) -> Result<RunResult, String> {
+        if self.plan.workspace.is_some() {
+            return self.plan.execute(run_dir, cancel);
+        }
+        let _active = cancel.enter();
+        self.plan
+            .execute_compiled_graph(run_dir, cancel, false, &self.graph, &self.ancestors)
+    }
+    pub fn debug_json(&self) -> Result<String, String> {
+        serde_json::to_string_pretty(&self.plan).map_err(|error| error.to_string())
+    }
+}
+
 impl Plan {
+    pub fn compile(self) -> Result<CompiledPlan, String> {
+        let plan = if self.has_package_tasks() && self.workspace.is_none() {
+            self.resolve_packages()?
+        } else {
+            self
+        };
+        let (graph, ancestors) = if plan.workspace.is_some() {
+            let graph = plan.validate()?;
+            let ancestors = service_ancestors(&graph, &plan.tasks);
+            (graph, ancestors)
+        } else {
+            plan.compile_graph()?
+        };
+        Ok(CompiledPlan {
+            plan,
+            graph,
+            ancestors,
+        })
+    }
     /// Resolve declarative paths against the caller's base without filesystem IO.
     /// Workspace task directories remain relative to the materialized workspace.
     pub fn resolve_paths(&mut self, base: &Path) -> Result<(), String> {
@@ -334,6 +382,9 @@ impl Plan {
         }
     }
     fn validate_resolved(&self) -> Result<DependencyGraph, String> {
+        self.compile_graph().map(|(graph, _)| graph)
+    }
+    fn compile_graph(&self) -> Result<(DependencyGraph, graph::Edges), String> {
         if self.version != 1 {
             return Err(format!("unsupported plan version: {}", self.version));
         }
@@ -343,11 +394,47 @@ impl Plan {
         if self.resource_dir.as_ref().is_some_and(|p| !p.is_absolute()) {
             return Err("resource_dir must be absolute".into());
         }
+        let mut checked_directories = HashSet::new();
         for task in &self.tasks {
             task.policy.validate(task)?;
             files::validate_env(task)?;
             if let Some(operation) = &task.file_operation {
+                if task.primitive.is_some() {
+                    return Err("a task cannot contain both file and primitive operations".into());
+                }
                 operation.validate(task)?;
+            }
+            if let Some(operation) = &task.primitive {
+                operation.validate()?;
+                if !task.program.is_empty()
+                    || !task.args.is_empty()
+                    || task.service.is_some()
+                    || task.package_install.is_some()
+                {
+                    return Err(
+                        "primitive tasks cannot contain a process, service, or install command"
+                            .into(),
+                    );
+                }
+                if let Some(policy) = &task.cache {
+                    if !operation.is_pure() {
+                        return Err("remote side effects cannot be action cached".into());
+                    }
+                    if let remote::Operation::Digest {
+                        input: remote::Input::File(path),
+                        ..
+                    } = operation
+                    {
+                        if !cache::safe_relative(path)
+                            || !policy.inputs.iter().any(|input| path.starts_with(input))
+                        {
+                            return Err(
+                                "cached digests require a relative path declared in cache inputs"
+                                    .into(),
+                            );
+                        }
+                    }
+                }
             }
             if task
                 .resources
@@ -380,10 +467,13 @@ impl Plan {
                     self.cache_dir.as_ref().expect("checked cache directory"),
                 )?;
             }
-            if task.program.is_empty() && task.file_operation.is_none() {
+            if task.program.is_empty() && task.file_operation.is_none() && task.primitive.is_none()
+            {
                 return Err(format!("task {} has no program", task.id));
             }
-            if !task.cwd.is_absolute() || !task.cwd.is_dir() {
+            if !task.cwd.is_absolute()
+                || checked_directories.insert(task.cwd.as_path()) && !task.cwd.is_dir()
+            {
                 return Err(format!(
                     "task {} requires an existing absolute cwd: {}",
                     task.id,
@@ -399,14 +489,7 @@ impl Plan {
                 }
             }
         }
-        let graph = DependencyGraph::new(
-            &self.tasks.iter().map(|t| t.id.clone()).collect::<Vec<_>>(),
-            &self
-                .tasks
-                .iter()
-                .map(|t| t.needs.clone())
-                .collect::<Vec<_>>(),
-        )?;
+        let graph = DependencyGraph::from_tasks(&self.tasks)?;
         for (i, task) in self.tasks.iter().enumerate() {
             for reference in task.policy.bindings.values() {
                 let producer = graph.dependencies[i]
@@ -418,6 +501,11 @@ impl Plan {
                     .policy
                     .outputs
                     .contains_key(&reference.name)
+                    && !(reference.name == "value"
+                        && self.tasks[producer]
+                            .primitive
+                            .as_ref()
+                            .is_some_and(remote::Operation::is_pure))
                 {
                     return Err("output binding references an undeclared output".into());
                 }
@@ -446,7 +534,7 @@ impl Plan {
                 }
             }
         }
-        Ok(graph)
+        Ok((graph, ancestors))
     }
 
     /// Run in a fresh caller-selected directory. All output is spooled to disk.
@@ -470,7 +558,17 @@ impl Plan {
         cancel: &Cancellation,
         workspace_created: bool,
     ) -> Result<RunResult, String> {
-        let graph = self.validate_resolved()?;
+        let (graph, ancestors) = self.compile_graph()?;
+        self.execute_compiled_graph(run_dir, cancel, workspace_created, &graph, &ancestors)
+    }
+    fn execute_compiled_graph(
+        &self,
+        run_dir: &Path,
+        cancel: &Cancellation,
+        workspace_created: bool,
+        graph: &DependencyGraph,
+        ancestors: &graph::Edges,
+    ) -> Result<RunResult, String> {
         let absolute_run_dir = if run_dir.is_absolute() {
             run_dir.to_path_buf()
         } else {
@@ -546,7 +644,6 @@ impl Plan {
             })
             .collect();
         let mut journal = events::Journal::new(&run_dir.join("events.jsonl"), &self.tasks)?;
-        let ancestors = service_ancestors(&graph, &self.tasks);
         let mut supervisors: Vec<_> = results
             .iter()
             .enumerate()
@@ -572,9 +669,28 @@ impl Plan {
         let mut retry_actions: Vec<Option<cache::Prepared>> =
             (0..self.tasks.len()).map(|_| None).collect();
         let mut first_started: Vec<Option<Instant>> = vec![None; self.tasks.len()];
+        let incremental = self.tasks.iter().all(|task| {
+            task.service.is_none()
+                && task.cache.is_none()
+                && task.resources.is_empty()
+                && task.shared_resources.is_empty()
+                && task.resource_wait_timeout_ms.is_none()
+                && task.policy.when == workflow::Condition::Success
+                && task.policy.retry.is_none()
+        });
+        let mut frontier = incremental.then(|| graph::Frontier::new(graph));
         let mut failed = false;
         let mut stalled = false;
         loop {
+            let mut touched: Vec<usize> = if frontier.is_some() {
+                running
+                    .iter()
+                    .map(|running| running.index)
+                    .chain(saving.iter().map(|saving| saving.index))
+                    .collect()
+            } else {
+                vec![]
+            };
             let stopping = stalled || cancel.is_cancelled() || (self.fail_fast && failed);
             let mut lookup_index = 0;
             while lookup_index < preparing.len() {
@@ -616,8 +732,19 @@ impl Plan {
                                 if self.tasks[i].file_operation.is_some() {
                                     results[i].file_result =
                                         Some(files::result(&results[i].stdout)?);
-                                } else {
+                                } else if self.tasks[i].primitive.is_none() {
                                     results[i].exit_code = Some(0);
+                                }
+                                if self.tasks[i]
+                                    .primitive
+                                    .as_ref()
+                                    .is_some_and(remote::Operation::is_pure)
+                                {
+                                    let value = fs::read_to_string(&results[i].stdout)
+                                        .map_err(|error| error.to_string())?
+                                        .trim_end()
+                                        .to_owned();
+                                    results[i].outputs.insert("value".into(), value);
                                 }
                                 results[i].cache.outcome = "hit".into();
                                 if self.tasks[i].policy.products() {
@@ -727,7 +854,7 @@ impl Plan {
                     });
                     if status == Status::Succeeded {
                         let products = outcome.expect("successful publication");
-                        results[i].outputs = products.outputs;
+                        results[i].outputs.extend(products.outputs);
                         results[i].artifacts = products.artifacts;
                         results[i].cache.outcome = save.cache_outcome.clone();
                     } else {
@@ -904,6 +1031,9 @@ impl Plan {
                     ))
                 } else if let Some(worker) = &mut running[n].native {
                     worker.poll().map(|outcome| match outcome {
+                        Ok(()) if self.tasks[i].primitive.is_some() => {
+                            (Status::Succeeded, None, None)
+                        }
                         Ok(()) => match files::result(&results[i].stdout) {
                             Ok(value) => {
                                 results[i].file_result = Some(value);
@@ -937,6 +1067,18 @@ impl Plan {
                     results[i].exit_code = code;
                     results[i].error = error;
                     results[i].duration_ms = elapsed.as_millis();
+                    if results[i].status == Status::Succeeded
+                        && self.tasks[i]
+                            .primitive
+                            .as_ref()
+                            .is_some_and(remote::Operation::is_pure)
+                    {
+                        let value = fs::read_to_string(&results[i].stdout)
+                            .map_err(|error| error.to_string())?
+                            .trim_end()
+                            .to_owned();
+                        results[i].outputs.insert("value".into(), value);
+                    }
                     // Stop background descendants before capturing output artifacts.
                     let completed_leases = running[n].leases.take();
                     let completed_action = running[n].action.take();
@@ -1025,7 +1167,8 @@ impl Plan {
                             && results[i].signal.is_none()
                             && (code.is_some_and(|code| {
                                 policy.exit_codes.is_empty() || policy.exit_codes.contains(&code)
-                            }) || self.tasks[i].file_operation.is_some()
+                            }) || (self.tasks[i].file_operation.is_some()
+                                || self.tasks[i].primitive.is_some())
                                 && policy.exit_codes.is_empty())
                             && results[i].attempts.len() < policy.max_attempts as usize
                             && !cancel.is_cancelled()
@@ -1100,8 +1243,44 @@ impl Plan {
                     n += 1;
                 }
             }
-            // Topological iteration propagates failed-dependency skips in one pass.
-            for &i in &graph.order {
+            if let Some(frontier) = &mut frontier {
+                for &index in &touched {
+                    if results[index].status.terminal() {
+                        frontier.complete(index, graph);
+                    }
+                }
+                if cancel.is_cancelled() || (self.fail_fast && failed) {
+                    for (index, result) in results.iter_mut().enumerate() {
+                        if result.status == Status::Pending {
+                            result.status = Status::Cancelled;
+                            frontier.complete(index, graph);
+                            touched.push(index);
+                        }
+                    }
+                }
+            }
+            // Complex lifecycle policies retain their established topological sweep.
+            // Ordinary command DAGs admit only ready nodes, visiting each edge once.
+            let mut position = 0;
+            loop {
+                let next = if let Some(frontier) = &mut frontier {
+                    if running.len() + saving.len() >= self.jobs {
+                        None
+                    } else {
+                        frontier.next()
+                    }
+                } else {
+                    let next = graph.order.get(position).copied();
+                    position += 1;
+                    next
+                };
+                let Some(i) = next else {
+                    break;
+                };
+                if frontier.is_some() {
+                    touched.push(i);
+                }
+
                 if results[i].status != Status::Pending {
                     continue;
                 }
@@ -1332,6 +1511,18 @@ impl Plan {
                         }
                     }
                 }
+                if let Some(frontier) = &mut frontier {
+                    if results[i].status.terminal() {
+                        frontier.complete(i, graph);
+                    }
+                }
+            }
+            if let Some(frontier) = &mut frontier {
+                for &index in &touched {
+                    if results[index].status.terminal() {
+                        frontier.complete(index, graph);
+                    }
+                }
             }
             // A set of ready daemons can occupy all capacity/resources required by
             // their pending consumers. Fail with cleanup instead of waiting forever.
@@ -1371,8 +1562,21 @@ impl Plan {
             {
                 stalled = true;
             }
-            let finished = results.iter().all(|r| r.status.terminal());
-            journal.update(&results, &graph.order, finished)?;
+            let finished = frontier.as_ref().map_or_else(
+                || results.iter().all(|r| r.status.terminal()),
+                graph::Frontier::finished,
+            );
+            if let Some(frontier) = &frontier {
+                if finished {
+                    journal.update(&results, &graph.order, true)?;
+                } else {
+                    touched.sort_unstable_by_key(|&node| frontier.rank(node));
+                    touched.dedup();
+                    journal.update(&results, &touched, false)?;
+                }
+            } else {
+                journal.update(&results, &graph.order, finished)?;
+            }
             if finished {
                 break;
             }
@@ -1415,18 +1619,24 @@ impl Plan {
     }
 }
 
-fn service_ancestors(graph: &DependencyGraph, tasks: &[Task]) -> Vec<HashSet<usize>> {
-    let mut ancestors = vec![HashSet::new(); graph.dependencies.len()];
-    for &i in &graph.order {
-        for &p in &graph.dependencies[i] {
-            let inherited = ancestors[p].clone();
-            ancestors[i].extend(inherited);
-            if tasks[p].service.is_some() {
-                ancestors[i].insert(p);
+fn service_ancestors(graph: &DependencyGraph, tasks: &[Task]) -> graph::Edges {
+    if tasks.iter().all(|task| task.service.is_none()) {
+        return graph::Edges::empty(tasks.len());
+    }
+    let mut ancestors: Vec<Vec<usize>> = vec![vec![]; tasks.len()];
+    for &node in &graph.order {
+        let mut parents = vec![];
+        for &parent in &graph.dependencies[node] {
+            parents.extend_from_slice(&ancestors[parent]);
+            if tasks[parent].service.is_some() {
+                parents.push(parent);
             }
         }
+        parents.sort_unstable();
+        parents.dedup();
+        ancestors[node] = parents;
     }
-    ancestors
+    graph::Edges::from_lists(ancestors)
 }
 
 fn log_output(path: &Path, append: bool) -> std::io::Result<File> {
@@ -1461,13 +1671,18 @@ fn start(
     executable: Option<&Path>,
     wake: &worker::Wake,
 ) -> std::io::Result<(Option<Child>, Option<worker::Worker<()>>)> {
-    if task.file_operation.is_some() {
+    if task.file_operation.is_some() || task.primitive.is_some() {
         let stdout = log_output(&result.stdout, !result.attempts.is_empty())?;
         stdout.set_len(0)?;
         let stderr = log_output(&result.stderr, !result.attempts.is_empty())?;
         let task = task.clone();
+        let inherited = inherited.clone();
         let worker = worker::Worker::spawn(wake, move |cancel| {
-            files::execute(&task, stdout, stderr, &cancel)
+            if task.primitive.is_some() {
+                remote::execute(&task, &inherited, stdout, stderr, &cancel)
+            } else {
+                files::execute(&task, stdout, stderr, &cancel)
+            }
         })
         .map_err(std::io::Error::other)?;
         Ok((None, Some(worker)))

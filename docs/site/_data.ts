@@ -15,6 +15,7 @@ const navigation = [
       { title: "Workspace modules", url: "/guides/modules/" },
       { title: "Environment and providers", url: "/guides/environment/" },
       { title: "Native plans and matrices", url: "/guides/native-plans/" },
+      { title: "Host and transfer primitives", url: "/guides/primitives/" },
       { title: "Caching", url: "/guides/caching/" },
       { title: "Services", url: "/guides/services/" },
       { title: "CI and exports", url: "/guides/ci/" },

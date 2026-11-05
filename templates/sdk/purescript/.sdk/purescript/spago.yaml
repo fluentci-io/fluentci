@@ -1,0 +1,23 @@
+package:
+  name: fluentci
+  dependencies:
+    - aff
+    - argonaut-codecs
+    - argonaut-core
+    - arrays
+    - effect
+    - exceptions
+    - either
+    - foreign-object
+    - maybe
+    - prelude
+    - tuples
+  test:
+    main: Test.Main
+    dependencies:
+      - console
+      - exceptions
+workspace:
+  packageSet:
+    registry: 81.11.0
+  extraPackages: {}

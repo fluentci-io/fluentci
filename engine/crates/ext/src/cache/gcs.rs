@@ -1,12 +1,10 @@
-use std::{env, fs};
-
+use super::CacheBackend;
 use anyhow::Error;
 use async_trait::async_trait;
 use cloud_storage::Client;
 use mime_guess::MimeGuess;
 use owo_colors::OwoColorize;
-
-use super::CacheBackend;
+use std::{env, fs};
 
 pub struct GoogleCloudStorage {
     client: Client,
@@ -45,7 +43,7 @@ impl CacheBackend for GoogleCloudStorage {
 
         self.client
             .object()
-            .create(&bucket, data, &name, &mime_type.to_string())
+            .create(&bucket, data, &name, mime_type.as_ref())
             .await?;
 
         Ok(())

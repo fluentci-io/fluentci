@@ -1,12 +1,11 @@
-use std::{env, thread};
-
 use anyhow::Error;
 use baselime::Level;
+use std::{env, thread};
 
 pub mod baselime;
 
 pub fn error(data: &str, namespace: &str) -> Result<(), Error> {
-    if let Ok(_) = env::var("BASELIME_API_KEY") {
+    if env::var("BASELIME_API_KEY").is_ok() {
         let data = data.to_string();
         let namespace = namespace.to_string();
         thread::spawn(move || {
@@ -23,7 +22,7 @@ pub fn error(data: &str, namespace: &str) -> Result<(), Error> {
 }
 
 pub fn info(data: &str, namespace: &str) -> Result<(), Error> {
-    if let Ok(_) = env::var("BASELIME_API_KEY") {
+    if env::var("BASELIME_API_KEY").is_ok() {
         let data = data.to_string();
         let namespace = namespace.to_string();
         thread::spawn(move || {
@@ -40,7 +39,7 @@ pub fn info(data: &str, namespace: &str) -> Result<(), Error> {
 }
 
 pub fn info_with_duration(data: &str, namespace: &str, duration: u128) -> Result<(), Error> {
-    if let Ok(_) = env::var("BASELIME_API_KEY") {
+    if env::var("BASELIME_API_KEY").is_ok() {
         let data = data.to_string();
         let namespace = namespace.to_string();
         thread::spawn(move || {

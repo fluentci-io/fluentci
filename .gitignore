@@ -29,3 +29,6 @@ fluentci.lock.guard
 
 # Built-in service manager runtime state and rotated logs
 .fluentci/services/
+
+# Python tooling bytecode
+__pycache__/

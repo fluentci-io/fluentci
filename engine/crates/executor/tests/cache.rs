@@ -15,7 +15,7 @@ fn plan(root: &Path) -> Plan {
         cache_dir: Some(root.join("cache")), tasks: vec![Task {
             id: "build".into(), needs: vec![], program: "/bin/sh".into(),
             args: vec!["-c".into(), "/bin/cat input > output; printf executed >> executions; printf log; printf error >&2".into()],
-            cwd: root.into(), env: BTreeMap::new(), resources: vec![], shared_resources: vec![], package_install: None, file_operation: None, env_files: vec![], package_environment: vec![], resource_wait_timeout_ms: None, timeout_ms: Some(3000),
+            cwd: root.into(), env: BTreeMap::new(), resources: vec![], shared_resources: vec![], package_install: None, file_operation: None, primitive: None, env_files: vec![], package_environment: vec![], resource_wait_timeout_ms: None, timeout_ms: Some(3000),
             service: None,
         policy: Default::default(), cache: Some(CachePolicy { toolchain_files: vec![], relocatable: false, inputs: vec!["input".into()], outputs: vec!["output".into()], toolchain: "fixture-v1".into() })
         }] }

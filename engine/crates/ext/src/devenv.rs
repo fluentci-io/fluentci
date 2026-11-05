@@ -1,12 +1,11 @@
+use crate::{exec, nix::Nix, pkgx::Pkgx, Extension};
+use anyhow::Error;
+use fluentci_types::Output;
 use std::{
     env::consts::OS,
     process::{Command, ExitStatus, Stdio},
     sync::mpsc::Sender,
 };
-
-use crate::{exec, nix::Nix, pkgx::Pkgx, Extension};
-use anyhow::Error;
-use fluentci_types::Output;
 
 #[derive(Default)]
 pub struct Devenv {}
@@ -68,7 +67,7 @@ impl Extension for Devenv {
 
         Command::new("sh")
             .arg("-c")
-            .arg(&format!(
+            .arg(format!(
                 "echo \"trusted-users = root $USER\" | {} tee -a /etc/nix/nix.conf",
                 sudo
             ))
@@ -82,7 +81,7 @@ impl Extension for Devenv {
 
         Command::new("sh")
             .arg("-c")
-            .arg(&format!(
+            .arg(format!(
                 "{} nix profile install --accept-flake-config github:cachix/cachix",
                 sudo,
             ))
@@ -100,7 +99,7 @@ impl Extension for Devenv {
 
         Command::new("sh")
             .arg("-c")
-            .arg(&format!("{} nix profile install --accept-flake-config tarball+https://install.devenv.sh/latest", sudo))
+            .arg(format!("{} nix profile install --accept-flake-config tarball+https://install.devenv.sh/latest", sudo))
             .stdin(Stdio::inherit())
             .spawn()?
             .wait()?;

@@ -1,0 +1,40 @@
+(ns ^:typed.clojure fluentci.remote
+  "Pure native primitives; IO and tool provisioning belong to the host DAG."
+  (:require [fluentci.host :as host]
+            #?(:clj [typed.clojure :as t])))
+
+#?(:clj
+   (do
+     (t/defalias Connection (t/HMap :mandatory {:host t/Str :port t/Int :install t/Bool} :optional {:user t/Str :identity t/Str}))
+     (t/defalias Direction (t/U ':upload ':download))
+     (t/defalias Action (t/U ':get ':put ':list ':delete))
+     (t/defalias Algorithm (t/U ':sha256 ':sha512))
+     (t/defalias FtpOptions (t/HMap :optional {:path t/Str :username_env t/Str :password_env t/Str :install t/Bool}))
+     (t/defalias S3Options (t/HMap :optional {:path t/Str :endpoint t/Str :region t/Str :install t/Bool}))))
+
+#?(:clj (t/ann connection [t/Str -> Connection]))
+(defn connection [host] {:host host :port 22 :install true})
+#?(:clj (t/ann task [t/Str t/Any t/Str -> host/Task]))
+(defn task [id operation cwd] (assoc (host/task id "" cwd) :primitive operation))
+#?(:clj (t/ann os [t/Str t/Str -> host/Task]))
+(defn os [id cwd] (task id {:kind "os"} cwd))
+#?(:clj (t/ann arch [t/Str t/Str -> host/Task]))
+(defn arch [id cwd] (task id {:kind "arch"} cwd))
+#?(:clj (t/ann digest-text [t/Str Algorithm t/Str t/Str -> host/Task]))
+(defn digest-text [id algorithm text cwd] (task id {:kind "digest" :algorithm (name algorithm) :input {:source "text" :value text}} cwd))
+#?(:clj (t/ann digest-file [t/Str Algorithm t/Str t/Str -> host/Task]))
+(defn digest-file [id algorithm path cwd] (task id {:kind "digest" :algorithm (name algorithm) :input {:source "file" :value path}} cwd))
+#?(:clj (t/ann ssh [t/Str Connection (t/Vec t/Str) t/Str -> host/Task]))
+(defn ssh [id connection command cwd] (task id {:kind "ssh" :connection connection :command command} cwd))
+#?(:clj (t/ann scp [t/Str Connection Direction t/Str t/Str t/Str -> host/Task]))
+(defn scp [id connection direction source destination cwd] (task id {:kind "scp" :connection connection :direction (name direction) :source source :destination destination} cwd))
+#?(:clj (t/ann sftp [t/Str Connection Direction t/Str t/Str t/Str -> host/Task]))
+(defn sftp [id connection direction source destination cwd] (task id {:kind "sftp" :connection connection :direction (name direction) :source source :destination destination} cwd))
+#?(:clj (t/ann rsync [t/Str Connection Direction t/Str t/Str t/Str -> host/Task]))
+(defn rsync [id connection direction source destination cwd] (task id {:kind "rsync" :connection connection :direction (name direction) :source source :destination destination} cwd))
+#?(:clj (t/ann ftp [t/Str t/Str Action FtpOptions t/Str -> host/Task]))
+(defn ftp [id url action options cwd] (task id (merge options {:kind "ftp" :url url :action (name action)}) cwd))
+#?(:clj (t/ann ftps [t/Str t/Str Action FtpOptions t/Str -> host/Task]))
+(defn ftps [id url action options cwd] (task id (merge options {:kind "ftps" :url url :action (name action)}) cwd))
+#?(:clj (t/ann s3 [t/Str t/Str t/Str Action S3Options t/Str -> host/Task]))
+(defn s3 [id bucket key action options cwd] (task id (merge options {:kind "s3" :bucket bucket :key key :action (name action)}) cwd))

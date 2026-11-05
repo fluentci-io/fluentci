@@ -72,6 +72,7 @@ class Task:
     resource_wait_timeout_ms: int | None = None
     service: Service | None = None
     policy: Policy | None = None
+    primitive: tuple[tuple[str, Any], ...] | None = None
     file_operation: tuple[tuple[str, Any], ...] | None = None
     env_files: tuple[str, ...] = ()
 
@@ -91,6 +92,8 @@ class Task:
             value["resource_wait_timeout_ms"] = self.resource_wait_timeout_ms
         if self.service is not None:
             value["service"] = asdict(self.service)
+        if self.primitive is not None:
+            value["primitive"] = dict(self.primitive)
         if self.file_operation is not None:
             value["file_operation"] = dict(self.file_operation)
         if self.env_files:
@@ -145,7 +148,7 @@ class Plan:
     fail_fast: bool = True
     cache_dir: str | None = None
 
-    def to_json(self) -> str:
+    def to_dict(self) -> dict[str, Any]:
         if self.jobs < 1:
             raise ValueError("jobs must be positive")
         ids = [task.id for task in self.tasks]
@@ -155,11 +158,14 @@ class Plan:
                                  "fail_fast": self.fail_fast, "tasks": [task.to_dict() for task in self.tasks]}
         if self.cache_dir is not None:
             value["cache_dir"] = self.cache_dir
-        return json.dumps(value)
+        return value
+
+    def to_json(self) -> str:
+        return json.dumps(self.to_dict())
 
     def run(self, run_dir: str) -> RunResult:
         from . import _imports as api
-        request = json.dumps({"plan": json.loads(self.to_json()), "run_dir": run_dir})
+        request = json.dumps({"plan": self.to_dict(), "run_dir": run_dir})
         raw: Any = json.loads(api.execute_plan(request))
         if not isinstance(raw, dict) or raw.get("outcome") not in {"succeeded", "failed", "cancelled"} or not isinstance(raw.get("tasks"), list):
             raise RuntimeError("invalid terminal plan report")

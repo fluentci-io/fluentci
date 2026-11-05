@@ -15,14 +15,12 @@ use std::fmt::Write as _;
 use std::mem;
 use std::slice;
 use std::vec;
-
 use crossterm::Command;
 use crossterm::cursor::MoveToColumn;
 use crossterm::terminal::Clear;
 use crossterm::terminal::ClearType;
 use unicode_segmentation::UnicodeSegmentation;
 use unicode_width::UnicodeWidthStr;
-
 use crate::Span;
 use crate::SpanError;
 use crate::vec_as_fmt_write::VecAsFmtWrite;
@@ -201,11 +199,9 @@ impl Line {
         if span.is_empty() {
             return;
         }
-        if let Some(last) = self.0.last_mut() {
-            if last.is_mergeable_with(&span) {
-                last.content.to_mut().push_str(&span.content);
-                return;
-            }
+        if let Some(last) = self.0.last_mut().filter(|last| last.is_mergeable_with(&span)) {
+            last.content.to_mut().push_str(&span.content);
+            return;
         }
         self.0.push(span);
     }

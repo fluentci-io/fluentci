@@ -1,5 +1,7 @@
-use std::str::FromStr;
-
+use crate::{
+    convert::{convert_env_name, decode_env_from_json},
+    Vault, VaultConfig,
+};
 use async_trait::async_trait;
 use futures::future::try_join_all;
 use rusoto_core::{request::TlsError, HttpClient, Region};
@@ -10,12 +12,8 @@ use rusoto_secretsmanager::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::str::FromStr;
 use thiserror::Error;
-
-use crate::{
-    convert::{convert_env_name, decode_env_from_json},
-    Vault, VaultConfig,
-};
 
 #[derive(Serialize, Deserialize)]
 pub struct AwsConfig {
@@ -31,13 +29,13 @@ pub enum AwsError {
     #[error("rusoto HttpClient error")]
     CredentialsError(#[source] CredentialsError),
     #[error("cannot load secret from Secrets Manager")]
-    GetSecretError(#[source] rusoto_core::RusotoError<GetSecretValueError>),
+    GetSecretError(#[source] Box<rusoto_core::RusotoError<GetSecretValueError>>),
     #[error("the secret does not have string data")]
     NoStringData(String),
     #[error("the secret name is not valid environment variable name")]
     InvalidSecretName(String),
     #[error("cannot list secrets from Secrets Manager")]
-    ListSecretsError(#[source] rusoto_core::RusotoError<ListSecretsError>),
+    ListSecretsError(#[source] Box<rusoto_core::RusotoError<ListSecretsError>>),
     #[error("cannot decode secret - it is not a valid JSON object")]
     DecodeError(#[source] serde_json::Error),
     #[error("there are no secrets in the Secrets Manager")]
@@ -88,7 +86,7 @@ impl Vault for AwsVault {
                 ..Default::default()
             })
             .await
-            .map_err(AwsError::ListSecretsError)?;
+            .map_err(|error| AwsError::ListSecretsError(Box::new(error)))?;
         let results = list
             .secret_list
             .ok_or(AwsError::NoSecrets)?
@@ -110,7 +108,7 @@ impl Vault for AwsVault {
                         version_stage: None,
                     })
                     .await
-                    .map_err(AwsError::GetSecretError)?;
+                    .map_err(|error| AwsError::GetSecretError(Box::new(error)))?;
                 println!("{:?}", secret);
                 let value = secret
                     .secret_string
@@ -132,7 +130,7 @@ impl Vault for AwsVault {
                 version_stage: None,
             })
             .await
-            .map_err(AwsError::GetSecretError)?;
+            .map_err(|error| AwsError::GetSecretError(Box::new(error)))?;
         let value = decode_secret(secret)?;
         decode_env_from_json(secret_name, value)
     }

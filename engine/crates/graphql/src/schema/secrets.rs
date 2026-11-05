@@ -1,8 +1,5 @@
-use std::{
-    path::PathBuf,
-    sync::{Arc, Mutex},
-};
-
+use super::objects::secret::Secret;
+use crate::schema::objects::secret_manager::SecretManager;
 use async_graphql::{Context, Error, Object, ID};
 use fluentci_common::common;
 use fluentci_core::deps::Graph;
@@ -13,10 +10,10 @@ use fluentci_secrets::{
     vault::HashicorpVaultConfig,
     Provider,
 };
-
-use crate::schema::objects::secret_manager::SecretManager;
-
-use super::objects::secret::Secret;
+use std::{
+    path::PathBuf,
+    sync::{Arc, Mutex},
+};
 
 #[derive(Default, Clone)]
 pub struct SecretsQuery;
@@ -106,7 +103,7 @@ impl SecretsQuery {
         let provider = Provider::Hashicorp(HashicorpVaultConfig {
             vault_address: Some(address),
             vault_token: Some(token),
-            vault_cacert: cacerts.map(|x| PathBuf::from(x)),
+            vault_cacert: cacerts.map(PathBuf::from),
         });
         let id = common::add_secretmanager(graph.clone(), provider)?;
         Ok(SecretManager { id: ID(id) })

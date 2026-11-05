@@ -1,3 +1,4 @@
+use crate::state::State;
 use anyhow::Error;
 use extism::{convert::Json, host_fn};
 use extism::{Manifest, PluginBuilder, Wasm};
@@ -20,8 +21,6 @@ use fluentci_types::cache::Cache;
 use fluentci_types::file::File;
 use fluentci_types::Module;
 use std::sync::Arc;
-
-use crate::state::State;
 
 host_fn!(pub set_runner(user_data: State; runner: String) {
   let state = user_data.get()?;
@@ -137,7 +136,7 @@ host_fn!(pub zip(user_data: State; path: String) -> Json<File> {
   let state = state.lock().unwrap();
   let graph = state.graph.clone();
   match common::zip(graph, path) {
-    Ok(file) => Ok(Json(File::from(file))),
+    Ok(file) => Ok(Json(file)),
     Err(e) => Err(e),
   }
 });
@@ -147,7 +146,7 @@ host_fn!(pub tar_czvf(user_data: State; path: String) -> Json<File> {
   let state = state.lock().unwrap();
   let graph = state.graph.clone();
   match common::tar_czvf(graph, path) {
-    Ok(file) => Ok(Json(File::from(file))),
+    Ok(file) => Ok(Json(file)),
     Err(e) => Err(e),
   }
 });

@@ -50,6 +50,11 @@ Use release mode for Rust builds, runs, and validation. Run tests appropriate to
 the change; HTTP/WebSocket tests need loopback listeners. Keep Rust imports in one
 contiguous block, with blank lines between functions, types, and implementations.
 
+Always run Clippy after Rust changes. For shared engine changes, also run
+`cargo clippy --release --locked --workspace --all-targets -- -D warnings` in
+the sibling engine checkout. Validate the desktop crate with
+`cargo clippy --release --locked --manifest-path desktop/src-tauri/Cargo.toml --all-targets -- -D warnings`.
+
 ## SDK templates
 
 Scaffold tests verify embedded starters without depending on a sibling checkout.

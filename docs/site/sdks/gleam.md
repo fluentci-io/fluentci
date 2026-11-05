@@ -66,3 +66,10 @@ is normally `dist/plugin.wasm`.
 
 Continue with [workspace modules](/guides/modules/) for custom builds and artifact
 paths, or [publishing](/registry/publishing/) to share the compiled plugin.
+
+## Host and transfer tasks
+
+The bundled SDK includes composable OS/architecture detection, SHA-256/SHA-512,
+SSH, SCP, SFTP, rsync, FTP/FTPS, and S3 tasks. See the
+[primitive guide](/guides/primitives/) for this SDK’s entry point and example,
+plus provisioning, credential, cancellation, and caching behavior.

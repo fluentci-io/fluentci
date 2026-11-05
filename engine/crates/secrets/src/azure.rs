@@ -1,5 +1,7 @@
-use std::sync::Arc;
-
+use super::{
+    convert::{convert_env_name, decode_env_from_json},
+    Vault, VaultConfig,
+};
 use async_trait::async_trait;
 use azure_core::auth::TokenCredential;
 use azure_identity::{
@@ -10,12 +12,8 @@ use futures::future::try_join_all;
 use futures::stream::StreamExt;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::Arc;
 use thiserror::Error;
-
-use super::{
-    convert::{convert_env_name, decode_env_from_json},
-    Vault, VaultConfig,
-};
 
 #[derive(Debug, Default, Serialize, Deserialize)]
 pub struct AzureConfig {
@@ -163,7 +161,7 @@ impl Vault for AzureVault {
             }
         });
         let env_values = try_join_all(env_values).await?.into_iter().map(|x| x.value);
-        let from_kv = env_names.into_iter().zip(env_values.into_iter()).collect();
+        let from_kv = env_names.into_iter().zip(env_values).collect();
         Ok(from_kv)
     }
 

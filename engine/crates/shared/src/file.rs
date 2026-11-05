@@ -1,8 +1,7 @@
+use crate::state::State;
 use extism::{convert::Json, *};
 use fluentci_common::file::{self, file as common_file};
-use fluentci_types::{directory::Directory, file::Chmod};
-
-use crate::state::State;
+use fluentci_types::file::Chmod;
 
 host_fn!(pub file(user_data: State; path: String) -> Json<File> {
     let state = user_data.get()?;
@@ -17,7 +16,7 @@ host_fn!(pub unzip(user_data: State; path: String) -> Json<Directory> {
     let state = state.lock().unwrap();
     let graph = state.graph.clone();
     match file::unzip(graph, path, None) {
-        Ok(directory) => Ok(Json(Directory::from(directory))),
+        Ok(directory) => Ok(Json(directory)),
         Err(e) => Err(e),
     }
 });
@@ -28,7 +27,7 @@ host_fn!(pub tar_xzvf(user_data: State; path: String) -> Json<Directory> {
     let graph = state.graph.clone();
 
     match file::tar_xzvf(graph, path, None) {
-        Ok(directory) => Ok(Json(Directory::from(directory))),
+        Ok(directory) => Ok(Json(directory)),
         Err(e) => Err(e),
     }
 });

@@ -1,12 +1,11 @@
+use crate::{exec, Extension};
+use anyhow::Error;
+use fluentci_types::Output;
 use std::{
     env,
     process::{Command, ExitStatus, Stdio},
     sync::mpsc::Sender,
 };
-
-use crate::{exec, Extension};
-use anyhow::Error;
-use fluentci_types::Output;
 
 #[derive(Default)]
 pub struct Hermit {}
@@ -70,11 +69,7 @@ impl Extension for Hermit {
     }
 
     fn setup(&self) -> Result<(), Error> {
-        let path = format!(
-            "{}:{}",
-            env::var("PATH")?,
-            format!("{}/bin", env::var("HOME")?)
-        );
+        let path = format!("{}:{}/bin", env::var("PATH")?, env::var("HOME")?);
         env::set_var("PATH", &path);
 
         let status = Command::new("sh")

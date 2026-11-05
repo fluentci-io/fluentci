@@ -1,12 +1,11 @@
+use crate::{exec, Extension};
+use anyhow::Error;
+use fluentci_types::Output;
 use std::{
     env,
     process::{Command, ExitStatus, Stdio},
     sync::mpsc::Sender,
 };
-
-use crate::{exec, Extension};
-use anyhow::Error;
-use fluentci_types::Output;
 
 #[derive(Default)]
 pub struct Pkgx {}
@@ -45,15 +44,11 @@ impl Extension for Pkgx {
             return Ok(ExitStatus::default());
         }
 
-        exec(&cmd, tx, out, last_cmd, work_dir)
+        exec(cmd, tx, out, last_cmd, work_dir)
     }
 
     fn setup(&self) -> Result<(), Error> {
-        let path = format!(
-            "{}:{}",
-            env::var("PATH")?,
-            format!("{}/.local/bin", env::var("HOME")?)
-        );
+        let path = format!("{}:{}/.local/bin", env::var("PATH")?, env::var("HOME")?);
         env::set_var("PATH", &path);
         crate::bootstrap::install("pkgx", "https://pkgx.sh", "/bin/sh", &[], &[])?;
         Ok(())
@@ -61,6 +56,6 @@ impl Extension for Pkgx {
 
     // TODO remove this
     fn format_command(&self, cmd: &str) -> String {
-        format!("{}", cmd)
+        cmd.to_string()
     }
 }
