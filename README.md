@@ -14,6 +14,10 @@ Run WebAssembly plugins on the host, compose pipelines in TOML, or manage projec
 through Studio. The CLI uses Clap and Tokio, serves its GraphQL API and web UI
 through Axum, and persists application data in SQLite through SQLx.
 
+Read the [documentation](./docs/site/index.md) for guides covering every SDK,
+Studio, publishing, CLI options, and the registry API. The
+[documentation workspace](./docs/README.md) runs a Lume 4 site using Bun.
+
 ## Contents
 
 - [Features](#features)
@@ -374,12 +378,19 @@ fluentci run --wasm ./target/wasm32-unknown-unknown/release/hello_plugin.wasm he
 
 Choose another language with `fluentci init --sdk typescript` (or another
 supported SDK). Rust is the default. `--standalone` generates a reusable plugin
-in the current directory. Publishing requires a FluentCI access token:
+in the current directory. Publishing uses an AT Protocol account and app password:
 
 ```sh
-fluentci login
-fluentci publish --wasm
+export FLUENTCI_ACCOUNT='alice.example'
+export FLUENTCI_APP_PASSWORD='replace-with-an-app-password'
+fluentci whoami
+fluentci publish --file ./dist/plugin.wasm
 ```
+
+The CLI remembers non-secret identity in `~/.fluentci/account.json`, without
+saving the password or session tokens. See [authentication](./docs/site/registry/authentication.md)
+and [publishing](./docs/site/registry/publishing.md) for module builds and public
+Wasm URL publishing.
 
 ### Environment providers and built-in functions
 
@@ -477,15 +488,14 @@ Run `fluentci --help` or `fluentci <command> --help` for arguments and options.
 | `ls` / `list`, `docs` / `man` | List pipeline jobs and read documentation |
 | `studio`, `server` | Start the embedded UI or local GraphQL API |
 | `project create`, `list`, `show`, `export` | Manage saved projects and export CI manifests |
-| `login`, `whoami`, `publish` | Authenticate and publish packages |
+| `whoami`, `publish` | Authenticate from environment variables and publish packages |
 | `agent`, `agent list` | Connect a hosted runner agent or list agents |
 | `repl [module]` | Start a native interactive pipeline session |
 | `up`, `down`, `ps`, `status`, `start`, `restart`, `stop`, `echo` | Control services and stream their logs |
 | `env`, `doctor`, `upgrade`, `community` | Inspect configuration, diagnose tools, update, and find support |
 
-For hosted execution, set `FLUENTCI_PROJECT_ID` and authenticate with `fluentci
-login` or `FLUENTCI_ACCESS_TOKEN`, then use `fluentci run --remote-exec`. Service
-controls discover `.fluentci/*/Procfile` and use the associated Overmind sockets.
+`fluentci run --remote-exec` is not supported. Run FluentCI directly on a CI runner.
+Service controls discover `.fluentci/*/Procfile` and use the associated Overmind sockets.
 
 ## Database and settings
 
@@ -498,14 +508,14 @@ FLUENTCI_DATABASE=./fluentci.db fluentci project list
 ```
 
 SQLx applies embedded migrations when opening the database. SQLite stores projects,
-ordered actions, runs, jobs, logs, access tokens, agent identity, and update-check
-settings. WAL mode and a busy timeout support concurrent CLI and Studio access;
+ordered actions, runs, jobs, logs, cached repository metadata, legacy agent state,
+and settings. WAL mode and a busy timeout support concurrent CLI and Studio access;
 foreign keys cascade dependent records when a project is deleted.
 
-Existing Deno KV data is not automatically migrated. A legacy access-token file is
-imported on first authenticated use. The engine's build caches and execution
+Existing Deno KV data is not automatically migrated. AT Protocol account passwords
+and session tokens are not saved; the account identity file is separate. The engine's build caches and execution
 journals retain their own file formats; they are separate from the application
-database. See [migration details](./docs/rust-port.md#persistence).
+database. See [architecture](./docs/site/development/architecture.md).
 
 ## Caching
 
@@ -539,12 +549,14 @@ root:
 bun install --frozen-lockfile --ignore-scripts
 bun run dev:landing  # http://localhost:5173
 bun run dev:studio   # http://localhost:5174; start the Rust API separately
+bun run dev:docs     # http://localhost:4174
 bun run dev         # landing + Studio together
 ```
 
 | Workspace           | Location       | Purpose                                       |
 | ------------------- | -------------- | --------------------------------------------- |
 | `@fluentci/landing` | `apps/landing` | Public React/Vite/Tailwind landing page       |
+| `@fluentci/docs`    | `docs`         | Lume 4 documentation, managed with Bun        |
 | `fluentci-studio`   | `webui`        | Studio UI embedded in the CLI and desktop app |
 | `fluentci-desktop`  | `desktop`      | Native Tauri app and release bundle           |
 

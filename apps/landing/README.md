@@ -15,6 +15,9 @@ bun run build:landing
 
 Development runs at `http://localhost:5173`. Deploy the generated
 `apps/landing/dist/` directory to a static host.
+`public/llms.txt` is served at `/llms.txt` in development and copied into the
+production build. Keep its overview and documentation links in sync with the CLI
+and SDKs.
 
 To preview the build or run browser checks:
 
