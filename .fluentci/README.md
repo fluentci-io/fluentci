@@ -109,6 +109,13 @@ install FluentCI with `fluentci-io/setup-fluentci@next`. The action's `version`
 input reads `FLUENTCI_VERSION`, which selects the existing `2026.11.04` bootstrap
 CLI. `RELEASE_VERSION` identifies the release being built.
 
+The root `fluentci.toml` declares private CI modules using only the bootstrap's
+supported fields: `name`, `path`, `url`, `sdk`, `entry`, `artifact`, and `build`.
+Do not add publishing metadata such as `version`, `description`, or `license` to
+these declarations while this older CLI is pinned: it rejects unknown fields
+before it can build or run a module. Newer CLIs still support that metadata for
+publishable modules. The configuration tests guard this bootstrap compatibility.
+
 The Ubuntu input job installs the PureScript/Spago/Extism compiler toolchain and
 runs `fluentci run release prepare`. That module validates the release and BSD
 checks, generates Wasm fixtures, and builds Studio once. The job publishes the

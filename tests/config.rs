@@ -1,6 +1,25 @@
 use fluentci::config::Config;
 
 #[test]
+fn repository_ci_modules_remain_compatible_with_the_bootstrap_cli() {
+    // The published 2026.11.04 bootstrap rejects unknown module fields. The
+    // private CI modules must remain readable before the new CLI is built.
+    let manifest = include_str!("../fluentci.toml");
+    let config = Config::parse(manifest).unwrap();
+    assert!(!config.modules.is_empty());
+    let document: toml::Value = toml::from_str(manifest).unwrap();
+    let supported = ["name", "path", "url", "sdk", "entry", "artifact", "build"];
+    for module in document["modules"].as_array().unwrap() {
+        for key in module.as_table().unwrap().keys() {
+            assert!(
+                supported.contains(&key.as_str()),
+                "CI module field {key:?} is unsupported by the pinned bootstrap CLI"
+            );
+        }
+    }
+}
+
+#[test]
 fn parses_every_existing_fixture() {
     for file in std::fs::read_dir("fixtures").unwrap() {
         let path = file.unwrap().path();
