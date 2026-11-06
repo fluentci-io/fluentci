@@ -93,8 +93,12 @@ bun scripts/generate-bun-nix.mjs
 ```
 
 `.github/workflows/nix-build.yml` runs on pushes to `main` and manual dispatch.
-It compiles the `nix-build` PureScript module once, then runs its Wasm on the three
-native platforms. The module runs only `nix build --no-write-lock-file .#fluentci`.
+It compiles the `nix-build` and `cachix` PureScript modules once, then runs their
+Wasm on the three native platforms. Cachix setup runs before the Nix build. Set
+the `CACHIX_AUTH_TOKEN` repository secret; the workflow uses the `fluentci` cache.
+Missing or empty tokens skip Cachix and continue the build.
+Setup with a token configures cache downloads; it does not push build outputs.
+The `nix-build` module runs only `nix build --no-write-lock-file .#fluentci`.
 
 ## Unsupported remote execution
 

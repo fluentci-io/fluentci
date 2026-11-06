@@ -1,0 +1,12 @@
+{
+  "devDependencies": {
+    "esbuild": "0.25.3"
+  },
+  "name": "fluentci-ci-cachix",
+  "private": true,
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "type": "module"
+}

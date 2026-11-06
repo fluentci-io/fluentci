@@ -38,3 +38,8 @@ sdk = "purescript"
 name = "nix-build"
 path = ".fluentci/nix-build"
 sdk = "purescript"
+
+[[modules]]
+name = "cachix"
+path = ".fluentci/cachix"
+sdk = "purescript"

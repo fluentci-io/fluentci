@@ -23,6 +23,28 @@ fluentci run main build      # Studio + host release CLI
 | `release`   | `prepare`, `build`, `buildPrepared`, `check`, `package`, `upload`, `bsd*` | Release inputs, native builds, verification, and uploads                         |
 | `nix`       | `check`, `metadata`, `flakehub`, `flakestry`                              | Flake validation, inspection, and explicit publishing                            |
 | `nix-build` | `build`                                                                   | Build the locked FluentCI Nix package with `nix build`                           |
+| `cachix`    | `setup`                                                                   | Optional authenticated setup of the `fluentci` binary cache                      |
+
+`cachix` exports `setup`, with `CI.Cachix.setupWith :: String -> Effect Unit`
+for PureScript composition. Pass the cache name (the Cachix key identifying the
+cache) as input, or set `CACHIX_CACHE`:
+
+```sh
+fluentci run cachix setup fluentci
+```
+
+The module reads `CACHIX_AUTH_TOKEN` from the host environment. Missing, empty,
+or whitespace-only tokens skip setup successfully, so builds continue without
+Cachix. With a token, it validates the cache name and runs `cachix use` through
+`nix run --inputs-from . nixpkgs#cachix`, reusing the checkout's pinned nixpkgs
+input. The token is never passed as a command argument or printed. Setup errors
+with a configured token fail the job. This configures cache downloads; it does
+not upload build outputs.
+
+The Nix build workflow compiles both Wasm modules, then calls Cachix setup before
+`nix-build build` on every platform. Configure the `CACHIX_AUTH_TOKEN` repository
+secret; the workflow explicitly uses the `fluentci` cache.
+No token means no Cachix/Nix setup commands are executed by the Cachix module.
 
 `common` is a shared PureScript source package, not a Wasm module. The modules
 reuse it through Spago path dependencies. `main`, `rust`, and `release` compose
