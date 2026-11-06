@@ -14,6 +14,7 @@ export const textColumn = (name, nullable, primary) => definition(name, 'text', 
 export const integerColumn = (name, nullable, primary) =>
   definition(name, 'integer', nullable, primary);
 export const booleanColumn = (name) => definition(name, 'boolean');
+export const columnDefault = (column, value) => ({ ...column, defaultValue: value });
 const tables = new Map();
 export function table(name, definitions, indexes) {
   const defs = definitions.toArray();
@@ -32,6 +33,7 @@ export function table(name, definitions, indexes) {
           : integer(def.name, def.kind === 'boolean' ? { mode: 'boolean' } : undefined);
       if (!def.nullable) column = column.notNull();
       if (def.primary) column = column.primaryKey();
+      if (Object.hasOwn(def, 'defaultValue')) column = column.default(def.defaultValue);
       return [def.name, column];
     }),
   );

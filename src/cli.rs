@@ -178,7 +178,7 @@ pub enum Command {
         file: Option<PathBuf>,
         /// Published package metadata
         #[command(flatten)]
-        metadata: crate::publishing::MetadataOptions,
+        metadata: Box<crate::publishing::MetadataOptions>,
         /// Workspace module to publish or use for artifact metadata
         #[arg(long)]
         module: Option<String>,

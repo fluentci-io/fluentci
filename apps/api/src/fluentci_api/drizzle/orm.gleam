@@ -82,6 +82,12 @@ pub fn integer_column(
 @external(javascript, "./orm_ffi.mjs", "booleanColumn")
 pub fn boolean_column(name: String) -> ColumnDefinition
 
+@external(javascript, "./orm_ffi.mjs", "columnDefault")
+pub fn column_default(
+  definition: ColumnDefinition,
+  value: a,
+) -> ColumnDefinition
+
 pub fn table(
   name: String,
   columns: List(ColumnDefinition),

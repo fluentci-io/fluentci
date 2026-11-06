@@ -1,8 +1,8 @@
 //// SQLite table and typed row definition.
 
 import fluentci_api/drizzle/orm.{
-  type Expression, type Table, boolean, boolean_column, column, index, integer,
-  integer_column, optional, table as db_table, text, text_column,
+  type Expression, type Table, boolean, boolean_column, column, column_default,
+  index, integer, integer_column, optional, table as db_table, text, text_column,
 }
 import gleam/dynamic/decode.{type Decoder}
 import gleam/option.{type Option}
@@ -109,7 +109,7 @@ pub fn table() -> Table(Row) {
       text_column("os", True, False),
       text_column("arch", True, False),
       text_column("readme_url", True, False),
-      integer_column("downloads", False, False),
+      integer_column("downloads", False, False) |> column_default(0),
       boolean_column("deleted"),
       integer_column("event_time", False, False),
     ],
