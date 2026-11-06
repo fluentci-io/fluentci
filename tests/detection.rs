@@ -204,7 +204,22 @@ async fn explicit_configuration_and_saved_actions_take_precedence() -> anyhow::R
     assert_eq!(db.actions(&project.id).await?[0].name, "saved");
     std::fs::remove_file(temp.path().join("fluentci.toml"))?;
     db.save_actions(&project.id, &[]).await?;
-    assert_eq!(executor::prepare(&db, &project).await?.jobs.len(), 2);
-    assert_eq!(db.actions(&project.id).await?[0].commands, "test --release");
+    let detected = executor::prepare(&db, &project).await?;
+    assert_eq!(detected.jobs.len(), 2);
+    // Preparation snapshots detected actions for this run without overwriting
+    // the project's saved actions or materializing a workflow file.
+    let snapshot = db
+        .run_actions(&detected.id)
+        .await?
+        .expect("prepared run snapshot");
+    assert_eq!(snapshot.len(), 2);
+    assert_eq!(snapshot[0].commands, "test --release");
+    assert!(db.actions(&project.id).await?.is_empty());
+    assert!(
+        !temp
+            .path()
+            .join(".fluentci/workflows/default.toml")
+            .exists()
+    );
     Ok(())
 }
