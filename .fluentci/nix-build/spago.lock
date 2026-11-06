@@ -8,6 +8,7 @@
             "effect",
             "either",
             "fluentci",
+            "fluentci-ci-cachix",
             "fluentci-ci-common",
             "foldable-traversable",
             "prelude"
@@ -686,6 +687,9 @@
         "git": "https://github.com/fluentci-io/purescript-fluentci.git",
         "ref": "954d03568935c26f92434119a110635a41a6fa4c"
       },
+      "fluentci-ci-cachix": {
+        "path": "../cachix"
+      },
       "fluentci-ci-common": {
         "path": "../common"
       }
@@ -924,6 +928,19 @@
         "maybe",
         "prelude",
         "tuples"
+      ]
+    },
+    "fluentci-ci-cachix": {
+      "type": "local",
+      "path": "../cachix",
+      "dependencies": [
+        "effect",
+        "either",
+        "fluentci",
+        "fluentci-ci-common",
+        "foldable-traversable",
+        "prelude",
+        "strings"
       ]
     },
     "fluentci-ci-common": {

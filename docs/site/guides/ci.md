@@ -97,8 +97,12 @@ It compiles the `nix-build` and `cachix` PureScript modules once, then runs thei
 Wasm on the three native platforms. Cachix setup runs before the Nix build. Set
 the `CACHIX_AUTH_TOKEN` repository secret; the workflow uses the `fluentci` cache.
 Missing or empty tokens skip Cachix and continue the build.
-Setup with a token configures cache downloads; it does not push build outputs.
-The `nix-build` module runs only `nix build --no-write-lock-file .#fluentci`.
+With a token, the `nix-build` module runs
+`cachix watch-exec fluentci -- nix build --no-write-lock-file .#fluentci` through
+the pinned Cachix executable. It uploads new build outputs and dependencies, then
+explicitly pushes `./result` and its runtime closure. Upload failures fail CI.
+Without a token, it runs the normal Nix build and skips uploads. The token needs
+write access to the `fluentci` cache; it never appears in command arguments.
 
 ## Unsupported remote execution
 

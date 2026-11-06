@@ -1,37 +1,16 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { setup, setupWith } from "../output/CI.Cachix/index.js";
+import { fixture } from "./host-fixture.mjs";
+import {
+  setup,
+  setupWith,
+  push,
+  pushResultWith,
+  runWithCache,
+} from "../output/CI.Cachix/index.js";
 
 // Execute compiled PureScript against a guest host stub. No CLI, Nix or Cachix
 // process is launched, and no real environment variable or token is read.
-function fixture(env = {}, input = "") {
-  const calls = [];
-  const output = [];
-  globalThis.Memory = {
-    fromString: (value) => ({ offset: value }),
-    find: (value) => ({ readString: () => value }),
-  };
-  globalThis.Host = {
-    inputString: () => input,
-    outputString: (value) => output.push(value),
-    getFunctions: () =>
-      new Proxy(
-        {},
-        {
-          get: (_target, name) => (value) => {
-            calls.push([name, value]);
-            if (name === "has_env")
-              return JSON.stringify(Object.hasOwn(env, value));
-            if (name === "get_env") return env[value];
-            if (name === "pipeline") return JSON.stringify({ id: "fixture" });
-            if (name === "stdout") return "configured";
-            return "";
-          },
-        },
-      ),
-  };
-  return { calls, output };
-}
 
 test("missing, empty and whitespace tokens skip before reading cache input or invoking Nix", () => {
   for (const env of [
@@ -102,5 +81,63 @@ test("setup errors propagate instead of silently continuing with a configured to
     },
   });
   assert.throws(() => setup(), /Nix setup failed/);
+  assert.deepEqual(f.output, []);
+});
+
+test("authenticated builds use watch-exec and explicitly push the result closure without leaking tokens", () => {
+  const token = "upload-secret";
+  const f = fixture({ CACHIX_AUTH_TOKEN: token });
+  runWithCache("fluentci")([
+    "nix",
+    "build",
+    "--no-write-lock-file",
+    ".#fluentci",
+  ])();
+  pushResultWith("fluentci")();
+  const commands = f.calls
+    .filter(([name]) => name === "with_exec")
+    .map(([, value]) => JSON.parse(value));
+  const watched = commands.find((args) => args.includes("'watch-exec'"));
+  assert.deepEqual(watched.slice(7), [
+    "'watch-exec'",
+    "'fluentci'",
+    "'--'",
+    "'nix'",
+    "'build'",
+    "'--no-write-lock-file'",
+    "'.#fluentci'",
+  ]);
+  const pushed = commands.find((args) => args.includes("'push'"));
+  assert.deepEqual(pushed.slice(7), ["'push'", "'fluentci'", "'./result'"]);
+  assert.ok(!JSON.stringify([f.calls, f.output]).includes(token));
+});
+
+test("without a token the build runs normally and upload is skipped", () => {
+  for (const token of [undefined, "", "  "]) {
+    const f = fixture(token === undefined ? {} : { CACHIX_AUTH_TOKEN: token });
+    runWithCache("fluentci")(["nix", "build", ".#fluentci"])();
+    pushResultWith("fluentci")();
+    const commands = f.calls
+      .filter(([name]) => name === "with_exec")
+      .map(([, value]) => JSON.parse(value));
+    assert.deepEqual(commands[0], ["'nix'", "'build'", "'.#fluentci'"]);
+    assert.ok(!JSON.stringify(commands).includes("watch-exec"));
+    assert.ok(!JSON.stringify(commands).includes("push"));
+  }
+});
+
+test("explicit upload reads cache input and propagates upload failures", () => {
+  let f = fixture({ CACHIX_AUTH_TOKEN: "secret" }, "fluentci");
+  push();
+  assert.ok(JSON.stringify(f.calls).includes("'push'"));
+  f = fixture({ CACHIX_AUTH_TOKEN: "secret" }, "fluentci");
+  globalThis.Host.getFunctions = () => ({
+    has_env: () => "true",
+    get_env: () => "secret",
+    set_runner: () => {
+      throw new Error("Cachix upload denied");
+    },
+  });
+  assert.throws(() => push(), /Cachix upload denied/);
   assert.deepEqual(f.output, []);
 });

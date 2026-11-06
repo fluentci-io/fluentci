@@ -5,7 +5,8 @@
   "name": "fluentci-ci-nix-build",
   "private": true,
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "test": "node --test test/*.test.mjs"
   },
   "type": "module"
 }

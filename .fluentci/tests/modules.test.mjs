@@ -515,9 +515,52 @@ test("desktop jobs reject invalid targets and unsafe release tags", (t) => {
 
 test("Nix build module invokes the locked FluentCI package build", (t) => {
   const f = fixture(t);
-  success(f.run("nix-build", "build"));
+  success(f.run("nix-build", "build", { CACHIX_AUTH_TOKEN: null }));
   assert.deepEqual(
     f.commands().map(({ command, args }) => [command, ...args]),
     [["nix", "build", "--no-write-lock-file", ".#fluentci"]],
   );
+});
+
+test("Nix builds watch and push store paths when Cachix authentication is configured", (t) => {
+  const f = fixture(t);
+  success(
+    f.run("nix-build", "build", { CACHIX_AUTH_TOKEN: "test-only-token" }),
+  );
+  const commands = f.commands().map(({ command, args }) => [command, ...args]);
+  const prefix = [
+    "nix",
+    "run",
+    "--no-write-lock-file",
+    "--inputs-from",
+    ".",
+    "nixpkgs#cachix",
+    "--",
+  ];
+  assert.deepEqual(commands, [
+    [
+      ...prefix,
+      "watch-exec",
+      "fluentci",
+      "--",
+      "nix",
+      "build",
+      "--no-write-lock-file",
+      ".#fluentci",
+    ],
+    [...prefix, "push", "fluentci", "./result"],
+  ]);
+  assert.ok(!JSON.stringify(commands).includes("test-only-token"));
+});
+
+test("failed watched Nix builds stop before the final cache push", (t) => {
+  const f = fixture(t);
+  assert.notEqual(
+    f.run("nix-build", "build", {
+      CACHIX_AUTH_TOKEN: "test-only-token",
+      CI_TEST_FAIL: "nix:run",
+    }).status,
+    0,
+  );
+  assert.equal(f.commands().length, 1);
 });

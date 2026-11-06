@@ -24,11 +24,12 @@ jobs:
           node-version: "24"
       - name: Install PureScript Wasm compiler toolchain
         run: sh .fluentci/scripts/install-sdk-tools.sh
-      - name: Compile Nix module
+      - name: Compile and test Nix module
         working-directory: .fluentci/nix-build
         run: |
           npm ci --ignore-scripts
           npm run build
+          npm test
       - name: Compile and test Cachix module
         working-directory: .fluentci/cachix
         run: |
@@ -74,7 +75,7 @@ jobs:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
           CACHIX_CACHE: fluentci
         run: fluentci --check-update=false run --wasm .fluentci/cachix/dist/plugin.wasm setup "$CACHIX_CACHE"
-      - name: Build locked Nix package through FluentCI
+      - name: Build Nix package and upload cache through FluentCI
         env:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
         run: fluentci --check-update=false run --wasm .fluentci/nix-build/dist/plugin.wasm build

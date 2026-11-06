@@ -1,6 +1,7 @@
 // Generated from schema/host.json. Guest import signatures.
 declare module "main" {
   export function setup(): I32;
+  export function push(): I32;
 }
 declare module "extism:host" {
   interface user {
