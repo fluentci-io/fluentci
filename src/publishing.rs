@@ -405,6 +405,9 @@ fn prompt_metadata(label: &str, required: bool) -> Result<String> {
                     config::validate_readme_url(value).err()
                 }
                 "Logo URL (optional)" if !value.is_empty() => config::validate_logo(value).err(),
+                "Git repository URL (optional)" if !value.is_empty() => {
+                    config::validate_repository(value).err()
+                }
                 _ => None,
             }
             .map(|error| error.to_string())
@@ -441,6 +444,7 @@ fn prompt_metadata(label: &str, required: bool) -> Result<String> {
 
 #[derive(Debug, Default, PartialEq, Eq)]
 struct OptionalMetadata {
+    repository: Option<String>,
     topics: Vec<String>,
     os: Vec<String>,
     arch: Vec<String>,
@@ -464,6 +468,7 @@ fn complete_optional_metadata(
             }
         }
         for (label, field) in [
+            ("Git repository URL (optional)", &mut fields.repository),
             ("README URL (optional)", &mut fields.readme_url),
             ("Logo URL (optional)", &mut fields.logo),
         ] {
@@ -481,6 +486,9 @@ fn complete_optional_metadata(
     }
     if let Some(logo) = &fields.logo {
         config::validate_logo(logo)?;
+    }
+    if let Some(repository) = &fields.repository {
+        config::validate_repository(repository)?;
     }
     Ok(fields)
 }
@@ -646,7 +654,11 @@ pub async fn publish(
         .logo
         .clone()
         .or_else(|| definition.and_then(|module| module.logo.clone()));
+    let repository = metadata_options.repository.clone().or_else(|| {
+        definition.and_then(|module| module.repository.clone().or_else(|| module.git.clone()))
+    });
     let OptionalMetadata {
+        repository,
         topics,
         os,
         arch,
@@ -654,6 +666,7 @@ pub async fn publish(
         logo,
     } = complete_optional_metadata(
         OptionalMetadata {
+            repository,
             topics,
             os,
             arch,
@@ -666,9 +679,6 @@ pub async fn publish(
     if let Some(logo) = &logo {
         validate_logo_url(logo).await?;
     }
-    let repository = metadata_options.repository.clone().or_else(|| {
-        definition.and_then(|module| module.repository.clone().or_else(|| module.git.clone()))
-    });
     if let Some(repository) = &repository {
         config::validate_repository(repository)?;
     }
@@ -776,7 +786,7 @@ mod tests {
                 Ok(String::new())
             })?;
         assert_eq!(fields, OptionalMetadata::default());
-        assert_eq!(prompts.len(), 5);
+        assert_eq!(prompts.len(), 6);
         complete_optional_metadata(OptionalMetadata::default(), false, |_, _| {
             panic!("Noninteractive publishing must not prompt")
         })?;
@@ -797,17 +807,53 @@ mod tests {
                     "CPU architectures (optional)" => "x86_64,aarch64",
                     "README URL (optional)" => "https://example.com/README.md",
                     "Logo URL (optional)" => "https://example.com/logo.png",
+                    "Git repository URL (optional)" => "https://github.com/fluentci-io/fluentci",
                     _ => panic!("Configured fields must not be prompted"),
                 }
                 .into())
             },
         )?;
+        assert_eq!(
+            fields.repository.as_deref(),
+            Some("https://github.com/fluentci-io/fluentci")
+        );
         assert_eq!(fields.topics, ["cache"]);
         assert_eq!(fields.os, ["linux", "macos"]);
         assert_eq!(fields.arch, ["x86_64", "aarch64"]);
         assert_eq!(
             fields.readme_url.as_deref(),
             Some("https://example.com/README.md")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn repository_publish_prompt_preserves_overrides_and_validates_urls() -> anyhow::Result<()> {
+        let fields = complete_optional_metadata(
+            OptionalMetadata {
+                repository: Some("ssh://git@github.com/fluentci-io/fluentci.git".into()),
+                ..Default::default()
+            },
+            true,
+            |label, _| {
+                assert_ne!(label, "Git repository URL (optional)");
+                Ok(String::new())
+            },
+        )?;
+        assert_eq!(
+            fields.repository.as_deref(),
+            Some("ssh://git@github.com/fluentci-io/fluentci.git")
+        );
+        assert!(
+            complete_optional_metadata(
+                OptionalMetadata {
+                    repository: Some("file:///tmp/private".into()),
+                    ..Default::default()
+                },
+                false,
+                |_, _| unreachable!()
+            )
+            .is_err()
         );
         Ok(())
     }

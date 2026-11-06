@@ -132,7 +132,10 @@ separate remote operations.
 
 Each module may set optional `repository` and `subdir` fields. Git source modules
 publish their `git` URL as the repository when no explicit override is set.
-`--repository URL` and `--subdir PATH` provide publishing overrides. Subdirectories
+`--repository URL` and `--subdir PATH` provide publishing overrides. Interactive
+publishing also prompts for an optional Git repository URL when no flag, module
+repository, or Git source supplies one. Press Enter to skip; supplied URLs are
+validated before publishing. Subdirectories
 must stay inside the repository: absolute paths and parent traversal are rejected.
 
 These optional fields are part of `io.fluentci.plugin`, survive SQLite indexing,
