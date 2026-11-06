@@ -146,6 +146,7 @@ jobs:
           node-version: '24'
       - uses: erlef/setup-beam@v1
         with:
+          otp-version: '28'
           gleam-version: '1.19.2'
       - uses: pkl-community/setup-pkl@v0
         with:
