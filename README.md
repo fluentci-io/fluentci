@@ -71,13 +71,34 @@ verifies the archive's SHA-256 checksum, and installs into `~/.local/bin` withou
 sudo. It supports Linux/macOS on x86_64 and arm64, and FreeBSD/NetBSD/OpenBSD on
 x86_64. Add `~/.local/bin` to your shell profile's `PATH` to keep it available.
 
-Override the release with `FLUENTCI_VERSION` and the destination with
-`FLUENTCI_INSTALL_DIR`. Set these variables on `sh` when piping from curl:
+Set `FLUENTCI_VERSION` to override the release version. To change the install
+directory, set `FLUENTCI_INSTALL_DIR` on `sh` when piping from curl:
 
 ```sh
 curl -fsSL https://cli.fluentci.io | \
-  FLUENTCI_VERSION=2026.11.04 FLUENTCI_INSTALL_DIR="$HOME/bin" sh
+  FLUENTCI_INSTALL_DIR="$HOME/bin" sh
 ```
+
+### Install with Nix and Cachix
+
+With [Nix installed](https://nix.dev/install-nix) and the `nix-command` and
+`flakes` experimental features enabled, install Cachix, enable the FluentCI
+binary cache, then install FluentCI from the upstream GitHub flake:
+
+```sh
+nix profile install nixpkgs#cachix
+cachix use fluentci
+nix profile install github:fluentci-io/fluentci#fluentci
+fluentci --version
+```
+
+The `fluentci` cache provides available prebuilt Nix outputs. Nix builds missing
+outputs from source. Downloading from this public cache does not require
+`CACHIX_AUTH_TOKEN`; the token is needed for CI uploads. See the
+[Cachix setup instructions](https://docs.cachix.org/getting-started) for details.
+
+The flake supports `x86_64-linux`, `aarch64-linux`, and `aarch64-darwin`, and
+installs the CLI with embedded Studio assets.
 
 ### Build from source
 
