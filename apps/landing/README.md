@@ -62,3 +62,7 @@ and adjacent Storybook stories. Run `bun run storybook` for isolated previews or
 `bun run build:storybook` to build them. Stories mock registry, profile, and README
 requests; browser tests cover module navigation, empty/error states, Markdown,
 keyboard focus, downloads, and responsive layouts.
+
+README fenced code loads the full Highlight.js language registry on demand,
+including the SDK aliases. GitHub Dark and GitHub Light syntax themes follow the
+site theme. Inline code and unknown language labels remain escaped plain text.

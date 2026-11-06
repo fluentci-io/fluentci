@@ -1,6 +1,8 @@
-import { useEffect, useState } from "react";
+import { isValidElement, useEffect, useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { MarkdownCode } from "../MarkdownCode";
+import "../../markdown-themes.css";
 import { httpUrl, readmeUrl, type Plugin } from "../../registry/client";
 
 export function Readme({ plugin }: { plugin: Plugin }) {
@@ -72,6 +74,24 @@ export function Readme({ plugin }: { plugin: Plugin }) {
             }
           }}
           components={{
+            pre: ({ children }) => {
+              if (
+                !isValidElement<{ children?: ReactNode; className?: string }>(
+                  children,
+                ) ||
+                typeof children.props.children !== "string"
+              )
+                return <pre>{children}</pre>;
+              const language = /language-([\w+#.-]+)/.exec(
+                children.props.className ?? "",
+              )?.[1];
+              return (
+                <MarkdownCode
+                  code={children.props.children}
+                  language={language}
+                />
+              );
+            },
             h1: ({ children }) => <h2>{children}</h2>,
             h2: ({ children }) => <h3>{children}</h3>,
             h3: ({ children }) => <h4>{children}</h4>,

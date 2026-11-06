@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import {
   createMemoryHistory,
   createRootRoute,
@@ -17,10 +17,16 @@ initialize({ onUnhandledRequest: "bypass" });
 function StoryRouter({
   children,
   path,
+  theme,
 }: {
   children: ReactNode;
   path: string;
+  theme: "dark" | "light";
 }) {
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.documentElement.style.colorScheme = theme;
+  }, [theme]);
   const [router] = useState(() => {
     const root = createRootRoute({ component: Outlet });
     const home = createRoute({
@@ -43,7 +49,10 @@ function StoryRouter({
 const preview: Preview = {
   decorators: [
     (Story, context) => (
-      <StoryRouter path={context.parameters.path ?? "/"}>
+      <StoryRouter
+        path={context.parameters.path ?? "/"}
+        theme={context.parameters.theme ?? "dark"}
+      >
         <Story />
       </StoryRouter>
     ),

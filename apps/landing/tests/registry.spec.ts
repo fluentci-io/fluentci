@@ -299,3 +299,31 @@ test("module pages show a skeleton while their record loads", async ({
     page.getByRole("status", { name: "Loading module" }),
   ).toHaveCount(0);
 });
+
+test("README code supports non-SDK languages with dark and light syntax themes", async ({
+  page,
+}) => {
+  await registry(page);
+  const readme =
+    "# Syntax samples\n\n```sql\nSELECT * FROM packages WHERE name = 'cache';\n```\n\n```nginx\nserver { listen 443 ssl; }\n```\n\n```ruby\ndef hello\n  puts \"world\"\nend\n```\n\n```unknown\n<script>not executed</script>\n```";
+  await page.route("https://modules.example/README.md", (route) =>
+    route.fulfill({ contentType: "text/markdown", body: readme }),
+  );
+  await page.goto("/fluentci.io/plugin/sccache-0.1.0");
+  const markdown = page.getByRole("region", { name: "Module README" });
+  for (const language of ["sql", "nginx", "ruby"]) {
+    await expect(
+      markdown
+        .locator(`code.language-${language} span[class*="hljs-"]`)
+        .first(),
+    ).toBeVisible();
+  }
+  const keyword = markdown.locator("code.language-sql .hljs-keyword").first();
+  await expect(keyword).toHaveCSS("color", "rgb(255, 123, 114)");
+  await page.getByRole("button", { name: "Switch to light theme" }).click();
+  await expect(keyword).toHaveCSS("color", "rgb(215, 58, 73)");
+  await expect(markdown.locator("code.language-unknown")).toHaveText(
+    "<script>not executed</script>\n",
+  );
+  await expect(markdown.locator("script")).toHaveCount(0);
+});

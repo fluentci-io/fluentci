@@ -1,0 +1,238 @@
+/* Highlight.js GitHub themes, scoped to rendered READMEs. Original themes by GitHub, maintained by @Hirse. */
+
+/* github-dark */
+
+:root:not([data-theme="light"]) .module-markdown pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+}
+
+:root:not([data-theme="light"]) .module-markdown code.hljs {
+  padding: 3px 5px;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs {
+  color: #c9d1d9;
+  background: #0d1117;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-doctag,
+:root:not([data-theme="light"]) .module-markdown .hljs-keyword,
+:root:not([data-theme="light"]) .module-markdown .hljs-meta .hljs-keyword,
+:root:not([data-theme="light"]) .module-markdown .hljs-template-tag,
+:root:not([data-theme="light"]) .module-markdown .hljs-template-variable,
+:root:not([data-theme="light"]) .module-markdown .hljs-type,
+:root:not([data-theme="light"]) .module-markdown .hljs-variable.language_ {
+  color: #ff7b72;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-title,
+:root:not([data-theme="light"]) .module-markdown .hljs-title.class_,
+:root:not([data-theme="light"]) .module-markdown .hljs-title.class_.inherited__,
+:root:not([data-theme="light"]) .module-markdown .hljs-title.function_ {
+  color: #d2a8ff;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-attr,
+:root:not([data-theme="light"]) .module-markdown .hljs-attribute,
+:root:not([data-theme="light"]) .module-markdown .hljs-literal,
+:root:not([data-theme="light"]) .module-markdown .hljs-meta,
+:root:not([data-theme="light"]) .module-markdown .hljs-number,
+:root:not([data-theme="light"]) .module-markdown .hljs-operator,
+:root:not([data-theme="light"]) .module-markdown .hljs-variable,
+:root:not([data-theme="light"]) .module-markdown .hljs-selector-attr,
+:root:not([data-theme="light"]) .module-markdown .hljs-selector-class,
+:root:not([data-theme="light"]) .module-markdown .hljs-selector-id {
+  color: #79c0ff;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-regexp,
+:root:not([data-theme="light"]) .module-markdown .hljs-string,
+:root:not([data-theme="light"]) .module-markdown .hljs-meta .hljs-string {
+  color: #a5d6ff;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-built_in,
+:root:not([data-theme="light"]) .module-markdown .hljs-symbol {
+  color: #ffa657;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-comment,
+:root:not([data-theme="light"]) .module-markdown .hljs-code,
+:root:not([data-theme="light"]) .module-markdown .hljs-formula {
+  color: #8b949e;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-name,
+:root:not([data-theme="light"]) .module-markdown .hljs-quote,
+:root:not([data-theme="light"]) .module-markdown .hljs-selector-tag,
+:root:not([data-theme="light"]) .module-markdown .hljs-selector-pseudo {
+  color: #7ee787;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-subst {
+  color: #c9d1d9;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-section {
+  color: #1f6feb;
+  font-weight: bold;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-bullet {
+  color: #f2cc60;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-emphasis {
+  color: #c9d1d9;
+  font-style: italic;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-strong {
+  color: #c9d1d9;
+  font-weight: bold;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-addition {
+  color: #aff5b4;
+  background-color: #033a16;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-deletion {
+  color: #ffdcd7;
+  background-color: #67060c;
+}
+
+:root:not([data-theme="light"]) .module-markdown .hljs-char.escape_,
+:root:not([data-theme="light"]) .module-markdown .hljs-link,
+:root:not([data-theme="light"]) .module-markdown .hljs-params,
+:root:not([data-theme="light"]) .module-markdown .hljs-property,
+:root:not([data-theme="light"]) .module-markdown .hljs-punctuation,
+:root:not([data-theme="light"]) .module-markdown .hljs-tag {
+}
+
+/* github */
+
+:root[data-theme="light"] .module-markdown pre code.hljs {
+  display: block;
+  overflow-x: auto;
+  padding: 1em;
+}
+
+:root[data-theme="light"] .module-markdown code.hljs {
+  padding: 3px 5px;
+}
+
+:root[data-theme="light"] .module-markdown .hljs {
+  color: #24292e;
+  background: #ffffff;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-doctag,
+:root[data-theme="light"] .module-markdown .hljs-keyword,
+:root[data-theme="light"] .module-markdown .hljs-meta .hljs-keyword,
+:root[data-theme="light"] .module-markdown .hljs-template-tag,
+:root[data-theme="light"] .module-markdown .hljs-template-variable,
+:root[data-theme="light"] .module-markdown .hljs-type,
+:root[data-theme="light"] .module-markdown .hljs-variable.language_ {
+  color: #d73a49;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-title,
+:root[data-theme="light"] .module-markdown .hljs-title.class_,
+:root[data-theme="light"] .module-markdown .hljs-title.class_.inherited__,
+:root[data-theme="light"] .module-markdown .hljs-title.function_ {
+  color: #6f42c1;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-attr,
+:root[data-theme="light"] .module-markdown .hljs-attribute,
+:root[data-theme="light"] .module-markdown .hljs-literal,
+:root[data-theme="light"] .module-markdown .hljs-meta,
+:root[data-theme="light"] .module-markdown .hljs-number,
+:root[data-theme="light"] .module-markdown .hljs-operator,
+:root[data-theme="light"] .module-markdown .hljs-variable,
+:root[data-theme="light"] .module-markdown .hljs-selector-attr,
+:root[data-theme="light"] .module-markdown .hljs-selector-class,
+:root[data-theme="light"] .module-markdown .hljs-selector-id {
+  color: #005cc5;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-regexp,
+:root[data-theme="light"] .module-markdown .hljs-string,
+:root[data-theme="light"] .module-markdown .hljs-meta .hljs-string {
+  color: #032f62;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-built_in,
+:root[data-theme="light"] .module-markdown .hljs-symbol {
+  color: #e36209;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-comment,
+:root[data-theme="light"] .module-markdown .hljs-code,
+:root[data-theme="light"] .module-markdown .hljs-formula {
+  color: #6a737d;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-name,
+:root[data-theme="light"] .module-markdown .hljs-quote,
+:root[data-theme="light"] .module-markdown .hljs-selector-tag,
+:root[data-theme="light"] .module-markdown .hljs-selector-pseudo {
+  color: #22863a;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-subst {
+  color: #24292e;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-section {
+  color: #005cc5;
+  font-weight: bold;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-bullet {
+  color: #735c0f;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-emphasis {
+  color: #24292e;
+  font-style: italic;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-strong {
+  color: #24292e;
+  font-weight: bold;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-addition {
+  color: #22863a;
+  background-color: #f0fff4;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-deletion {
+  color: #b31d28;
+  background-color: #ffeef0;
+}
+
+:root[data-theme="light"] .module-markdown .hljs-char.escape_,
+:root[data-theme="light"] .module-markdown .hljs-link,
+:root[data-theme="light"] .module-markdown .hljs-params,
+:root[data-theme="light"] .module-markdown .hljs-property,
+:root[data-theme="light"] .module-markdown .hljs-punctuation,
+:root[data-theme="light"] .module-markdown .hljs-tag {
+}
+
+/* Keep code spacing in the README layout rather than doubling theme padding. */
+:root:not([data-theme="light"]) .module-markdown pre code.hljs,
+:root[data-theme="light"] .module-markdown pre code.hljs {
+  padding: 0;
+  background: transparent;
+}
+:root:not([data-theme="light"]) .module-markdown pre {
+  background: #0d1117;
+}
+:root[data-theme="light"] .module-markdown pre {
+  background: #fff;
+}
