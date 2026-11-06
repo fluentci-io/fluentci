@@ -88,7 +88,7 @@ binary cache, then install FluentCI from the upstream GitHub flake:
 ```sh
 nix profile install nixpkgs#cachix
 cachix use fluentci
-nix profile install github:fluentci-io/fluentci#fluentci
+nix profile install github:fluentci-io/fluentci
 fluentci --version
 ```
 
