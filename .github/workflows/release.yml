@@ -64,6 +64,7 @@ jobs:
             .release-smoke/*.wasm
             .fluentci/release/dist/plugin.wasm
             .fluentci/gemfury/dist/plugin.wasm
+            .fluentci/gemfury/dist/plugin.cjs
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
@@ -137,9 +138,7 @@ jobs:
         if: runner.os == 'Linux'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          source .github/scripts/linux-package-env.sh
-          gh release upload "$RELEASE_VERSION" "$deb_file" "$rpm_file" "$deb_file.sha256" "$rpm_file.sha256" --clobber
+        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm github
       - name: Upload Debian and RPM packages to Gemfury through PureScript Wasm
         if: runner.os == 'Linux'
         env:

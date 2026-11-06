@@ -112,6 +112,12 @@ module to Wasm once, then invokes its `dependencies`, `package`, and `upload`
 functions on each native Linux runner. Packages and SHA-256 sidecars are also
 attached to the GitHub release.
 
+Packaging logic lives in `CI.LinuxPackages`, entirely in PureScript: validation,
+metadata generation, native file writes, staging, verification, checksums, and
+cleanup. The module calls `dpkg-deb` and `rpmbuild` directly, without a packaging
+shell helper. Its `github` function attaches the exact package files and
+checksums through the GitHub CLI.
+
 Configure the GitHub Actions secrets `FURY_USER`, `FURY_TOKEN`, and `FURY_ACCOUNT`
 for Gemfury. The user and token authenticate the request; the account selects
 the upload destination. User and account can also be repository variables;

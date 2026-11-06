@@ -45,6 +45,9 @@ jobs:
         run: sh .fluentci/scripts/install-sdk-tools.sh
       - name: Verify the Wasm compiler toolchain by building modules
         run: fluentci --check-update=false modules --json
+      - name: Test PureScript Linux packaging and publishing
+        working-directory: .fluentci/gemfury
+        run: npm test
       - name: Run tests with FluentCI
         run: |
           FLUENTCI_BIN="$(command -v fluentci)" fluentci --check-update=false run main check

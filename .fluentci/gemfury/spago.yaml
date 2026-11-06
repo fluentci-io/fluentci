@@ -1,6 +1,6 @@
 package:
   name: fluentci-ci-gemfury
-  dependencies: [effect, either, fluentci, prelude, strings, foldable-traversable, fluentci-ci-common]
+  dependencies: [effect, either, exceptions, maybe, fluentci, prelude, strings, foldable-traversable, fluentci-ci-common]
 workspace:
   packageSet:
     registry: 81.11.0

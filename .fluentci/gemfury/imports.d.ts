@@ -3,6 +3,7 @@ declare module "main" {
   export function dependencies(): I32;
   export function package(): I32;
   export function upload(): I32;
+  export function github(): I32;
 }
 declare module "extism:host" {
   interface user {

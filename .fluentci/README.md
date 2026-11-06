@@ -24,7 +24,7 @@ fluentci run main build      # Studio + host release CLI
 | `nix`       | `check`, `metadata`, `flakehub`, `flakestry`                              | Flake validation, inspection, and explicit publishing                            |
 | `nix-build` | `build`                                                                   | Build the locked FluentCI Nix package with `nix build`                           |
 | `cachix`    | `setup`, `push`                                                           | Authenticated setup and uploads for the `fluentci` binary cache                  |
-| `gemfury`   | `dependencies`, `package`, `upload`                                       | Native Debian/RPM packaging and Gemfury uploads for x86_64 and arm64 Linux       |
+| `gemfury`   | `dependencies`, `package`, `upload`, `github`                             | Native Debian/RPM packaging and Gemfury uploads for x86_64 and arm64 Linux       |
 
 `cachix` exports `setup` and `push`, with `CI.Cachix.setupWith :: String -> Effect Unit`
 for PureScript composition. Pass the cache name (the Cachix key identifying the
@@ -117,6 +117,13 @@ The release workflow builds `.deb` and `.rpm` packages on the native x86_64 and
 arm64 Linux runners using the `gemfury` PureScript Wasm module. Packages contain
 the CLI, its embedded Studio web interface, and the license. They are uploaded
 to the GitHub release with SHA-256 sidecars and optionally to Gemfury.
+
+`CI.LinuxPackages` implements version and architecture validation, Debian control
+and RPM spec generation, staging, metadata verification, checksums, and cleanup
+in PureScript. It writes metadata with native file primitives and invokes
+`dpkg-deb` and `rpmbuild` with literal argument vectors. No packaging shell helper
+is generated or executed. Gemfury and GitHub uploads also use direct argument
+vectors; `gemfury github` uploads the packages and sidecars to the release.
 
 Set the GitHub Actions secrets `FURY_USER`, `FURY_TOKEN`, and `FURY_ACCOUNT` to
 enable Gemfury uploads. `FURY_USER` authenticates with `FURY_TOKEN`, while

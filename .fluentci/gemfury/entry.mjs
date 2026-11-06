@@ -1,1 +1,1 @@
-export { dependencies, package, upload } from "./output/CI.Gemfury/index.js";
+export { dependencies, package, upload, github } from "./output/CI.Gemfury/index.js";

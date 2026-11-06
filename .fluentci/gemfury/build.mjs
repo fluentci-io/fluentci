@@ -11,14 +11,14 @@ command("spago", ["build"]);
 mkdirSync("dist", { recursive: true });
 await build({
   entryPoints: ["entry.mjs"],
-  outfile: "dist/plugin.js",
+  outfile: "dist/plugin.cjs",
   bundle: true,
   format: "cjs",
   platform: "neutral",
   target: "es2020",
 });
 command("extism-js", [
-  "dist/plugin.js",
+  "dist/plugin.cjs",
   "-i",
   "imports.d.ts",
   "-o",

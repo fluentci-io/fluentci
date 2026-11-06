@@ -1,7 +1,10 @@
-module CI.Gemfury (dependencies, package, upload) where
+module CI.Gemfury (dependencies, package, upload, github) where
 
 import Prelude
 import CI.Support (requiredEnv, run, unwrap)
+import CI.LinuxPackages as Packages
+import Data.Foldable (all)
+import Data.String.CodeUnits as CU
 import Data.String.Common (trim)
 import Effect (Effect)
 import Effect.Exception (throw)
@@ -24,10 +27,7 @@ dependencies = do
     ]
 
 package :: Effect Unit
-package = do
-  linuxTarget
-  _ <- requiredEnv "RELEASE_VERSION"
-  run "gemfury-package" [ [ "bash", ".github/scripts/package-linux-release.sh" ] ]
+package = Packages.package
 
 upload :: Effect Unit
 upload = do
@@ -36,9 +36,26 @@ upload = do
   if trim token == "" then
     P.output "Skipping Gemfury upload: FURY_TOKEN is not set." >>= unwrap
   else do
-    linuxTarget
-    _ <- requiredEnv "RELEASE_VERSION"
-    _ <- requiredEnv "FURY_USER"
-    _ <- requiredEnv "FURY_ACCOUNT"
-    -- curl expands the token from the host environment, never the command plan.
-    run "gemfury-upload" [ [ "bash", ".github/scripts/upload-gemfury.sh" ] ]
+    config <- Packages.configuration
+    user <- requiredEnv "FURY_USER"
+    account <- requiredEnv "FURY_ACCOUNT"
+    let alphaNum c = (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9')
+    unless (all (\c -> alphaNum c || c == '-' || c == '_') (CU.toCharArray account)) $ throw "Invalid Gemfury account name"
+    unless (all (\c -> alphaNum c || c == '-' || c == '_' || c == '.' || c == '@' || c == '+') (CU.toCharArray user)) $ throw "Invalid Gemfury authentication user"
+    -- Check both files before either upload; curl reads credentials from the
+    -- environment, never from interpolated command text or a serialized plan.
+    let uploadFile path =
+          [ "curl", "--fail-with-body", "--silent", "--show-error"
+          , "--variable", "%FURY_USER", "--variable", "%FURY_TOKEN"
+          , "--expand-user", "{{FURY_USER}}:{{FURY_TOKEN}}"
+          , "--form", "package=@\"" <> path <> "\"", "https://push.fury.io/" <> account <> "/" ]
+    run "gemfury-upload"
+      [ [ "test", "-s", config.deb ], [ "test", "-s", config.rpm ]
+      , uploadFile config.deb, uploadFile config.rpm ]
+
+github :: Effect Unit
+github = do
+  config <- Packages.configuration
+  _ <- requiredEnv "GH_TOKEN"
+  run "linux-package-github-upload"
+    [ [ "gh", "release", "upload", config.tag ] <> Packages.files config <> [ "--clobber" ] ]

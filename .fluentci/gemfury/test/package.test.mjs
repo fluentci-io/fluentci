@@ -12,16 +12,19 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { createRequire } from "node:module";
+import { fixture } from "./host.mjs";
 
 const available =
   process.platform === "linux" &&
-  ["dpkg-deb", "rpmbuild", "rpm", "sha256sum"].every(
+  ["dpkg-deb", "rpmbuild", "rpm"].every(
     (tool) => spawnSync("which", [tool]).status === 0,
   );
 test(
   "real Debian and RPM packages contain the executable, license, metadata and valid checksums",
   { skip: !available },
   () => {
+    const { package: buildPackage } = createRequire(import.meta.url)("../dist/plugin.cjs");
     const target =
       process.arch === "arm64"
         ? "aarch64-unknown-linux-gnu"
@@ -43,16 +46,7 @@ test(
       return result.stdout.trim();
     }
     try {
-      mkdirSync(join(root, ".github/scripts"), { recursive: true });
       mkdirSync(join(root, "target", target, "release"), { recursive: true });
-      for (const name of ["linux-package-env.sh", "package-linux-release.sh"]) {
-        copyFileSync(
-          fileURLToPath(
-            new URL(`../../../.github/scripts/${name}`, import.meta.url),
-          ),
-          join(root, ".github/scripts", name),
-        );
-      }
       copyFileSync(
         fileURLToPath(new URL("../../../LICENSE", import.meta.url)),
         join(root, "LICENSE"),
@@ -63,10 +57,11 @@ test(
         join(root, "target", target, "release/fluentci"),
       );
       for (const version of ["0.17.0", "0.17.1-rc.1"]) {
-        command("bash", [".github/scripts/package-linux-release.sh"], {
+        fixture({
           TARGET: target,
           RELEASE_VERSION: `v${version}`,
-        });
+        }, { root, native: true });
+        buildPackage();
         const dir = join(root, "target/release-assets");
         const deb = join(dir, `fluentci_${version}_${debArch}.deb`);
         const rpm = join(dir, `fluentci-${version}-1.${rpmArch}.rpm`);
