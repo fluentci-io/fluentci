@@ -80,7 +80,7 @@ curl -fsSL https://cli.fluentci.io | \
   FLUENTCI_INSTALL_DIR="$HOME/bin" sh
 ```
 
-### Install with APT
+### Ubuntu/Debian
 
 On Debian/Ubuntu systems with glibc **2.39 or newer** (`amd64` and `arm64`):
 
@@ -91,7 +91,7 @@ sudo apt-get update
 sudo apt-get install fluentci
 ```
 
-### Install with DNF
+### Fedora/Red Hat
 
 On Fedora and other DNF-based systems with glibc **2.39 or newer**
 (`x86_64` and `aarch64`):
@@ -464,6 +464,28 @@ Package metadata (`name`, `version`, `description`, `license`) belongs to each
 can also be entered at a prompt with `--file` or `--url`. Missing metadata is
 prompted interactively; only name, version, and license are required. Use
 `--name`, `--version`, `--description`, and `--license` for non-interactive runs.
+
+Modules can also publish optional topics, platform compatibility, and an explicit
+README URL:
+
+```toml
+[[modules]]
+name = "ci"
+path = ".fluentci/ci"
+version = "1.0.0"
+license = "MIT"
+topics = ["ci", "build"]
+os = ["linux", "macos", "freebsd"]
+arch = ["x86_64", "aarch64"]
+readme_url = "https://raw.githubusercontent.com/example/pipelines/main/README.md"
+```
+
+Override these with `--topic`, `--os`, `--arch` (comma-separated or repeated),
+and `--readme-url`. Interactive prompts offer topic, OS, and CPU architecture
+autocomplete; README and logo URLs are optional prompts too. Press Enter to skip
+any optional field. `fluentci docs` uses an
+explicit README URL when provided, otherwise it discovers `README.md` from the
+module's source repository and subdirectory.
 
 The CLI remembers non-secret identity in `~/.fluentci/account.json`, without
 saving the password or session tokens. See [authentication](./docs/site/registry/authentication.md)

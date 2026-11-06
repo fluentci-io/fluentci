@@ -35,6 +35,10 @@ pub type Plugin {
     repository: Option(String),
     logo: Option(String),
     subdir: Option(String),
+    topics: Option(List(String)),
+    readme_url: Option(String),
+    os: Option(List(String)),
+    arch: Option(List(String)),
   )
 }
 
@@ -74,6 +78,30 @@ pub fn encode_plugin(value: Plugin) -> json.Json {
     list.append(fields, case value.subdir {
       None -> []
       Some(item) -> [#("subdir", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.topics {
+      None -> []
+      Some(item) -> [
+        #("topics", json.array(item, fn(item) { json.string(item) })),
+      ]
+    })
+  let fields =
+    list.append(fields, case value.readme_url {
+      None -> []
+      Some(item) -> [#("readmeUrl", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.os {
+      None -> []
+      Some(item) -> [#("os", json.array(item, fn(item) { json.string(item) }))]
+    })
+  let fields =
+    list.append(fields, case value.arch {
+      None -> []
+      Some(item) -> [
+        #("arch", json.array(item, fn(item) { json.string(item) })),
+      ]
     })
   json.object(fields)
 }
@@ -153,6 +181,10 @@ pub type RegistryPackageView {
     repository: Option(String),
     logo: Option(String),
     subdir: Option(String),
+    topics: Option(List(String)),
+    readme_url: Option(String),
+    os: Option(List(String)),
+    arch: Option(List(String)),
     uri: String,
     cid: String,
   )
@@ -196,6 +228,30 @@ pub fn encode_registry_package_view(value: RegistryPackageView) -> json.Json {
     list.append(fields, case value.subdir {
       None -> []
       Some(item) -> [#("subdir", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.topics {
+      None -> []
+      Some(item) -> [
+        #("topics", json.array(item, fn(item) { json.string(item) })),
+      ]
+    })
+  let fields =
+    list.append(fields, case value.readme_url {
+      None -> []
+      Some(item) -> [#("readmeUrl", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.os {
+      None -> []
+      Some(item) -> [#("os", json.array(item, fn(item) { json.string(item) }))]
+    })
+  let fields =
+    list.append(fields, case value.arch {
+      None -> []
+      Some(item) -> [
+        #("arch", json.array(item, fn(item) { json.string(item) })),
+      ]
     })
   json.object(fields)
 }

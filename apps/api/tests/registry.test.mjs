@@ -190,6 +190,10 @@ test('function signatures survive Jetstream, SQLite and every registry response'
       repository: 'https://github.com/fluentci-io/fluentci',
       subdir: 'examples/sccache',
       logo: 'https://cdn.example/sccache.png',
+      topics: ['cache', 'rust'],
+      os: ['linux', 'macos', 'freebsd'],
+      arch: ['x86_64', 'aarch64'],
+      readmeUrl: 'https://raw.githubusercontent.com/fluentci-io/fluentci/main/README.md',
     }),
   );
   const { url } = await server(t, connection);
@@ -200,6 +204,13 @@ test('function signatures survive Jetstream, SQLite and every registry response'
     assert.deepEqual((body.package ?? body.packages[0]).functions, functions);
     assert.equal((body.package ?? body.packages[0]).logo, 'https://cdn.example/sccache.png');
     assert.equal((body.package ?? body.packages[0]).subdir, 'examples/sccache');
+    assert.deepEqual((body.package ?? body.packages[0]).topics, ['cache', 'rust']);
+    assert.deepEqual((body.package ?? body.packages[0]).os, ['linux', 'macos', 'freebsd']);
+    assert.deepEqual((body.package ?? body.packages[0]).arch, ['x86_64', 'aarch64']);
+    assert.equal(
+      (body.package ?? body.packages[0]).readmeUrl,
+      'https://raw.githubusercontent.com/fluentci-io/fluentci/main/README.md',
+    );
     assert.equal(
       (body.package ?? body.packages[0]).repository,
       'https://github.com/fluentci-io/fluentci',
@@ -211,6 +222,13 @@ test('function signatures survive Jetstream, SQLite and every registry response'
     { logo: 'file:///tmp/logo.png' },
     { logo: 'https://user:password@example.com/logo.png' },
     { repository: 'https://user:secret@example.com/repo' },
+    { readmeUrl: 'file:///tmp/README.md' },
+    { readmeUrl: 'https://user:secret@example.com/README.md' },
+    { topics: ['cache', 'cache'] },
+    { topics: ['Cache'] },
+    { topics: ['a'.repeat(51)] },
+    { os: ['linux', 'linux'] },
+    { arch: ['ARM64'] },
   ]) {
     assert.equal(
       wire.decodeEvent(JSON.stringify(event('unsafe-source', '1.0.0', 102, did, overrides))).isOk(),
@@ -545,6 +563,60 @@ test('upgrading an existing registry backfills the FTS5 index', async (t) => {
   const matches = (await db.list_packages(connection, 'preexist', '', 20, '')).packages.toArray();
   assert.equal(matches.length, 1);
   assert.equal(matches[0].name, 'preexisting');
+  const counters = await connection.client.execute('SELECT downloads FROM plugin_records');
+  assert.equal(counters.rows[0].downloads, 0);
+});
+
+test('download counts default to zero and survive Jetstream metadata updates', async (t) => {
+  const connection = await fixture(t);
+  await add(connection, event('counter', '1.0.0', 100));
+  const query = async () =>
+    (await connection.client.execute("SELECT downloads FROM plugin_records WHERE name='counter'"))
+      .rows[0].downloads;
+  assert.equal(await query(), 0);
+  await connection.client.execute("UPDATE plugin_records SET downloads=42 WHERE name='counter'");
+  await add(connection, event('counter', '1.0.0', 200, did, { topics: ['cache'] }));
+  assert.equal(await query(), 42);
+  await assert.rejects(
+    connection.client.execute("UPDATE plugin_records SET downloads=-1 WHERE name='counter'"),
+  );
+});
+
+test('author PDS update events refresh metadata without resetting counters or accepting stale revisions', async (t) => {
+  const connection = await fixture(t);
+  await add(connection, event('editable', '1.0.0', 100));
+  await connection.client.execute("UPDATE plugin_records SET downloads=7 WHERE name='editable'");
+  const updated = event('editable', '1.0.0', 300, did, {
+    description: 'Updated by the author in their PDS',
+    topics: ['cache', 'rust'],
+    os: ['linux', 'freebsd'],
+    arch: ['x86_64', 'aarch64'],
+    readmeUrl: 'https://example.com/docs/README.md',
+    logo: 'https://example.com/logo.png',
+  });
+  updated.commit.operation = 'update';
+  updated.commit.rev = 'metadata-update-2';
+  updated.commit.cid = 'bafyreia'.padEnd(59, 'b');
+  await add(connection, updated, updated);
+  const stale = event('editable', '1.0.0', 200, did, { description: 'stale' });
+  stale.commit.operation = 'update';
+  stale.commit.rev = 'metadata-update-1';
+  await add(connection, stale);
+  const { url } = await server(t, connection);
+  const response = await fetch(`${url}/xrpc/io.fluentci.registry.getPackage?name=editable`);
+  assert.equal(response.status, 200);
+  const { package: plugin } = await response.json();
+  assert.equal(plugin.description, updated.commit.record.description);
+  assert.deepEqual(plugin.topics, ['cache', 'rust']);
+  assert.deepEqual(plugin.os, ['linux', 'freebsd']);
+  assert.deepEqual(plugin.arch, ['x86_64', 'aarch64']);
+  assert.equal(plugin.readmeUrl, updated.commit.record.readmeUrl);
+  assert.equal(plugin.logo, updated.commit.record.logo);
+  assert.equal(plugin.cid, updated.commit.cid);
+  const rows = await connection.client.execute(
+    "SELECT downloads FROM plugin_records WHERE name='editable'",
+  );
+  assert.equal(rows.rows[0].downloads, 7);
 });
 
 test('versioned upload paths use the verified handle, bare SemVer metadata and conditional writes', async (t) => {

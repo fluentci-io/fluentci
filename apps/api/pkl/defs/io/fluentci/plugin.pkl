@@ -6,7 +6,7 @@ description = "A FluentCI Wasm plugin published by its AT Protocol author."
 defs = new Mapping {
   ["main"] = new Record {
     key = "any"
-    description = "Published Wasm plugin. Package identity is author DID plus name, stable across handle changes. The record key is name-version; author must equal the repository DID. Records are immutable releases."
+    description = "Published Wasm plugin. Package identity is author DID plus name, stable across handle changes. The record key is name-version; author must equal the repository DID. Authors may update metadata on an existing name-version record."
     `record` = new ObjectField {
       required = List("name", "description", "version", "publishedAt", "author", "license", "url", "sha256", "size")
       properties = new Mapping {
@@ -61,6 +61,29 @@ defs = new Mapping {
           description = "Relative module source directory inside the Git repository."
           minLength = 1
           maxLength = 2048
+        }
+        ["topics"] = new ArrayField {
+          description = "Optional lowercase topic labels describing the module."
+          maxLength = 20
+          items = new StringField { minLength = 1
+maxLength = 50 }
+        }
+        ["readmeUrl"] = new StringField {
+          description = "Optional public HTTP(S) URL of the module README."
+          format = "uri"
+          maxLength = 2048
+        }
+        ["os"] = new ArrayField {
+          description = "Optional supported host operating systems, such as linux, macos, freebsd, netbsd, openbsd, or windows. Omitted means unspecified."
+          maxLength = 16
+          items = new StringField { minLength = 1
+maxLength = 32 }
+        }
+        ["arch"] = new ArrayField {
+          description = "Optional supported host CPU architectures, such as x86_64 or aarch64. Omitted means unspecified."
+          maxLength = 16
+          items = new StringField { minLength = 1
+maxLength = 32 }
         }
       }
     }

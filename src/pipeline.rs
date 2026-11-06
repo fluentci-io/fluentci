@@ -346,6 +346,11 @@ async fn render_readme(readme: Option<std::path::PathBuf>) -> Result<()> {
     }
 }
 
+async fn render_readme_url(url: &str) -> Result<()> {
+    config::validate_readme_url(url)?;
+    process::run(Command::new("glow").arg(url).arg("-p")).await
+}
+
 fn source_readme(source: &Path) -> Result<Option<std::path::PathBuf>> {
     let directory = if source.is_dir() {
         source
@@ -401,6 +406,9 @@ pub async fn inspect(pipeline: Option<&str>, mode: &str) -> Result<()> {
             modules::resolve(root, pipeline)?
         };
         if let Some(module) = declared {
+            if let Some(url) = &module.definition.readme_url {
+                return render_readme_url(url).await;
+            }
             let readme = match &module.source {
                 modules::ModuleSource::Git(_) => {
                     let source =
@@ -410,6 +418,9 @@ pub async fn inspect(pipeline: Option<&str>, mode: &str) -> Result<()> {
                 modules::ModuleSource::Path(source) => source_readme(source)?,
                 modules::ModuleSource::Registry(reference) => {
                     let package = crate::lockfile::resolve(root, reference, false).await?;
+                    if let Some(url) = &package.metadata.readme_url {
+                        return render_readme_url(url).await;
+                    }
                     package_readme(
                         &package,
                         module.definition.repository.as_deref(),
@@ -435,6 +446,9 @@ pub async fn inspect(pipeline: Option<&str>, mode: &str) -> Result<()> {
         if pipeline != "." && !pipeline.contains("://") {
             let package = crate::lockfile::resolve(root, pipeline, false).await?;
             if package.metadata.url.is_some() {
+                if let Some(url) = &package.metadata.readme_url {
+                    return render_readme_url(url).await;
+                }
                 return render_readme(package_readme(&package, None, None).await?).await;
             }
         }

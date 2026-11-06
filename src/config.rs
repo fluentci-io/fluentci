@@ -37,6 +37,14 @@ pub struct Module {
     pub repository: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub logo: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub readme_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub topics: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub os: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub arch: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub functions: Vec<crate::plugin_metadata::Function>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -80,6 +88,50 @@ pub fn validate_subdir(path: &Path) -> Result<()> {
                 std::path::Component::Normal(_) | std::path::Component::CurDir
             )),
         "subdir must stay inside the repository (no absolute paths or ..)"
+    );
+    Ok(())
+}
+
+pub fn validate_module_labels(topics: &[String], os: &[String], arch: &[String]) -> Result<()> {
+    for (field, values, count, length) in [
+        ("topics", topics, 20, 50),
+        ("os", os, 16, 32),
+        ("arch", arch, 16, 32),
+    ] {
+        anyhow::ensure!(
+            values.len() <= count,
+            "Module {field} accepts at most {count} values"
+        );
+        let mut seen = HashSet::new();
+        for value in values {
+            anyhow::ensure!(
+                !value.is_empty()
+                    && value.len() <= length
+                    && value.as_bytes()[0].is_ascii_alphanumeric()
+                    && value.bytes().all(|c| c.is_ascii_lowercase()
+                        || c.is_ascii_digit()
+                        || c == b'-'
+                        || (field != "topics" && c == b'_')),
+                "Module {field} values must be lowercase labels of 1–{length} characters"
+            );
+            anyhow::ensure!(
+                seen.insert(value),
+                "Module {field} contains duplicate value {value:?}"
+            );
+        }
+    }
+    Ok(())
+}
+
+pub fn validate_readme_url(value: &str) -> Result<()> {
+    let url = reqwest::Url::parse(value).context("Invalid module README URL")?;
+    anyhow::ensure!(
+        value.len() <= 2048
+            && matches!(url.scheme(), "http" | "https")
+            && url.host_str().is_some()
+            && url.username().is_empty()
+            && url.password().is_none(),
+        "Module README URL must be HTTP(S) without credentials (up to 2048 characters)"
     );
     Ok(())
 }
@@ -231,6 +283,10 @@ impl Config {
             }
             if let Some(logo) = &module.logo {
                 validate_logo(logo)?;
+            }
+            validate_module_labels(&module.topics, &module.os, &module.arch)?;
+            if let Some(readme_url) = &module.readme_url {
+                validate_readme_url(readme_url)?;
             }
             if let Some(repository) = &module.repository {
                 validate_repository(repository)?;

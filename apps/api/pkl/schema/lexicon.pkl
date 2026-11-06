@@ -27,6 +27,7 @@ class RefField extends Field {
 class ArrayField extends Field {
   type = "array"
   items: StringField | IntegerField | RefField
+  maxLength: Int?
 }
 
 class ObjectField extends Field {

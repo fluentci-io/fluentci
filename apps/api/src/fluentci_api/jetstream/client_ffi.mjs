@@ -1,5 +1,6 @@
 import { Some, None } from '../../../gleam_stdlib/gleam/option.mjs';
 import { decode_wire } from '../function_metadata.mjs';
+import { decode_wire as decodeLabels } from '../module_metadata.mjs';
 import { RegistryPackageView as Package } from '../lexicon/models.mjs';
 import WebSocket from 'ws';
 import { Lexicons } from '@atproto/lexicon';
@@ -48,6 +49,8 @@ export function decodeEvent(message) {
       c.rev ?? [event.time_us, c.cid ?? null],
     ]);
     if (c.operation === 'delete') return new Ok(new Delete(uri, event.did, event.time_us, id));
+    // An author can edit metadata directly in the PDS. Updates use the same
+    // ownership/schema validation and timestamp-ordered upsert as new records.
     if (!['create', 'update'].includes(c.operation)) throw new Error('Unknown commit operation');
     const result = validators.validate(COLLECTION, c.record);
     if (!result.success) throw result.error;
@@ -78,6 +81,34 @@ export function decodeEvent(message) {
         logo.password
       )
         throw new Error('Invalid module logo URL');
+    }
+    for (const [field, maxItems, maxLength, pattern] of [
+      ['topics', 20, 50, /^[a-z0-9][a-z0-9-]*$/],
+      ['os', 16, 32, /^[a-z0-9][a-z0-9_-]*$/],
+      ['arch', 16, 32, /^[a-z0-9][a-z0-9_-]*$/],
+    ]) {
+      const values = p[field];
+      if (
+        values !== undefined &&
+        (!Array.isArray(values) ||
+          values.length > maxItems ||
+          new Set(values).size !== values.length ||
+          values.some(
+            (value) =>
+              typeof value !== 'string' || value.length > maxLength || !pattern.test(value),
+          ))
+      )
+        throw new Error(`Invalid module ${field}`);
+    }
+    if (p.readmeUrl !== undefined) {
+      const readme = new URL(p.readmeUrl);
+      if (
+        !['https:', 'http:'].includes(readme.protocol) ||
+        !readme.hostname ||
+        readme.username ||
+        readme.password
+      )
+        throw new Error('Invalid module README URL');
     }
     if (p.repository !== undefined) {
       const repository = new URL(p.repository);
@@ -115,6 +146,10 @@ export function decodeEvent(message) {
           p.repository == null ? new None() : new Some(p.repository),
           p.logo == null ? new None() : new Some(p.logo),
           p.subdir == null ? new None() : new Some(p.subdir),
+          p.topics == null ? new None() : new Some(decodeLabels(p.topics)),
+          p.readmeUrl == null ? new None() : new Some(p.readmeUrl),
+          p.os == null ? new None() : new Some(decodeLabels(p.os)),
+          p.arch == null ? new None() : new Some(decodeLabels(p.arch)),
           uri,
           c.cid,
         ),

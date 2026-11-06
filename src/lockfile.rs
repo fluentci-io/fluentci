@@ -39,6 +39,14 @@ struct LockedPackage {
     repository: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     subdir: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    readme_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    topics: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    os: Option<Vec<String>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    arch: Option<Vec<String>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -162,6 +170,10 @@ impl LockedPackage {
                 .context("Registry returned no Wasm checksum")?,
             uri: metadata.uri.clone(),
             cid: metadata.cid.clone(),
+            readme_url: metadata.readme_url.clone(),
+            topics: metadata.topics.clone(),
+            os: metadata.os.clone(),
+            arch: metadata.arch.clone(),
             repository: metadata.repository.clone(),
             subdir: metadata.subdir.clone(),
         })
@@ -197,6 +209,10 @@ impl LockedPackage {
                 sha256: Some(self.sha256.clone()),
                 uri: self.uri.clone(),
                 cid: self.cid.clone(),
+                readme_url: self.readme_url.clone(),
+                topics: self.topics.clone(),
+                os: self.os.clone(),
+                arch: self.arch.clone(),
                 repository: self.repository.clone(),
                 subdir: self.subdir.clone(),
                 ..Default::default()
@@ -390,6 +406,10 @@ mod tests {
             cid: None,
             repository: None,
             subdir: None,
+            readme_url: Some("https://example.com/README.md".into()),
+            topics: Some(vec!["cache".into()]),
+            os: Some(vec!["linux".into()]),
+            arch: Some(vec!["aarch64".into()]),
         };
         let mut lock = Lockfile {
             lockfile_version: 1,
@@ -398,6 +418,14 @@ mod tests {
         lock.packages.insert(key(reference)?, entry);
         write(root.path(), &lock)?;
         let before = std::fs::read(root.path().join("fluentci.lock"))?;
+        let resolved = resolve(root.path(), reference, true).await?;
+        assert_eq!(
+            resolved.metadata.readme_url.as_deref(),
+            Some("https://example.com/README.md")
+        );
+        assert_eq!(resolved.metadata.topics, Some(vec!["cache".into()]));
+        assert_eq!(resolved.metadata.os, Some(vec!["linux".into()]));
+        assert_eq!(resolved.metadata.arch, Some(vec!["aarch64".into()]));
         assert_eq!(
             resolve(root.path(), reference, true).await?.version,
             "1.2.3"

@@ -20,6 +20,10 @@ description = "Reusable build checks"
 license = "MIT"
 repository = "https://github.com/example/pipelines.git"
 subdir = "modules/ci"
+topics = ["ci", "build"]
+os = ["linux", "macos", "freebsd"]
+arch = ["x86_64", "aarch64"]
+readme_url = "https://raw.githubusercontent.com/example/pipelines/main/modules/ci/README.md"
 ```
 
 Names start with a lowercase letter and contain lowercase letters, digits, and
@@ -48,10 +52,32 @@ to the upload path and PDS record without modifying local configuration.
 
 In an interactive terminal, missing metadata is requested with prompts, including
 when a module's configuration is incomplete. Only name, version, and license are
-required; press Enter to skip the optional description. The license prompt
+required; press Enter to skip optional description, topics, operating systems,
+CPU architectures, README URL, and logo URL. Topics, OS, and architecture prompts accept
+comma-separated values and offer Tab completion. Configured values and CLI
+overrides are preserved without prompting again. The license prompt
 suggests common SPDX identifiers as you type; use Tab to complete a selection
 or enter a custom license value. Non-interactive runs
 report missing required fields instead of prompting.
+
+Use `--topic cache,rust` (or repeat `--topic`), `--os linux,macos`,
+`--arch x86_64,aarch64`, and `--readme-url URL` to override these optional module
+fields. Topics allow up to 20 distinct lowercase labels of at most 50 characters,
+using letters, digits, and hyphens. OS and architecture arrays allow up to 16
+distinct lowercase labels of at most 32 characters; underscores are also allowed.
+Common OS labels are `linux`, `macos`, `freebsd`, `netbsd`, `openbsd`, and `windows`;
+common architecture labels are `x86_64` and `aarch64`. These are publisher-declared
+compatibility metadata; omitted arrays mean unspecified, and local runs do not
+enforce them.
+
+The optional logo prompt also accepts Enter to skip. When supplied, the picture
+URL must return HTTP 200 and an `image/*` Content-Type, as with `--logo`.
+
+`readme_url` must be a public HTTP(S) URL without embedded credentials. It is
+published as `readmeUrl`, indexed in SQLite, and returned in registry responses.
+`fluentci docs` gives this explicit URL to Glow; without it, README discovery
+continues to use the module source or `repository` plus `subdir`. Classification
+and README metadata are preserved in `fluentci.lock` for registry dependencies.
 
 Use `--module ci --name public-ci --file ./dist/plugin.wasm` to select metadata
 explicitly when publishing an artifact from a workspace with multiple modules.
@@ -83,6 +109,20 @@ The CLI then creates an `io.fluentci.plugin` record in the publisher's PDS with
 `name`, `description`, `version`, `publishedAt`, `author`, `license`, `url`,
 `sha256`, and `size`. The record key is `name-version`. Creation does not silently
 overwrite a previously published release.
+
+Optional `topics`, `os`, `arch`, and `readmeUrl` metadata are stored in the PDS
+record and returned by package lookup, listing, actor feeds, and search. The
+registry also reserves a `downloads` database counter, initially zero. It is
+registry-owned, excluded from publisher metadata, and preserved when Jetstream
+updates a package. Download tracking is not enabled yet.
+
+Authors may edit metadata directly on their existing PDS record. Jetstream
+indexes both `create` and `update` commits, checking the author DID and
+`name-version` record key each time. Newer revisions update the registry's
+description, topics, platform arrays, README URL, logo, and other metadata;
+duplicate or stale events do not overwrite newer data. The registry-owned
+download counter is preserved. `fluentci publish` still creates a new release
+record and does not silently overwrite an existing one.
 
 If storage succeeds but PDS creation fails, the object may exist without an
 indexed package record. Check the error before retrying; upload and PDS write are

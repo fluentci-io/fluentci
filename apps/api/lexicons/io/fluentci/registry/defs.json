@@ -87,6 +87,42 @@
           "minLength": 1,
           "maxLength": 2048
         },
+        "topics": {
+          "type": "array",
+          "description": "Optional lowercase topic labels describing the module.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 50
+          },
+          "maxLength": 20
+        },
+        "readmeUrl": {
+          "type": "string",
+          "description": "Optional public HTTP(S) URL of the module README.",
+          "maxLength": 2048,
+          "format": "uri"
+        },
+        "os": {
+          "type": "array",
+          "description": "Optional supported host operating systems, such as linux, macos, freebsd, netbsd, openbsd, or windows. Omitted means unspecified.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "maxLength": 16
+        },
+        "arch": {
+          "type": "array",
+          "description": "Optional supported host CPU architectures, such as x86_64 or aarch64. Omitted means unspecified.",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 32
+          },
+          "maxLength": 16
+        },
         "uri": {
           "type": "string",
           "format": "at-uri"

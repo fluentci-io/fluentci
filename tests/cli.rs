@@ -60,6 +60,37 @@ fn publish_accepts_metadata_flags_and_missing_fields_for_prompts() {
 }
 
 #[test]
+fn publish_accepts_classification_and_readme_flags() {
+    let cli = Cli::try_parse_from([
+        "fluentci",
+        "publish",
+        "--file",
+        "plugin.wasm",
+        "--topic",
+        "cache,rust",
+        "--topic",
+        "ci",
+        "--os",
+        "linux,macos",
+        "--arch",
+        "x86_64,aarch64",
+        "--readme-url",
+        "https://example.com/README.md",
+    ])
+    .unwrap();
+    let Some(Command::Publish { metadata, .. }) = cli.command else {
+        panic!("Expected publish");
+    };
+    assert_eq!(metadata.topics, ["cache", "rust", "ci"]);
+    assert_eq!(metadata.os, ["linux", "macos"]);
+    assert_eq!(metadata.arch, ["x86_64", "aarch64"]);
+    assert_eq!(
+        metadata.readme_url.as_deref(),
+        Some("https://example.com/README.md")
+    );
+}
+
+#[test]
 fn forwards_plugin_flags_verbatim() {
     let c = Cli::try_parse_from([
         "fluentci",

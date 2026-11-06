@@ -36,6 +36,18 @@ bun run dev
 The server loads `apps/api/.env`; existing environment variables take precedence.
 `bun run jetstream` runs only the indexer and does not require upload settings.
 
+Plugin records support optional `topics`, `os`, `arch`, and `readmeUrl` metadata.
+Pkl definitions generate the JSON lexicons, runtime schemas, and Gleam encoders.
+Jetstream indexes author-owned `create` and `update` commits, so metadata edited
+directly in the publisher PDS appears in registry queries. Record keys must
+continue to match `name-version`; deduplication and event ordering prevent stale
+revisions from overwriting newer metadata.
+
+Migration `0008_plugin_classification` stores these fields and reserves a
+nonnegative `downloads` counter with a default of zero. Publisher metadata and
+Jetstream updates cannot reset that counter. Download tracking is not enabled
+yet. Existing records remain valid when the optional fields are absent.
+
 | Variable                                     | Requirement / default                                                                    |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------- |
 | `S3_BUCKET`                                  | Required for the server: destination bucket                                              |

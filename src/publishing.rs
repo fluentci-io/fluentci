@@ -23,6 +23,18 @@ pub const MAX_WASM_BYTES: usize = 64 * 1024 * 1024;
 
 #[derive(Debug, Default, clap::Args)]
 pub struct MetadataOptions {
+    /// Optional public HTTP(S) URL of the module README
+    #[arg(long, value_name = "URL")]
+    pub readme_url: Option<String>,
+    /// Module topics (repeat or separate with commas)
+    #[arg(long = "topic", value_delimiter = ',')]
+    pub topics: Vec<String>,
+    /// Supported operating systems, for example linux,macos,freebsd
+    #[arg(long, value_delimiter = ',')]
+    pub os: Vec<String>,
+    /// Supported CPU architectures, for example x86_64,aarch64
+    #[arg(long, value_delimiter = ',')]
+    pub arch: Vec<String>,
     /// Optional HTTP(S) module logo picture URL
     #[arg(long, value_name = "URL")]
     pub logo: Option<String>,
@@ -64,6 +76,14 @@ pub struct PluginRecord {
     pub sha256: String,
     pub size: usize,
     pub functions: Vec<crate::plugin_metadata::Function>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub readme_url: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub topics: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub os: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub arch: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repository: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -277,6 +297,10 @@ fn metadata(
         .filter(|_| module.is_none())
         .and_then(|config| config.package.as_ref());
     let fields = MetadataOptions {
+        readme_url: None,
+        topics: vec![],
+        os: vec![],
+        arch: vec![],
         logo: None,
         subdir: None,
         repository: None,
@@ -311,25 +335,154 @@ fn metadata(
     complete_metadata(
         fields,
         io::stdin().is_terminal() && io::stderr().is_terminal(),
-        |label, required| {
-            let mut prompt = inquire::Text::new(label).with_validator(move |value: &str| {
-                Ok(if required && value.trim().is_empty() {
-                    inquire::validator::Validation::Invalid("This field is required".into())
-                } else {
-                    inquire::validator::Validation::Valid
-                })
-            });
-            if label == "License" {
-                prompt = prompt
-                    .with_help_message("Type to filter common SPDX licenses; Tab completes. Custom values are allowed.")
-                    .with_autocomplete(|input: &str| Ok(license_suggestions(input)));
-            }
-            prompt
-                .prompt()
-                .map(|value| value.trim().to_owned())
-                .context("Publishing cancelled while entering metadata")
-        },
+        prompt_metadata,
     )
+}
+
+fn split_labels(value: &str) -> Vec<String> {
+    value
+        .split(',')
+        .map(str::trim)
+        .filter(|value| !value.is_empty())
+        .map(str::to_owned)
+        .collect()
+}
+
+fn metadata_suggestions(label: &str, input: &str) -> Vec<String> {
+    let choices: &[&str] = match label {
+        "Operating systems (optional)" => {
+            &["linux", "macos", "freebsd", "netbsd", "openbsd", "windows"]
+        }
+        "CPU architectures (optional)" => &[
+            "x86_64",
+            "aarch64",
+            "x86",
+            "arm",
+            "riscv64",
+            "powerpc64",
+            "s390x",
+            "loongarch64",
+        ],
+        "Topics (optional)" => &[
+            "ci", "cd", "build", "cache", "test", "lint", "deploy", "rust", "nodejs", "python",
+            "docker", "nix",
+        ],
+        _ => return vec![],
+    };
+    let (prefix, term) = input
+        .rsplit_once(',')
+        .map_or((String::new(), input.trim()), |(prefix, term)| {
+            (format!("{prefix}, "), term.trim())
+        });
+    let selected = split_labels(prefix.trim_end_matches([',', ' ']));
+    let term = term.to_ascii_lowercase();
+    choices
+        .iter()
+        .filter(|choice| {
+            choice.starts_with(&term) && !selected.iter().any(|item| item.as_str() == **choice)
+        })
+        .map(|choice| format!("{prefix}{choice}"))
+        .collect()
+}
+
+fn prompt_metadata(label: &str, required: bool) -> Result<String> {
+    let validator_label = label.to_owned();
+    let mut prompt = inquire::Text::new(label).with_validator(move |value: &str| {
+        let value = value.trim();
+        let labels = split_labels(value);
+        let error = if required && value.is_empty() {
+            Some("This field is required".to_owned())
+        } else {
+            match validator_label.as_str() {
+                "Topics (optional)" => config::validate_module_labels(&labels, &[], &[]).err(),
+                "Operating systems (optional)" => {
+                    config::validate_module_labels(&[], &labels, &[]).err()
+                }
+                "CPU architectures (optional)" => {
+                    config::validate_module_labels(&[], &[], &labels).err()
+                }
+                "README URL (optional)" if !value.is_empty() => {
+                    config::validate_readme_url(value).err()
+                }
+                "Logo URL (optional)" if !value.is_empty() => config::validate_logo(value).err(),
+                _ => None,
+            }
+            .map(|error| error.to_string())
+        };
+        Ok(match error {
+            Some(error) => inquire::validator::Validation::Invalid(error.into()),
+            None => inquire::validator::Validation::Valid,
+        })
+    });
+    if label == "License" {
+        prompt = prompt
+            .with_help_message(
+                "Type to filter common SPDX licenses; Tab completes. Custom values are allowed.",
+            )
+            .with_autocomplete(|input: &str| Ok(license_suggestions(input)));
+    } else if [
+        "Topics (optional)",
+        "Operating systems (optional)",
+        "CPU architectures (optional)",
+    ]
+    .contains(&label)
+    {
+        let autocomplete_label = label.to_owned();
+        prompt = prompt.with_help_message("Comma-separated values. Tab completes; Enter with an empty value skips this field.")
+            .with_autocomplete(move |input: &str| Ok(metadata_suggestions(&autocomplete_label, input)));
+    } else if !required {
+        prompt = prompt.with_help_message("Press Enter to skip this optional field.");
+    }
+    prompt
+        .prompt()
+        .map(|value| value.trim().to_owned())
+        .context("Publishing cancelled while entering metadata")
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+struct OptionalMetadata {
+    topics: Vec<String>,
+    os: Vec<String>,
+    arch: Vec<String>,
+    readme_url: Option<String>,
+    logo: Option<String>,
+}
+
+fn complete_optional_metadata(
+    mut fields: OptionalMetadata,
+    interactive: bool,
+    mut prompt: impl FnMut(&str, bool) -> Result<String>,
+) -> Result<OptionalMetadata> {
+    if interactive {
+        for (label, values) in [
+            ("Topics (optional)", &mut fields.topics),
+            ("Operating systems (optional)", &mut fields.os),
+            ("CPU architectures (optional)", &mut fields.arch),
+        ] {
+            if values.is_empty() {
+                *values = split_labels(&prompt(label, false)?);
+            }
+        }
+        for (label, field) in [
+            ("README URL (optional)", &mut fields.readme_url),
+            ("Logo URL (optional)", &mut fields.logo),
+        ] {
+            if field.is_none() {
+                let value = prompt(label, false)?;
+                if !value.trim().is_empty() {
+                    *field = Some(value.trim().to_owned());
+                }
+            }
+        }
+    }
+    config::validate_module_labels(&fields.topics, &fields.os, &fields.arch)?;
+    if let Some(readme_url) = &fields.readme_url {
+        config::validate_readme_url(readme_url)?;
+    }
+    if let Some(logo) = &fields.logo {
+        config::validate_logo(logo)?;
+    }
+    Ok(fields)
 }
 
 fn license_suggestions(input: &str) -> Vec<String> {
@@ -469,10 +622,47 @@ pub async fn publish(
             .and_then(|name| config.modules.iter().find(|m| m.name == name))
             .or_else(|| (config.modules.len() == 1).then(|| &config.modules[0]))
     });
+    let labels = |overrides: &[String], configured: Option<&Vec<String>>| {
+        if overrides.is_empty() {
+            configured.cloned().unwrap_or_default()
+        } else {
+            overrides.to_vec()
+        }
+    };
+    let topics = labels(
+        &metadata_options.topics,
+        definition.map(|module| &module.topics),
+    );
+    let os = labels(&metadata_options.os, definition.map(|module| &module.os));
+    let arch = labels(
+        &metadata_options.arch,
+        definition.map(|module| &module.arch),
+    );
+    let readme_url = metadata_options
+        .readme_url
+        .clone()
+        .or_else(|| definition.and_then(|module| module.readme_url.clone()));
     let logo = metadata_options
         .logo
         .clone()
         .or_else(|| definition.and_then(|module| module.logo.clone()));
+    let OptionalMetadata {
+        topics,
+        os,
+        arch,
+        readme_url,
+        logo,
+    } = complete_optional_metadata(
+        OptionalMetadata {
+            topics,
+            os,
+            arch,
+            readme_url,
+            logo,
+        },
+        io::stdin().is_terminal() && io::stderr().is_terminal(),
+        prompt_metadata,
+    )?;
     if let Some(logo) = &logo {
         validate_logo_url(logo).await?;
     }
@@ -543,6 +733,10 @@ pub async fn publish(
         sha256: digest,
         size,
         functions,
+        readme_url,
+        topics,
+        os,
+        arch,
         logo,
         repository,
         subdir,
@@ -567,7 +761,72 @@ pub async fn publish(
 
 #[cfg(test)]
 mod tests {
-    use super::{MetadataOptions, complete_metadata, license_suggestions};
+    use super::{
+        MetadataOptions, OptionalMetadata, complete_metadata, complete_optional_metadata,
+        license_suggestions, metadata_suggestions,
+    };
+
+    #[test]
+    fn optional_publish_fields_can_all_be_skipped() -> anyhow::Result<()> {
+        let mut prompts = vec![];
+        let fields =
+            complete_optional_metadata(OptionalMetadata::default(), true, |label, required| {
+                assert!(!required);
+                prompts.push(label.to_owned());
+                Ok(String::new())
+            })?;
+        assert_eq!(fields, OptionalMetadata::default());
+        assert_eq!(prompts.len(), 5);
+        complete_optional_metadata(OptionalMetadata::default(), false, |_, _| {
+            panic!("Noninteractive publishing must not prompt")
+        })?;
+        Ok(())
+    }
+
+    #[test]
+    fn optional_publish_prompts_parse_lists_and_preserve_configured_values() -> anyhow::Result<()> {
+        let fields = complete_optional_metadata(
+            OptionalMetadata {
+                topics: vec!["cache".into()],
+                ..Default::default()
+            },
+            true,
+            |label, _| {
+                Ok(match label {
+                    "Operating systems (optional)" => "linux, macos",
+                    "CPU architectures (optional)" => "x86_64,aarch64",
+                    "README URL (optional)" => "https://example.com/README.md",
+                    "Logo URL (optional)" => "https://example.com/logo.png",
+                    _ => panic!("Configured fields must not be prompted"),
+                }
+                .into())
+            },
+        )?;
+        assert_eq!(fields.topics, ["cache"]);
+        assert_eq!(fields.os, ["linux", "macos"]);
+        assert_eq!(fields.arch, ["x86_64", "aarch64"]);
+        assert_eq!(
+            fields.readme_url.as_deref(),
+            Some("https://example.com/README.md")
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn optional_publish_autocomplete_completes_comma_separated_values() {
+        assert_eq!(
+            metadata_suggestions("Operating systems (optional)", "linux, ma"),
+            ["linux, macos"]
+        );
+        assert_eq!(
+            metadata_suggestions("CPU architectures (optional)", "aa"),
+            ["aarch64"]
+        );
+        assert!(
+            !metadata_suggestions("Operating systems (optional)", "linux, ")
+                .contains(&"linux, linux".into())
+        );
+    }
 
     #[test]
     fn publishing_license_suggestions_match_case_insensitively() {

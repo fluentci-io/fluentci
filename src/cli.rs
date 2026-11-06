@@ -164,7 +164,7 @@ pub enum Command {
     Upgrade,
     /// Publish a Wasm plugin to your AT Protocol PDS
     #[command(
-        long_about = "Publish using FLUENTCI_ACCOUNT (handle or DID) and FLUENTCI_APP_PASSWORD. Builds the selected local module, uploads to S3 via the registry, then creates io.fluentci.plugin in your PDS. Use --url to skip upload: the public URL must end in .wasm and return HTTP 200. Metadata comes from the selected [[modules]] entry in fluentci.toml. Override metadata with --name, --version, --description, and --license. File and URL publishing prompts for missing metadata in interactive terminals; scripts must supply required fields. Identity is remembered in ~/.fluentci/account.json; passwords are never saved."
+        long_about = "Publish using FLUENTCI_ACCOUNT (handle or DID) and FLUENTCI_APP_PASSWORD. Builds the selected local module, uploads to S3 via the registry, then creates io.fluentci.plugin in your PDS. Use --url to skip upload: the public URL must end in .wasm and return HTTP 200. Metadata comes from the selected [[modules]] entry in fluentci.toml. Override metadata with --name, --version, --description, --license, --topic, --os, --arch, and --readme-url. Optional topics, OS, and CPU architectures support comma-separated values and prompt autocomplete; Enter skips optional fields. File and URL publishing prompts for missing metadata in interactive terminals; scripts must supply required fields. Identity is remembered in ~/.fluentci/account.json; passwords are never saved."
     )]
     Publish {
         /// Build and publish a WebAssembly plugin

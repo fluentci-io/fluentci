@@ -42,7 +42,12 @@ pub struct Package {
     pub repository: Option<String>,
     pub logo: Option<String>,
     pub subdir: Option<String>,
+    #[serde(rename = "readmeUrl", alias = "readme_url")]
+    pub readme_url: Option<String>,
     pub functions: Option<Vec<crate::plugin_metadata::Function>>,
+    pub topics: Option<Vec<String>>,
+    pub os: Option<Vec<String>>,
+    pub arch: Option<Vec<String>>,
 }
 
 pub struct Resolved {

@@ -156,3 +156,42 @@ fn module_logo_is_optional_and_requires_an_http_picture_url() -> anyhow::Result<
     }
     Ok(())
 }
+
+#[test]
+fn module_classification_and_readme_metadata_are_optional_and_validated() -> anyhow::Result<()> {
+    let config = fluentci::config::Config::parse(
+        r#"
+[[modules]]
+name = "cache"
+path = "."
+topics = ["cache", "rust"]
+os = ["linux", "macos", "freebsd"]
+arch = ["x86_64", "aarch64"]
+readme_url = "https://example.com/README.md"
+"#,
+    )?;
+    let module = &config.modules[0];
+    assert_eq!(module.topics, ["cache", "rust"]);
+    assert_eq!(module.os, ["linux", "macos", "freebsd"]);
+    assert_eq!(module.arch, ["x86_64", "aarch64"]);
+    assert_eq!(
+        module.readme_url.as_deref(),
+        Some("https://example.com/README.md")
+    );
+    for invalid in [
+        "topics=['cache','cache']",
+        "topics=['Invalid']",
+        "os=['linux/linux']",
+        "arch=['ARM64']",
+        "readme_url='file:///tmp/README.md'",
+        "readme_url='https://user:secret@example.com/README.md'",
+    ] {
+        assert!(
+            fluentci::config::Config::parse(&format!(
+                "[[modules]]\nname='cache'\npath='.'\n{invalid}"
+            ))
+            .is_err()
+        );
+    }
+    Ok(())
+}

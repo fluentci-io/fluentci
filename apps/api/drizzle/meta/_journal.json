@@ -57,6 +57,13 @@
       "when": 1793923200006,
       "tag": "0007_plugin_logo",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1793923200007,
+      "tag": "0008_plugin_classification",
+      "breakpoints": true
     }
   ]
 }

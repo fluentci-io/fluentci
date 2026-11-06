@@ -71,6 +71,10 @@ and is optional for local execution.
 | `rev`         | optional string          | Git branch, tag, or commit. Defaults to `HEAD`; the lockfile pins the resolved commit. Requires `git`.                                              |
 | `subdir`      | optional string          | Module directory inside `git` or `repository`. Must be relative and cannot contain `..`.                                                            |
 | `repository`  | optional string          | Published source repository URL; metadata rather than a source selector. Defaults to `git` when publishing a Git module.                            |
+| `readme_url`  | optional string          | Public HTTP(S) README URL without credentials; published as `readmeUrl` and preferred by `fluentci docs`. |
+| `topics`      | optional string array    | Up to 20 distinct lowercase topic labels, each at most 50 characters. |
+| `os`          | optional string array    | Up to 16 supported host OS labels, such as `linux`, `macos`, or `freebsd`. Omitted means unspecified. |
+| `arch`        | optional string array    | Up to 16 supported CPU architecture labels, such as `x86_64` or `aarch64`. Omitted means unspecified. |
 | `sdk`         | string                   | Source compiler SDK; defaults to `rust`. Precompiled and registry modules do not require an SDK build.                                              |
 | `entry`       | optional string          | Elixir module or Python entry file. Required for source Elixir without a custom build.                                                              |
 | `artifact`    | optional string          | Build output relative to the source directory; JavaScript SDKs default to `dist/plugin.wasm`.                                                       |
@@ -141,9 +145,14 @@ or embedded `fluentci:metadata` section can supply the same declarations.
 Only name, version, and license are required. The CLI prompts for missing values
 in an interactive terminal; non-interactive runs must supply them through module
 configuration or flags. `--name`, `--version`, `--description`, `--license`,
-`--repository`, and `--subdir` override the selected module's metadata without
+`--repository`, `--subdir`, `--topic`, `--os`, `--arch`, and `--readme-url`
+override the selected module's metadata without
 rewriting the configuration. File and URL publishing require an explicit name
 flag or prompt. See [publishing](/registry/publishing/).
+
+Interactive publishing prompts for missing optional classification and README
+fields too. Enter skips an optional field; Tab completes topics, OS labels, and
+CPU architectures. Comma-separated inputs select multiple values.
 
 ## Step fields
 

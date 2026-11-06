@@ -24,6 +24,11 @@ pub type Row {
     repository: Option(String),
     logo: Option(String),
     subdir: Option(String),
+    topics: Option(String),
+    os: Option(String),
+    arch: Option(String),
+    readme_url: Option(String),
+    downloads: Int,
     deleted: Bool,
     event_time: Int,
   )
@@ -48,6 +53,11 @@ pub fn decoder() -> Decoder(Row) {
   use repository <- decode.field("repository", decode.optional(decode.string))
   use logo <- decode.field("logo", decode.optional(decode.string))
   use subdir <- decode.field("subdir", decode.optional(decode.string))
+  use topics <- decode.field("topics", decode.optional(decode.string))
+  use os <- decode.field("os", decode.optional(decode.string))
+  use arch <- decode.field("arch", decode.optional(decode.string))
+  use readme_url <- decode.field("readme_url", decode.optional(decode.string))
+  use downloads <- decode.field("downloads", decode.int)
   use deleted <- decode.field("deleted", decode.bool)
   use event_time <- decode.field("event_time", decode.int)
   decode.success(Row(
@@ -66,6 +76,11 @@ pub fn decoder() -> Decoder(Row) {
     repository,
     logo,
     subdir,
+    topics,
+    os,
+    arch,
+    readme_url,
+    downloads,
     deleted,
     event_time,
   ))
@@ -90,6 +105,11 @@ pub fn table() -> Table(Row) {
       text_column("repository", True, False),
       text_column("logo", True, False),
       text_column("subdir", True, False),
+      text_column("topics", True, False),
+      text_column("os", True, False),
+      text_column("arch", True, False),
+      text_column("readme_url", True, False),
+      integer_column("downloads", False, False),
       boolean_column("deleted"),
       integer_column("event_time", False, False),
     ],
@@ -169,4 +189,24 @@ pub fn subdir(table: Table(Row)) -> Expression(Option(String)) {
 
 pub fn logo(table: Table(Row)) -> Expression(Option(String)) {
   column(table, "logo", optional(text()))
+}
+
+pub fn topics(table: Table(Row)) -> Expression(Option(String)) {
+  column(table, "topics", optional(text()))
+}
+
+pub fn os(table: Table(Row)) -> Expression(Option(String)) {
+  column(table, "os", optional(text()))
+}
+
+pub fn arch(table: Table(Row)) -> Expression(Option(String)) {
+  column(table, "arch", optional(text()))
+}
+
+pub fn readme_url(table: Table(Row)) -> Expression(Option(String)) {
+  column(table, "readme_url", optional(text()))
+}
+
+pub fn downloads(table: Table(Row)) -> Expression(Int) {
+  column(table, "downloads", integer())
 }

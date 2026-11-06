@@ -14,6 +14,7 @@ import fluentci_api/lexicon/models.{
 import fluentci_api/model.{
   type Event, type Package, type Page, Account, Checkpoint, Delete, Upsert,
 }
+import fluentci_api/module_metadata
 import fluentci_api/schema/accounts as a
 import fluentci_api/schema/checkpoints as c
 import fluentci_api/schema/events as e
@@ -77,6 +78,10 @@ fn package(row: p.Row) -> Package {
     row.repository,
     row.logo,
     row.subdir,
+    option.map(row.topics, module_metadata.from_string),
+    row.readme_url,
+    option.map(row.os, module_metadata.from_string),
+    option.map(row.arch, module_metadata.from_string),
     row.uri,
     cid,
   )
@@ -255,6 +260,10 @@ fn package_values(plugin: Package, time: Int) -> List(Assignment) {
     set(p.repository(table), plugin.repository),
     set(p.logo(table), plugin.logo),
     set(p.subdir(table), plugin.subdir),
+    set(p.readme_url(table), plugin.readme_url),
+    set(p.topics(table), option.map(plugin.topics, module_metadata.to_string)),
+    set(p.os(table), option.map(plugin.os, module_metadata.to_string)),
+    set(p.arch(table), option.map(plugin.arch, module_metadata.to_string)),
     set(
       p.functions(table),
       option.map(plugin.functions, function_metadata.to_string),

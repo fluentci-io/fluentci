@@ -25,6 +25,10 @@ pub fn generated_encoder_preserves_json_field_names_test() {
     repository: None,
     logo: None,
     subdir: None,
+    topics: None,
+    readme_url: None,
+    os: None,
+    arch: None,
   )
   |> models.encode_plugin
   |> json.to_string

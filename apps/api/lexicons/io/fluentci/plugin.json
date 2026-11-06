@@ -5,7 +5,7 @@
   "defs": {
     "main": {
       "type": "record",
-      "description": "Published Wasm plugin. Package identity is author DID plus name, stable across handle changes. The record key is name-version; author must equal the repository DID. Records are immutable releases.",
+      "description": "Published Wasm plugin. Package identity is author DID plus name, stable across handle changes. The record key is name-version; author must equal the repository DID. Authors may update metadata on an existing name-version record.",
       "key": "any",
       "record": {
         "type": "object",
@@ -88,6 +88,42 @@
             "description": "Relative module source directory inside the Git repository.",
             "minLength": 1,
             "maxLength": 2048
+          },
+          "topics": {
+            "type": "array",
+            "description": "Optional lowercase topic labels describing the module.",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 50
+            },
+            "maxLength": 20
+          },
+          "readmeUrl": {
+            "type": "string",
+            "description": "Optional public HTTP(S) URL of the module README.",
+            "maxLength": 2048,
+            "format": "uri"
+          },
+          "os": {
+            "type": "array",
+            "description": "Optional supported host operating systems, such as linux, macos, freebsd, netbsd, openbsd, or windows. Omitted means unspecified.",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "maxLength": 16
+          },
+          "arch": {
+            "type": "array",
+            "description": "Optional supported host CPU architectures, such as x86_64 or aarch64. Omitted means unspecified.",
+            "items": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 32
+            },
+            "maxLength": 16
           }
         }
       }
