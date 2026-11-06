@@ -1,0 +1,1 @@
+export { ModulePageSkeleton } from "./ModulePageSkeleton";

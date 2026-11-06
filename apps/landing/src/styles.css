@@ -295,3 +295,25 @@ pre {
   .download-chart span { @apply block w-full rounded-t bg-accent/75 transition-colors hover:bg-accent; }
   .download-chart small { @apply absolute -bottom-5 w-full text-center font-mono text-[10px] text-muted; }
 }
+
+@keyframes skeleton-shimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+@layer components {
+  .skeleton {
+    display: inline-block;
+    border-radius: 4px;
+    background-color: var(--color-raised);
+    background-image: linear-gradient(100deg, var(--color-panel) 20%, var(--color-raised) 45%, var(--color-panel) 70%);
+    background-size: 200% 100%;
+    animation: skeleton-shimmer 1.8s ease-in-out infinite;
+  }
+  .skeleton.rounded-full { border-radius: 9999px; }
+  .skeleton.rounded-lg { border-radius: 8px; }
+  .skeleton.rounded-xl { border-radius: 12px; }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton { animation: none; }
+  }
+}

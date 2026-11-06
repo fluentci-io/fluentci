@@ -41,6 +41,10 @@ is shown for the user to copy; the site never executes it.
 ## Registry pages
 
 The topbar search opens with `/` and supports arrow keys, Enter, and Escape.
+The first results and author profiles preload in the background. Modal opens
+share any in-flight request and reuse a one-minute in-memory cache; stale results
+stay visible while refreshing. Loading skeletons follow both themes and disable
+animation when reduced motion is preferred.
 Results navigate with TanStack Router to `/:handle/plugin/:rkey`, where the record
 key is `name-version`. Official `fluentci.io` modules display their name without
 the handle prefix. Commands always retain the publisher and pinned version.

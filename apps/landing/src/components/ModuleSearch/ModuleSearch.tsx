@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { initialResults } from "../../registry/client";
 import { SearchIcon } from "../SearchIcon";
 import { SearchDialog } from "../SearchDialog";
 
@@ -6,6 +7,12 @@ export function ModuleSearch() {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
   const wasOpen = useRef(false);
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void initialResults().catch(() => {});
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, []);
   useEffect(() => {
     if (wasOpen.current && !open) trigger.current?.focus();
     wasOpen.current = open;

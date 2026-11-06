@@ -2,6 +2,10 @@ import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
   getProfiles,
+  cachedInitialResults,
+  cachedProfiles,
+  initialResults,
+  uniquePlugins,
   moduleTitle,
   query,
   recordKey,
@@ -11,15 +15,21 @@ import {
 import { DownloadIcon } from "../DownloadIcon";
 import { Author } from "../Author";
 import { ModuleLogo } from "../ModuleLogo";
+import { SearchResultsSkeleton } from "../SearchResultsSkeleton";
 import { SearchIcon } from "../SearchIcon";
 
 export function SearchDialog({ close }: { close: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const input = useRef<HTMLInputElement>(null);
   const [text, setText] = useState("");
-  const [items, setItems] = useState<Plugin[]>([]);
-  const [profiles, setProfiles] = useState<Record<string, Profile>>({});
-  const [loading, setLoading] = useState(true);
+  const [items, setItems] = useState<Plugin[]>(
+    () => cachedInitialResults() ?? [],
+  );
+  const [profiles, setProfiles] =
+    useState<Record<string, Profile>>(cachedProfiles);
+  const [loading, setLoading] = useState(
+    () => cachedInitialResults() === undefined,
+  );
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(0);
   const navigate = useNavigate();
@@ -34,48 +44,49 @@ export function SearchDialog({ close }: { close: () => void }) {
   }, []);
   useEffect(() => {
     const abort = new AbortController();
-    setLoading(true);
+    const q = text.trim();
+    const cached = q ? undefined : cachedInitialResults();
+    setLoading(cached === undefined);
     setError("");
-    setItems([]);
+    setItems(cached ?? []);
     setSelected(0);
-    const timer = window.setTimeout(async () => {
-      try {
-        const q = text.trim();
-        const params = new URLSearchParams({
-          limit: "20",
-          ...(q ? { q } : {}),
-        });
-        const data = await query<{ packages: Plugin[] }>(
-          q ? "searchPackages" : "listPackages",
-          params,
-          abort.signal,
-        );
-        const seen = new Set<string>();
-        const plugins = data.packages.filter((plugin) => {
-          const key = `${plugin.author}/${plugin.name}`;
-          if (seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-        if (abort.signal.aborted) return;
-        setItems(plugins);
-        setLoading(false);
+    const timer = window.setTimeout(
+      async () => {
         try {
-          const authors = await getProfiles(
-            plugins.map((plugin) => plugin.author),
-            abort.signal,
-          );
-          if (!abort.signal.aborted) setProfiles(authors);
-        } catch {
-          /* A missing profile never prevents registry navigation. */
-        }
-      } catch (reason) {
-        if (!abort.signal.aborted) {
-          setError(reason instanceof Error ? reason.message : "Search failed.");
+          const plugins = q
+            ? uniquePlugins(
+                (
+                  await query<{ packages: Plugin[] }>(
+                    "searchPackages",
+                    new URLSearchParams({ limit: "20", q }),
+                    abort.signal,
+                  )
+                ).packages,
+              )
+            : await initialResults();
+          if (abort.signal.aborted) return;
+          setItems(plugins);
           setLoading(false);
+          try {
+            const authors = await getProfiles(
+              plugins.map((plugin) => plugin.author),
+              abort.signal,
+            );
+            if (!abort.signal.aborted) setProfiles(authors);
+          } catch {
+            /* A missing profile never prevents registry navigation. */
+          }
+        } catch (reason) {
+          if (!abort.signal.aborted && cached === undefined) {
+            setError(
+              reason instanceof Error ? reason.message : "Search failed.",
+            );
+            setLoading(false);
+          }
         }
-      }
-    }, 200);
+      },
+      q ? 200 : 0,
+    );
     return () => {
       window.clearTimeout(timer);
       abort.abort();
@@ -155,9 +166,7 @@ export function SearchDialog({ close }: { close: () => void }) {
           aria-busy={loading}
         >
           {loading ? (
-            <p className="search-message" role="status">
-              Searching the registry…
-            </p>
+            <SearchResultsSkeleton />
           ) : error ? (
             <p className="search-message" role="alert">
               {error}

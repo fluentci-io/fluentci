@@ -107,6 +107,62 @@ export async function getProfiles(dids: string[], signal: AbortSignal) {
   );
 }
 
+export function cachedProfiles(): Record<string, Profile> {
+  return Object.fromEntries(profiles);
+}
+
+export function uniquePlugins(plugins: Plugin[]) {
+  const seen = new Set<string>();
+  return plugins.filter((plugin) => {
+    const key = `${plugin.author}/${plugin.name}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+let initialCache: { packages: Plugin[]; fetchedAt: number } | undefined;
+let initialRequest: Promise<Plugin[]> | undefined;
+const initialCacheLifetime = 60_000;
+
+export function cachedInitialResults() {
+  return initialCache?.packages;
+}
+
+// Shared by background preloading and modal opens, including StrictMode mounts.
+// Keep stale results visible while refreshing; failed requests remain retryable.
+export function initialResults(): Promise<Plugin[]> {
+  if (
+    initialCache &&
+    Date.now() - initialCache.fetchedAt < initialCacheLifetime
+  )
+    return Promise.resolve(initialCache.packages);
+  if (initialRequest) return initialRequest;
+  initialRequest = (async () => {
+    const abort = new AbortController();
+    const timer = window.setTimeout(() => abort.abort(), 15_000);
+    try {
+      const data = await query<{ packages: Plugin[] }>(
+        "listPackages",
+        new URLSearchParams({ limit: "20" }),
+        abort.signal,
+      );
+      const packages = uniquePlugins(data.packages);
+      initialCache = { packages, fetchedAt: Date.now() };
+      // Warm identity/avatar data without delaying the initial module results.
+      void getProfiles(
+        packages.map((plugin) => plugin.author),
+        new AbortController().signal,
+      ).catch(() => {});
+      return packages;
+    } finally {
+      window.clearTimeout(timer);
+      initialRequest = undefined;
+    }
+  })();
+  return initialRequest;
+}
+
 export async function getPlugin(
   handle: string,
   rkey: string,

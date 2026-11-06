@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
+import { ModulePageSkeleton } from "../ModulePageSkeleton";
 import { SiteHeader } from "../SiteHeader";
 import { Author } from "../Author";
 import { ModuleLogo } from "../ModuleLogo";
@@ -100,9 +101,7 @@ export function ModulePage() {
             </button>
           </div>
         ) : !plugin ? (
-          <p role="status" className="py-20 text-muted">
-            Loading module…
-          </p>
+          <ModulePageSkeleton />
         ) : (
           <div className="module-page-grid mt-10">
             <article className="min-w-0">

@@ -1,0 +1,1 @@
+export { SearchResultsSkeleton } from "./SearchResultsSkeleton";
