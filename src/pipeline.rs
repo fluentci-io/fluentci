@@ -4,6 +4,9 @@ use std::path::Path;
 use tokio::process::Command;
 
 pub async fn run(args: &RunArgs, db: &Db) -> Result<()> {
+    if crate::module_help::requested(args) {
+        return crate::module_help::execute(args, true).await;
+    }
     let start = args
         .work_dir
         .as_deref()

@@ -7,6 +7,58 @@ fn clap_definition_is_valid() {
 }
 
 #[test]
+fn module_help_accepts_both_flags_before_and_after_function_names() {
+    for flag in ["--help", "-h"] {
+        for explicit in [false, true] {
+            for wasm in [false, true] {
+                for function in [None, Some("setup")] {
+                    let mut argv = vec!["fluentci"];
+                    if explicit {
+                        argv.push("run");
+                    }
+                    if wasm {
+                        argv.push("--wasm");
+                    }
+                    argv.push("sccache");
+                    argv.extend(function);
+                    argv.push(flag);
+                    let cli = Cli::try_parse_from(argv).unwrap();
+                    let args = match cli.command {
+                        Some(Command::Run(args)) => args,
+                        None => cli.run,
+                        _ => panic!("Expected run"),
+                    };
+                    assert!(fluentci::module_help::requested(&args));
+                    assert_eq!(args.pipeline.as_deref(), Some("sccache"));
+                    if let Some(function) = function {
+                        assert_eq!(args.jobs.first().map(String::as_str), Some(function));
+                    }
+                }
+            }
+        }
+        let root = Cli::try_parse_from(["fluentci", flag]).unwrap();
+        assert!(root.run.help);
+        assert!(root.run.pipeline.is_none());
+        let run = Cli::try_parse_from(["fluentci", "run", flag]).unwrap();
+        assert!(
+            matches!(run.command, Some(Command::Run(args)) if args.help && args.pipeline.is_none())
+        );
+        assert_eq!(
+            Cli::try_parse_from(["fluentci", "publish", flag])
+                .unwrap_err()
+                .kind(),
+            clap::error::ErrorKind::DisplayHelp
+        );
+        assert_eq!(
+            Cli::try_parse_from(["fluentci", "project", "export", flag])
+                .unwrap_err()
+                .kind(),
+            clap::error::ErrorKind::DisplayHelp
+        );
+    }
+}
+
+#[test]
 fn publish_accepts_metadata_flags_and_missing_fields_for_prompts() {
     for (flag, value) in [
         ("--file", "plugin.wasm"),

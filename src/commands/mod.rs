@@ -38,6 +38,15 @@ mod whoami;
 mod workflows;
 
 pub async fn dispatch(cli: Cli) -> Result<()> {
+    // Help does not open SQLite, check for updates, or start any execution.
+    let run = match &cli.command {
+        None => Some(&cli.run),
+        Some(Command::Run(args)) => Some(args),
+        _ => None,
+    };
+    if let Some(args) = run.filter(|args| crate::module_help::requested(args)) {
+        return crate::module_help::execute(args, cli.command.is_some()).await;
+    }
     // Workers run before opening SQLite or starting any services.
     match &cli.command {
         Some(Command::EngineCall { module, commands }) => {

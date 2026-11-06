@@ -11,6 +11,7 @@ pub mod export;
 pub(crate) mod git_source;
 pub mod lockfile;
 pub mod models;
+pub mod module_help;
 pub mod modules;
 pub mod pipeline;
 pub mod plugin_metadata;

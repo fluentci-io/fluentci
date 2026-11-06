@@ -10,6 +10,8 @@ use std::path::PathBuf;
     name = "fluentci",
     version,
     about = "FluentCI — CI/CD pipelines powered by Wasm and Dagger",
+    disable_help_flag = true,
+    defer(configure_run_help),
     subcommand_precedence_over_arg = true,
     styles = help_styles()
 )]
@@ -24,6 +26,18 @@ pub struct Cli {
     /// Check for a published CLI update at most once a day
     #[arg(long, global=true, default_value="true", action=clap::ArgAction::Set)]
     pub check_update: bool,
+}
+
+fn configure_run_help(command: clap::Command) -> clap::Command {
+    // Clap propagates disable_help_flag to children. Reset it after propagation
+    // for commands that do not use RunArgs' metadata-aware help flag.
+    command.mut_subcommands(|child| {
+        if child.get_name() == "run" {
+            child
+        } else {
+            child.defer(|command| command.disable_help_flag(false))
+        }
+    })
 }
 
 /// Rocksky's palette, mapped to Clap's help and diagnostic roles.
@@ -55,6 +69,9 @@ fn default_database() -> PathBuf {
 
 #[derive(Debug, Clone, Default, Args)]
 pub struct RunArgs {
+    /// Show CLI help, or module/function metadata when a module is selected
+    #[arg(short = 'h', long = "help")]
+    pub help: bool,
     /// Run a named workflow from .fluentci/workflows (defaults to the project workflow)
     #[arg(long, conflicts_with = "wasm")]
     pub workflow: Option<String>,
@@ -102,6 +119,7 @@ pub enum Command {
         steps: bool,
     },
     /// Run a local or registry pipeline
+    #[command(disable_help_flag = true)]
     Run(RunArgs),
     /// Create a root fluentci.toml and a default module under .fluentci
     Init {

@@ -25,6 +25,27 @@ Use `fluentci COMMAND --help` for argument details from the installed binary.
 The CLI also supports a bare pipeline invocation, but explicit `run` is clearer
 in automation.
 
+Module help reads metadata without invoking any Wasm function or opening the local
+database. Both `--help` and `-h` are supported:
+
+```sh
+fluentci run sccache --help
+fluentci run sccache setup -h
+fluentci run ./plugin.wasm --help
+fluentci run https://modules.fluentci.io/fluentci.io/sccache/v0.1.0/sccache.wasm --help
+```
+
+Module help lists exported functions, signatures, and descriptions. Function help
+shows argument names, types, descriptions, and the return type when the SDK or
+published metadata provides them. Without source metadata, help lists exports and
+reports that argument details are unavailable; Wasm ABI types are not source parameters.
+Declared local modules take precedence over registry names. Registry artifacts may
+be downloaded and local source modules may be built to inspect their metadata.
+For locked packages, registry help metadata is fetched for the pinned publisher and
+version and checked against the locked checksum. If the registry is unreachable,
+help falls back to the cached artifact's exports and embedded metadata.
+`fluentci --help` and `fluentci run --help` continue to show CLI usage.
+
 ## Pipelines and modules
 
 | Command                                  | Purpose                                                                                           |
