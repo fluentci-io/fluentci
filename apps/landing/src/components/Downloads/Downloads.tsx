@@ -119,14 +119,13 @@ export function Downloads({ plugin }: { plugin: Plugin }) {
               <path d="M8 76H272" stroke="var(--color-line)" fill="none" />
               <path
                 d={`${line} L${plot[plot.length - 1].x},76 L${plot[0].x},76 Z`}
-                fill="var(--color-accent)"
-                opacity="0.06"
+                fill={`url(#${gradientId})`}
               />
               <path
                 d={line}
                 fill="none"
                 stroke="var(--color-accent)"
-                strokeWidth="2"
+                strokeWidth="3"
                 strokeLinejoin="round"
                 strokeLinecap="round"
                 vectorEffect="non-scaling-stroke"
