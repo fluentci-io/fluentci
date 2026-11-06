@@ -31,9 +31,9 @@ fluentci_version="${FLUENTCI_VERSION:-latest}"
 if [ "$fluentci_version" = latest ]; then
     fluentci_latest_url=$(curl --fail --silent --show-error --head --location --retry 3 \
         --output /dev/null --write-out '%{url_effective}' \
-        https://github.com/tsirysndr/fluentci/releases/latest)
+        https://github.com/fluentci-io/fluentci/releases/latest)
     case "$fluentci_latest_url" in
-        https://github.com/tsirysndr/fluentci/releases/tag/*)
+        https://github.com/fluentci-io/fluentci/releases/tag/*)
             fluentci_version="${fluentci_latest_url##*/}" ;;
         *) echo "Error: could not resolve the latest FluentCI release" >&2; exit 1 ;;
     esac
@@ -42,7 +42,7 @@ case "$fluentci_version" in
     ""|*[!A-Za-z0-9._+-]*) echo "Invalid FLUENTCI_VERSION: $fluentci_version" >&2; exit 1 ;;
 esac
 fluentci_asset="fluentci_${fluentci_version}_${fluentci_target}.tar.gz"
-fluentci_url="https://github.com/tsirysndr/fluentci/releases/download/${fluentci_version}/${fluentci_asset}"
+fluentci_url="https://github.com/fluentci-io/fluentci/releases/download/${fluentci_version}/${fluentci_asset}"
 fluentci_install_dir="${FLUENTCI_INSTALL_DIR:-$HOME/.local/bin}"
 fluentci_temp=$(mktemp -d)
 trap 'rm -rf "$fluentci_temp"' 0
