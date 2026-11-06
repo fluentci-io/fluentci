@@ -77,9 +77,11 @@ test("search opens with slash, shows identities and navigates to the record page
   ).toBe("none");
   const input = dialog.getByRole("combobox");
   await expect(input).toBeFocused();
-  await expect(dialog.getByRole("link", { name: /sccache/ })).toContainText(
-    "1,284 downloads",
+  const result = dialog.getByRole("link", { name: /sccache/ });
+  await expect(result.getByLabel("1,284 downloads", { exact: true })).toHaveText(
+    "1,284",
   );
+  await expect(result).not.toContainText("downloads");
   await expect(dialog.getByRole("link", { name: /sccache/ })).toContainText(
     "@fluentci.io",
   );
