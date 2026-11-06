@@ -12,6 +12,7 @@ const dayLabel = (date: string) =>
 export function Downloads({ plugin }: { plugin: Plugin }) {
   const [active, setActive] = useState<number>();
   const tooltipId = useId();
+  const gradientId = `download-gradient-${tooltipId.replace(/:/g, "")}`;
   const points = plugin.dailyDownloads;
   const weekly = points?.reduce((sum, day) => sum + day.downloads, 0);
   const maximum = Math.max(1, ...(points?.map((day) => day.downloads) ?? []));
@@ -98,6 +99,20 @@ export function Downloads({ plugin }: { plugin: Plugin }) {
                 );
               }}
             >
+              <defs>
+                <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+                  <stop
+                    offset="0%"
+                    stopColor="var(--color-accent)"
+                    stopOpacity="0.24"
+                  />
+                  <stop
+                    offset="100%"
+                    stopColor="var(--color-accent)"
+                    stopOpacity="0"
+                  />
+                </linearGradient>
+              </defs>
               <desc>
                 Use the left and right arrow keys to inspect daily downloads.
               </desc>
