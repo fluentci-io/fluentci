@@ -34,7 +34,7 @@ pub async fn schedule(db: &Db, identity: &AccountIdentity, account_file: &Path) 
     {
         return Ok(());
     }
-    let mut command = Command::new(std::env::current_exe()?);
+    let mut command = Command::new(crate::process::current_exe()?);
     command
         .args(["--check-update=false", "--database"])
         .arg(db.filename())

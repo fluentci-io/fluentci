@@ -148,7 +148,7 @@ async fn ensure(root: &Path) -> Result<()> {
             .create(true)
             .append(true)
             .open(directory.join("manager.log"))?;
-        let mut command = std::process::Command::new(std::env::current_exe()?);
+        let mut command = std::process::Command::new(crate::process::current_exe()?);
         command
             .args(["__service-manager", "--root"])
             .arg(root)

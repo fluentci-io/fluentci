@@ -126,7 +126,7 @@ async fn build(payload: &serde_json::Value, token: &str) -> Result<()> {
         "Job work directory escapes build context"
     );
     let run_id = payload["runId"].as_str().context("Missing run ID")?;
-    let mut c = Command::new(std::env::current_exe()?);
+    let mut c = Command::new(crate::process::current_exe()?);
     c.arg("run");
     if query["wasm"].as_bool().unwrap_or(false) {
         c.arg("--wasm");

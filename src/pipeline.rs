@@ -271,7 +271,7 @@ async fn wasm_command(
 }
 
 fn engine_command(module: &str, jobs: &[String]) -> Result<Command> {
-    let mut command = Command::new(std::env::current_exe()?);
+    let mut command = Command::new(crate::process::current_exe()?);
     command
         .args(["__engine-call", "--module", module, "--"])
         .args(jobs)

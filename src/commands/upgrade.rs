@@ -46,7 +46,7 @@ pub(super) async fn execute() -> Result<()> {
     let archive = temp.path().join("fluentci.tar.gz");
     tokio::fs::write(&archive, bytes).await?;
     process::execute("tar", ["xzf", &archive.to_string_lossy()], temp.path()).await?;
-    let current = std::env::current_exe()?;
+    let current = crate::process::current_exe()?;
     let staged = current.with_extension("new");
     tokio::fs::copy(temp.path().join("fluentci"), &staged).await?;
     tokio::fs::rename(staged, current).await?;
