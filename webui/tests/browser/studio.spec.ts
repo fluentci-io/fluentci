@@ -360,12 +360,12 @@ test("composes CI events visually and keeps repository autocomplete custom", asy
   await repository.fill("fluentci");
   await dialog
     .getByRole("option", {
-      name: "https://tangled.org/fluentci.io/fluentci",
+      name: "tsiry-sandratraina.com/fluentci",
       exact: true,
     })
     .click();
   await expect(repository).toHaveValue(
-    "https://tangled.org/fluentci.io/fluentci",
+    "https://knot1.tangled.sh/did:plc:zyxwvutsrqponmlkjihgfedcb",
   );
 });
 
@@ -467,4 +467,51 @@ test("suggests registry modules separately from local modules", async ({
       () => document.documentElement.scrollWidth <= window.innerWidth,
     ),
   ).toBe(true);
+});
+
+test("pins Git branch and pull controls, then reloads sources on branch switch", async ({
+  page,
+}) => {
+  await page.goto("/project/local-fluentci/actions?fixture=git");
+  await expect(page.getByRole("combobox", { name: "Git branch" })).toHaveValue(
+    "main",
+  );
+  await page.evaluate(() => window.scrollTo(0, 650));
+  const header = page.getByRole("group", { name: "Header Git controls" });
+  await expect(header).toBeVisible();
+  await expect(
+    page.getByRole("navigation", { name: "Project tabs" }),
+  ).toHaveCSS("top", "96px");
+  await header
+    .getByRole("combobox", { name: "Git branch" })
+    .selectOption("feature/docs");
+  await expect(
+    header.getByRole("combobox", { name: "Git branch" }),
+  ).toHaveValue("feature/docs");
+  await expect(page.getByRole("option", { name: "Branch checks" })).toHaveCount(
+    1,
+  );
+  await header.getByRole("button", { name: "Pull Git changes" }).click();
+  await expect(
+    header.getByRole("button", { name: "Pull Git changes" }),
+  ).toBeEnabled();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  for (const element of [
+    header.getByRole("combobox", { name: "Git branch" }),
+    header.getByRole("button", { name: "Pull Git changes" }),
+    page.getByRole("group", { name: "Header pipeline control" }),
+  ]) {
+    const bounds = await element.boundingBox();
+    expect(bounds!.x).toBeGreaterThanOrEqual(0);
+    expect(bounds!.x + bounds!.width).toBeLessThanOrEqual(
+      page.viewportSize()!.width,
+    );
+  }
+  await page.screenshot({
+    path: `test-results/git-controls-${test.info().project.name}.png`,
+  });
 });

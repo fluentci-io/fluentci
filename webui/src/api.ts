@@ -250,6 +250,16 @@ export function useLiveEvents() {
             );
             void client.invalidateQueries({ queryKey: ["logs", job.id] });
             invalidate();
+          } else if (event.channel === "project-git") {
+            for (const key of [
+              "projectGit",
+              "workflows",
+              "actions",
+              "actionSuggestions",
+              "projectDirectories",
+              "export",
+            ])
+              void client.invalidateQueries({ queryKey: [key] });
           } else if (event.channel === "workflow") {
             for (const key of ["workflows", "actions", "export"])
               void client.invalidateQueries({ queryKey: [key] });

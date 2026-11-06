@@ -95,3 +95,23 @@ controls scroll out of view. Module suggestions distinguish local declarations
 from registry packages, include published function names, and show module logos
 with an icon fallback. Registry suggestions require network access; local and
 custom module values remain usable offline.
+
+## Git controls and repository suggestions
+
+Git projects show the current branch, a local branch picker, and a **Pull**
+button. These controls stay available in the header when their original position
+scrolls out of view. Detached checkouts show the commit instead of a branch;
+pulling requires a branch with an upstream. Pull uses fast-forward-only updates,
+and branch switching preserves Git's protection for local changes. Archived
+projects and active project runs cannot mutate the working tree. Save or discard
+unsaved Studio action drafts before switching branches or pulling.
+
+After switching or pulling, Studio reloads workflow definitions, actions, local
+module/function suggestions, and project directories. Other open Studio clients
+receive a `project-git` event. Git status also refreshes every ten seconds,
+including changes made from a terminal. A selected workflow missing from the new
+branch falls back to the default workflow after a Studio Git operation.
+
+The clone dialog shows Tangled's logo and readable `handle/repository` names,
+with the actual clone URL underneath. Search matches both labels and URLs;
+selection fills the clone URL. Tangled's logo is bundled for offline use.

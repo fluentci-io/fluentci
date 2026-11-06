@@ -140,6 +140,20 @@ impl Query {
         Ok(crate::account::current()?)
     }
 
+    async fn project_git(
+        &self,
+        ctx: &Context<'_>,
+        project_id: ID,
+    ) -> async_graphql::Result<Option<crate::project_git::GitStatus>> {
+        let project = ctx
+            .data::<AppState>()?
+            .db
+            .project(&project_id)
+            .await?
+            .context("Project not found")?;
+        Ok(crate::project_git::status(Path::new(&project.path)).await?)
+    }
+
     async fn tangled_repositories(
         &self,
         ctx: &Context<'_>,
@@ -512,6 +526,23 @@ pub struct Mutation;
 
 #[Object]
 impl Mutation {
+    async fn pull_project(
+        &self,
+        ctx: &Context<'_>,
+        project_id: ID,
+    ) -> async_graphql::Result<crate::project_git::GitStatus> {
+        update_project_git(ctx, &project_id, None).await
+    }
+
+    async fn switch_project_branch(
+        &self,
+        ctx: &Context<'_>,
+        project_id: ID,
+        branch: String,
+    ) -> async_graphql::Result<crate::project_git::GitStatus> {
+        update_project_git(ctx, &project_id, Some(&branch)).await
+    }
+
     async fn create_project(
         &self,
         ctx: &Context<'_>,
@@ -916,4 +947,36 @@ pub async fn serve(db: Db, port: u16, studio: bool) -> Result<()> {
         })
         .await?;
     Ok(())
+}
+
+async fn update_project_git(
+    ctx: &Context<'_>,
+    project_id: &str,
+    branch: Option<&str>,
+) -> async_graphql::Result<crate::project_git::GitStatus> {
+    let state = ctx.data::<AppState>()?;
+    let project = state
+        .db
+        .project(project_id)
+        .await?
+        .context("Project not found")?;
+    if project.archived.unwrap_or(false) {
+        return Err("Project is archived".into());
+    }
+    let runs = state.db.workflow_runs(project_id, None).await?;
+    if runs
+        .iter()
+        .any(|run| matches!(run.status.as_deref(), Some("PENDING" | "RUNNING")))
+    {
+        return Err(
+            "Wait for active project runs to finish before changing its Git working tree".into(),
+        );
+    }
+    let status = crate::project_git::update(Path::new(&project.path), branch).await?;
+    executor::publish(
+        Some(&state.events),
+        "project-git",
+        serde_json::json!({"projectId":project_id}),
+    );
+    Ok(status)
 }

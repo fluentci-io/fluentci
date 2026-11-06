@@ -788,7 +788,7 @@ describe("workflow event composer and repository suggestions", () => {
     await waitFor(() => expect(api.runs[0].status).toBe("RUNNING"));
   });
 
-  it("uses only Studio's repository dropdown with browser autocomplete disabled", async () => {
+  it("shows Tangled names and logo while selecting the clone URL with native autocomplete disabled", async () => {
     renderApp("/", { status: "SUCCESS" });
     await userEvent.click(
       screen.getAllByRole("button", { name: "Add project" })[0],
@@ -803,13 +803,18 @@ describe("workflow event composer and repository suggestions", () => {
     expect(input).toHaveAttribute("autocomplete", "off");
     expect(input).not.toHaveAttribute("list");
     await userEvent.click(input);
-    await userEvent.type(input, "fluentci");
-    await userEvent.click(
-      await within(dialog).findByRole("option", {
-        name: "https://tangled.org/fluentci.io/fluentci",
-      }),
+    await userEvent.type(input, "tsiry-sandratraina");
+    const option = await within(dialog).findByRole("option", {
+      name: "tsiry-sandratraina.com/fluentci",
+    });
+    expect(option).toHaveTextContent(
+      "https://knot1.tangled.sh/did:plc:zyxwvutsrqponmlkjihgfedcb",
     );
-    expect(input).toHaveValue("https://tangled.org/fluentci.io/fluentci");
+    expect(option.querySelector("img")).toHaveAttribute("src", "/tangled.svg");
+    await userEvent.click(option);
+    expect(input).toHaveValue(
+      "https://knot1.tangled.sh/did:plc:zyxwvutsrqponmlkjihgfedcb",
+    );
     expect(within(dialog).queryByRole("listbox")).not.toBeInTheDocument();
   });
 });
@@ -845,4 +850,43 @@ it("distinguishes local modules from registry packages and suggests published fu
   await userEvent.type(functions, "se");
   await userEvent.click(await screen.findByRole("option", { name: "setup" }));
   expect(functions).toHaveValue("setup");
+});
+
+it("switches Git branch and immediately reloads workflows and local modules", async () => {
+  renderApp("/project/local-fluentci/actions", { git: true, noRuns: true });
+  const branch = await screen.findByRole("combobox", { name: "Git branch" });
+  expect(branch).toHaveValue("main");
+  await userEvent.selectOptions(branch, "feature/docs");
+  await waitFor(() => expect(branch).toHaveValue("feature/docs"));
+  expect(
+    await screen.findByRole("option", { name: "Branch checks" }),
+  ).toBeInTheDocument();
+  const module = screen.getByRole("combobox", { name: "Action 1 module" });
+  await userEvent.clear(module);
+  await userEvent.type(module, "branch-sdk");
+  expect(
+    await screen.findByRole("option", { name: "branch-sdk" }),
+  ).toBeVisible();
+  expect(branch).toBeDisabled(); // unsaved action drafts protect branch changes
+});
+
+it("hides Git controls for non-repositories and disables them for running pipelines", async () => {
+  const first = renderApp("/project/local-fluentci/actions", {
+    status: "SUCCESS",
+  });
+  await screen.findByRole("heading", { name: "Default actions" });
+  expect(
+    screen.queryByRole("combobox", { name: "Git branch" }),
+  ).not.toBeInTheDocument();
+  first.unmount();
+  renderApp("/project/local-fluentci/actions", {
+    git: true,
+    status: "RUNNING",
+  });
+  expect(
+    await screen.findByRole("combobox", { name: "Git branch" }),
+  ).toBeDisabled();
+  expect(
+    screen.getByRole("button", { name: "Pull Git changes" }),
+  ).toBeDisabled();
 });

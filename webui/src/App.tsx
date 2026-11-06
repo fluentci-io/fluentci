@@ -60,6 +60,7 @@ import {
 } from "./state";
 import type { Project, Run } from "./types";
 import { SuggestInput } from "./components/SuggestInput";
+import { ProjectGitControls } from "./components/ProjectGitControls";
 import { WorkflowPicker } from "./components/WorkflowPicker";
 import { HistoryBars } from "./components/HistoryBars";
 import { PipelineControl } from "./components/PipelineControl";
@@ -91,6 +92,7 @@ export default function App() {
   const [toolbarVisibility, setToolbarVisibility] = useState({
     control: false,
     workflows: false,
+    git: false,
   });
   const [palette, setPalette] = useState(false);
   const [newProject, setNewProject] = useState(false);
@@ -349,7 +351,9 @@ export default function App() {
               <PanelLeftOpen size={18} />
             )}
           </button>
-          <div className="flex min-w-0 flex-1 items-center gap-2 text-xs">
+          <div
+            className={`min-w-0 flex-1 items-center gap-2 text-xs ${toolbarVisibility.workflows || toolbarVisibility.control ? "hidden sm:flex" : "flex"}`}
+          >
             <Link
               to="/"
               className="flex items-center gap-2 text-muted hover:text-text"
@@ -419,6 +423,19 @@ export default function App() {
               <Search size={17} />
             </button>
           </div>
+          {toolbarVisibility.git && currentProject && (
+            <div
+              role="group"
+              aria-label="Header Git controls"
+              className="absolute inset-x-0 top-full flex h-10 items-center justify-end border-b border-line bg-panel px-4"
+            >
+              <ProjectGitControls
+                compact
+                projectId={currentProject.id}
+                archived={!!currentProject.archived}
+              />
+            </div>
+          )}
         </header>
         <main className="mx-auto max-w-[1600px] px-4 py-5 md:px-6 md:py-6">
           <Routes>
@@ -754,10 +771,11 @@ function ProjectPage({
   controlError,
 }: {
   workflowId: string;
-  toolbarVisibility: { control: boolean; workflows: boolean };
+  toolbarVisibility: { control: boolean; workflows: boolean; git: boolean };
   onToolbarVisibilityChange: (value: {
     control: boolean;
     workflows: boolean;
+    git: boolean;
   }) => void;
   controllingRun?: Run;
   pending: boolean;
@@ -769,33 +787,42 @@ function ProjectPage({
   const loadedProjectId = project.data?.id;
   const controlRef = useRef<HTMLDivElement>(null);
   const workflowRef = useRef<HTMLDivElement>(null);
+  const gitRef = useRef<HTMLDivElement>(null);
+  const headerOffset = toolbarVisibility.git ? 96 : 56;
   useEffect(() => {
     const reset = () =>
-      onToolbarVisibilityChange({ control: false, workflows: false });
-    reset();
+      onToolbarVisibilityChange({
+        control: false,
+        workflows: false,
+        git: false,
+      });
     if (!loadedProjectId || typeof IntersectionObserver === "undefined")
       return reset;
     const update = () =>
       onToolbarVisibilityChange({
         control:
           !!controlRef.current &&
-          controlRef.current.getBoundingClientRect().bottom <= 56,
+          controlRef.current.getBoundingClientRect().bottom <= headerOffset,
         workflows:
           !!workflowRef.current &&
-          workflowRef.current.getBoundingClientRect().bottom <= 56,
+          workflowRef.current.getBoundingClientRect().bottom <= headerOffset,
+        git:
+          !!gitRef.current &&
+          gitRef.current.getBoundingClientRect().height > 0 &&
+          gitRef.current.getBoundingClientRect().bottom <= headerOffset,
       });
     const observer = new IntersectionObserver(update, {
-      rootMargin: "-56px 0px 0px 0px",
+      rootMargin: `-${headerOffset}px 0px 0px 0px`,
       threshold: 0,
     });
     if (controlRef.current) observer.observe(controlRef.current);
     if (workflowRef.current) observer.observe(workflowRef.current);
+    if (gitRef.current) observer.observe(gitRef.current);
     update();
     return () => {
       observer.disconnect();
-      reset();
     };
-  }, [id, loadedProjectId, onToolbarVisibilityChange]);
+  }, [id, loadedProjectId, onToolbarVisibilityChange, headerOffset]);
   const runs = useRuns(id, workflowId);
   const workflows = useWorkflows(id);
   const selectedWorkflow = workflows.data?.find(
@@ -849,6 +876,13 @@ function ProjectPage({
             <Folder size={12} className="shrink-0" />
             {item.path}
           </p>
+          <div
+            ref={gitRef}
+            aria-hidden={toolbarVisibility.git || undefined}
+            className={toolbarVisibility.git ? "invisible" : ""}
+          >
+            <ProjectGitControls projectId={id} archived={!!item.archived} />
+          </div>
         </div>
         <div
           ref={controlRef}
@@ -914,6 +948,7 @@ function ProjectPage({
       )}
       <nav
         aria-label="Project tabs"
+        style={{ top: headerOffset }}
         className="sticky top-14 z-20 mb-7 flex gap-6 overflow-x-auto border-b border-line bg-canvas pt-3"
       >
         {[
@@ -1087,13 +1122,18 @@ function NewProject({ onClose }: { onClose: () => void }) {
     queryKey: ["tangledRepositories"],
     enabled: mode === "clone",
     queryFn: async ({ signal }) =>
-      (
-        await graphql<{ tangledRepositories: { cloneUrl: string }[] }>(
-          "query { tangledRepositories { cloneUrl } }",
-          {},
-          signal,
-        )
-      ).tangledRepositories,
+      await graphql<{
+        currentAccount: { did: string; handle: string } | null;
+        tangledRepositories: {
+          cloneUrl: string;
+          name: string;
+          author: string;
+        }[];
+      }>(
+        "query { currentAccount { did handle } tangledRepositories { cloneUrl name author } }",
+        {},
+        signal,
+      ),
     staleTime: 60_000,
   });
   const client = useQueryClient();
@@ -1178,11 +1218,33 @@ function NewProject({ onClose }: { onClose: () => void }) {
                   label="Git repository URL"
                   suggestions={[
                     ...new Set(
-                      (repositories.data || []).map(
+                      (repositories.data?.tangledRepositories || []).map(
                         (repository) => repository.cloneUrl,
                       ),
                     ),
                   ]}
+                  labels={Object.fromEntries(
+                    (repositories.data?.tangledRepositories || []).map(
+                      (repository) => {
+                        const account = repositories.data?.currentAccount;
+                        const owner =
+                          account?.did === repository.author && account.handle
+                            ? account.handle
+                            : repository.author;
+                        return [
+                          repository.cloneUrl,
+                          `${owner}/${repository.name}`,
+                        ];
+                      },
+                    ),
+                  )}
+                  suggestionIcon={
+                    <img
+                      src="/tangled.svg"
+                      alt=""
+                      className="size-4 brightness-0 invert opacity-70"
+                    />
+                  }
                   placeholder="https://github.com/you/project.git"
                   invalid={!!errors.repository}
                   describedBy={

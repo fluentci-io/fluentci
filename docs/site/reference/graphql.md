@@ -157,3 +157,15 @@ legacy default that has not yet been written to a file.
 `tags`, `paths` arrays), `manual`, and a `schedule` array of UTC cron expressions.
 PR filters do not support tags. Send `null` for a disabled event. CI event settings
 are metadata only during local execution; `runPipeline` never evaluates them.
+
+## Project Git operations
+
+`projectGit(projectId: ID!)` returns `null` outside a Git working tree, or
+`branch`, `commit`, `branches` (local branches), `upstream`, and `dirty`.
+`branch` is null for a detached HEAD. `switchProjectBranch(projectId: ID!, branch:
+String!)` and `pullProject(projectId: ID!)` return the updated Git state. Switching
+accepts an existing local branch; pull requires an upstream and is fast-forward
+only. Neither operation forces changes, resets the worktree, or stashes files.
+Archived projects and projects with active runs reject mutations. Successful
+operations publish `project-git` with `projectId`, prompting clients to reload
+workflow and module information.

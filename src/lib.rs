@@ -15,6 +15,7 @@ pub mod modules;
 pub mod pipeline;
 pub mod plugin_metadata;
 pub mod process;
+pub mod project_git;
 pub mod publishing;
 pub mod registry;
 pub mod remote;

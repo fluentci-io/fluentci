@@ -8,6 +8,8 @@ export const SuggestInput = forwardRef<
     onChange: (value: string) => void;
     onBlur: () => void;
     suggestions: string[];
+    labels?: Record<string, string>;
+    suggestionIcon?: React.ReactNode;
     details?: Record<
       string,
       { badge: string; description?: string; logo?: string | null }
@@ -25,6 +27,8 @@ export const SuggestInput = forwardRef<
     onChange,
     onBlur,
     suggestions,
+    labels = {},
+    suggestionIcon,
     details = {},
     onFocus,
     label,
@@ -62,7 +66,9 @@ export const SuggestInput = forwardRef<
     .filter(
       (item) =>
         (!multiline || !/\s/.test(prefix)) &&
-        item.toLowerCase().includes(prefix.toLowerCase()),
+        `${item} ${labels[item] || ""}`
+          .toLowerCase()
+          .includes(prefix.toLowerCase()),
     )
     .slice(0, 12);
   const visible = open && options.length > 0;
@@ -164,11 +170,13 @@ export const SuggestInput = forwardRef<
               key={option}
               id={`${id}-${index}`}
               role="option"
-              aria-label={option}
+              aria-label={labels[option] || option}
               aria-description={
                 details[option]
                   ? `${details[option].badge}. ${details[option].description || ""}`
-                  : undefined
+                  : labels[option]
+                    ? option
+                    : undefined
               }
               aria-selected={selected === index}
               className={`cursor-pointer rounded-md px-3 py-2 font-mono text-xs ${selected === index ? "bg-accent/15 text-text" : "text-muted"}`}
@@ -177,13 +185,20 @@ export const SuggestInput = forwardRef<
               onClick={() => choose(option)}
             >
               <div className="flex items-center justify-between gap-2">
+                {suggestionIcon && (
+                  <span aria-hidden="true" className="shrink-0 text-muted">
+                    {suggestionIcon}
+                  </span>
+                )}
                 {details[option] && (
                   <ModuleLogo
                     key={details[option].logo || "placeholder"}
                     url={details[option].logo}
                   />
                 )}
-                <span className="min-w-0 flex-1 break-all">{option}</span>
+                <span className="min-w-0 flex-1 break-all">
+                  {labels[option] || option}
+                </span>
                 {details[option] && (
                   <span
                     className={`shrink-0 rounded border px-1.5 py-0.5 font-sans text-[9px] ${details[option].badge === "Registry" ? "border-accent/30 text-accent" : "border-line text-muted"}`}
@@ -192,6 +207,11 @@ export const SuggestInput = forwardRef<
                   </span>
                 )}
               </div>
+              {labels[option] && labels[option] !== option && (
+                <p className="mt-1 break-all text-[10px] leading-4 text-muted">
+                  {option}
+                </p>
+              )}
               {details[option]?.description && (
                 <p className="mt-1 line-clamp-2 font-sans text-[10px] leading-4 text-muted">
                   {details[option].description}

@@ -311,7 +311,7 @@ function ActionsForm({
         )}
         <fieldset
           disabled={archived || save.isPending}
-          className="space-y-4 disabled:opacity-60"
+          className="min-w-0 space-y-4 disabled:opacity-60"
         >
           {fields.map((field, index) => (
             <ActionRow

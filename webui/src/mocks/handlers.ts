@@ -17,13 +17,16 @@ export function createMockApi({
   stream = false,
   largeLogs = false,
   noRuns = false,
+  git = false,
 }: {
   status?: string;
   empty?: boolean;
   stream?: boolean;
   largeLogs?: boolean;
   noRuns?: boolean;
+  git?: boolean;
 } = {}) {
+  let gitBranch = "main";
   let projects: Project[] = empty ? [] : [{ ...initialProject }];
   const workflowActions: Record<string, Action[]> = {
     default: structuredClone(initialActions),
@@ -103,7 +106,43 @@ export function createMockApi({
           variables?: Record<string, unknown>;
         };
         let data: Record<string, unknown>;
-        if (/\bregistryModules\s*\(/.test(query)) {
+        if (/\bprojectGit\s*\(/.test(query)) {
+          data = {
+            projectGit: git
+              ? {
+                  branch: gitBranch,
+                  commit: "abc1234",
+                  branches: ["main", "feature/docs"],
+                  upstream: `origin/${gitBranch}`,
+                  dirty: false,
+                }
+              : null,
+          };
+        } else if (/\b(switchProjectBranch|pullProject)\s*\(/.test(query)) {
+          const switching = /switchProjectBranch/.test(query);
+          if (switching) {
+            gitBranch = String(v.branch);
+            workflows = [
+              ...workflows,
+              {
+                ...workflows[0],
+                id: "branch-checks",
+                name: "Branch checks",
+                revision: "branch-revision",
+              },
+            ];
+          }
+          data = {
+            [switching ? "switchProjectBranch" : "pullProject"]: {
+              branch: gitBranch,
+              commit: "def5678",
+              branches: ["main", "feature/docs"],
+              upstream: `origin/${gitBranch}`,
+              dirty: false,
+            },
+          };
+          publish("project-git", { projectId: v.id });
+        } else if (/\bregistryModules\s*\(/.test(query)) {
           const reference = "@fluentci.io/sccache@v0.1.0";
           data = {
             registryModules: reference.includes(String(v.query).toLowerCase())
@@ -121,8 +160,17 @@ export function createMockApi({
           };
         } else if (/\btangledRepositories\b/.test(query)) {
           data = {
+            currentAccount: {
+              did: "did:plc:abcdefghijklmnopqrstuvwx",
+              handle: "tsiry-sandratraina.com",
+            },
             tangledRepositories: [
-              { cloneUrl: "https://tangled.org/fluentci.io/fluentci" },
+              {
+                cloneUrl:
+                  "https://knot1.tangled.sh/did:plc:zyxwvutsrqponmlkjihgfedcb",
+                name: "fluentci",
+                author: "did:plc:abcdefghijklmnopqrstuvwx",
+              },
             ],
           };
         } else if (/\bcreateWorkflow\s*\(/.test(query)) {
@@ -217,6 +265,9 @@ export function createMockApi({
               { name: "rust", functions: ["build", "test", "fmt", "clippy"] },
               { name: "bun", functions: ["install", "run", "test"] },
               { name: "sccache", functions: ["build"], origin: "LOCAL" },
+              ...(gitBranch === "feature/docs"
+                ? [{ name: "branch-sdk", functions: ["docs"], origin: "LOCAL" }]
+                : []),
             ],
           };
         } else if (/\bprojects\s*\(/.test(query)) data = { projects };

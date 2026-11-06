@@ -4,6 +4,8 @@ import { createMockApi } from "./handlers";
 export async function enableMocking() {
   const api = createMockApi({
     stream: true,
+    git: new URLSearchParams(location.search).get("fixture") === "git",
+    noRuns: new URLSearchParams(location.search).get("fixture") === "git",
     largeLogs: new URLSearchParams(location.search).get("fixture") === "large",
   });
   const worker = setupWorker(...api.handlers);
