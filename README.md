@@ -3,6 +3,7 @@
 # FluentCI
 
 [![Release](https://github.com/fluentci-io/fluentci/actions/workflows/release.yml/badge.svg)](https://github.com/fluentci-io/fluentci/actions/workflows/release.yml)
+[![FlakeHub](https://img.shields.io/endpoint?url=https://flakehub.com/f/fluentci-io/fluentci/badge)](https://flakehub.com/flake/fluentci-io/fluentci)
 [![Discord](https://img.shields.io/discord/1132020671262773358?label=discord&logo=discord&color=5865F2)](https://discord.gg/V4U6dPskKc)
 
 FluentCI is a programmable CI/CD tool for building, testing, and deploying your
