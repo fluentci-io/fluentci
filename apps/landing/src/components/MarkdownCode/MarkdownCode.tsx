@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import "../../markdown-themes.css";
 
 export function MarkdownCode({
   code,

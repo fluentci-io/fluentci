@@ -87,7 +87,11 @@ async function reportDownload(download: Download, env: Env) {
         return;
       }
       if (response.status < 500 && response.status !== 429) {
-        console.error("Download tracking rejected", response.status);
+        console.error(
+          "Download tracking rejected",
+          response.status,
+          response.headers.get("location"),
+        );
         return;
       }
     } catch {

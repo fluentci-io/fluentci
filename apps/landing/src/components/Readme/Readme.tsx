@@ -2,7 +2,6 @@ import { isValidElement, useEffect, useState, type ReactNode } from "react";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { MarkdownCode } from "../MarkdownCode";
-import "../../markdown-themes.css";
 import { httpUrl, readmeUrl, type Plugin } from "../../registry/client";
 
 export function Readme({ plugin }: { plugin: Plugin }) {
