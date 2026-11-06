@@ -515,3 +515,43 @@ test("pins Git branch and pull controls, then reloads sources on branch switch",
     path: `test-results/git-controls-${test.info().project.name}.png`,
   });
 });
+
+for (const git of [false, true]) {
+  test(`pins an expanded job below tabs with Git header ${git ? "visible" : "hidden"}`, async ({
+    page,
+  }) => {
+    await page.goto(
+      `/project/local-fluentci?fixture=large${git ? "&git=1" : ""}`,
+    );
+    await page.getByRole("button", { name: "Following", exact: true }).click();
+    const header = page.getByRole("group", { name: "Test engine job" });
+    const section = header.locator("..");
+    await expect(header).toBeVisible();
+    await section.evaluate((element) =>
+      window.scrollTo(
+        0,
+        window.scrollY + element.getBoundingClientRect().top - 50,
+      ),
+    );
+    const tabs = page.getByRole("navigation", { name: "Project tabs" });
+    await expect
+      .poll(async () => {
+        const tabBounds = await tabs.boundingBox();
+        const jobBounds = await header.boundingBox();
+        return Math.abs(jobBounds!.y - (tabBounds!.y + tabBounds!.height));
+      })
+      .toBeLessThan(2);
+    if (git)
+      await expect(
+        page.getByRole("group", { name: "Header Git controls" }),
+      ).toBeVisible();
+    await expect(
+      header.getByRole("button", { name: "Re-run job" }),
+    ).toBeVisible();
+    await page.screenshot({
+      path: `test-results/pinned-job-${git ? "git" : "plain"}-${test.info().project.name}.png`,
+    });
+    await header.getByRole("button", { name: /Test engine/ }).click();
+    await expect(page.getByLabel("Test engine output")).not.toBeVisible();
+  });
+}

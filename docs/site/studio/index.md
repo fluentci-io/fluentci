@@ -115,3 +115,6 @@ branch falls back to the default workflow after a Studio Git operation.
 The clone dialog shows Tangled's logo and readable `handle/repository` names,
 with the actual clone URL underneath. Search matches both labels and URLs;
 selection fills the clone URL. Tangled's logo is bundled for offline use.
+
+Expanded job headers stay pinned directly below the project tabs while scrolling
+through logs. Their offset adapts when the pinned Git controls are visible.

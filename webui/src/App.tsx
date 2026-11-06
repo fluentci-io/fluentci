@@ -788,6 +788,19 @@ function ProjectPage({
   const controlRef = useRef<HTMLDivElement>(null);
   const workflowRef = useRef<HTMLDivElement>(null);
   const gitRef = useRef<HTMLDivElement>(null);
+  const tabsRef = useRef<HTMLElement>(null);
+  const [tabsHeight, setTabsHeight] = useState(48);
+  useEffect(() => {
+    const tabs = tabsRef.current;
+    if (!tabs) return;
+    const measure = () =>
+      setTabsHeight(Math.ceil(tabs.getBoundingClientRect().height));
+    measure();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(measure);
+    observer.observe(tabs);
+    return () => observer.disconnect();
+  }, [loadedProjectId]);
   const headerOffset = toolbarVisibility.git ? 96 : 56;
   useEffect(() => {
     const reset = () =>
@@ -861,7 +874,14 @@ function ProjectPage({
     );
   const item = project.data;
   return (
-    <div key={id}>
+    <div
+      key={id}
+      style={
+        {
+          "--studio-job-top": `${headerOffset + tabsHeight}px`,
+        } as React.CSSProperties
+      }
+    >
       <div className="mb-6 flex flex-wrap items-start justify-between gap-5">
         <div>
           <div className="mb-2 flex items-center gap-2 text-[10px] font-medium uppercase tracking-widest text-accent">
@@ -947,6 +967,7 @@ function ProjectPage({
         <ErrorNotice error="This workflow is no longer available. Select another workflow to continue; its previous runs remain accessible." />
       )}
       <nav
+        ref={tabsRef}
         aria-label="Project tabs"
         style={{ top: headerOffset }}
         className="sticky top-14 z-20 mb-7 flex gap-6 overflow-x-auto border-b border-line bg-canvas pt-3"

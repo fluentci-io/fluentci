@@ -210,9 +210,14 @@ export function Step({
   };
   return (
     <section
-      className={`overflow-hidden rounded-lg border ${job.status === "RUNNING" ? "border-accent/35" : job.status === "FAILURE" ? "border-danger/30" : "border-line"}`}
+      className={`overflow-clip rounded-lg border ${job.status === "RUNNING" ? "border-accent/35" : job.status === "FAILURE" ? "border-danger/30" : "border-line"}`}
     >
-      <div className="group flex items-center bg-panel pr-3 transition-colors hover:bg-elevated">
+      <div
+        role="group"
+        aria-label={`${job.name} job`}
+        className={`group flex items-center bg-panel pr-3 transition-colors hover:bg-elevated ${open ? "sticky z-10" : "relative"}`}
+        style={open ? { top: "var(--studio-job-top, 0px)" } : undefined}
+      >
         <button
           className="flex min-w-0 flex-1 items-center gap-3 px-4 py-3.5 text-left"
           aria-expanded={open}
