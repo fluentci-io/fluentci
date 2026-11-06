@@ -10,11 +10,12 @@ import {
 } from '@atproto/xrpc-server';
 import { IdResolver } from '@atproto/identity';
 import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
-import { createHash } from 'node:crypto';
-import { root, lexicons, PUBLISH, MAX_WASM_BYTES } from '../config_ffi.mjs';
+import { createHash, timingSafeEqual } from 'node:crypto';
+import { root, lexicons, PUBLISH, RECORD_DOWNLOAD, MAX_WASM_BYTES } from '../config_ffi.mjs';
 import { close } from '../db/client_ffi.mjs';
 import { index } from './welcome.mjs';
 import semver from 'semver';
+import { RegistryRecordDownloadInput } from '../lexicon/models.mjs';
 const identity = new IdResolver();
 export function create(database, options = {}) {
   return {
@@ -44,6 +45,22 @@ export function method(server, nsid, handler) {
       );
       if (claims.iss.includes('#')) throw new AuthRequiredError('Expected an account DID');
       return { credentials: { did: claims.iss } };
+    };
+  if (nsid === RECORD_DOWNLOAD)
+    config.auth = async ({ req }) => {
+      const expected = server.options.trackingToken ?? process.env.DOWNLOAD_TRACKING_TOKEN;
+      if (!expected || !/^[!-~]{32,512}$/.test(expected))
+        throw new XRPCError(503, 'Download tracking is not configured', 'TrackingUnavailable');
+      const token = /^Bearer ([^ ]+)$/i.exec(req.headers.authorization ?? '')?.[1];
+      if (
+        !token ||
+        !timingSafeEqual(
+          createHash('sha256').update(token).digest(),
+          createHash('sha256').update(expected).digest(),
+        )
+      )
+        throw new AuthRequiredError('A download tracking token is required');
+      return { credentials: { tracking: true } };
     };
   server.xrpc.method(nsid, config);
 }
@@ -200,3 +217,19 @@ export function listen(server, database, stopIndexer) {
   process.once('SIGTERM', stop);
   process.once('SIGINT', stop);
 }
+
+export function downloadEvent(request) {
+  const { eventId, handle, name, version } = request.input.body;
+  if (
+    !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(eventId) ||
+    !/^[a-z][a-z0-9-]{0,63}$/.test(name) ||
+    semver.valid(version) !== version ||
+    version.includes('+')
+  )
+    throw new InvalidRequestError(
+      'Provide a UUID v4 eventId, module name and bare SemVer version',
+      'InvalidDownloadMetadata',
+    );
+  return new RegistryRecordDownloadInput(eventId, handle, name, version);
+}
+export const currentDay = () => new Date().toISOString().slice(0, 10);

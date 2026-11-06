@@ -1,0 +1,48 @@
+amends "../../../../schema/lexicon.pkl"
+
+id = "io.fluentci.registry.recordDownload"
+description = "Record a successful Wasm download from the trusted proxy. Requires the private download-tracking bearer token. eventId makes retries idempotent."
+defs = new Mapping {
+  ["main"] = new Procedure {
+    input = new Body {
+      encoding = "application/json"
+      schema = new ObjectField {
+        required = List("eventId", "handle", "name", "version")
+        properties = new Mapping {
+          ["eventId"] = new StringField {
+            minLength = 36
+            maxLength = 36
+          }
+          ["handle"] = new StringField { format = "at-identifier" }
+          ["name"] = new StringField {
+            minLength = 1
+            maxLength = 64
+          }
+          ["version"] = new StringField {
+            minLength = 1
+            maxLength = 128
+          }
+        }
+      }
+    }
+    output = new Body {
+      encoding = "application/json"
+      schema = new ObjectField {
+        required = List("recorded", "downloads")
+        properties = new Mapping {
+          ["recorded"] = new IntegerField {
+            minimum = 0
+            maximum = 1
+          }
+          ["downloads"] = new IntegerField { minimum = 0 }
+        }
+      }
+    }
+    errors = List(
+      new Error { name = "AuthRequired" },
+      new Error { name = "InvalidDownloadMetadata" },
+      new Error { name = "PackageNotFound" },
+      new Error { name = "TrackingUnavailable" }
+    )
+  }
+}

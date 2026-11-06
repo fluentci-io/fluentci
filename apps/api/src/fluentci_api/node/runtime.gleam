@@ -1,6 +1,7 @@
 //// Node HTTP / XRPC bindings. Application handlers are registered from Gleam.
 
 import fluentci_api/db/client.{type Db}
+import fluentci_api/lexicon/models.{type RegistryRecordDownloadInput}
 import gleam/javascript/promise.{type Promise}
 
 pub type Server
@@ -39,3 +40,9 @@ pub fn resolve_author(author: String) -> Promise(String)
 
 @external(javascript, "./runtime_ffi.mjs", "resolveActor")
 pub fn resolve_actor(server: Server, actor: String) -> Promise(String)
+
+@external(javascript, "./runtime_ffi.mjs", "downloadEvent")
+pub fn download_event(request: Request) -> RegistryRecordDownloadInput
+
+@external(javascript, "./runtime_ffi.mjs", "currentDay")
+pub fn current_day() -> String

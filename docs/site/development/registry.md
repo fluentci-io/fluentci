@@ -125,5 +125,30 @@ unsupported operators return `InvalidFilter`. Pagination cursors include filters
 Registry responses include server-maintained per-version total `downloads`.
 `getPackage` includes `dailyDownloads` only when tracked samples exist in the last
 seven UTC calendar days, including today. Gaps within that window are zero-filled.
-The daily table is ready for a future download tracking worker; publishing or
-editing a PDS record does not increment or overwrite counters.
+The download proxy records counters independently; publishing or editing a PDS
+record does not increment or overwrite them.
+
+## Download proxy
+
+`apps/modules` is a Cloudflare Worker proxy from `modules.fluentci.io` to
+`mod.fluentci.io`. It preserves paths, queries, requests, and upstream responses.
+It reports HTTP 200 Wasm GETs in the background with `ctx.waitUntil`; HEAD,
+partial responses, errors, and redirects do not increment counters.
+
+Configure the same private `DOWNLOAD_TRACKING_TOKEN` in the API environment and
+as a Worker secret (`wrangler secret put DOWNLOAD_TRACKING_TOKEN`). Keep it out
+of source control. It must contain 32–512 non-whitespace printable ASCII
+characters. Deploy the API migration `0010_download_events` before the Worker.
+An unset token disables recording without disabling the other API endpoints.
+
+The authenticated `io.fluentci.registry.recordDownload` procedure accepts
+`eventId` (UUID v4), `handle`, `name`, and bare SemVer `version`. One transaction
+records the event, increments the indexed version's total, and updates its UTC
+daily bucket. Duplicate event IDs do not increment again. Counters are derived
+from server state rather than publisher metadata.
+
+Set `S3_PUBLIC_URL=https://modules.fluentci.io` for new publications to use the
+proxy. Existing PDS records must update their direct-storage URLs to opt in.
+Keep `mod.fluentci.io` on storage; putting the proxy on that origin would recurse.
+Reporting is best effort, with one retry and an idempotent event ID; it does not
+measure unique users or guarantee a completed transfer.

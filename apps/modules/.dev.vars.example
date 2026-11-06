@@ -1,0 +1,2 @@
+# Match DOWNLOAD_TRACKING_TOKEN in the API environment.
+DOWNLOAD_TRACKING_TOKEN=replace-with-a-random-token-of-at-least-32-characters

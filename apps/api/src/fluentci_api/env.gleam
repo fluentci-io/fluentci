@@ -133,6 +133,14 @@ pub fn validate(
         _, _ -> []
       },
     )
+  let token = read("DOWNLOAD_TRACKING_TOKEN")
+  let errors =
+    list.append(errors, case token == "" || valid_tracking_token(token) {
+      True -> []
+      False -> [
+        "DOWNLOAD_TRACKING_TOKEN must contain 32–512 printable non-whitespace ASCII characters",
+      ]
+    })
   case errors {
     [] ->
       Ok(Env(
@@ -149,3 +157,6 @@ pub fn validate(
 pub fn load(mode: Mode) -> Result(Env, List(String)) {
   validate(get, mode)
 }
+
+@external(javascript, "./env_ffi.mjs", "validTrackingToken")
+fn valid_tracking_token(value: String) -> Bool

@@ -139,3 +139,21 @@ pub fn legacy_jetstream_override_selects_one_source_test() {
   let assert Ok(config) = env.validate(read, env.Indexer)
   config.jetstream_urls |> should.equal(["ws://localhost:6009/subscribe"])
 }
+
+pub fn download_tracking_token_is_optional_but_must_be_strong_when_configured_test() {
+  let weak = fn(name) {
+    case name {
+      "DOWNLOAD_TRACKING_TOKEN" -> "short"
+      _ -> settings(name)
+    }
+  }
+  env.validate(weak, env.Server) |> should.be_error
+  let strong = fn(name) {
+    case name {
+      "DOWNLOAD_TRACKING_TOKEN" ->
+        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+      _ -> settings(name)
+    }
+  }
+  env.validate(strong, env.Server) |> should.be_ok
+}

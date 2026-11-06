@@ -286,3 +286,42 @@ pub fn json_contains(
 
 @external(javascript, "./orm_ffi.mjs", "jsonContains")
 fn json_contains_ffi(expression: Raw, value: String) -> Condition
+
+pub fn increment(expression: Expression(Int), amount: Int) -> Assignment {
+  increment_assignment(expression.raw, amount)
+}
+
+@external(javascript, "./orm_ffi.mjs", "incrementAssignment")
+fn increment_assignment(expression: Raw, amount: Int) -> Assignment
+
+pub fn update(table: Table(a), assignments: List(Assignment)) -> Query(a) {
+  Query(update_ffi(table.raw, assignments), table.decoder)
+}
+
+@external(javascript, "./orm_ffi.mjs", "update")
+fn update_ffi(table: Raw, assignments: List(Assignment)) -> Raw
+
+pub fn on_conflict_do_update_columns(
+  query: Query(a),
+  targets: List(Expression(b)),
+  assignments: List(Assignment),
+  condition: Condition,
+) -> Query(a) {
+  Query(
+    conflict_update_columns(
+      query.raw,
+      list.map(targets, fn(expression) { expression.raw }),
+      assignments,
+      condition,
+    ),
+    query.decoder,
+  )
+}
+
+@external(javascript, "./orm_ffi.mjs", "conflictUpdateColumns")
+fn conflict_update_columns(
+  query: Raw,
+  targets: List(Raw),
+  assignments: List(Assignment),
+  condition: Condition,
+) -> Raw

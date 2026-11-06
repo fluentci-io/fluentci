@@ -6,6 +6,7 @@ export const ids = {
   registry_get_package: 'io.fluentci.registry.getPackage',
   registry_list_packages: 'io.fluentci.registry.listPackages',
   registry_publish: 'io.fluentci.registry.publish',
+  registry_record_download: 'io.fluentci.registry.recordDownload',
   registry_search_packages: 'io.fluentci.registry.searchPackages',
 };
 export const schemas = [
@@ -606,6 +607,77 @@ export const schemas = [
           },
           {
             name: 'StorageUnavailable',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.registry.recordDownload',
+    description:
+      'Record a successful Wasm download from the trusted proxy. Requires the private download-tracking bearer token. eventId makes retries idempotent.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['eventId', 'handle', 'name', 'version'],
+            properties: {
+              eventId: {
+                type: 'string',
+                minLength: 36,
+                maxLength: 36,
+              },
+              handle: {
+                type: 'string',
+                format: 'at-identifier',
+              },
+              name: {
+                type: 'string',
+                minLength: 1,
+                maxLength: 64,
+              },
+              version: {
+                type: 'string',
+                minLength: 1,
+                maxLength: 128,
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['recorded', 'downloads'],
+            properties: {
+              recorded: {
+                type: 'integer',
+                minimum: 0,
+                maximum: 1,
+              },
+              downloads: {
+                type: 'integer',
+                minimum: 0,
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'InvalidDownloadMetadata',
+          },
+          {
+            name: 'PackageNotFound',
+          },
+          {
+            name: 'TrackingUnavailable',
           },
         ],
       },

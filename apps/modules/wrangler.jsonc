@@ -1,0 +1,11 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "fluentci-modules",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-06",
+  "routes": [{ "pattern": "modules.fluentci.io", "custom_domain": true }],
+  "vars": {
+    "DOWNLOAD_API_URL": "https://api.fluentci.io/xrpc/io.fluentci.registry.recordDownload",
+  },
+  "observability": { "enabled": true },
+}

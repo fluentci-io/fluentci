@@ -713,15 +713,20 @@ bun run dev:docs     # http://localhost:4174
 bun run dev         # landing + Studio together
 ```
 
-| Workspace           | Location       | Purpose                                       |
-| ------------------- | -------------- | --------------------------------------------- |
-| `@fluentci/landing` | `apps/landing` | Public React/Vite/Tailwind landing page       |
-| `@fluentci/docs`    | `docs`         | Lume 4 documentation, managed with Bun        |
-| `fluentci-studio`   | `webui`        | Studio UI embedded in the CLI and desktop app |
-| `fluentci-desktop`  | `desktop`      | Native Tauri app and release bundle           |
+| Workspace           | Location       | Purpose                                                |
+| ------------------- | -------------- | ------------------------------------------------------ |
+| `@fluentci/landing` | `apps/landing` | Public React/Vite/Tailwind landing page                |
+| `@fluentci/modules` | `apps/modules` | Cloudflare Wasm proxy and background download tracking |
+| `@fluentci/api`     | `apps/api`     | Gleam XRPC registry and download counters              |
+| `@fluentci/docs`    | `docs`         | Lume 4 documentation, managed with Bun                 |
+| `fluentci-studio`   | `webui`        | Studio UI embedded in the CLI and desktop app          |
+| `fluentci-desktop`  | `desktop`      | Native Tauri app and release bundle                    |
 
 The landing page uses Lexend for text and Inconsolata for code, with bundled fonts,
-SDK examples, install instructions, and a Studio preview. It requires no API server.
+SDK examples, install instructions, and a Studio preview. The home page works
+independently; module discovery uses the public registry API.
+The [download proxy](apps/modules/README.md) preserves storage requests and
+reports download counters to the API using a shared private token.
 Studio's Vite server proxies to the Rust API on port 6076. To develop Studio:
 
 ```sh

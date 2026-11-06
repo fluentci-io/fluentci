@@ -1,0 +1,23 @@
+{
+  "name": "@fluentci/modules",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "dev": "wrangler dev",
+    "build": "wrangler deploy --dry-run --outdir dist",
+    "deploy": "wrangler deploy",
+    "lint": "prettier --check src tests wrangler.jsonc tsconfig.json",
+    "typecheck": "tsc --noEmit",
+    "test": "node --experimental-strip-types --test tests/*.test.mjs"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20261106.1",
+    "prettier": "^3.6.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.158.0"
+  }
+}

@@ -92,6 +92,8 @@ export async function execute(connection, q) {
     if (q.where) query = query.where(q.where);
     if (q.orders) query = query.orderBy(...q.orders);
     if (q.limit !== undefined) query = query.limit(q.limit);
+  } else if (q.kind === 'update') {
+    query = connection.db.update(q.table).set(q.values).where(q.where).returning();
   } else {
     query = connection.db.insert(q.table).values(q.values);
     if (q.conflict?.nothing) query = query.onConflictDoNothing();
@@ -100,9 +102,39 @@ export async function execute(connection, q) {
   }
   return toList(await query);
 }
-export const transaction = (connection, run) =>
-  connection.db.transaction((tx) => run({ ...connection, db: tx }));
+// Serialize writers sharing a native connection, including HTTP and Jetstream writes.
+// Separate connections remain coordinated by SQLite's write transaction/timeout.
+const transactionTails = new WeakMap();
+export function transaction(connection, run) {
+  const execute = () =>
+    connection.db.transaction((tx) => run({ ...connection, db: tx, inTransaction: true }));
+  if (connection.inTransaction) return execute();
+  const key = connection.client;
+  const result = (transactionTails.get(key) ?? Promise.resolve()).then(execute);
+  transactionTails.set(
+    key,
+    result.then(
+      () => undefined,
+      () => undefined,
+    ),
+  );
+  return result;
+}
 
 export const notCondition = d.not;
 export const jsonContains = (column, value) =>
   d.sql`EXISTS (SELECT 1 FROM json_each(${column}) WHERE value = ${value})`;
+
+export const incrementAssignment = (column, amount) => ({
+  column,
+  value: d.sql`${column} + ${amount}`,
+});
+export const update = (table, assignments) => ({
+  kind: 'update',
+  table,
+  values: values(assignments),
+});
+export const conflictUpdateColumns = (query, targets, assignments, setWhere) => ({
+  ...query,
+  conflict: { target: targets.toArray(), set: values(assignments), setWhere },
+});

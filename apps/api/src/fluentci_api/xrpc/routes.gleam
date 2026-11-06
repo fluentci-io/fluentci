@@ -6,6 +6,7 @@ import fluentci_api/xrpc/io/fluentci/registry/get_actor_packages
 import fluentci_api/xrpc/io/fluentci/registry/get_package
 import fluentci_api/xrpc/io/fluentci/registry/list_packages
 import fluentci_api/xrpc/io/fluentci/registry/publish
+import fluentci_api/xrpc/io/fluentci/registry/record_download
 import fluentci_api/xrpc/io/fluentci/registry/search_packages
 
 pub fn register(server: Server, database: Db) -> Nil {
@@ -14,4 +15,5 @@ pub fn register(server: Server, database: Db) -> Nil {
   search_packages.register(server, database)
   get_package.register(server, database)
   publish.register(server, database)
+  record_download.register(server, database)
 }

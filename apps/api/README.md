@@ -45,8 +45,9 @@ revisions from overwriting newer metadata.
 
 Migration `0008_plugin_classification` stores these fields and reserves a
 nonnegative `downloads` counter with a default of zero. Publisher metadata and
-Jetstream updates cannot reset that counter. Download tracking is not enabled
-yet. Existing records remain valid when the optional fields are absent.
+Jetstream updates cannot reset that counter. The authenticated proxy endpoint
+updates totals and daily buckets independently of published metadata. Existing
+records remain valid when the optional fields are absent.
 
 | Variable                                     | Requirement / default                                                                    |
 | -------------------------------------------- | ---------------------------------------------------------------------------------------- |
@@ -183,6 +184,32 @@ counters through PDS metadata. All API routes allow cross-origin requests from a
 preflight and Authorization/custom headers. Cookie credentials are not enabled.
 
 Migration `0009_daily_downloads` prepares `plugin_download_days`, uniquely keyed
-by record URI and UTC date with a nonnegative count. Download collection is not
-enabled by this migration: a future trusted tracking worker must atomically
-increment the daily bucket and version total. Metadata updates preserve both.
+by record URI and UTC date with a nonnegative count. The authenticated download endpoint and `apps/modules` proxy maintain these
+counters atomically. Metadata updates preserve both.
+
+### Authenticated download recording
+
+The `apps/modules` Cloudflare Worker reports successful full Wasm GETs to
+`POST /xrpc/io.fluentci.registry.recordDownload`. Configure a shared private
+`DOWNLOAD_TRACKING_TOKEN` (32–512 non-whitespace printable ASCII characters) on
+the API and as a Worker secret. An unset token disables only this endpoint.
+The endpoint is unrelated to publisher AT Protocol service authentication.
+
+```json
+{
+  "eventId": "6df623ac-e2d7-45b5-82bc-014223032a41",
+  "handle": "alice.example",
+  "name": "sccache",
+  "version": "0.1.0"
+}
+```
+
+Send `Authorization: Bearer <DOWNLOAD_TRACKING_TOKEN>`. `eventId` must be a UUID
+v4. The server resolves the handle to the indexed author, requires an existing
+visible version, and uses its own UTC date. The response is
+`{"recorded":1,"downloads":42}`, or `recorded:0` for a replay. A single transaction
+updates `plugin_download_events`, `plugin_download_days`, and the total; failures
+roll back all three. Writes sharing a SQLite connection are serialized across
+HTTP handlers and Jetstream. Publisher metadata updates cannot change counters.
+See [Worker deployment instructions](../modules/README.md) for origin routing and
+how to publish download URLs through the proxy.

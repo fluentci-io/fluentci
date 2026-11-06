@@ -18,6 +18,8 @@ pub const registry_list_packages = "io.fluentci.registry.listPackages"
 
 pub const registry_publish = "io.fluentci.registry.publish"
 
+pub const registry_record_download = "io.fluentci.registry.recordDownload"
+
 pub const registry_search_packages = "io.fluentci.registry.searchPackages"
 
 pub type Plugin {
@@ -460,6 +462,43 @@ pub fn encode_registry_publish_output(
     #("url", json.string(value.url)),
     #("sha256", json.string(value.sha256)),
     #("size", json.int(value.size)),
+  ]
+
+  json.object(fields)
+}
+
+pub type RegistryRecordDownloadInput {
+  RegistryRecordDownloadInput(
+    event_id: String,
+    handle: String,
+    name: String,
+    version: String,
+  )
+}
+
+pub fn encode_registry_record_download_input(
+  value: RegistryRecordDownloadInput,
+) -> json.Json {
+  let fields = [
+    #("eventId", json.string(value.event_id)),
+    #("handle", json.string(value.handle)),
+    #("name", json.string(value.name)),
+    #("version", json.string(value.version)),
+  ]
+
+  json.object(fields)
+}
+
+pub type RegistryRecordDownloadOutput {
+  RegistryRecordDownloadOutput(recorded: Int, downloads: Int)
+}
+
+pub fn encode_registry_record_download_output(
+  value: RegistryRecordDownloadOutput,
+) -> json.Json {
+  let fields = [
+    #("recorded", json.int(value.recorded)),
+    #("downloads", json.int(value.downloads)),
   ]
 
   json.object(fields)

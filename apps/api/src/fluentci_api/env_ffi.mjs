@@ -58,3 +58,5 @@ export function abort(errors) {
   );
   process.exit(1);
 }
+
+export const validTrackingToken = (value) => /^[!-~]{32,512}$/.test(value);

@@ -857,3 +857,115 @@ test('CORS allows every origin, route and preflight header including publisher a
     'authorization,content-type,x-custom-header',
   );
 });
+
+test('download recording requires a private token and atomically counts totals and UTC days once', async (t) => {
+  const connection = await fixture(t);
+  await add(connection, event('counted'));
+  const token = 'trusted-worker-token-at-least-32-characters';
+  const { url } = await server(t, connection, {
+    trackingToken: token,
+    resolveActor: async () => did,
+  });
+  const endpoint = `${url}/xrpc/io.fluentci.registry.recordDownload`;
+  const { randomUUID } = await import('node:crypto');
+  const send = (eventId, secret = token, extra = {}) =>
+    fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        ...(secret ? { Authorization: `Bearer ${secret}` } : {}),
+      },
+      body: JSON.stringify({
+        eventId,
+        handle: 'alice.example',
+        name: 'counted',
+        version: '1.0.0',
+        ...extra,
+      }),
+    });
+  for (const secret of ['', 'wrong-token'])
+    assert.equal((await send(randomUUID(), secret)).status, 401);
+  assert.equal((await send('not-a-uuid')).status, 400);
+  assert.equal((await send(randomUUID(), token, { version: 'v1.0.0' })).status, 400);
+  assert.equal((await send(randomUUID(), token, { name: 'unknown' })).status, 400);
+  const id = randomUUID();
+  assert.deepEqual(await (await send(id)).json(), { recorded: 1, downloads: 1 });
+  assert.deepEqual(await (await send(id)).json(), { recorded: 0, downloads: 1 });
+  const ids = Array.from({ length: 12 }, () => randomUUID());
+  const responses = await Promise.all([...ids, ...ids].map((eventId) => send(eventId)));
+  for (const response of responses)
+    assert.equal(response.status, 200, await response.clone().text());
+  const payloads = await Promise.all(responses.map((response) => response.json()));
+  assert.equal(
+    payloads.reduce((sum, payload) => sum + payload.recorded, 0),
+    12,
+  );
+  const plugin = (
+    await (await fetch(`${url}/xrpc/io.fluentci.registry.getPackage?name=counted`)).json()
+  ).package;
+  assert.equal(plugin.downloads, 13);
+  assert.equal(plugin.dailyDownloads.at(-1).downloads, 13);
+  const uri = `at://${did}/io.fluentci.plugin/counted-1.0.0`;
+  const ledger = await connection.client.execute({
+    sql: 'SELECT count(*) AS count FROM plugin_download_events WHERE uri = ?',
+    args: [uri],
+  });
+  assert.equal(ledger.rows[0].count, 13);
+});
+
+test('daily-counter failure rolls back the ledger and total, so the same event can retry', async (t) => {
+  const connection = await fixture(t);
+  await add(connection, event('retry-count'));
+  const { randomUUID } = await import('node:crypto');
+  const { url } = await server(t, connection, {
+    trackingToken: 'a'.repeat(48),
+    resolveActor: async () => did,
+  });
+  const eventId = randomUUID();
+  const send = () =>
+    fetch(`${url}/xrpc/io.fluentci.registry.recordDownload`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${'a'.repeat(48)}` },
+      body: JSON.stringify({
+        eventId,
+        handle: 'alice.example',
+        name: 'retry-count',
+        version: '1.0.0',
+      }),
+    });
+  await connection.client.execute(
+    "CREATE TRIGGER fail_counter BEFORE INSERT ON plugin_download_days BEGIN SELECT RAISE(ABORT, 'test counter failure'); END",
+  );
+  assert.equal((await send()).status, 500);
+  assert.equal(
+    (await connection.client.execute('SELECT count(*) AS count FROM plugin_download_events'))
+      .rows[0].count,
+    0,
+  );
+  assert.equal(
+    (
+      await connection.client.execute(
+        "SELECT downloads FROM plugin_records WHERE name = 'retry-count'",
+      )
+    ).rows[0].downloads,
+    0,
+  );
+  await connection.client.execute('DROP TRIGGER fail_counter');
+  assert.deepEqual(await (await send()).json(), { recorded: 1, downloads: 1 });
+});
+
+test('download recording is disabled without a configured token', async (t) => {
+  const connection = await fixture(t);
+  const { url } = await server(t, connection, { trackingToken: '' });
+  const response = await fetch(`${url}/xrpc/io.fluentci.registry.recordDownload`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer arbitrary-token' },
+    body: JSON.stringify({
+      eventId: '00000000-0000-4000-8000-000000000000',
+      handle: 'alice.example',
+      name: 'hello',
+      version: '1.0.0',
+    }),
+  });
+  assert.equal(response.status, 503);
+});

@@ -114,3 +114,47 @@ jobs:
           name: landing-browser-results
           path: apps/landing/test-results/
           if-no-files-found: ignore
+
+  modules:
+    name: Module download proxy
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Lint, typecheck, test, and bundle the Worker
+        run: bunx turbo run lint typecheck test build --filter=@fluentci/modules
+
+  api:
+    name: Registry API
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: '1.4.3'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: erlef/setup-beam@v1
+        with:
+          gleam-version: '1.19.2'
+      - uses: pkl-community/setup-pkl@v0
+        with:
+          pkl-version: '0.31.1'
+      - name: Install workspace dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+      - name: Check generated lexicons and formatting
+        run: bun run lint
+        working-directory: apps/api
+      - name: Build and test the registry API
+        run: bun run build && bun run test
+        working-directory: apps/api
