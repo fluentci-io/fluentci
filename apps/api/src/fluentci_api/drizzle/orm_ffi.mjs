@@ -102,3 +102,7 @@ export async function execute(connection, q) {
 }
 export const transaction = (connection, run) =>
   connection.db.transaction((tx) => run({ ...connection, db: tx }));
+
+export const notCondition = d.not;
+export const jsonContains = (column, value) =>
+  d.sql`EXISTS (SELECT 1 FROM json_each(${column}) WHERE value = ${value})`;

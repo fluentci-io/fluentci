@@ -106,3 +106,24 @@ sudo journalctl -u fluentci-api.service -f
 ```
 
 Review paths and credentials for the target host before installing the unit.
+
+## Search filters and usage statistics
+
+Search supports `filter` with RSQL, alongside optional full-text `q`:
+
+```sh
+curl -G 'https://api.fluentci.io/xrpc/io.fluentci.registry.searchPackages' \
+  --data-urlencode 'q=cache' \
+  --data-urlencode 'filter=os==linux;arch=in=(aarch64,x86_64)'
+```
+
+Fields are `os`, `arch`, `topics`, `name`, `version`, `license`, and publisher
+`author` DID. Operators are `==`, `!=`, `=in=`, and `=out=`; combine with `;` (AND),
+`,` (OR), and parentheses. Array fields match individual elements. Wildcards and
+unsupported operators return `InvalidFilter`. Pagination cursors include filters.
+
+Registry responses include server-maintained per-version total `downloads`.
+`getPackage` includes `dailyDownloads` only when tracked samples exist in the last
+seven UTC calendar days, including today. Gaps within that window are zero-filled.
+The daily table is ready for a future download tracking worker; publishing or
+editing a PDS record does not increment or overwrite counters.

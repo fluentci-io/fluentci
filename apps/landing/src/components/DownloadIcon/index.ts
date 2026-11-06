@@ -1,0 +1,1 @@
+export { DownloadIcon } from "./DownloadIcon";

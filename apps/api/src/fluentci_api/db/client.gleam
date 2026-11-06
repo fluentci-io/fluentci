@@ -1,6 +1,7 @@
 //// Application queries are constructed in Gleam using typed Drizzle bindings.
 
 import fluentci_api/db/connection
+import fluentci_api/db/filters
 import fluentci_api/drizzle/orm.{
   type Assignment, type Condition, type Query, all, and, asc, desc, eq,
   eq_columns, from, gt, inner_join, insert, is_null, left_join, limit, lt,
@@ -9,7 +10,7 @@ import fluentci_api/drizzle/orm.{
 }
 import fluentci_api/function_metadata
 import fluentci_api/lexicon/models.{
-  RegistryListPackagesOutput, RegistryPackageView,
+  RegistryDailyDownload, RegistryListPackagesOutput, RegistryPackageView,
 }
 import fluentci_api/model.{
   type Event, type Package, type Page, Account, Checkpoint, Delete, Upsert,
@@ -17,6 +18,7 @@ import fluentci_api/model.{
 import fluentci_api/module_metadata
 import fluentci_api/schema/accounts as a
 import fluentci_api/schema/checkpoints as c
+import fluentci_api/schema/download_days as d
 import fluentci_api/schema/events as e
 import fluentci_api/schema/plugin_search as fts
 import fluentci_api/schema/plugins as p
@@ -82,6 +84,8 @@ fn package(row: p.Row) -> Package {
     row.readme_url,
     option.map(row.os, module_metadata.from_string),
     option.map(row.arch, module_metadata.from_string),
+    Some(row.downloads),
+    None,
     row.uri,
     cid,
   )
@@ -108,9 +112,31 @@ pub fn list_packages(
   count: Int,
   cursor_value: String,
 ) -> Promise(Page) {
+  list_filtered(db, query, author, count, cursor_value, "")
+}
+
+pub fn search_packages(
+  db: Db,
+  query: String,
+  author: String,
+  count: Int,
+  cursor_value: String,
+  rsql: String,
+) -> Promise(Page) {
+  list_filtered(db, query, author, count, cursor_value, rsql)
+}
+
+fn list_filtered(
+  db: Db,
+  query: String,
+  author: String,
+  count: Int,
+  cursor_value: String,
+  rsql: String,
+) -> Promise(Page) {
   let plugins = p.table()
-  let filter = query_hash(query, author)
-  let conditions = [visibility()]
+  let filter = query_hash(query, author <> "\n" <> rsql)
+  let conditions = [visibility(), filters.parse(rsql)]
   let conditions = case author {
     "" -> conditions
     _ -> [eq(p.author(plugins), author), ..conditions]
@@ -189,11 +215,11 @@ pub fn get_package(
     "" -> conditions
     _ -> [eq(p.version(plugins), Some(version)), ..conditions]
   }
-  use rows <- promise.map(all(
+  use rows <- promise.await(all(
     db,
     visible() |> where(and(conditions)) |> limit(1001),
   ))
-  case rows {
+  let selected = case rows {
     [] -> fail("PackageNotFound", "Package not found")
     _ -> {
       case
@@ -209,7 +235,44 @@ pub fn get_package(
       }
     }
   }
+  let days = recent_days()
+  let table = d.table()
+  use history <- promise.map(all(
+    db,
+    from(table)
+      |> where(
+        and([
+          eq(d.uri(table), selected.uri),
+          gt(d.date(table), day_before_week()),
+          lt(d.date(table), tomorrow()),
+        ]),
+      )
+      |> order_by([asc(d.date(table))]),
+  ))
+  let daily_downloads = case history {
+    [] -> None
+    _ ->
+      Some(
+        list.map(days, fn(date) {
+          let count =
+            history
+            |> list.filter(fn(row) { row.date == date })
+            |> list.fold(0, fn(total, row) { total + row.downloads })
+          RegistryDailyDownload(date, count)
+        }),
+      )
+  }
+  RegistryPackageView(..selected, daily_downloads: daily_downloads)
 }
+
+@external(javascript, "./query_helpers.mjs", "recentDays")
+fn recent_days() -> List(String)
+
+@external(javascript, "./query_helpers.mjs", "dayBeforeWeek")
+fn day_before_week() -> String
+
+@external(javascript, "./query_helpers.mjs", "tomorrow")
+fn tomorrow() -> String
 
 pub fn cursor(db: Db) -> Promise(Int) {
   let checkpoints = c.table()

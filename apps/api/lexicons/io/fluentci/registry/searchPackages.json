@@ -7,9 +7,7 @@
       "type": "query",
       "parameters": {
         "type": "params",
-        "required": [
-          "q"
-        ],
+        "required": [],
         "properties": {
           "limit": {
             "type": "integer",
@@ -25,9 +23,13 @@
             "type": "string",
             "format": "at-identifier"
           },
+          "filter": {
+            "type": "string",
+            "description": "RSQL filter: os==linux;arch=in=(aarch64,x86_64). Fields: name, version, license, author (DID), os, arch, topics. Operators: ==, !=, =in=, =out=; AND (;), OR (,), grouping.",
+            "maxLength": 2048
+          },
           "q": {
             "type": "string",
-            "minLength": 1,
             "maxLength": 200
           }
         }
@@ -54,6 +56,9 @@
         }
       },
       "errors": [
+        {
+          "name": "InvalidFilter"
+        },
         {
           "name": "InvalidCursor",
           "description": "The cursor is invalid or belongs to a different query."

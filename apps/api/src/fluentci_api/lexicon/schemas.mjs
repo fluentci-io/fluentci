@@ -209,6 +209,20 @@ export const schemas = [
     id: 'io.fluentci.registry.defs',
     description: 'Indexed plugin metadata with its repository record URI and CID.',
     defs: {
+      dailyDownload: {
+        type: 'object',
+        required: ['date', 'downloads'],
+        properties: {
+          date: {
+            type: 'string',
+            description: 'UTC calendar date, YYYY-MM-DD.',
+          },
+          downloads: {
+            type: 'integer',
+            minimum: 0,
+          },
+        },
+      },
       packageView: {
         type: 'object',
         required: [
@@ -331,6 +345,21 @@ export const schemas = [
               maxLength: 32,
             },
             maxLength: 16,
+          },
+          downloads: {
+            type: 'integer',
+            description: 'Registry-maintained total downloads for this published version.',
+            minimum: 0,
+          },
+          dailyDownloads: {
+            type: 'array',
+            description:
+              'Last seven UTC calendar days including today, zero-filled only when tracked history exists.',
+            items: {
+              type: 'ref',
+              ref: 'io.fluentci.registry.defs#dailyDownload',
+            },
+            maxLength: 7,
           },
           uri: {
             type: 'string',
@@ -591,7 +620,7 @@ export const schemas = [
         type: 'query',
         parameters: {
           type: 'params',
-          required: ['q'],
+          required: [],
           properties: {
             limit: {
               type: 'integer',
@@ -607,9 +636,14 @@ export const schemas = [
               type: 'string',
               format: 'at-identifier',
             },
+            filter: {
+              type: 'string',
+              description:
+                'RSQL filter: os==linux;arch=in=(aarch64,x86_64). Fields: name, version, license, author (DID), os, arch, topics. Operators: ==, !=, =in=, =out=; AND (;), OR (,), grouping.',
+              maxLength: 2048,
+            },
             q: {
               type: 'string',
-              minLength: 1,
               maxLength: 200,
             },
           },
@@ -634,6 +668,9 @@ export const schemas = [
           },
         },
         errors: [
+          {
+            name: 'InvalidFilter',
+          },
           {
             name: 'InvalidCursor',
             description: 'The cursor is invalid or belongs to a different query.',

@@ -175,6 +175,17 @@ export async function upload(server, request) {
 export function app(server) {
   const app = express();
   app.disable('x-powered-by');
+  const publicQueries = new Set([
+    '/xrpc/io.fluentci.registry.searchPackages',
+    '/xrpc/io.fluentci.registry.listPackages',
+    '/xrpc/io.fluentci.registry.getPackage',
+    '/xrpc/io.fluentci.registry.getActorPackages',
+  ]);
+  app.use((req, res, next) => {
+    if (req.method === 'GET' && publicQueries.has(req.path))
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    next();
+  });
   app.get('/', index);
   app.get('/favicon.ico', (_req, res) => res.sendFile(resolve(root(), 'public/favicon.ico')));
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));

@@ -5,9 +5,26 @@ import "../plugin.pkl" as plugin
 id = "io.fluentci.registry.defs"
 description = "Indexed plugin metadata with its repository record URI and CID."
 defs = new Mapping {
+  ["dailyDownload"] = new ObjectField {
+    required = List("date", "downloads")
+    properties = new Mapping {
+      ["date"] = new StringField { description = "UTC calendar date, YYYY-MM-DD." }
+      ["downloads"] = new IntegerField { minimum = 0 }
+    }
+  }
+
   ["packageView"] = new ObjectField {
     required = plugin.defs["main"].`record`.required + List("uri", "cid")
     properties = (plugin.defs["main"].`record`.properties) {
+      ["downloads"] = new IntegerField {
+        minimum = 0
+        description = "Registry-maintained total downloads for this published version."
+      }
+      ["dailyDownloads"] = new ArrayField {
+        maxLength = 7
+        description = "Last seven UTC calendar days including today, zero-filled only when tracked history exists."
+        items = new RefField { ref = "io.fluentci.registry.defs#dailyDownload" }
+      }
       ["uri"] = new StringField {
         format = "at-uri"
       }

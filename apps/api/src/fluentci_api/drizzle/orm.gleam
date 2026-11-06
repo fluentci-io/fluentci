@@ -273,3 +273,16 @@ fn execute(db: Db, query: Raw) -> Promise(List(Dynamic))
 
 @external(javascript, "./orm_ffi.mjs", "transaction")
 pub fn transaction(db: Db, run: fn(Db) -> Promise(a)) -> Promise(a)
+
+@external(javascript, "./orm_ffi.mjs", "notCondition")
+pub fn not(condition: Condition) -> Condition
+
+pub fn json_contains(
+  expression: Expression(Option(String)),
+  value: String,
+) -> Condition {
+  json_contains_ffi(expression.raw, value)
+}
+
+@external(javascript, "./orm_ffi.mjs", "jsonContains")
+fn json_contains_ffi(expression: Raw, value: String) -> Condition

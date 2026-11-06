@@ -596,7 +596,7 @@ test('author PDS update events refresh metadata without resetting counters or ac
   });
   updated.commit.operation = 'update';
   updated.commit.rev = 'metadata-update-2';
-  updated.commit.cid = 'bafyreia'.padEnd(59, 'b');
+  updated.commit.cid = 'bafyreia'.padEnd(58, 'b') + 'a';
   await add(connection, updated, updated);
   const stale = event('editable', '1.0.0', 200, did, { description: 'stale' });
   stale.commit.operation = 'update';
@@ -726,4 +726,104 @@ test('actor package feed resolves identities and paginates only visible publishe
   await add(connection, { kind: 'account', did, time_us: 105, account: { active: false } });
   const hidden = await fetch(`${base}?actor=${encodeURIComponent(did)}`);
   assert.deepEqual((await hidden.json()).packages, []);
+});
+
+test('public RSQL filters compose with FTS, bind cursors and reject invalid syntax', async (t) => {
+  const connection = await fixture(t);
+  await add(
+    connection,
+    event('linux-cache', '1.0.0', 100, did, {
+      os: ['linux'],
+      arch: ['aarch64'],
+      topics: ['cache'],
+    }),
+    event('mac-cache', '1.0.0', 101, did, { os: ['macos'], arch: ['aarch64'], topics: ['cache'] }),
+    event('win-build', '1.0.0', 102, did, { os: ['windows'], arch: ['x86_64'] }),
+    event('unclassified', '1.0.0', 103),
+  );
+  const { url } = await server(t, connection);
+  const search = (filter, extra = {}) =>
+    fetch(
+      `${url}/xrpc/io.fluentci.registry.searchPackages?${new URLSearchParams({ filter, ...extra })}`,
+    );
+  const response = await search('os==linux;arch=in=(aarch64,x86_64)', { q: 'cache' });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('access-control-allow-origin'), '*');
+  assert.deepEqual(
+    (await response.json()).packages.map((p) => p.name),
+    ['linux-cache'],
+  );
+  const grouped = await search('(os==linux,os==macos);topics==cache');
+  assert.deepEqual(
+    (await grouped.json()).packages.map((p) => p.name),
+    ['linux-cache', 'mac-cache'],
+  );
+  const excluded = await search('os=out=(linux,macos)');
+  assert.deepEqual(
+    (await excluded.json()).packages.map((p) => p.name),
+    ['unclassified', 'win-build'],
+  );
+  const first = await search('arch==aarch64', { limit: '1' });
+  const { cursor } = await first.json();
+  assert.ok(cursor);
+  const next = await search('arch==aarch64', { limit: '1', cursor });
+  assert.equal((await next.json()).packages.length, 1);
+  assert.equal((await search('arch==x86_64', { cursor })).status, 400);
+  for (const filter of [
+    'downloads=gt=1',
+    'os=like=linux',
+    'os==lin*',
+    'os==',
+    'os==(linux',
+    'os==linux;drop==table',
+  ]) {
+    assert.equal((await search(filter)).status, 400, filter);
+  }
+  const injection = await search('name=="\' OR 1=1 --"');
+  assert.deepEqual((await injection.json()).packages, []);
+});
+
+test('daily downloads are optional, bounded to 7 UTC days and survive metadata edits', async (t) => {
+  const connection = await fixture(t);
+  await add(connection, event('daily'));
+  const { url } = await server(t, connection);
+  const endpoint = `${url}/xrpc/io.fluentci.registry.getPackage?name=daily`;
+  const empty = (await (await fetch(endpoint)).json()).package;
+  assert.equal(empty.downloads, 0);
+  assert.equal(empty.dailyDownloads, undefined);
+  const uri = `at://${did}/io.fluentci.plugin/daily-1.0.0`;
+  const day = (offset) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
+  for (const [offset, downloads] of [
+    [-6, 4],
+    [-2, 8],
+    [0, 3],
+    [-7, 1000],
+    [1, 1000],
+  ]) {
+    await connection.client.execute({
+      sql: 'INSERT INTO plugin_download_days (uri, date, downloads) VALUES (?, ?, ?)',
+      args: [uri, day(offset), downloads],
+    });
+  }
+  await connection.client.execute({
+    sql: 'UPDATE plugin_records SET downloads = 15 WHERE uri = ?',
+    args: [uri],
+  });
+  const update = event('daily', '1.0.0', 200, did, { topics: ['cache'], downloads: 9999 });
+  update.commit.operation = 'update';
+  await add(connection, update);
+  const plugin = (await (await fetch(endpoint)).json()).package;
+  assert.equal(plugin.downloads, 15);
+  assert.equal(plugin.dailyDownloads.length, 7);
+  assert.deepEqual(
+    plugin.dailyDownloads.map((day) => day.downloads),
+    [4, 0, 0, 0, 8, 0, 3],
+  );
+  assert.equal(plugin.dailyDownloads[0].date, day(-6));
+  await assert.rejects(
+    connection.client.execute({
+      sql: 'INSERT INTO plugin_download_days VALUES (?, ?, ?)',
+      args: [uri, day(2), -1],
+    }),
+  );
 });

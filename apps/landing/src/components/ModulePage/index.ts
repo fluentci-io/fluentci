@@ -1,0 +1,1 @@
+export { ModulePage } from "./ModulePage";

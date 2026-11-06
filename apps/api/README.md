@@ -157,3 +157,31 @@ plugin named `rust-build` whose description contains `compiler`.
 Migrations create and backfill the FTS5 index for existing databases. SQLite
 triggers maintain it inside the same transactions as plugin writes. The SQLite
 runtime must support FTS5 (the bundled libSQL runtime does).
+
+### Registry filters and download statistics
+
+`io.fluentci.registry.searchPackages` accepts an optional `filter` containing RSQL.
+`q` is optional so filters can be used alone, or combined with FTS text search:
+
+```text
+/xrpc/io.fluentci.registry.searchPackages?q=cache&filter=os==linux;arch=in=(aarch64,x86_64)
+```
+
+Supported fields: `os`, `arch`, `topics`, `name`, `version`, `license`, and `author`
+(the publisher DID). Supported operators: `==`, `!=`, `=in=`, and `=out=`. Use `;`
+for AND, `,` for OR, and parentheses to group. Array comparisons match an element;
+missing arrays match exclusions. Values are exact, case-sensitive, and bound as
+SQL parameters. Unsupported fields/operators, wildcards, invalid syntax, and
+oversized/deep expressions return `InvalidFilter`. Cursors are bound to text,
+author, and filter. URL-encode the filter when sending requests.
+
+Registry views expose the server-owned `downloads` count for each published
+version. `getPackage` also returns `dailyDownloads` when tracked history exists:
+seven UTC calendar days including today, with missing days filled with zeros.
+It omits this field when no samples exist in the window. Publishers cannot set
+counters through PDS metadata. Public query GETs permit cross-origin requests.
+
+Migration `0009_daily_downloads` prepares `plugin_download_days`, uniquely keyed
+by record URI and UTC date with a nonnegative count. Download collection is not
+enabled by this migration: a future trusted tracking worker must atomically
+increment the daily bucket and version total. Metadata updates preserve both.

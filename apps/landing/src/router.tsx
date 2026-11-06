@@ -1,0 +1,34 @@
+import {
+  createRootRoute,
+  createRoute,
+  createRouter,
+  Outlet,
+} from "@tanstack/react-router";
+import { LandingPage } from "./components/LandingPage";
+import { NotFound } from "./components/NotFound";
+import { ModulePage } from "./components/ModulePage";
+
+const rootRoute = createRootRoute({
+  component: Outlet,
+  notFoundComponent: NotFound,
+});
+const indexRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/",
+  component: LandingPage,
+});
+const moduleRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/$handle/plugin/$rkey",
+  component: ModulePage,
+});
+export const router = createRouter({
+  routeTree: rootRoute.addChildren([indexRoute, moduleRoute]),
+  scrollRestoration: true,
+});
+
+declare module "@tanstack/react-router" {
+  interface Register {
+    router: typeof router;
+  }
+}

@@ -1,0 +1,1 @@
+export { BrandIcon } from "./BrandIcon";

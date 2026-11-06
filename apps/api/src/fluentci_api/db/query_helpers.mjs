@@ -34,3 +34,8 @@ export const words = (value) => toList(value.match(/[\p{L}\p{N}_]+/gu) ?? []);
 export function fail(code, message) {
   throw new InvalidRequestError(message, code);
 }
+
+const utcDay = (offset) => new Date(Date.now() + offset * 86400000).toISOString().slice(0, 10);
+export const recentDays = () => toList(Array.from({ length: 7 }, (_, i) => utcDay(i - 6)));
+export const dayBeforeWeek = () => utcDay(-7);
+export const tomorrow = () => utcDay(1);

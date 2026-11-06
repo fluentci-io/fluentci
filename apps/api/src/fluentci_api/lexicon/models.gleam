@@ -166,6 +166,21 @@ pub fn encode_plugin_function(value: PluginFunction) -> json.Json {
   json.object(fields)
 }
 
+pub type RegistryDailyDownload {
+  RegistryDailyDownload(date: String, downloads: Int)
+}
+
+pub fn encode_registry_daily_download(
+  value: RegistryDailyDownload,
+) -> json.Json {
+  let fields = [
+    #("date", json.string(value.date)),
+    #("downloads", json.int(value.downloads)),
+  ]
+
+  json.object(fields)
+}
+
 pub type RegistryPackageView {
   RegistryPackageView(
     name: String,
@@ -185,6 +200,8 @@ pub type RegistryPackageView {
     readme_url: Option(String),
     os: Option(List(String)),
     arch: Option(List(String)),
+    downloads: Option(Int),
+    daily_downloads: Option(List(RegistryDailyDownload)),
     uri: String,
     cid: String,
   )
@@ -251,6 +268,21 @@ pub fn encode_registry_package_view(value: RegistryPackageView) -> json.Json {
       None -> []
       Some(item) -> [
         #("arch", json.array(item, fn(item) { json.string(item) })),
+      ]
+    })
+  let fields =
+    list.append(fields, case value.downloads {
+      None -> []
+      Some(item) -> [#("downloads", json.int(item))]
+    })
+  let fields =
+    list.append(fields, case value.daily_downloads {
+      None -> []
+      Some(item) -> [
+        #(
+          "dailyDownloads",
+          json.array(item, fn(item) { encode_registry_daily_download(item) }),
+        ),
       ]
     })
   json.object(fields)
@@ -438,14 +470,15 @@ pub type RegistrySearchPackagesParameters {
     limit: Option(Int),
     cursor: Option(String),
     author: Option(String),
-    q: String,
+    filter: Option(String),
+    q: Option(String),
   )
 }
 
 pub fn encode_registry_search_packages_parameters(
   value: RegistrySearchPackagesParameters,
 ) -> json.Json {
-  let fields = [#("q", json.string(value.q))]
+  let fields = []
   let fields =
     list.append(fields, case value.limit {
       None -> []
@@ -460,6 +493,16 @@ pub fn encode_registry_search_packages_parameters(
     list.append(fields, case value.author {
       None -> []
       Some(item) -> [#("author", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.filter {
+      None -> []
+      Some(item) -> [#("filter", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.q {
+      None -> []
+      Some(item) -> [#("q", json.string(item))]
     })
   json.object(fields)
 }

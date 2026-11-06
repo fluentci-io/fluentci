@@ -1,0 +1,1 @@
+export { SearchIcon } from "./SearchIcon";

@@ -3,6 +3,23 @@
   "id": "io.fluentci.registry.defs",
   "description": "Indexed plugin metadata with its repository record URI and CID.",
   "defs": {
+    "dailyDownload": {
+      "type": "object",
+      "required": [
+        "date",
+        "downloads"
+      ],
+      "properties": {
+        "date": {
+          "type": "string",
+          "description": "UTC calendar date, YYYY-MM-DD."
+        },
+        "downloads": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
     "packageView": {
       "type": "object",
       "required": [
@@ -122,6 +139,20 @@
             "maxLength": 32
           },
           "maxLength": 16
+        },
+        "downloads": {
+          "type": "integer",
+          "description": "Registry-maintained total downloads for this published version.",
+          "minimum": 0
+        },
+        "dailyDownloads": {
+          "type": "array",
+          "description": "Last seven UTC calendar days including today, zero-filled only when tracked history exists.",
+          "items": {
+            "type": "ref",
+            "ref": "io.fluentci.registry.defs#dailyDownload"
+          },
+          "maxLength": 7
         },
         "uri": {
           "type": "string",

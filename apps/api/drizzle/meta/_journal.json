@@ -64,6 +64,13 @@
       "when": 1793923200007,
       "tag": "0008_plugin_classification",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1793923200008,
+      "tag": "0009_daily_downloads",
+      "breakpoints": true
     }
   ]
 }

@@ -230,3 +230,59 @@ pre {
     font-size: 14px;
   }
 }
+
+@layer components {
+  .module-search-trigger {
+    @apply flex items-center gap-2 rounded-md border border-line bg-panel px-3 py-2 text-xs text-muted transition-colors hover:border-accent/60;
+  }
+  .module-search-trigger kbd { @apply ml-3; }
+  kbd { @apply rounded border border-line px-1.5 py-0.5 font-mono text-[11px] text-muted; }
+  .module-search-dialog {
+    @apply fixed m-0 overflow-visible rounded-xl border border-line bg-panel p-0 text-ink shadow-2xl;
+    inset: min(14vh, 110px) auto auto 50%;
+    transform: translateX(-50%);
+    width: min(640px, calc(100vw - 24px));
+    max-width: none;
+  }
+  .module-search-dialog::backdrop { background: #0009; backdrop-filter: blur(6px); }
+  .module-search-surface { @apply overflow-hidden rounded-xl; }
+  .module-search-field { @apply flex items-center gap-3 border-b border-line px-4 py-4 text-muted; }
+  .module-search-field input { @apply min-w-0 flex-1 bg-transparent text-sm text-ink outline-none; }
+  .module-search-field input:focus-visible { outline: none; }
+  .module-results { max-height: min(55dvh, 480px); overflow-y: auto; padding: 6px; }
+  .module-result { @apply flex items-center gap-3 rounded-lg p-3 transition-colors; }
+  .module-result.is-selected { @apply bg-raised; }
+  .module-logo { @apply flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-raised text-accent; }
+  .module-logo-large { @apply size-16 rounded-xl sm:size-20; }
+  .module-logo img { @apply size-full object-contain p-1; }
+  .module-author { @apply inline-flex max-w-full items-center gap-2 text-xs text-muted; }
+  .author-avatar { @apply flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-raised font-mono text-[10px] text-accent; }
+  .author-avatar img { @apply size-full object-cover; }
+  .module-search-footer { @apply flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-[10px] text-muted; }
+  .search-message { @apply px-4 py-12 text-center text-sm leading-7 text-muted; }
+  .module-page-grid { @apply grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_320px]; }
+  .module-usage-panel { @apply min-w-0 rounded-xl border border-line bg-panel p-5 lg:sticky lg:top-8; }
+  .usage-command { @apply mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-line bg-paper p-3; }
+  .usage-command code { @apply break-words text-sm leading-6 text-cyan; overflow-wrap: anywhere; }
+  .module-tag { @apply rounded border border-line bg-panel px-2 py-1 font-mono text-xs text-ink; }
+  .module-markdown { @apply text-sm leading-7 text-muted; overflow-wrap: anywhere; }
+  .module-markdown h1, .module-markdown h2, .module-markdown h3, .module-markdown h4 { @apply mb-4 mt-8 font-medium leading-snug text-ink; }
+  .module-markdown h1 { @apply text-2xl; }
+  .module-markdown h2 { @apply text-xl; }
+  .module-markdown h3 { @apply text-lg; }
+  .module-markdown p, .module-markdown ul, .module-markdown ol, .module-markdown blockquote { @apply my-4; }
+  .module-markdown ul { @apply list-disc pl-5; }
+  .module-markdown ol { @apply list-decimal pl-5; }
+  .module-markdown a { @apply text-accent underline underline-offset-4; }
+  .module-markdown pre { @apply my-5 overflow-x-auto rounded-lg border border-line bg-paper p-4 text-sm; overflow-wrap: normal; }
+  .module-markdown code { @apply text-cyan; }
+  .module-markdown img { @apply max-w-full rounded; }
+  .module-markdown table { @apply my-5 block max-w-full overflow-x-auto border-collapse; }
+  .module-markdown th, .module-markdown td { @apply border border-line px-3 py-2 text-left; }
+  .module-markdown blockquote { @apply border-l-2 border-accent pl-4; }
+  .module-markdown hr { @apply my-6 border-line; }
+  .download-chart { @apply mt-5 flex h-24 items-end gap-2 pb-5; }
+  .download-chart > div { @apply relative flex h-full min-w-0 flex-1 items-end; }
+  .download-chart span { @apply block w-full rounded-t bg-accent/75 transition-colors hover:bg-accent; }
+  .download-chart small { @apply absolute -bottom-5 w-full text-center font-mono text-[10px] text-muted; }
+}

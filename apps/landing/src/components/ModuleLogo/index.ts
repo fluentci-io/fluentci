@@ -1,0 +1,1 @@
+export { ModuleLogo } from "./ModuleLogo";

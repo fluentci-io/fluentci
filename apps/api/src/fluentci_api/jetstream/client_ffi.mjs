@@ -150,6 +150,8 @@ export function decodeEvent(message) {
           p.readmeUrl == null ? new None() : new Some(p.readmeUrl),
           p.os == null ? new None() : new Some(decodeLabels(p.os)),
           p.arch == null ? new None() : new Some(decodeLabels(p.arch)),
+          new None(),
+          new None(),
           uri,
           c.cid,
         ),

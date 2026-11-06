@@ -6,7 +6,7 @@ description = "Full-text search plugin names and descriptions, with token prefix
 defs = new Mapping {
   ["main"] = new Query {
     parameters = new Parameters {
-      required = List("q")
+      required = List()
       properties = new Mapping {
         ["limit"] = new IntegerField {
           minimum = 1
@@ -19,8 +19,11 @@ defs = new Mapping {
         ["author"] = new StringField {
           format = "at-identifier"
         }
+        ["filter"] = new StringField {
+          maxLength = 2048
+          description = "RSQL filter: os==linux;arch=in=(aarch64,x86_64). Fields: name, version, license, author (DID), os, arch, topics. Operators: ==, !=, =in=, =out=; AND (;), OR (,), grouping."
+        }
         ["q"] = new StringField {
-          minLength = 1
           maxLength = 200
         }
       }
@@ -40,7 +43,7 @@ defs = new Mapping {
         }
       }
     }
-    errors = List(new Error {
+    errors = List(new Error { name = "InvalidFilter" }, new Error {
       name = "InvalidCursor"
       description = "The cursor is invalid or belongs to a different query."
     })

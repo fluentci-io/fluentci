@@ -98,6 +98,9 @@ jobs:
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Lint, typecheck, and build the landing page
         run: bunx turbo run lint typecheck build --filter=@fluentci/landing
+      - name: Build landing component stories
+        run: bun run build:storybook
+        working-directory: apps/landing
       - name: Install the browser for responsive checks
         run: bunx playwright install --with-deps chromium
         working-directory: apps/landing
