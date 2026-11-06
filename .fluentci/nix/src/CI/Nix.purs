@@ -17,6 +17,11 @@ metadata = run "nix-metadata"
 flakehub :: Effect Unit
 flakehub = do
   version <- requiredEnv "RELEASE_VERSION"
+  -- The publisher's CLI reads this explicit variable, not GITHUB_TOKEN.
+  -- Keep credentials in the inherited environment, never in exec arguments.
+  _ <- requiredEnv "FLAKEHUB_PUSH_GITHUB_TOKEN"
+  _ <- requiredEnv "ACTIONS_ID_TOKEN_REQUEST_TOKEN"
+  _ <- requiredEnv "ACTIONS_ID_TOKEN_REQUEST_URL"
   run "flakehub-publish"
     [ [ "flakehub-push", "--visibility", "public", "--name", "fluentci-io/fluentci", "--tag", version ] ]
 

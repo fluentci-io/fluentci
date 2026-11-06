@@ -209,7 +209,12 @@ test("Nix checks and FlakeHub publishing use the configured commands", (t) => {
   const f = fixture(t);
   success(f.run("nix", "check"));
   success(f.run("nix", "metadata"));
-  success(f.run("nix", "flakehub", { RELEASE_VERSION: "v0.0.0-ci-test" }));
+  success(f.run("nix", "flakehub", {
+    RELEASE_VERSION: "v0.0.0-ci-test",
+    FLAKEHUB_PUSH_GITHUB_TOKEN: "fixture-github-token",
+    ACTIONS_ID_TOKEN_REQUEST_TOKEN: "fixture-oidc-token",
+    ACTIONS_ID_TOKEN_REQUEST_URL: "https://example.invalid/token?fixture=1",
+  }));
   assert.deepEqual(
     f.commands().map(({ command, args }) => [command, ...args]),
     [

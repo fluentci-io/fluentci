@@ -156,8 +156,10 @@ packages does not need Gemfury credentials.
 `fluentci run nix check` and `fluentci run nix metadata` inspect the checked-out
 flake without updating its lockfile. Publishing is explicit:
 
-- `fluentci run nix flakehub` needs `flakehub-push`, `RELEASE_VERSION`, and the
-  publisher's GitHub/OIDC environment.
+- `fluentci run nix flakehub` needs `flakehub-push`, `RELEASE_VERSION`,
+  `FLAKEHUB_PUSH_GITHUB_TOKEN`, and GitHub's `ACTIONS_ID_TOKEN_REQUEST_TOKEN`
+  and `ACTIONS_ID_TOKEN_REQUEST_URL`. The workflow explicitly supplies the
+  publisher's token variable; setting `GITHUB_TOKEN` alone is insufficient.
 - `fluentci run nix flakestry` needs Nix, `curl`, `jq`, `jo`, `VERSION`, `REF`,
   `GH_TOKEN`, and GitHub's `ACTIONS_ID_TOKEN_REQUEST_TOKEN` and
   `ACTIONS_ID_TOKEN_REQUEST_URL`. It collects metadata in a temporary directory,

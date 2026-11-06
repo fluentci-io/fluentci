@@ -94,6 +94,7 @@ jobs:
           VERSION: ${{ inputs.tag }}
           REF: ${{ needs.prepare.outputs.revision }}
           FLAKEHUB_PUSH_REV: ${{ needs.prepare.outputs.revision }}
+          FLAKEHUB_PUSH_GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
         run: fluentci --check-update=false run --wasm "$RUNNER_TEMP/nix-publish/plugin.wasm" "$REGISTRY"

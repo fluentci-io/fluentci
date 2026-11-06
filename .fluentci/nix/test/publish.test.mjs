@@ -3,10 +3,17 @@ import assert from "node:assert/strict";
 import { fixture } from "../../cachix/test/host-fixture.mjs";
 import { flakehub, flakestry } from "../output/CI.Nix/index.js";
 
+const flakehubEnvironment = {
+  RELEASE_VERSION: "v0.17.0",
+  FLAKEHUB_PUSH_GITHUB_TOKEN: "flakehub-test-token",
+  ACTIONS_ID_TOKEN_REQUEST_TOKEN: "oidc-test-token",
+  ACTIONS_ID_TOKEN_REQUEST_URL: "https://example.invalid/token?x=1",
+};
+
 // Exercise the compiled PureScript with a host stub, without launching FluentCI
 // or Nix, reading credentials, or making publication requests.
 test("FlakeHub passes the selected tag as a literal command argument", () => {
-  const f = fixture({ RELEASE_VERSION: "v0.17.0" });
+  const f = fixture(flakehubEnvironment);
   flakehub();
   const commands = f.calls
     .filter(([name]) => name === "with_exec")
@@ -20,6 +27,25 @@ test("FlakeHub passes the selected tag as a literal command argument", () => {
     "'--tag'",
     "'v0.17.0'",
   ]);
+  assert.ok(!JSON.stringify([f.calls, f.output]).includes(flakehubEnvironment.FLAKEHUB_PUSH_GITHUB_TOKEN));
+});
+
+test("FlakeHub requires its explicit token and OIDC environment before creating a pipeline", () => {
+  for (const key of Object.keys(flakehubEnvironment)) {
+    for (const value of [undefined, ""]) {
+      const env = { ...flakehubEnvironment };
+      if (value === undefined) delete env[key];
+      else env[key] = value;
+      const f = fixture(env);
+      assert.throws(flakehub, new RegExp(key));
+      assert.ok(!f.calls.some(([name]) => name === "pipeline"));
+    }
+  }
+  const env = { ...flakehubEnvironment, GH_TOKEN: "generic-token", GITHUB_TOKEN: "generic-token" };
+  delete env.FLAKEHUB_PUSH_GITHUB_TOKEN;
+  const f = fixture(env);
+  assert.throws(flakehub, /FLAKEHUB_PUSH_GITHUB_TOKEN/);
+  assert.ok(!f.calls.some(([name]) => name === "pipeline"));
 });
 
 test("missing publisher configuration fails before creating a pipeline", () => {
