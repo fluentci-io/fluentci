@@ -430,3 +430,49 @@ async fn publishing_logo_requires_http_200_and_an_image_mime_type() -> anyhow::R
     server.abort();
     Ok(())
 }
+
+#[tokio::test]
+async fn official_registry_suggestions_use_short_names_and_keep_registry_origin()
+-> anyhow::Result<()> {
+    let (_temp, db) = setup().await?;
+    let payload = serde_json::json!({"name":"cache","author":"did:plc:official","version":"1.0.0","url":"https://example.com/cache.wasm"});
+    let search = payload.clone();
+    let actor = payload.clone();
+    let router = axum::Router::new()
+        .route(
+            "/xrpc/io.fluentci.registry.searchPackages",
+            axum::routing::get(move || {
+                let payload = search.clone();
+                async move { axum::Json(serde_json::json!({"packages":[payload]})) }
+            }),
+        )
+        .route(
+            "/xrpc/io.fluentci.registry.getActorPackages",
+            axum::routing::get(
+                move |axum::extract::Query(query): axum::extract::Query<
+                    std::collections::HashMap<String, String>,
+                >| {
+                    let payload = actor.clone();
+                    async move {
+                        assert_eq!(query.get("actor").map(String::as_str), Some("fluentci.io"));
+                        axum::Json(serde_json::json!({"packages":[payload]}))
+                    }
+                },
+            ),
+        );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let mut state = AppState::new(db);
+    state.registry_url = format!("http://{}", listener.local_addr()?);
+    let registry = tokio::spawn(async move {
+        axum::serve(listener, router).await.unwrap();
+    });
+    let response = server::schema(state)
+        .execute("{registryModules(query:\"cache\"){name origin}}")
+        .await;
+    assert!(response.errors.is_empty(), "{:?}", response.errors);
+    let data = response.data.into_json()?;
+    assert_eq!(data["registryModules"][0]["name"], "cache@v1.0.0");
+    assert_eq!(data["registryModules"][0]["origin"], "OFFICIAL");
+    registry.abort();
+    Ok(())
+}

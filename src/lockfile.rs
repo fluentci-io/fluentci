@@ -446,6 +446,8 @@ mod tests {
 
     #[test]
     fn canonical_keys_and_exact_versions_are_checked() -> Result<()> {
+        assert_eq!(key("sccache")?, key("@fluentci.io/sccache")?);
+        assert_eq!(key("sccache@v1.0.0")?, key("@fluentci.io/sccache@1.0.0")?);
         assert_eq!(
             key("@alice.example/cache")?,
             key("@alice.example/cache@latest")?

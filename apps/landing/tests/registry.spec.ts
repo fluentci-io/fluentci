@@ -62,7 +62,7 @@ test("search opens with slash, shows identities and navigates to the record page
   await registry(page);
   await page.goto("/");
   const navigation = page.getByRole("navigation", { name: "Main navigation" });
-  for (const name of ["GitHub", "Discord", "Bluesky"]) {
+  for (const name of ["GitHub", "Discord", "Bluesky", "Tangled"]) {
     await expect(
       navigation.getByRole("link", { name, exact: true }),
     ).toHaveText("");
@@ -118,9 +118,7 @@ test("search opens with slash, shows identities and navigates to the record page
   ).toContainText("Compiler cache");
   await expect(page.locator("main script")).toHaveCount(0);
   const usage = page.getByRole("complementary", { name: "Module usage" });
-  await expect(usage).toContainText(
-    "fluentci run @fluentci.io/sccache@0.1.0 setup",
-  );
+  await expect(usage).toContainText("fluentci run sccache@0.1.0 setup");
   await expect(usage).toContainText("Latest version");
   await expect(usage).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
   await expect(usage).toHaveCSS("border-top-width", "0px");

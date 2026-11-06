@@ -70,11 +70,8 @@ pub struct Module {
 impl Module {
     pub fn registry_package(&self) -> Option<&str> {
         self.package.as_deref().or_else(|| {
-            (self.name.starts_with('@')
-                && self.path.is_none()
-                && self.url.is_none()
-                && self.git.is_none())
-            .then_some(self.name.as_str())
+            (self.path.is_none() && self.url.is_none() && self.git.is_none())
+                .then_some(self.name.as_str())
         })
     }
 }
@@ -256,7 +253,16 @@ impl Config {
         }
         let mut names = HashSet::new();
         for module in &config.modules {
-            if module.name.starts_with('@') {
+            anyhow::ensure!(
+                module.name != "shell",
+                "The module name 'shell' is reserved"
+            );
+            if module.name.starts_with('@')
+                || (module.package.is_none()
+                    && module.path.is_none()
+                    && module.url.is_none()
+                    && module.git.is_none())
+            {
                 crate::registry::package_reference(&module.name)?;
             } else {
                 validate_module_name(&module.name)?;
@@ -293,8 +299,8 @@ impl Config {
             }
             if let Some(package) = module.registry_package() {
                 anyhow::ensure!(
-                    package.starts_with('@'),
-                    "Registry module references must use @handle/module[@version]"
+                    package.starts_with('@') || !package.contains('/'),
+                    "Use module[@version] for official modules or @handle/module[@version] for other publishers"
                 );
                 crate::registry::package_reference(package)?;
                 anyhow::ensure!(

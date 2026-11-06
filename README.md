@@ -805,3 +805,9 @@ engine and Studio sources retain their license notices.
 FluentCI Studio also runs as a native Tauri app. It uses its own automatically
 assigned API port, so it can run alongside `fluentci studio`. See the
 [desktop setup and build guide](desktop/README.md).
+
+Official registry modules published by `fluentci.io` can omit the handle:
+`fluentci run sccache setup`, `sccache@v0.1.0`, and `sccache@latest` resolve to
+`@fluentci.io/sccache`. This also works in `[[modules]] package = "sccache"`,
+implicit `[[modules]] name = "sccache"`, and Studio workflow steps. Local module
+aliases retain precedence; other publishers require `@handle/name`.

@@ -301,3 +301,25 @@ Publishing copies it into `io.fluentci.plugin` and verifies HTTP 200 plus an
 and also supports file/URL publishing. HTTP(S) URLs must not contain credentials.
 Studio module suggestions show the image, with a module icon for missing or
 unavailable pictures. Omitting `logo` preserves compatibility with older records.
+
+### Official registry shorthand
+
+Unqualified registry names always select the official `fluentci.io` publisher:
+`fluentci run sccache setup` is equivalent to
+`fluentci run @fluentci.io/sccache setup`. Pin with `sccache@v0.1.0`, use
+`sccache@latest`, or omit the version for the latest release.
+
+```toml
+[[modules]]
+name = "cache"
+package = "sccache@v0.1.0"
+
+# An unaliased official module can omit both handle and package:
+[[modules]]
+name = "sccache"
+```
+
+Declared local modules retain precedence when invoked by their alias. Use an
+explicit `@handle/name` to select another publisher or disambiguate a local name.
+Official shorthand and `@fluentci.io/name` use the same canonical `fluentci.lock`
+package key. Studio labels official suggestions and accepts either spelling.

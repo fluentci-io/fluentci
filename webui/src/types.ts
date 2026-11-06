@@ -88,7 +88,7 @@ export interface SearchResult {
 
 export interface ModuleSuggestion {
   logo?: string | null;
-  origin?: "LOCAL" | "REGISTRY";
+  origin?: "LOCAL" | "REGISTRY" | "OFFICIAL";
   version?: string | null;
   description?: string | null;
   name: string;

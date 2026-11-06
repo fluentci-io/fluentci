@@ -1,6 +1,11 @@
 use anyhow::{Context, Result, bail};
 use serde::Deserialize;
-use std::{sync::LazyLock, time::Duration};
+use std::{
+    sync::LazyLock,
+    time::{Duration, Instant},
+};
+
+pub const OFFICIAL_AUTHOR: &str = "fluentci.io";
 
 pub const API: &str = "https://api.fluentci.io/v1";
 pub const PACKAGES: &str = "https://pkg.fluentci.io";
@@ -77,10 +82,18 @@ pub(crate) struct PackageReference<'a> {
 }
 
 pub(crate) fn package_reference(value: &str) -> Result<PackageReference<'_>> {
-    let scoped = value.starts_with('@');
+    let explicitly_scoped = value.starts_with('@');
     let body = value.strip_prefix('@').unwrap_or(value);
     let (qualified, version) = body.rsplit_once('@').unwrap_or((body, "latest"));
-    let (author, name) = qualified.rsplit_once('/').unwrap_or(("", qualified));
+    let scoped = explicitly_scoped || !qualified.contains('/');
+    let (author, name) = qualified.rsplit_once('/').unwrap_or((
+        if explicitly_scoped {
+            ""
+        } else {
+            OFFICIAL_AUTHOR
+        },
+        qualified,
+    ));
     anyhow::ensure!(
         !name.is_empty() && !version.is_empty(),
         "Expected @handle/module[@version]"
@@ -165,7 +178,7 @@ pub(crate) async fn resolve_at(pipeline: &str, registry_url: &str) -> Result<Res
             .context("Registry returned no version")?;
         return Ok(Resolved {
             name: if scoped {
-                format!("@{qualified}")
+                format!("@{author}/{name}")
             } else {
                 qualified.into()
             },
@@ -231,13 +244,53 @@ pub async fn search_packages_at(
     Ok(response.packages)
 }
 
+/// Resolve the official publisher through the registry's verified actor lookup.
+pub async fn official_author_at(registry_url: &str) -> Result<Option<String>> {
+    static CACHE: LazyLock<tokio::sync::RwLock<Option<(String, String, Instant)>>> =
+        LazyLock::new(|| tokio::sync::RwLock::new(None));
+    if let Some((url, author, saved)) = CACHE.read().await.as_ref()
+        && url == registry_url
+        && saved.elapsed() < Duration::from_secs(60)
+    {
+        return Ok(Some(author.clone()));
+    }
+    #[derive(Deserialize)]
+    struct Page {
+        packages: Vec<Package>,
+    }
+    let page: Page = client()
+        .get(format!(
+            "{}/xrpc/io.fluentci.registry.getActorPackages",
+            registry_url.trim_end_matches('/')
+        ))
+        .query(&[("actor", OFFICIAL_AUTHOR), ("limit", "1")])
+        .timeout(Duration::from_secs(3))
+        .send()
+        .await?
+        .error_for_status()?
+        .json()
+        .await?;
+    let author = page
+        .packages
+        .into_iter()
+        .next()
+        .and_then(|package| package.author);
+    if let Some(author) = &author {
+        *CACHE.write().await = Some((registry_url.into(), author.clone(), Instant::now()));
+    }
+    Ok(author)
+}
+
 pub async fn search(query: &str, limit: u32) -> Result<()> {
-    let packages = search_packages_at(query, limit, &base_url()).await?;
+    let registry_url = base_url();
+    let packages = search_packages_at(query, limit, &registry_url).await?;
+    let official = official_author_at(&registry_url).await.unwrap_or_default();
     for p in &packages {
         let author = p
             .author
             .as_deref()
-            .map(|value| format!("{value}/"))
+            .filter(|value| Some(*value) != official.as_deref() && *value != OFFICIAL_AUTHOR)
+            .map(|value| format!("@{value}/"))
             .unwrap_or_default();
         println!(
             "* {}{}@{} - {}",
@@ -347,6 +400,48 @@ mod tests {
         ] {
             assert!(package_reference(invalid).is_err(), "{invalid}");
         }
+        Ok(())
+    }
+
+    #[test]
+    fn official_references_support_omitted_handles() -> Result<()> {
+        for input in [
+            "sccache",
+            "sccache@latest",
+            "sccache@v0.1.0",
+            "sccache@0.1.0",
+        ] {
+            let reference = package_reference(input)?;
+            assert_eq!(reference.author, OFFICIAL_AUTHOR);
+            assert_eq!(reference.name, "sccache");
+            assert!(reference.scoped);
+        }
+        for invalid in [
+            "sccache@main",
+            "sccache@",
+            "sccache@1.0.0+build",
+            "sccache with spaces",
+        ] {
+            assert!(package_reference(invalid).is_err());
+        }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn official_resolution_always_qualifies_the_publisher() -> Result<()> {
+        let router = Router::new().route("/xrpc/io.fluentci.registry.getPackage", get(|Query(query): Query<HashMap<String, String>>| async move {
+            assert_eq!(query.get("author").map(String::as_str), Some(OFFICIAL_AUTHOR));
+            assert_eq!(query.get("name").map(String::as_str), Some("sccache"));
+            Json(serde_json::json!({"package":{"name":"sccache","version":"0.1.0","url":"https://example.com/sccache.wasm"}}))
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let address = listener.local_addr()?;
+        let server = tokio::spawn(async move { axum::serve(listener, router).await });
+        for input in ["sccache", "sccache@v0.1.0", "@fluentci.io/sccache@0.1.0"] {
+            let package = resolve_at(input, &format!("http://{address}")).await?;
+            assert_eq!(package.name, "@fluentci.io/sccache");
+        }
+        server.abort();
         Ok(())
     }
 

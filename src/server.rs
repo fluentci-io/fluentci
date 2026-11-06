@@ -303,6 +303,7 @@ impl Query {
             .context("Project not found")?;
         let mut suggestions: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
         let mut logos = BTreeMap::new();
+        let mut origins = BTreeMap::new();
         let root = Path::new(&project.path);
         let mut actions = db.actions(&project_id).await?;
         actions.extend(crate::detection::actions(root)?);
@@ -319,6 +320,18 @@ impl Query {
             // Missing or stale artifacts must not hide modules or saved suggestions.
             let functions = module.cached_functions().await.unwrap_or_default();
             logos.insert(module.name.clone(), module.definition.logo.clone());
+            let origin = match module.definition.registry_package() {
+                Some(reference)
+                    if crate::registry::package_reference(reference).is_ok_and(|reference| {
+                        reference.author == crate::registry::OFFICIAL_AUTHOR
+                    }) =>
+                {
+                    "OFFICIAL"
+                }
+                Some(_) => "REGISTRY",
+                None => "LOCAL",
+            };
+            origins.insert(module.name.clone(), origin);
             suggestions
                 .entry(module.name)
                 .or_default()
@@ -327,12 +340,17 @@ impl Query {
         Ok(suggestions
             .into_iter()
             .map(|(name, functions)| ModuleSuggestion {
-                origin: if name.starts_with('@') {
-                    "REGISTRY"
-                } else {
-                    "LOCAL"
-                }
-                .into(),
+                origin: origins
+                    .get(&name)
+                    .copied()
+                    .unwrap_or(if name.starts_with('@') {
+                        "REGISTRY"
+                    } else if name == "shell" || name.contains("://") {
+                        "LOCAL"
+                    } else {
+                        "OFFICIAL"
+                    })
+                    .into(),
                 logo: logos.remove(&name).flatten(),
                 name,
                 functions: functions.into_iter().collect(),
@@ -363,10 +381,16 @@ impl Query {
         {
             packages = Some(vec![package.metadata]);
         }
+        let explicit_official = packages.is_some()
+            && crate::registry::package_reference(query)
+                .is_ok_and(|reference| reference.author == crate::registry::OFFICIAL_AUTHOR);
         let packages = match packages {
             Some(packages) => packages,
             None => crate::registry::search_packages_at(query, 10, registry_url).await?,
         };
+        let official_author = crate::registry::official_author_at(registry_url)
+            .await
+            .unwrap_or_default();
         Ok(packages
             .into_iter()
             .filter_map(|package| {
@@ -376,15 +400,22 @@ impl Query {
                 if author.is_empty() || name.is_empty() {
                     return None;
                 }
+                let official = official_author.as_deref() == Some(author.as_str())
+                    || author == crate::registry::OFFICIAL_AUTHOR
+                    || explicit_official;
                 Some(ModuleSuggestion {
-                    name: format!("@{author}/{name}@v{}", version.trim_start_matches('v')),
+                    name: if official {
+                        format!("{name}@v{}", version.trim_start_matches('v'))
+                    } else {
+                        format!("@{author}/{name}@v{}", version.trim_start_matches('v'))
+                    },
                     functions: package
                         .functions
                         .unwrap_or_default()
                         .into_iter()
                         .map(|function| function.name)
                         .collect(),
-                    origin: "REGISTRY".into(),
+                    origin: if official { "OFFICIAL" } else { "REGISTRY" }.into(),
                     logo: package
                         .logo
                         .filter(|url| crate::config::validate_logo(url).is_ok()),

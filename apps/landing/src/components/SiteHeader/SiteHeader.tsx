@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 import { ModuleSearch } from "../ModuleSearch";
 import { ThemeSwitcher } from "../ThemeSwitcher";
 import { BrandIcon } from "../BrandIcon";
-import { github, docs, discord, bluesky } from "../../constants";
+import { github, docs, discord, bluesky, tangled } from "../../constants";
 
 export function SiteHeader() {
   return (
@@ -49,6 +49,14 @@ export function SiteHeader() {
           title="Bluesky"
         >
           <BrandIcon brand="bluesky" />
+        </a>
+        <a
+          className="nav-link flex items-center gap-2"
+          href={tangled}
+          aria-label="Tangled"
+          title="Tangled"
+        >
+          <BrandIcon brand="tangled" />
         </a>
         <ThemeSwitcher />
       </nav>

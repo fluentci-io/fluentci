@@ -403,7 +403,10 @@ function ActionRow({
   const registry = useQuery({
     queryKey: ["registryModules", registryTerm],
     enabled:
-      (moduleFocused || registryTerm.startsWith("@")) &&
+      (moduleFocused ||
+        !moduleMetadata.some(
+          (module) => module.name === registryTerm && module.origin === "LOCAL",
+        )) &&
       registryTerm.length >= 2 &&
       !registryTerm.includes("://"),
     queryFn: async ({ signal }) =>
@@ -430,17 +433,22 @@ function ActionRow({
       name,
       {
         logo: moduleMetadata.find((module) => module.name === name)?.logo,
-        badge: name.startsWith("@")
-          ? "Registry"
-          : name.includes("://")
-            ? "URL"
-            : "Local",
+        badge:
+          moduleMetadata.find((module) => module.name === name)?.origin ===
+          "OFFICIAL"
+            ? "Official"
+            : moduleMetadata.find((module) => module.name === name)?.origin ===
+                  "REGISTRY" || name.startsWith("@")
+              ? "Registry"
+              : name.includes("://")
+                ? "URL"
+                : "Local",
       },
     ]),
   );
   registryModules.forEach((module) => {
     moduleDetails[module.name] = {
-      badge: "Registry",
+      badge: module.origin === "OFFICIAL" ? "Official" : "Registry",
       logo: module.logo,
       description: module.description || undefined,
     };
@@ -546,9 +554,14 @@ function ActionRow({
               ? "Searching FluentCI registry…"
               : registry.isError
                 ? "Registry unavailable. Local suggestions and custom values still work."
-                : action.plugin.startsWith("@")
-                  ? "Registry module · published package reference"
-                  : "Local modules and published registry packages are labeled in suggestions."}
+                : selectedRegistry?.origin === "OFFICIAL" ||
+                    moduleMetadata.find(
+                      (module) => module.name === action.plugin,
+                    )?.origin === "OFFICIAL"
+                  ? "Official module · fluentci.io"
+                  : action.plugin.startsWith("@")
+                    ? "Registry module · published package reference"
+                    : "Local modules and published registry packages are labeled in suggestions."}
           </p>
         </div>
         <div>

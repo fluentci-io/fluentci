@@ -60,7 +60,11 @@ export function recordKey(plugin: Plugin) {
 }
 
 export function runCommand(plugin: Plugin, handle: string, job?: string) {
-  return `fluentci run @${handle}/${plugin.name}@${plugin.version}${job ? ` ${job}` : ""}`;
+  const reference =
+    handle.toLowerCase() === "fluentci.io"
+      ? plugin.name
+      : `@${handle}/${plugin.name}`;
+  return `fluentci run ${reference}@${plugin.version}${job ? ` ${job}` : ""}`;
 }
 
 export async function query<T>(

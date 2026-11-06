@@ -130,7 +130,6 @@ name = "@tsiry-sandratraina.com/sccache"
         "name='test'\npackage='@handle/module'\npath='.'",
         "name='test'\npackage='@handle/module'\nurl='https://example.com/mod.wasm'",
         "name='test'\npackage='@handle/module'\nbuild=['sh']",
-        "name='test'\npackage='unscoped'",
         "name='test'\npath='.'\nrepository='https://user:password@example.com/repo'",
     ] {
         assert!(fluentci::config::Config::parse(&format!("[[modules]]\n{source}")).is_err());
@@ -192,6 +191,36 @@ readme_url = "https://example.com/README.md"
             ))
             .is_err()
         );
+    }
+    Ok(())
+}
+
+#[test]
+fn official_registry_names_can_omit_the_handle() -> anyhow::Result<()> {
+    for declaration in [
+        "name='sccache'",
+        "name='sccache@v1.2.3'",
+        "name='cache'\npackage='sccache@latest'",
+        "name='cache'\npackage='sccache@v1.2.3'",
+    ] {
+        let config = Config::parse(&format!("[[modules]]\n{declaration}"))?;
+        let module = &config.modules[0];
+        assert!(module.registry_package().is_some());
+        let resolved = fluentci::modules::LocalModule::resolve(
+            std::path::Path::new("/tmp/fluentci.toml"),
+            module,
+        )?;
+        assert!(matches!(
+            resolved.source,
+            fluentci::modules::ModuleSource::Registry(_)
+        ));
+    }
+    for invalid in [
+        "name='shell'",
+        "name='invalid'\npackage='cache@not-semver'",
+        "name='invalid'\npackage='owner/cache'",
+    ] {
+        assert!(Config::parse(&format!("[[modules]]\n{invalid}")).is_err());
     }
     Ok(())
 }

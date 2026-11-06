@@ -1,5 +1,5 @@
 import { examples } from "../../examples";
-import { github, discord, bluesky, install } from "../../constants";
+import { github, discord, bluesky, install, tangled } from "../../constants";
 import { Code } from "../Code";
 import { Copy } from "../Copy";
 import { BrandIcon } from "../BrandIcon";
@@ -242,6 +242,10 @@ export function LandingPage() {
           <a className="nav-link flex items-center gap-2" href={bluesky}>
             <BrandIcon brand="bluesky" />
             Bluesky
+          </a>
+          <a className="nav-link flex items-center gap-2" href={tangled}>
+            <BrandIcon brand="tangled" />
+            Tangled
           </a>
           <a className="nav-link" href={`${github}/blob/main/LICENSE`}>
             Open source
