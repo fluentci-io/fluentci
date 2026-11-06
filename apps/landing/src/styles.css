@@ -244,7 +244,7 @@ pre {
     width: min(640px, calc(100vw - 24px));
     max-width: none;
   }
-  .module-search-dialog::backdrop { background: #0009; backdrop-filter: blur(6px); }
+  .module-search-dialog::backdrop { background: #0009; }
   .module-search-surface { @apply overflow-hidden rounded-xl; }
   .module-search-field { @apply flex items-center gap-3 border-b border-line px-4 py-4 text-muted; }
   .module-search-field input { @apply min-w-0 flex-1 bg-transparent text-sm text-ink outline-none; }
