@@ -16,7 +16,8 @@ test('invalid server configuration exits before creating SQLite or starting serv
       {
         cwd: directory,
         encoding: 'utf8',
-        timeout: 10_000,
+        // Cold imports on shared CI/deployment hosts can exceed ten seconds.
+        timeout: 60_000,
         env: {
           FLUENTCI_API_ROOT: directory,
           DATABASE_URL: `file:${join(directory, 'registry.sqlite')}`,
