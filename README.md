@@ -79,6 +79,30 @@ curl -fsSL https://cli.fluentci.io | \
   FLUENTCI_INSTALL_DIR="$HOME/bin" sh
 ```
 
+### Install with Homebrew
+
+Add and trust the FluentCI tap before installing:
+
+```sh
+brew tap fluentci-io/tap
+brew trust fluentci-io/tap
+```
+
+Install the CLI:
+
+```sh
+brew install fluentci-io/tap/fluentci
+```
+
+Install the FluentCI Studio desktop app on macOS:
+
+```sh
+brew install --cask fluentci-io/tap/fluentci-studio
+```
+
+See [Homebrew's tap trust documentation](https://docs.brew.sh/Tap-Trust) for
+details about `brew trust`.
+
 ### Install with Nix and Cachix
 
 With [Nix installed](https://nix.dev/install-nix) and the `nix-command` and
