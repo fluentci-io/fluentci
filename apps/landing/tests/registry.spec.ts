@@ -125,6 +125,17 @@ test("search opens with slash, shows identities and navigates to the record page
   await expect(
     usage.getByRole("img", { name: "227 downloads in the last 7 days" }),
   ).toBeVisible();
+  const chart = usage.getByRole("img", {
+    name: "227 downloads in the last 7 days",
+  });
+  await chart.hover();
+  await expect(usage.getByRole("tooltip")).toContainText("42 downloads");
+  await chart.focus();
+  await chart.press("Home");
+  await expect(usage.getByRole("tooltip")).toContainText("14 downloads");
+  await chart.press("End");
+  await expect(usage.getByRole("tooltip")).toContainText("38 downloads");
+  await expect(chart.locator(".download-cursor")).toHaveCount(1);
   await expect(
     page.getByRole("link", { name: "Git repository" }),
   ).toHaveAttribute("href", plugin.repository!);

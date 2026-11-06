@@ -131,7 +131,10 @@ record does not increment or overwrite them.
 ## Download proxy
 
 `apps/modules` is a Cloudflare Worker proxy from `modules.fluentci.io` to
-`mod.fluentci.io`. It preserves paths, queries, requests, and upstream responses.
+`mod.fluentci.io`. Canonical URLs use `/handle/name/v<version>/name.wasm`;
+legacy `/@handle/` URLs remain valid. The proxy maps both spellings to the
+existing `@handle` storage key and preserves the remaining path, query, request,
+and upstream response.
 It reports HTTP 200 Wasm GETs in the background with `ctx.waitUntil`; HEAD,
 partial responses, errors, and redirects do not increment counters.
 

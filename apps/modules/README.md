@@ -1,15 +1,15 @@
 # Module download proxy
 
 A Cloudflare Worker in front of `https://mod.fluentci.io`. Its custom domain is
-`modules.fluentci.io`. Only the origin changes: the encoded path, query string,
+`modules.fluentci.io`. For ordinary requests only the origin changes: the encoded path, query string,
 method, headers and request body pass through. The original upstream response is
 returned without buffering or modifying its status, headers, body, or caching.
 
 After a successful full `GET` (HTTP 200) of a versioned module path such as
-`/@alice.example/sccache/v0.1.0/sccache.wasm`, the Worker uses `ctx.waitUntil` to
+`/alice.example/sccache/v0.1.0/sccache.wasm`, the Worker uses `ctx.waitUntil` to
 notify `io.fluentci.registry.recordDownload`. HEAD, partial/range responses,
-redirects, errors and other paths do not increment counters. Parsing a path for
-analytics never rewrites the proxied URL. Both `v0.1.0` and `0.1.0` folders are
+redirects, errors and other paths do not increment counters. The canonical `/handle/` URL and the legacy `/@handle/` alias both map to the
+existing `@handle` storage key; the remainder of the encoded path and query is preserved. Both `v0.1.0` and `0.1.0` folders are
 recognized; the version sent to the API is bare SemVer.
 
 Tracking is best effort and never blocks or changes the download response. The

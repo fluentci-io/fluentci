@@ -157,7 +157,9 @@ export async function upload(server, request) {
     base.hash
   )
     throw new XRPCError(503, 'Invalid public storage URL', 'StorageUnavailable');
-  const url = new URL(key, base).href;
+  // The proxy accepts canonical /handle URLs while storage retains @handle keys.
+  const publicKey = base.origin === 'https://modules.fluentci.io' ? key.replace(/^@/, '') : key;
+  const url = new URL(publicKey, base).href;
   server.s3 ??= new S3Client({
     region: process.env.S3_REGION ?? process.env.AWS_REGION ?? 'us-east-1',
     endpoint: process.env.S3_ENDPOINT || undefined,

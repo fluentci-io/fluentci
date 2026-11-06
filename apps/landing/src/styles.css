@@ -290,10 +290,11 @@ pre {
   .module-markdown th, .module-markdown td { @apply border border-line px-3 py-2 text-left; }
   .module-markdown blockquote { @apply border-l-2 border-accent pl-4; }
   .module-markdown hr { @apply my-6 border-line; }
-  .download-chart { @apply mt-5 flex h-24 items-end gap-2 pb-5; }
-  .download-chart > div { @apply relative flex h-full min-w-0 flex-1 items-end; }
-  .download-chart span { @apply block w-full rounded-t bg-accent/75 transition-colors hover:bg-accent; }
-  .download-chart small { @apply absolute -bottom-5 w-full text-center font-mono text-[10px] text-muted; }
+  .download-line-chart { position: relative; margin-top: 8px; padding-top: 38px; }
+  .download-line-plot { display: block; width: 100%; height: auto; cursor: crosshair; touch-action: pan-y; }
+  .download-tooltip { @apply absolute top-0 z-10 flex -translate-x-1/2 flex-col gap-1 rounded-md border border-line bg-raised px-2.5 py-1.5 font-mono text-[10px] text-muted shadow-lg; pointer-events: none; white-space: nowrap; }
+  .download-tooltip strong { @apply text-xs font-medium text-ink; }
+
 }
 
 @keyframes skeleton-shimmer {

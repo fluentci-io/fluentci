@@ -182,3 +182,34 @@ test("parses versioned module paths only for analytics without changing their en
   );
   assert.equal(downloadFromPath("/%ZZ/cache/v1.0.0/cache.wasm"), undefined);
 });
+
+test("canonical and @handle aliases address the same storage key", async (t) => {
+  for (const prefix of [
+    "alice.example",
+    "@alice.example",
+    "%40alice.example",
+  ]) {
+    t.mock.method(globalThis, "fetch", async (request) => {
+      assert.equal(
+        request.url,
+        `https://mod.fluentci.io/${prefix.startsWith("%") ? prefix : "@alice.example"}/sccache/v0.1.0/sccache.wasm?x=%2F`,
+      );
+      return new Response(null, { status: 200 });
+    });
+    const ctx = context();
+    await worker.fetch(
+      new Request(
+        `https://modules.fluentci.io/${prefix}/sccache/v0.1.0/sccache.wasm?x=%2F`,
+        { method: "HEAD" },
+      ),
+      env,
+      ctx,
+    );
+    assert.equal(ctx.pending.length, 0);
+    t.mock.restoreAll();
+  }
+  assert.deepEqual(
+    downloadFromPath("/alice.example/sccache/v0.1.0/sccache.wasm"),
+    { handle: "alice.example", name: "sccache", version: "0.1.0" },
+  );
+});

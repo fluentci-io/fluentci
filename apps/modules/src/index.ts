@@ -15,17 +15,12 @@ const handlePattern =
 const versionPattern =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/;
 
-// Parsing is only for analytics. It never rewrites the upstream request URL.
+// Recognize both public URL spellings and their existing storage identity.
 export function downloadFromPath(path: string): Download | undefined {
   try {
     const segments = path.split("/").map(decodeURIComponent);
-    if (
-      segments.length !== 5 ||
-      segments[0] !== "" ||
-      !segments[1].startsWith("@")
-    )
-      return;
-    const handle = segments[1].slice(1);
+    if (segments.length !== 5 || segments[0] !== "") return;
+    const handle = segments[1].replace(/^@/, "");
     const name = segments[2];
     const version = segments[3].replace(/^v/, "");
     const match = versionPattern.exec(version);
@@ -87,7 +82,10 @@ async function reportDownload(download: Download, env: Env) {
         redirect: "manual",
       });
       await response.body?.cancel();
-      if (response.ok) return;
+      if (response.ok) {
+        console.info("Download recorded");
+        return;
+      }
       if (response.status < 500 && response.status !== 429) {
         console.error("Download tracking rejected", response.status);
         return;
@@ -107,13 +105,17 @@ export default {
     env: Env,
     ctx: ExecutionContext,
   ): Promise<Response> {
-    // Replace only the origin. Preserve the encoded path, query, method, headers,
-    // streaming body, redirect policy and other Request properties.
-    const upstream = request.url.replace(/^https?:\/\/[^/]+/, origin);
+    // Preserve the request apart from the origin and the optional @handle alias.
+    // The remaining encoded path, query, headers, and streaming body stay intact.
+    const path = new URL(request.url).pathname;
+    const download = downloadFromPath(path);
+    let upstream = request.url.replace(/^https?:\/\/[^/]+/, origin);
+    // Canonical public URLs omit @; storage keeps its existing @handle keys.
+    if (download && !decodeURIComponent(path.split("/")[1]).startsWith("@"))
+      upstream = upstream.replace(`${origin}/`, `${origin}/@`);
     const response = await fetch(new Request(upstream, request));
-    if (request.method === "GET" && response.status === 200) {
-      const download = downloadFromPath(new URL(request.url).pathname);
-      if (download) ctx.waitUntil(reportDownload(download, env));
+    if (request.method === "GET" && response.status === 200 && download) {
+      ctx.waitUntil(reportDownload(download, env));
     }
     // Return the original response: no buffering, header edits, redirects or cache changes.
     return response;

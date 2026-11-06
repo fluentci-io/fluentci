@@ -668,6 +668,14 @@ test('versioned upload paths use the verified handle, bare SemVer metadata and c
     assert.equal((await upload(params)).status, 400);
   }
   assert.equal(commands.length, 1);
+  process.env.S3_PUBLIC_URL = 'https://modules.fluentci.io';
+  const proxied = await upload({ name: 'hello-ci', version: '2.0.0' });
+  assert.equal(proxied.status, 200);
+  assert.equal(
+    (await proxied.json()).url,
+    'https://modules.fluentci.io/alice.example/hello-ci/v2.0.0/hello-ci.wasm',
+  );
+  assert.equal(commands[1].input.Key, '@alice.example/hello-ci/v2.0.0/hello-ci.wasm');
   instance.s3 = {
     send: async () => {
       const error = new Error('exists');
