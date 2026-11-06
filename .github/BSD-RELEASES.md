@@ -19,9 +19,14 @@ compiled module's `bsdBuild` function and never install Bun, Node, Vite, React
 build tools, or PureScript. Ubuntu invokes `bsdVerify` and `bsdUpload` after VM
 copyback.
 
-OpenBSD bootstraps from the latest release in `tsirysndr/fluentci`, using an
-immutable installer revision that resolves releases from that fork. This
-overrides the global bootstrap version pin. Its bootstrap calls
+OpenBSD bootstraps directly from release assets in `tsirysndr/fluentci`, without
+running `install.sh`. The Ubuntu runner selects the newest published stable
+release containing both an OpenBSD archive and its checksum, downloads them
+with GitHub CLI, and verifies the archive before extracting the binary. This
+handles releases such as `2026.11.05` that have no OpenBSD asset; currently the
+newest matching release is `2026.11.04`. The verified binary is synchronized into
+the guest, checked again with OpenBSD's `sha256`, and installed in `~/.local/bin`.
+This overrides the global bootstrap version pin. Its bootstrap calls
 `__engine-call` directly to avoid the old CLI's failing executable lookup, while
 still running the PureScript Wasm release module. Newly built binaries resolve
 their executable from startup arguments and `PATH` if OpenBSD's argv sysctl

@@ -183,6 +183,42 @@ jobs:
           path: .
       - name: Reserve BSD runner disk space with FluentCI
         run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" reserveBsdDisk
+      - name: Download OpenBSD bootstrap directly from fork release assets
+        if: matrix.os == 'openbsd'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          bootstrap=.release-bootstrap/openbsd
+          mkdir -p "$bootstrap"
+          # The latest repository release may contain only other platforms.
+          # Select the newest published release with the OpenBSD archive AND checksum.
+          gh api repos/tsirysndr/fluentci/releases --paginate --jq '
+            .[] | select(.draft == false and .prerelease == false)
+            | . as $release | .assets[]
+            | select(.name | endswith("_x86_64-unknown-openbsd.tar.gz"))
+            | select(.name as $name | any($release.assets[]; .name == ($name + ".sha256")))
+            | [$release.tag_name, .name] | @tsv
+          ' > "$bootstrap/candidates.tsv"
+          if ! IFS=$'\t' read -r tag archive < "$bootstrap/candidates.tsv"; then
+            echo 'No fork release contains an OpenBSD archive and checksum' >&2
+            exit 1
+          fi
+          test -n "$tag" && test -n "$archive"
+          case "$archive" in
+            fluentci_*_x86_64-unknown-openbsd.tar.gz) ;;
+            *) echo 'Unexpected OpenBSD release asset name' >&2; exit 1 ;;
+          esac
+          case "$archive" in */*) echo 'Invalid archive path' >&2; exit 1 ;; esac
+          gh release download "$tag" --repo tsirysndr/fluentci \
+            --pattern "$archive" --pattern "$archive.sha256" --dir "$bootstrap"
+          expected=$(awk 'NR == 1 { print $1 }' "$bootstrap/$archive.sha256")
+          actual=$(sha256sum "$bootstrap/$archive" | awk '{ print $1 }')
+          test "$expected" = "$actual"
+          tar -xzf "$bootstrap/$archive" -C "$bootstrap" fluentci
+          (cd "$bootstrap" && sha256sum fluentci > fluentci.sha256)
+          printf 'OpenBSD bootstrap: tsirysndr/fluentci release %s (%s)\n' "$tag" "$archive"
       - name: Cache native BSD toolchains and Cargo artifacts
         uses: actions/cache@v4
         with:
@@ -243,9 +279,13 @@ jobs:
             set -eu
             export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
             sh .github/scripts/prepare-bsd-release.sh
-            # Bootstrap from the fork's latest release. This pinned installer
-            # resolves tsirysndr/fluentci rather than the upstream repository.
-            curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/7c25793ca7230852a499468775afa92b323043c7/install.sh | FLUENTCI_VERSION=latest sh
+            # The runner downloaded and verified the fork's newest OpenBSD asset.
+            # Verify the synchronized binary again, then install without install.sh.
+            bootstrap=.release-bootstrap/openbsd
+            expected=$(awk 'NR == 1 { print $1 }' "$bootstrap/fluentci.sha256")
+            test "$(sha256 -q "$bootstrap/fluentci")" = "$expected"
+            mkdir -p "$HOME/.local/bin"
+            install -m 755 "$bootstrap/fluentci" "$HOME/.local/bin/fluentci"
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
