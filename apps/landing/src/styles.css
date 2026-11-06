@@ -252,12 +252,13 @@ pre {
   .module-results { max-height: min(55dvh, 480px); overflow-y: auto; padding: 6px; }
   .module-result { @apply flex items-center gap-3 rounded-lg p-3 transition-colors; }
   .module-result.is-selected { @apply bg-raised; }
-  .module-logo { @apply flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-raised text-accent; }
+  .module-logo { aspect-ratio: 1; @apply flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-raised text-accent; }
   .module-result .module-logo {
     position: relative;
-    align-self: stretch;
+    align-self: center;
     width: 72px;
-    height: auto;
+    height: 72px;
+    min-width: 72px;
     min-height: 72px;
   }
   .module-result .module-logo img { position: absolute; inset: 0; }

@@ -97,7 +97,7 @@ test("search opens with slash, shows identities and navigates to the record page
     await resultLogo.evaluate(
       (element) => element.getBoundingClientRect().height,
     ),
-  ).toBeGreaterThanOrEqual(72);
+  ).toBe(72);
   await input.fill("missing");
   await expect(dialog.getByRole("status")).toHaveText(
     "No modules found. Try another name or topic.",
