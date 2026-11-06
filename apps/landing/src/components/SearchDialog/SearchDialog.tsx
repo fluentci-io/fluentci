@@ -194,10 +194,20 @@ export function SearchDialog({ close }: { close: () => void }) {
                 >
                   <ModuleLogo key={plugin.logo} plugin={plugin} />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm text-ink">
-                      {moduleTitle(
-                        plugin,
-                        profiles[plugin.author]?.handle ?? plugin.author,
+                    <span className="flex items-center justify-between gap-3">
+                      <span className="truncate text-sm text-ink">
+                        {moduleTitle(
+                          plugin,
+                          profiles[plugin.author]?.handle ?? plugin.author,
+                        )}
+                      </span>
+                      {(plugin.downloads ?? 0) > 0 && (
+                        <span
+                          className="shrink-0 whitespace-nowrap font-mono text-base font-semibold tabular-nums text-muted"
+                          aria-label={`${plugin.downloads!.toLocaleString()} downloads`}
+                        >
+                          <DownloadIcon /> {plugin.downloads!.toLocaleString()}
+                        </span>
                       )}
                     </span>
                     {plugin.description && (
@@ -205,21 +215,15 @@ export function SearchDialog({ close }: { close: () => void }) {
                         {plugin.description}
                       </span>
                     )}
-                    {(plugin.downloads ?? 0) > 0 && (
-                      <span className="mt-1 block font-mono text-[11px] text-muted">
-                        <DownloadIcon /> {plugin.downloads!.toLocaleString()}{" "}
-                        downloads
-                      </span>
-                    )}
-                    <span className="mt-2 block">
+                    <span className="mt-2 flex items-center justify-between gap-3">
                       <Author
                         profile={profiles[plugin.author]}
                         fallback={plugin.author}
                       />
+                      <span className="shrink-0 font-mono text-xs text-muted">
+                        {plugin.version}
+                      </span>
                     </span>
-                  </span>
-                  <span className="shrink-0 font-mono text-xs text-muted">
-                    {plugin.version}
                   </span>
                 </Link>
               </div>
