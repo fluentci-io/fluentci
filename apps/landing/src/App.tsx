@@ -389,7 +389,7 @@ export default function App() {
             </code>
             <a
               className="text-link text-xs"
-              href="https://github.com/tsirysndr/fluentci/releases/latest"
+              href={`${github}/releases/latest`}
             >
               Download the desktop app
             </a>
@@ -431,7 +431,7 @@ export default function App() {
                   The pipe sends the installer script to <code>sh</code>.{" "}
                   <a
                     className="text-link"
-                    href="https://github.com/tsirysndr/fluentci/blob/main/install.sh"
+                    href={`${github}/blob/main/install.sh`}
                   >
                     Read the installer
                   </a>{" "}
