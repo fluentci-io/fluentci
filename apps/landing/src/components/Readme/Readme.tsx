@@ -31,7 +31,7 @@ export function Readme({ plugin }: { plugin: Plugin }) {
         const chunks: string[] = [];
         const decoder = new TextDecoder();
         let length = 0;
-        while (true) {
+        while (!abort.signal.aborted) {
           const { done, value } = await reader.read();
           if (done) break;
           length += value.byteLength;

@@ -827,3 +827,33 @@ test('daily downloads are optional, bounded to 7 UTC days and survive metadata e
     }),
   );
 });
+
+test('CORS allows every origin, route and preflight header including publisher auth', async (t) => {
+  const connection = await fixture(t);
+  const { url } = await server(t, connection);
+  for (const path of [
+    '/',
+    '/xrpc/_health',
+    '/missing',
+    '/xrpc/io.fluentci.registry.getPackage?name=missing',
+  ]) {
+    const response = await fetch(url + path, { headers: { Origin: 'https://anywhere.example' } });
+    assert.equal(response.headers.get('access-control-allow-origin'), '*', path);
+    assert.equal(response.headers.get('access-control-expose-headers'), '*', path);
+  }
+  const response = await fetch(url + '/xrpc/io.fluentci.registry.publishPackage', {
+    method: 'OPTIONS',
+    headers: {
+      Origin: 'https://anywhere.example',
+      'Access-Control-Request-Method': 'POST',
+      'Access-Control-Request-Headers': 'authorization,content-type,x-custom-header',
+    },
+  });
+  assert.equal(response.status, 204);
+  assert.equal(response.headers.get('access-control-allow-origin'), '*');
+  assert.match(response.headers.get('access-control-allow-methods'), /POST/);
+  assert.equal(
+    response.headers.get('access-control-allow-headers'),
+    'authorization,content-type,x-custom-header',
+  );
+});

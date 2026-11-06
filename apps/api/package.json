@@ -28,6 +28,7 @@
     "@libsql/client": "^0.15.0",
     "@rsql/ast": "^1.6.0",
     "@rsql/parser": "^1.6.0",
+    "cors": "^2.8.6",
     "drizzle-orm": "^0.45.0",
     "express": "^5.1.0",
     "semver": "^7.7.3",

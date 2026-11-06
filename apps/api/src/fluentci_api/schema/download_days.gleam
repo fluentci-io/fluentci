@@ -37,3 +37,7 @@ pub fn uri(table: Table(Row)) -> Expression(String) {
 pub fn date(table: Table(Row)) -> Expression(String) {
   column(table, "date", text())
 }
+
+pub fn downloads(table: Table(Row)) -> Expression(Int) {
+  column(table, "downloads", integer())
+}

@@ -179,7 +179,8 @@ Registry views expose the server-owned `downloads` count for each published
 version. `getPackage` also returns `dailyDownloads` when tracked history exists:
 seven UTC calendar days including today, with missing days filled with zeros.
 It omits this field when no samples exist in the window. Publishers cannot set
-counters through PDS metadata. Public query GETs permit cross-origin requests.
+counters through PDS metadata. All API routes allow cross-origin requests from any origin, including OPTIONS
+preflight and Authorization/custom headers. Cookie credentials are not enabled.
 
 Migration `0009_daily_downloads` prepares `plugin_download_days`, uniquely keyed
 by record URI and UTC date with a nonnegative count. Download collection is not
