@@ -116,8 +116,7 @@ in Actions). Uploading is separate from checks and packaging.
 flake without updating its lockfile. Publishing is explicit:
 
 - `fluentci run nix flakehub` needs `flakehub-push`, `RELEASE_VERSION`, and the
-  publisher's GitHub/OIDC environment. No automatic Nix publishing workflows
-  are configured.
+  publisher's GitHub/OIDC environment.
 - `fluentci run nix flakestry` needs Nix, `curl`, `jq`, `jo`, `VERSION`, `REF`,
   `GH_TOKEN`, and GitHub's `ACTIONS_ID_TOKEN_REQUEST_TOKEN` and
   `ACTIONS_ID_TOKEN_REQUEST_URL`. It collects metadata in a temporary directory,
@@ -125,6 +124,16 @@ flake without updating its lockfile. Publishing is explicit:
   metadata collection or HTTP requests fail the job. Temporary files are removed.
 
 Publishing functions are never included in the default check.
+
+The `Publish tags to FlakeHub` and `Publish tags to Flakestry` GitHub workflows
+publish release tags such as `v0.17.0` in `fluentci-io/fluentci`. Each also supports
+**Run workflow** with a required existing `tag`, including older release tags.
+They share `nix-publish.yml`, which resolves the tag to a commit, compiles and tests
+the PureScript publishing module, then checks out that exact commit in a separate
+publishing job. Publication runs through `fluentci run --wasm … flakehub` or
+`flakestry`, using GitHub OIDC and the job's GitHub token; no registry secret is
+required. Forks skip publication. The publishing runner installs the registry
+tools and Nix; the target tag does not need a prebuilt Wasm artifact.
 
 ## GitHub releases and module tests
 

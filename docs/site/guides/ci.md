@@ -104,6 +104,19 @@ explicitly pushes `./result` and its runtime closure. Upload failures fail CI.
 Without a token, it runs the normal Nix build and skips uploads. The token needs
 write access to the `fluentci` cache; it never appears in command arguments.
 
+## Publish the Nix flake
+
+The FlakeHub and Flakestry publishing workflows run when a release tag such as
+`v0.17.0` is pushed to `fluentci-io/fluentci`. Both also support **Run workflow**:
+enter an existing release tag in the required `tag` input to publish it manually.
+Forks skip publication.
+
+The shared `nix-publish.yml` workflow validates the tag, compiles and tests the
+`nix` PureScript module, and publishes the tag's exact commit through its Wasm
+`flakehub` or `flakestry` function. GitHub OIDC and the job token authenticate
+publication; no additional registry secret is required. Publishing is separate
+from the default checks and the Nix package build workflow.
+
 ## Unsupported remote execution
 
 The unified CLI does not currently expose `fluentci run --remote-exec`. Run the

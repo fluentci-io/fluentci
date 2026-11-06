@@ -38,7 +38,7 @@ curl --fail-with-body --silent --show-error \
   -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
   "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=https://flakestry.dev" > "$work/token.json"
 oidc=$(jq -er '.value' "$work/token.json")
-jo metadata=:"$work/metadata.json" metadata_error=@"$work/metadata.err" \
+jo metadata=:"$work/metadata.json" metadata_errors=@"$work/metadata.err" \
   outputs=:"$work/outputs.json" outputs_errors=@"$work/outputs.err" \
   readme=README.md version="$VERSION" ref="$REF" > "$work/publish.json"
 curl --fail-with-body --silent --show-error \
