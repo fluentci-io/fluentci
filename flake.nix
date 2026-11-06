@@ -114,7 +114,10 @@
         checks = { inherit fluentci studio; };
         formatter = pkgs.nixfmt;
         devShells.default = craneLib.devShell {
-          packages = [ pkgs.bun pkgs.nodejs_24 pkgs.pkg-config pkgs.openssl pkgs.cmake pkgs.perl ];
+          packages = [
+            pkgs.rustc pkgs.cargo pkgs.rustfmt pkgs.clippy
+            pkgs.bun pkgs.nodejs_24 pkgs.pkg-config pkgs.openssl pkgs.cmake pkgs.perl
+          ];
         };
       });
 }
