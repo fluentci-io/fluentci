@@ -253,6 +253,15 @@ pre {
   .module-result { @apply flex items-center gap-3 rounded-lg p-3 transition-colors; }
   .module-result.is-selected { @apply bg-raised; }
   .module-logo { @apply flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-raised text-accent; }
+  .module-result .module-logo {
+    position: relative;
+    align-self: stretch;
+    width: 72px;
+    height: auto;
+    min-height: 72px;
+  }
+  .module-result .module-logo img { position: absolute; inset: 0; }
+  .module-result .module-logo svg { width: 32px; height: 32px; }
   .module-logo-large { @apply size-16 rounded-xl sm:size-20; }
   .module-logo img { @apply size-full object-contain p-1; }
   .module-author { @apply inline-flex max-w-full items-center gap-2 text-xs text-muted; }

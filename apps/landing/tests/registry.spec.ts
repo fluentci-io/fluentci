@@ -89,6 +89,15 @@ test("search opens with slash, shows identities and navigates to the record page
   await expect(
     dialog.getByRole("link", { name: /@alice.example\/cache/ }),
   ).not.toContainText("downloads");
+  const resultLogo = dialog
+    .getByRole("link", { name: /sccache/ })
+    .locator(".module-logo");
+  await expect(resultLogo).toHaveCSS("width", "72px");
+  expect(
+    await resultLogo.evaluate(
+      (element) => element.getBoundingClientRect().height,
+    ),
+  ).toBeGreaterThanOrEqual(72);
   await input.fill("missing");
   await expect(dialog.getByRole("status")).toHaveText(
     "No modules found. Try another name or topic.",
