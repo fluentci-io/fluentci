@@ -9,6 +9,10 @@ on:
         description: Existing GitHub release tag to build and upload
         required: true
         type: string
+      source-ref:
+        description: Optional source commit or branch to rebuild (defaults to the release tag)
+        required: false
+        type: string
 
 permissions:
   contents: read
@@ -20,7 +24,7 @@ concurrency:
 env:
   RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.tag }}
   BSD_RUST_VERSION: '1.99.1'
-  FLUENTCI_VERSION: '2026.11.04'
+  FLUENTCI_VERSION: 'v0.17.0'
   RELEASE_MODULE: .fluentci/release/dist/plugin.wasm
 
 jobs:
@@ -30,7 +34,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ inputs.source-ref || format('refs/tags/{0}', github.event.release.tag_name || inputs.tag) }}
       - name: Set up FluentCI
         uses: fluentci-io/setup-fluentci@next
         with:
@@ -46,6 +50,12 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: fluentci --check-update=false run release prepare
+      - name: Compile and test Gemfury PureScript Wasm module
+        working-directory: .fluentci/gemfury
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+          npm test
       - uses: actions/upload-artifact@v4
         with:
           name: release-inputs
@@ -53,6 +63,7 @@ jobs:
             webui/dist/
             .release-smoke/*.wasm
             .fluentci/release/dist/plugin.wasm
+            .fluentci/gemfury/dist/plugin.wasm
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
@@ -85,7 +96,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ inputs.source-ref || format('refs/tags/{0}', github.event.release.tag_name || inputs.tag) }}
       - name: Set up FluentCI
         uses: fluentci-io/setup-fluentci@next
         with:
@@ -109,10 +120,33 @@ jobs:
         run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" check
       - name: Package release assets with FluentCI
         run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" package
+      - name: Install Linux packaging tools through PureScript Wasm
+        if: runner.os == 'Linux'
+        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm dependencies
+      - name: Verify native Debian and RPM package formats
+        if: runner.os == 'Linux'
+        run: node --test .fluentci/gemfury/test/package.test.mjs
+      - name: Build Debian and RPM packages through PureScript Wasm
+        if: runner.os == 'Linux'
+        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm package
       - name: Upload GitHub release assets with FluentCI
         env:
           GH_TOKEN: ${{ github.token }}
         run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" upload
+      - name: Upload Linux package assets to GitHub release
+        if: runner.os == 'Linux'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          source .github/scripts/linux-package-env.sh
+          gh release upload "$RELEASE_VERSION" "$deb_file" "$rpm_file" "$deb_file.sha256" "$rpm_file.sha256" --clobber
+      - name: Upload Debian and RPM packages to Gemfury through PureScript Wasm
+        if: runner.os == 'Linux'
+        env:
+          FURY_TOKEN: ${{ secrets.FURY_TOKEN }}
+          FURY_USER: ${{ secrets.FURY_USER || vars.FURY_USER }}
+          FURY_ACCOUNT: ${{ secrets.FURY_ACCOUNT || vars.FURY_ACCOUNT }}
+        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm upload
 
   bsd:
     name: Release ${{ matrix.target }}
@@ -139,7 +173,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: refs/tags/${{ github.event.release.tag_name || inputs.tag }}
+          ref: ${{ inputs.source-ref || format('refs/tags/{0}', github.event.release.tag_name || inputs.tag) }}
       - name: Set up FluentCI
         uses: fluentci-io/setup-fluentci@next
         with:
@@ -172,7 +206,7 @@ jobs:
             set -eu
             export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
             sh .github/scripts/prepare-bsd-release.sh
-            curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh
+            curl -fsSL https://raw.githubusercontent.com/fluentci-io/fluentci/main/install.sh | sh
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
@@ -191,7 +225,7 @@ jobs:
             set -eu
             export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
             sh .github/scripts/prepare-bsd-release.sh
-            curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh
+            curl -fsSL https://raw.githubusercontent.com/fluentci-io/fluentci/main/install.sh | sh
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
@@ -210,11 +244,15 @@ jobs:
             set -eu
             export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
             sh .github/scripts/prepare-bsd-release.sh
-            curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh
+            # Bootstrap from the fork's latest release. This pinned installer
+            # resolves tsirysndr/fluentci rather than the upstream repository.
+            curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/7c25793ca7230852a499468775afa92b323043c7/install.sh | FLUENTCI_VERSION=latest sh
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
-            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsdBuild
+            # The released bootstrap cannot resolve current_exe on OpenBSD.
+            # Enter its Wasm worker directly; the release module still drives the build.
+            WASM_ENABLED=1 "$HOME/.local/bin/fluentci" __engine-call --module "$RELEASE_MODULE" -- bsdBuild
       - name: Verify copied-back BSD assets with FluentCI
         run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsdVerify
       - name: Preserve BSD failure diagnostics

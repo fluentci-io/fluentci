@@ -15,7 +15,9 @@ case "$(uname -s)" in
         /usr/pkg/bin/pkgin -y install bash git pkgconf curl xz cmake gmake perl
         ;;
     OpenBSD)
-        pkg_add -I bash rust git pkgconf curl cmake gmake
+        pkg_add -I bash rust git curl cmake gmake
+        # OpenBSD provides pkg-config in the base system, not a pkgconf package.
+        command -v pkg-config
         ;;
     *) echo 'This script requires a native BSD guest' >&2; exit 1 ;;
 esac

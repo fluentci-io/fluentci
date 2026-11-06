@@ -104,6 +104,26 @@ explicitly pushes `./result` and its runtime closure. Upload failures fail CI.
 Without a token, it runs the normal Nix build and skips uploads. The token needs
 write access to the `fluentci` cache; it never appears in command arguments.
 
+## Debian and RPM releases with Gemfury
+
+The release workflow packages the Linux CLI and embedded Studio web interface as
+Debian and RPM packages for x86_64 and arm64. It compiles the `gemfury` PureScript
+module to Wasm once, then invokes its `dependencies`, `package`, and `upload`
+functions on each native Linux runner. Packages and SHA-256 sidecars are also
+attached to the GitHub release.
+
+Configure the GitHub Actions secrets `FURY_USER`, `FURY_TOKEN`, and `FURY_ACCOUNT`
+for Gemfury. The user and token authenticate the request; the account selects
+the upload destination. User and account can also be repository variables;
+secrets take precedence.
+Without a token, the workflow still builds and attaches the packages but skips
+Gemfury uploads. With a token, missing user/account configuration and upload errors
+fail the job. Credentials stay in the environment rather than command arguments.
+
+The packages use the same Ubuntu 24.04 binaries as the release archives and
+declare a glibc 2.39 minimum. Debian architecture names are `amd64`/`arm64`;
+RPM architecture names are `x86_64`/`aarch64`.
+
 ## Publish the Nix flake
 
 The FlakeHub and Flakestry publishing workflows run when a release tag such as

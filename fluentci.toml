@@ -43,3 +43,8 @@ sdk = "purescript"
 name = "cachix"
 path = ".fluentci/cachix"
 sdk = "purescript"
+
+[[modules]]
+name = "gemfury"
+path = ".fluentci/gemfury"
+sdk = "purescript"

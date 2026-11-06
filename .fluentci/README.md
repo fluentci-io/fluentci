@@ -24,6 +24,7 @@ fluentci run main build      # Studio + host release CLI
 | `nix`       | `check`, `metadata`, `flakehub`, `flakestry`                              | Flake validation, inspection, and explicit publishing                            |
 | `nix-build` | `build`                                                                   | Build the locked FluentCI Nix package with `nix build`                           |
 | `cachix`    | `setup`, `push`                                                           | Authenticated setup and uploads for the `fluentci` binary cache                  |
+| `gemfury`   | `dependencies`, `package`, `upload`                                       | Native Debian/RPM packaging and Gemfury uploads for x86_64 and arm64 Linux       |
 
 `cachix` exports `setup` and `push`, with `CI.Cachix.setupWith :: String -> Effect Unit`
 for PureScript composition. Pass the cache name (the Cachix key identifying the
@@ -109,6 +110,39 @@ release binary; it does not rebuild it.
 `fluentci run release upload` publishes the two files using `gh release upload`.
 It requires an existing GitHub release and authenticated GitHub CLI (`GH_TOKEN`
 in Actions). Uploading is separate from checks and packaging.
+
+## Gemfury Debian and RPM packages
+
+The release workflow builds `.deb` and `.rpm` packages on the native x86_64 and
+arm64 Linux runners using the `gemfury` PureScript Wasm module. Packages contain
+the CLI, its embedded Studio web interface, and the license. They are uploaded
+to the GitHub release with SHA-256 sidecars and optionally to Gemfury.
+
+Set the GitHub Actions secrets `FURY_USER`, `FURY_TOKEN`, and `FURY_ACCOUNT` to
+enable Gemfury uploads. `FURY_USER` authenticates with `FURY_TOKEN`, while
+`FURY_ACCOUNT` selects the destination account. User and account may alternatively
+be repository variables; secrets take precedence. A missing or blank token skips
+Gemfury; missing authentication user, an invalid account,
+missing package, authentication failure, or rejected upload fails the job.
+Like the `music-player` publisher, curl expands credentials directly from the
+environment with `--variable` and `--expand-user`, keeping it out of command
+arguments and pipeline plans. Uploading requires curl 8.3 or newer.
+
+```sh
+export TARGET=x86_64-unknown-linux-gnu # Or aarch64-unknown-linux-gnu
+export RELEASE_VERSION=v0.17.0
+fluentci run gemfury dependencies
+fluentci run gemfury package
+# Set FURY_USER, FURY_TOKEN, and FURY_ACCOUNT before uploading.
+fluentci run gemfury upload
+```
+
+`package` requires an existing `target/$TARGET/release/fluentci`, built in
+release mode. Debian packages use `amd64`/`arm64`; RPMs use `x86_64`/`aarch64`.
+Both package metadata and architecture are checked before publishing. The
+Ubuntu 24.04 release binaries require glibc 2.39 or newer, which is declared in
+the packages. Results are written under `target/release-assets/`. Building
+packages does not need Gemfury credentials.
 
 ## Nix publishing
 

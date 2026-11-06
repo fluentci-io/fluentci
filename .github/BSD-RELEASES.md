@@ -19,6 +19,20 @@ compiled module's `bsdBuild` function and never install Bun, Node, Vite, React
 build tools, or PureScript. Ubuntu invokes `bsdVerify` and `bsdUpload` after VM
 copyback.
 
+OpenBSD bootstraps from the latest release in `tsirysndr/fluentci`, using an
+immutable installer revision that resolves releases from that fork. This
+overrides the global bootstrap version pin. Its bootstrap calls
+`__engine-call` directly to avoid the old CLI's failing executable lookup, while
+still running the PureScript Wasm release module. Newly built binaries resolve
+their executable from startup arguments and `PATH` if OpenBSD's argv sysctl
+fails; native smoke tests exercise the public `run --wasm` command.
+
+For a manual backport build, set `tag` to the existing release and `source-ref`
+to the fixed source commit or branch. All jobs check out the same source ref,
+and `BUILD-INFO.txt` records its commit. Leaving `source-ref` empty builds the
+release tag as usual. Re-running an old workflow without the updated source
+will still build the old code.
+
 All native builds use `cargo build --release --locked`. FreeBSD and NetBSD host
 toolchains are downloaded over HTTPS and verified against Rust's SHA-256
 sidecars. BSD caches are separate from the Linux/macOS build caches. OpenBSD uses
