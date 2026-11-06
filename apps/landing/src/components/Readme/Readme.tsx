@@ -72,6 +72,9 @@ export function Readme({ plugin }: { plugin: Plugin }) {
             }
           }}
           components={{
+            h1: ({ children }) => <h2>{children}</h2>,
+            h2: ({ children }) => <h3>{children}</h3>,
+            h3: ({ children }) => <h4>{children}</h4>,
             a: ({ children, href }) => (
               <a href={href} rel="noopener noreferrer">
                 {children}

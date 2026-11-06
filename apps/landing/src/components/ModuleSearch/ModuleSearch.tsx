@@ -5,6 +5,11 @@ import { SearchDialog } from "../SearchDialog";
 export function ModuleSearch() {
   const [open, setOpen] = useState(false);
   const trigger = useRef<HTMLButtonElement>(null);
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (wasOpen.current && !open) trigger.current?.focus();
+    wasOpen.current = open;
+  }, [open]);
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => {
       const target = event.target as HTMLElement | null;
@@ -41,7 +46,6 @@ export function ModuleSearch() {
         <SearchDialog
           close={() => {
             setOpen(false);
-            trigger.current?.focus();
           }}
         />
       )}

@@ -70,6 +70,11 @@ test("search opens with slash, shows identities and navigates to the record page
   await page.keyboard.press("/");
   const dialog = page.getByRole("dialog", { name: "Search FluentCI modules" });
   await expect(dialog).toBeVisible();
+  expect(
+    await dialog.evaluate(
+      (element) => getComputedStyle(element, "::backdrop").backdropFilter,
+    ),
+  ).toBe("none");
   const input = dialog.getByRole("combobox");
   await expect(input).toBeFocused();
   await expect(dialog.getByRole("link", { name: /sccache/ })).toContainText(
@@ -108,6 +113,8 @@ test("search opens with slash, shows identities and navigates to the record page
     "fluentci run @fluentci.io/sccache@0.1.0 setup",
   );
   await expect(usage).toContainText("Latest version");
+  await expect(usage).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
+  await expect(usage).toHaveCSS("border-top-width", "0px");
   await expect(
     usage.getByRole("img", { name: "227 downloads in the last 7 days" }),
   ).toBeVisible();

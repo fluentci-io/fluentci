@@ -261,7 +261,7 @@ pre {
   .module-search-footer { @apply flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-[10px] text-muted; }
   .search-message { @apply px-4 py-12 text-center text-sm leading-7 text-muted; }
   .module-page-grid { @apply grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_320px]; }
-  .module-usage-panel { @apply min-w-0 rounded-xl border border-line bg-panel p-5 lg:sticky lg:top-8; }
+  .module-usage-panel { @apply min-w-0 lg:sticky lg:top-8; }
   .usage-command { @apply mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-line bg-paper p-3; }
   .usage-command code { @apply break-words text-sm leading-6 text-cyan; overflow-wrap: anywhere; }
   .module-tag { @apply rounded border border-line bg-panel px-2 py-1 font-mono text-xs text-ink; }
