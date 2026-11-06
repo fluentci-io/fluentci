@@ -40,7 +40,9 @@ pub struct Package {
     pub uri: Option<String>,
     pub cid: Option<String>,
     pub repository: Option<String>,
+    pub logo: Option<String>,
     pub subdir: Option<String>,
+    pub functions: Option<Vec<crate::plugin_metadata::Function>>,
 }
 
 pub struct Resolved {
@@ -118,7 +120,7 @@ pub async fn resolve(pipeline: &str) -> Result<Resolved> {
     resolve_at(pipeline, &base_url()).await
 }
 
-async fn resolve_at(pipeline: &str, registry_url: &str) -> Result<Resolved> {
+pub(crate) async fn resolve_at(pipeline: &str, registry_url: &str) -> Result<Resolved> {
     #[derive(Deserialize)]
     struct Output {
         package: Package,
@@ -196,7 +198,11 @@ async fn resolve_at(pipeline: &str, registry_url: &str) -> Result<Resolved> {
     })
 }
 
-pub async fn search(query: &str, limit: u32) -> Result<()> {
+pub async fn search_packages_at(
+    query: &str,
+    limit: u32,
+    registry_url: &str,
+) -> Result<Vec<Package>> {
     #[derive(Deserialize)]
     struct Search {
         packages: Vec<Package>,
@@ -208,15 +214,21 @@ pub async fn search(query: &str, limit: u32) -> Result<()> {
     let response: Search = client()
         .get(format!(
             "{}/xrpc/io.fluentci.registry.searchPackages",
-            base_url()
+            registry_url.trim_end_matches('/')
         ))
         .query(&[("q", query), ("limit", &limit.to_string())])
+        .timeout(Duration::from_secs(8))
         .send()
         .await?
         .error_for_status()?
         .json()
         .await?;
-    for p in &response.packages {
+    Ok(response.packages)
+}
+
+pub async fn search(query: &str, limit: u32) -> Result<()> {
+    let packages = search_packages_at(query, limit, &base_url()).await?;
+    for p in &packages {
         let author = p
             .author
             .as_deref()
@@ -230,7 +242,7 @@ pub async fn search(query: &str, limit: u32) -> Result<()> {
             p.description.as_deref().unwrap_or_default()
         );
     }
-    if response.packages.is_empty() {
+    if packages.is_empty() {
         println!("No results found for {query}");
     }
     Ok(())

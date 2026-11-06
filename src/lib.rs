@@ -24,4 +24,5 @@ pub mod server;
 pub mod services;
 pub mod tangled;
 pub mod tools;
+pub mod workflows;
 pub mod workspace;

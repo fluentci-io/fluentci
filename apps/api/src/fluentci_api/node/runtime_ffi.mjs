@@ -55,6 +55,13 @@ export async function resolveAuthor(author) {
   if (!did) throw new InvalidRequestError('Author handle could not be resolved');
   return did;
 }
+export async function resolveActor(server, actor) {
+  if (!actor) throw new InvalidRequestError('Actor is required');
+  const did = await (server.options.resolveActor ?? resolveAuthor)(actor);
+  if (typeof did !== 'string' || !did.startsWith('did:'))
+    throw new InvalidRequestError('Actor handle could not be resolved');
+  return did;
+}
 export async function upload(server, request) {
   const body = request.input?.body;
   const chunks = [];

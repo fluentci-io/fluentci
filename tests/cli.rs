@@ -103,6 +103,10 @@ fn supports_implicit_run_and_aliases() {
 #[test]
 fn rejects_invalid_ports_and_conflicting_providers() {
     assert!(Cli::try_parse_from(["fluentci", "studio", "--port", "70000"]).is_err());
+    assert!(Cli::try_parse_from(["fluentci", "project", "export", "--semaphore"]).is_ok());
+    assert!(
+        Cli::try_parse_from(["fluentci", "project", "export", "--semaphore", "--aws"]).is_err()
+    );
     assert!(
         Cli::try_parse_from(["fluentci", "project", "export", "--github", "--gitlab"]).is_err()
     );
@@ -190,4 +194,30 @@ fn dependency_cache_command_is_not_exposed() {
     command.build();
     assert!(command.find_subcommand("cache").is_none());
     assert!(!command.render_help().to_string().contains("cache      "));
+}
+
+#[test]
+fn workflows_list_and_step_details_parse_without_running_cli() {
+    let cli = Cli::try_parse_from(["fluentci", "workflows", "--steps", "--json"]).unwrap();
+    assert!(matches!(
+        cli.command,
+        Some(Command::Workflows {
+            json: true,
+            steps: true,
+            ..
+        })
+    ));
+    let cli = Cli::try_parse_from(["fluentci", "run", "--workflow", "release"]).unwrap();
+    assert!(
+        matches!(cli.command, Some(Command::Run(args)) if args.workflow.as_deref() == Some("release"))
+    );
+    assert!(Cli::try_parse_from(["fluentci", "run", "--workflow", "release", "--wasm"]).is_err());
+}
+
+#[test]
+fn workflow_details_can_select_one_workflow() {
+    let cli = Cli::try_parse_from(["fluentci", "workflows", "ci", "--steps"]).unwrap();
+    assert!(
+        matches!(cli.command, Some(Command::Workflows {workflow: Some(id), steps:true, ..}) if id == "ci")
+    );
 }

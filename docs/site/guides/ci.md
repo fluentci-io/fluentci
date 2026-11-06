@@ -39,20 +39,62 @@ fluentci project export PROJECT_NAME --gitlab > gitlab-ci.yml
 fluentci project export PROJECT_NAME --azure > azure-pipelines.yml
 fluentci project export PROJECT_NAME --circleci > circleci.yml
 fluentci project export PROJECT_NAME --aws > buildspec.yml
+fluentci project export PROJECT_NAME --semaphore > .semaphore/semaphore.yml
 ```
 
-The GitHub provider is the default. The named project must exist in the local
-database. Without a name, export selects the current directory's saved project.
-Export uses enabled saved actions, not an arbitrary TOML document that has never
-been associated with the project.
+The GitHub provider is the default. The project must be registered locally.
+Without a name, export selects the current directory's saved project. Pass
+`--workflow checks` to select `.fluentci/workflows/checks.toml`; otherwise export
+uses `default`. Only enabled steps are exported, in order. The workflow environment
+is merged with each step's environment, and working directories are preserved.
+Module arguments remain literal arguments; shell actions run through Bash. A failed
+command stops subsequent steps.
 
-## Review runner assumptions
+## Events and provider setup
 
-Generated YAML is a starting point. Review compiler setup, secret injection,
-working directories, checkout behavior, and artifact uploads for the target
-runner. Keep account app passwords in runner secrets rather than the manifest.
-The public installer is `https://cli.fluentci.io`; generated provider setup can
-also reference the installer source directly.
+Configure `[on]`, `[on.push]`, and `[on.pull_request]` in the workflow file or use
+Studio's visual event composer. Pull-request branch filters select the **target**
+branch. Filters are inclusive globs using `*`, `**`, and `?`; schedules are
+five-field UTC cron expressions. These events never gate a manual local run.
+
+| Provider        | Trigger mapping and setup                                                                                                                                                                                                                                 |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| GitHub Actions  | Push, pull request, manual dispatch and schedules are in workflow YAML.                                                                                                                                                                                   |
+| GitLab          | Workflow rules map event sources, branches, tags and paths. Create scheduled pipelines in project settings using the cron instructions in the export.                                                                                                     |
+| Azure Pipelines | YAML contains push, PR and schedule filters. PR triggers require GitHub/Bitbucket; Azure Repos needs branch validation policies. Manual access uses pipeline permissions.                                                                                 |
+| CircleCI        | Uses GitHub App event conditions; enable matching project triggers and configure schedules separately. Static path filters are rejected.                                                                                                                  |
+| Semaphore       | Save `.semaphore/semaphore.yml`, enable selected events in project settings, and create scheduled Tasks separately. The ordered job checks event type and target branch/tag before running steps. Unmatched events skip steps. Path filters are rejected. |
+| AWS CodeBuild   | Buildspec controls commands. Export comments include the separate webhook filter payload and schedule/IAM instructions; apply these to the project.                                                                                                       |
+
+Provider YAML cannot configure every project setting. Export comments identify
+required external setup. See the [Semaphore pipeline specification](https://docs.semaphore.io/reference/pipeline-yaml)
+and [event variables](https://docs.semaphore.io/reference/env-vars) for Semaphore's
+runtime filter inputs.
+
+## Runner requirements
+
+Exports install FluentCI with `fluentci-io/setup-fluentci@next` on GitHub and the
+source installer elsewhere. The GitLab image installs curl, Git and CA certificates
+first. Configure compiler tools required by source SDKs, secrets, and artifact
+uploads for the chosen runner. Precompiled Wasm still requires tools called by its
+jobs. Keep app passwords in CI secrets rather than workflow files.
+
+## Nix package CI
+
+The flake exposes `.#fluentci` (also the default package) and `.#studio` for
+`x86_64-linux`, `aarch64-linux`, and `aarch64-darwin`. Intel macOS is excluded.
+Crane builds the Rust CLI and embeds Studio assets built with Bun. Dependencies
+are pinned by `Cargo.lock`, `bun.lock`, and `flake.lock`.
+
+```sh
+nix build .#fluentci
+# After changing bun.lock, refresh its Nix fetchers:
+bun scripts/generate-bun-nix.mjs
+```
+
+`.github/workflows/nix-build.yml` runs on pushes to `main` and manual dispatch.
+It compiles the `nix-build` PureScript module once, then runs its Wasm on the three
+native platforms. The module runs only `nix build --no-write-lock-file .#fluentci`.
 
 ## Unsupported remote execution
 

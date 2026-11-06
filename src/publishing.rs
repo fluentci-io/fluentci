@@ -23,6 +23,9 @@ pub const MAX_WASM_BYTES: usize = 64 * 1024 * 1024;
 
 #[derive(Debug, Default, clap::Args)]
 pub struct MetadataOptions {
+    /// Optional HTTP(S) module logo picture URL
+    #[arg(long, value_name = "URL")]
+    pub logo: Option<String>,
     /// Optional module source directory inside the Git repository
     #[arg(long, value_name = "PATH")]
     pub subdir: Option<std::path::PathBuf>,
@@ -63,6 +66,8 @@ pub struct PluginRecord {
     pub functions: Vec<crate::plugin_metadata::Function>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub repository: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub logo: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub subdir: Option<String>,
 }
@@ -128,6 +133,41 @@ pub fn validate_wasm(bytes: &[u8]) -> Result<()> {
     wasmparser::Validator::new()
         .validate_all(bytes)
         .context("Invalid Wasm module")?;
+    Ok(())
+}
+
+/// Verify a publisher-supplied picture without downloading its body.
+pub async fn validate_logo_url(value: &str) -> Result<()> {
+    config::validate_logo(value)?;
+    let response = registry::client()
+        .get(value)
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+        .context("Could not fetch module logo URL")?;
+    config::validate_logo(response.url().as_str())?;
+    anyhow::ensure!(
+        response.status() == reqwest::StatusCode::OK,
+        "Module logo URL must return HTTP 200 (received {})",
+        response.status()
+    );
+    let mime = response
+        .headers()
+        .get(reqwest::header::CONTENT_TYPE)
+        .and_then(|value| value.to_str().ok())
+        .and_then(|value| value.split(';').next())
+        .unwrap_or("")
+        .trim()
+        .to_ascii_lowercase();
+    anyhow::ensure!(
+        mime.strip_prefix("image/").is_some_and(|subtype| {
+            !subtype.is_empty()
+                && subtype
+                    .bytes()
+                    .all(|byte| byte.is_ascii_alphanumeric() || matches!(byte, b'.' | b'+' | b'-'))
+        }),
+        "Module logo URL must return an image/* Content-Type (received {mime:?})"
+    );
     Ok(())
 }
 
@@ -237,6 +277,7 @@ fn metadata(
         .filter(|_| module.is_none())
         .and_then(|config| config.package.as_ref());
     let fields = MetadataOptions {
+        logo: None,
         subdir: None,
         repository: None,
         manifest: None,
@@ -428,6 +469,13 @@ pub async fn publish(
             .and_then(|name| config.modules.iter().find(|m| m.name == name))
             .or_else(|| (config.modules.len() == 1).then(|| &config.modules[0]))
     });
+    let logo = metadata_options
+        .logo
+        .clone()
+        .or_else(|| definition.and_then(|module| module.logo.clone()));
+    if let Some(logo) = &logo {
+        validate_logo_url(logo).await?;
+    }
     let repository = metadata_options.repository.clone().or_else(|| {
         definition.and_then(|module| module.repository.clone().or_else(|| module.git.clone()))
     });
@@ -495,6 +543,7 @@ pub async fn publish(
         sha256: digest,
         size,
         functions,
+        logo,
         repository,
         subdir,
     };

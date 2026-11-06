@@ -13,18 +13,20 @@ export function PipelineControl({
   disabled = false,
   onRun,
   onCancel,
+  compact = false,
 }: {
   run?: Run | null;
   pending?: boolean;
   disabled?: boolean;
   onRun: () => void;
   onCancel: () => void;
+  compact?: boolean;
 }) {
   const active = isActive(run?.status);
   const label = active ? "Cancel" : run ? "Restart" : "Run";
   return (
     <button
-      className={active ? "btn-cancel" : "btn-primary"}
+      className={`${active ? "btn-cancel" : "btn-primary"} ${compact ? "!px-2 !py-1.5 text-xs" : ""}`}
       disabled={pending || disabled}
       onClick={active ? onCancel : onRun}
       aria-label={`${label} pipeline`}

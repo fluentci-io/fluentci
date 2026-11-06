@@ -55,3 +55,81 @@ export const repositorySchema = z.object({
     }, "Enter a Git repository URL (HTTPS or SSH)."),
 });
 export type RepositoryValues = z.infer<typeof repositorySchema>;
+
+export const workflowSchema = z.object({
+  id: z
+    .string()
+    .trim()
+    .regex(
+      /^[a-z][a-z0-9_-]{0,63}$/,
+      "Use a lowercase letter followed by letters, digits, hyphens or underscores (up to 64 characters).",
+    ),
+  name: z.string().trim().min(1, "Enter a workflow name.").max(128),
+  description: z.string().max(2048),
+  enabled: z.boolean(),
+  env: z
+    .string()
+    .refine(
+      (value) =>
+        value
+          .split("\n")
+          .every(
+            (line) => !line.trim() || /^[A-Za-z_][A-Za-z0-9_]*=/.test(line),
+          ),
+      "Use KEY=value, one variable per line.",
+    ),
+});
+export type WorkflowValues = z.infer<typeof workflowSchema>;
+
+export const workflowEventsSchema = z
+  .object({
+    push: z.boolean(),
+    pullRequest: z.boolean(),
+    manual: z.boolean(),
+    pushBranches: z.string(),
+    pushTags: z.string(),
+    pushPaths: z.string(),
+    prBranches: z.string(),
+    prPaths: z.string(),
+    schedule: z
+      .string()
+      .refine(
+        (value) =>
+          value
+            .split("\n")
+            .every(
+              (line) => !line.trim() || line.trim().split(/\s+/).length === 5,
+            ),
+        "Use one five-field UTC cron expression per line.",
+      ),
+  })
+  .superRefine((value, ctx) => {
+    for (const field of [
+      "pushBranches",
+      "pushTags",
+      "pushPaths",
+      "prBranches",
+      "prPaths",
+    ] as const) {
+      if (
+        value[field]
+          .split("\n")
+          .some(
+            (line) =>
+              line.trim() &&
+              (line.length > 256 ||
+                ["!", "[", "]", "{", "}", "+"].some((char) =>
+                  line.includes(char),
+                ) ||
+                [...line].some((char) => char.charCodeAt(0) < 32)),
+          )
+      )
+        ctx.addIssue({
+          code: "custom",
+          path: [field],
+          message:
+            "Use inclusive glob patterns with *, ** and ?, one per line.",
+        });
+    }
+  });
+export type WorkflowEventsValues = z.infer<typeof workflowEventsSchema>;

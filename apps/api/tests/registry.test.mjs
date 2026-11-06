@@ -189,6 +189,7 @@ test('function signatures survive Jetstream, SQLite and every registry response'
       functions,
       repository: 'https://github.com/fluentci-io/fluentci',
       subdir: 'examples/sccache',
+      logo: 'https://cdn.example/sccache.png',
     }),
   );
   const { url } = await server(t, connection);
@@ -197,6 +198,7 @@ test('function signatures survive Jetstream, SQLite and every registry response'
     assert.equal(response.status, 200);
     const body = await response.json();
     assert.deepEqual((body.package ?? body.packages[0]).functions, functions);
+    assert.equal((body.package ?? body.packages[0]).logo, 'https://cdn.example/sccache.png');
     assert.equal((body.package ?? body.packages[0]).subdir, 'examples/sccache');
     assert.equal(
       (body.package ?? body.packages[0]).repository,
@@ -206,6 +208,8 @@ test('function signatures survive Jetstream, SQLite and every registry response'
   for (const overrides of [
     { repository: 'https://example.com/repo', subdir: '../outside' },
     { subdir: 'modules/cache' },
+    { logo: 'file:///tmp/logo.png' },
+    { logo: 'https://user:password@example.com/logo.png' },
     { repository: 'https://user:secret@example.com/repo' },
   ]) {
     assert.equal(
@@ -604,4 +608,50 @@ test('versioned upload paths use the verified handle, bare SemVer metadata and c
   assert.equal((await conflict.json()).error, 'PackageVersionExists');
   instance.options.resolvePublisherHandle = async () => '../../escape';
   assert.equal((await upload({ name: 'hello-ci', version: '1.0.0' })).status, 400);
+});
+
+test('actor package feed resolves identities and paginates only visible published versions', async (t) => {
+  const connection = await fixture(t);
+  await add(
+    connection,
+    event('alpha', '1.0.0', 100),
+    event('alpha', '2.0.0', 101),
+    event('beta', '1.0.0', 102),
+    event('unrelated', '1.0.0', 103, other),
+  );
+  const { url } = await server(t, connection, {
+    resolveActor: async (actor) =>
+      actor === 'alice.example' ? did : actor.startsWith('did:') ? actor : null,
+  });
+  const base = `${url}/xrpc/io.fluentci.registry.getActorPackages`;
+  const first = await fetch(`${base}?actor=alice.example&limit=2`);
+  assert.equal(first.status, 200);
+  const page = await first.json();
+  assert.equal(page.packages.length, 2);
+  assert.ok(page.packages.every((pkg) => pkg.author === did));
+  assert.ok(page.cursor);
+  const next = await fetch(
+    `${base}?actor=${encodeURIComponent(did)}&limit=2&cursor=${encodeURIComponent(page.cursor)}`,
+  );
+  assert.equal(next.status, 200);
+  const tail = await next.json();
+  assert.equal(tail.packages.length, 1);
+  assert.equal(tail.cursor, undefined);
+  assert.equal(new Set([...page.packages, ...tail.packages].map((pkg) => pkg.uri)).size, 3);
+  const mismatched = await fetch(
+    `${base}?actor=${encodeURIComponent(other)}&cursor=${encodeURIComponent(page.cursor)}`,
+  );
+  assert.equal(mismatched.status, 400);
+  assert.equal((await mismatched.json()).error, 'InvalidCursor');
+  assert.equal((await fetch(base)).status, 400);
+  assert.equal((await fetch(`${base}?actor=alice.example&limit=101`)).status, 400);
+  assert.equal((await fetch(`${base}?actor=missing.example`)).status, 400);
+  const deleted = event('beta', '1.0.0', 104);
+  deleted.commit.operation = 'delete';
+  delete deleted.commit.record;
+  await add(connection, deleted);
+  assert.equal((await db.actor_packages(connection, did, 100, '')).packages.toArray().length, 2);
+  await add(connection, { kind: 'account', did, time_us: 105, account: { active: false } });
+  const hidden = await fetch(`${base}?actor=${encodeURIComponent(did)}`);
+  assert.deepEqual((await hidden.json()).packages, []);
 });

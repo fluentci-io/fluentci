@@ -31,6 +31,8 @@ import Ansi from "ansi-to-react";
 import { PipelineSpans } from "./PipelineSpans";
 import { graphql, isActive, mergeLogs, runFields } from "../api";
 import {
+  workflowDraftKey,
+  workflowSearch,
   actionDraftsAtom,
   followLogsAtom,
   logSearchAtom,
@@ -320,12 +322,16 @@ export function RunView({ run }: { run: Run | null | undefined }) {
   const rerun = useMutation({
     mutationFn: async (job: Job) => {
       if (!run) throw new Error("Select a run first.");
-      if (drafts[run.projectId])
+      if (drafts[workflowDraftKey(run.projectId, run.workflowId)])
         throw new Error("Save your action changes before re-running a job.");
       return (
         await graphql<{ runPipeline: Run }>(
-          `mutation($id: ID!, $name: String!) { runPipeline(projectId: $id, jobName: $name, wait: false) { ${runFields} } }`,
-          { id: run.projectId, name: job.name },
+          `mutation($id: ID!, $name: String!, $workflow: String!) { runPipeline(projectId: $id, jobName: $name, workflowId: $workflow, wait: false) { ${runFields} } }`,
+          {
+            id: run.projectId,
+            name: job.name,
+            workflow: run.workflowId || "default",
+          },
         )
       ).runPipeline;
     },
@@ -338,7 +344,9 @@ export function RunView({ run }: { run: Run | null | undefined }) {
       void client.invalidateQueries({ queryKey: ["runs", next.projectId] });
       setSearch("");
       setFollow(true);
-      navigate(`/project/${next.projectId}/run/${next.id}`);
+      navigate(
+        `/project/${next.projectId}/run/${next.id}${workflowSearch(next.workflowId)}`,
+      );
     },
   });
   const [params, setParams] = useSearchParams();

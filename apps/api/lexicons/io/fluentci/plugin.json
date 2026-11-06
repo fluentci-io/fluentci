@@ -77,6 +77,12 @@
             "maxLength": 2048,
             "format": "uri"
           },
+          "logo": {
+            "type": "string",
+            "description": "Optional HTTP(S) picture URL for the module logo.",
+            "maxLength": 2048,
+            "format": "uri"
+          },
           "subdir": {
             "type": "string",
             "description": "Relative module source directory inside the Git repository.",

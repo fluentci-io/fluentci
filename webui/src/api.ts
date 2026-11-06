@@ -3,7 +3,7 @@ import { useSetAtom } from "jotai";
 import { QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { connectionAtom } from "./state";
 import { isDesktop } from "./desktop";
-import type { Action, Job, Log, Project, Run } from "./types";
+import type { Action, Job, Log, Project, Run, Workflow } from "./types";
 
 export const endpoint = isDesktop()
   ? "/graphql"
@@ -11,7 +11,9 @@ export const endpoint = isDesktop()
 export const projectFields =
   "id name displayName description path archived tags";
 export const jobFields = "id name status createdAt startedAt duration";
-export const runFields = `id projectId title status date duration branch commit message jobs { ${jobFields} }`;
+export const runFields = `id projectId workflowId workflowName title status date duration branch commit message jobs { ${jobFields} }`;
+export const workflowFields =
+  "id name description enabled env path revision stepCount legacy events { push { branches tags paths } pullRequest { branches tags paths } manual schedule }";
 export const actionFields =
   "name commands enabled plugin useWasm env workingDirectory";
 
@@ -74,14 +76,16 @@ export function useProject(id: string) {
   });
 }
 
-export function useRuns(projectId: string) {
+export function useRuns(projectId: string, workflowId?: string) {
   return useQuery({
-    queryKey: ["runs", projectId],
+    queryKey: workflowId
+      ? ["runs", projectId, workflowId]
+      : ["runs", projectId],
     queryFn: async ({ signal }) =>
       (
         await graphql<{ getRuns: Run[] }>(
-          `query($id: ID!) { getRuns(projectId: $id, limit: 1000) { ${runFields} } }`,
-          { id: projectId },
+          `query($id: ID!, $workflow: String) { getRuns(projectId: $id, workflowId: $workflow, limit: 1000) { ${runFields} } }`,
+          { id: projectId, workflow: workflowId },
           signal,
         )
       ).getRuns,
@@ -106,14 +110,30 @@ export function useRun(id: string | undefined) {
   });
 }
 
-export function useActions(projectId: string) {
+export function useWorkflows(projectId: string) {
   return useQuery({
-    queryKey: ["actions", projectId],
+    queryKey: ["workflows", projectId],
+    enabled: !!projectId,
+    queryFn: async ({ signal }) =>
+      (
+        await graphql<{ workflows: Workflow[] }>(
+          `query($id: ID!) { workflows(projectId: $id) { ${workflowFields} } }`,
+          { id: projectId },
+          signal,
+        )
+      ).workflows,
+    refetchInterval: 5_000,
+  });
+}
+
+export function useActions(projectId: string, workflowId = "default") {
+  return useQuery({
+    queryKey: ["actions", projectId, workflowId],
     queryFn: async ({ signal }) =>
       (
         await graphql<{ actions: Action[] }>(
-          `query($id: ID!) { actions(projectId: $id) { ${actionFields} } }`,
-          { id: projectId },
+          `query($id: ID!, $workflow: String!) { actions(projectId: $id, workflowId: $workflow) { ${actionFields} } }`,
+          { id: projectId, workflow: workflowId },
           signal,
         )
       ).actions,
@@ -230,6 +250,9 @@ export function useLiveEvents() {
             );
             void client.invalidateQueries({ queryKey: ["logs", job.id] });
             invalidate();
+          } else if (event.channel === "workflow") {
+            for (const key of ["workflows", "actions", "export"])
+              void client.invalidateQueries({ queryKey: [key] });
           } else if (["project", "update-stats"].includes(event.channel)) {
             invalidate();
           }

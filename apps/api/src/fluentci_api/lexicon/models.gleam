@@ -10,6 +10,8 @@ pub const plugin = "io.fluentci.plugin"
 
 pub const registry_defs = "io.fluentci.registry.defs"
 
+pub const registry_get_actor_packages = "io.fluentci.registry.getActorPackages"
+
 pub const registry_get_package = "io.fluentci.registry.getPackage"
 
 pub const registry_list_packages = "io.fluentci.registry.listPackages"
@@ -31,6 +33,7 @@ pub type Plugin {
     functions: Option(List(PluginFunction)),
     size: Int,
     repository: Option(String),
+    logo: Option(String),
     subdir: Option(String),
   )
 }
@@ -61,6 +64,11 @@ pub fn encode_plugin(value: Plugin) -> json.Json {
     list.append(fields, case value.repository {
       None -> []
       Some(item) -> [#("repository", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.logo {
+      None -> []
+      Some(item) -> [#("logo", json.string(item))]
     })
   let fields =
     list.append(fields, case value.subdir {
@@ -143,6 +151,7 @@ pub type RegistryPackageView {
     functions: Option(List(PluginFunction)),
     size: Int,
     repository: Option(String),
+    logo: Option(String),
     subdir: Option(String),
     uri: String,
     cid: String,
@@ -179,9 +188,63 @@ pub fn encode_registry_package_view(value: RegistryPackageView) -> json.Json {
       Some(item) -> [#("repository", json.string(item))]
     })
   let fields =
+    list.append(fields, case value.logo {
+      None -> []
+      Some(item) -> [#("logo", json.string(item))]
+    })
+  let fields =
     list.append(fields, case value.subdir {
       None -> []
       Some(item) -> [#("subdir", json.string(item))]
+    })
+  json.object(fields)
+}
+
+pub type RegistryGetActorPackagesParameters {
+  RegistryGetActorPackagesParameters(
+    actor: String,
+    limit: Option(Int),
+    cursor: Option(String),
+  )
+}
+
+pub fn encode_registry_get_actor_packages_parameters(
+  value: RegistryGetActorPackagesParameters,
+) -> json.Json {
+  let fields = [#("actor", json.string(value.actor))]
+  let fields =
+    list.append(fields, case value.limit {
+      None -> []
+      Some(item) -> [#("limit", json.int(item))]
+    })
+  let fields =
+    list.append(fields, case value.cursor {
+      None -> []
+      Some(item) -> [#("cursor", json.string(item))]
+    })
+  json.object(fields)
+}
+
+pub type RegistryGetActorPackagesOutput {
+  RegistryGetActorPackagesOutput(
+    packages: List(RegistryPackageView),
+    cursor: Option(String),
+  )
+}
+
+pub fn encode_registry_get_actor_packages_output(
+  value: RegistryGetActorPackagesOutput,
+) -> json.Json {
+  let fields = [
+    #(
+      "packages",
+      json.array(value.packages, fn(item) { encode_registry_package_view(item) }),
+    ),
+  ]
+  let fields =
+    list.append(fields, case value.cursor {
+      None -> []
+      Some(item) -> [#("cursor", json.string(item))]
     })
   json.object(fields)
 }

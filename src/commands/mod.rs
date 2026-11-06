@@ -35,6 +35,7 @@ mod studio;
 mod up;
 mod upgrade;
 mod whoami;
+mod workflows;
 
 pub async fn dispatch(cli: Cli) -> Result<()> {
     // Workers run before opening SQLite or starting any services.
@@ -56,6 +57,11 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
     match cli.command {
         None => run::execute(&cli.run, &db).await,
         Some(Command::Run(args)) => run::execute(&args, &db).await,
+        Some(Command::Workflows {
+            workflow,
+            json,
+            steps,
+        }) => workflows::execute(&db, workflow.as_deref(), json, steps).await,
         Some(Command::Install { frozen_lockfile }) => {
             crate::lockfile::install(frozen_lockfile, false, None).await
         }

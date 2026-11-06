@@ -54,7 +54,7 @@ test("history tooltips and keyboard command palette", async ({ page }) => {
   await palette.getByRole("combobox").fill("edit pipeline");
   await page.keyboard.press("Enter");
   await expect(
-    page.getByRole("heading", { name: "Pipeline actions" }),
+    page.getByRole("heading", { name: "Default actions" }),
   ).toBeVisible();
   await expect(palette).not.toBeVisible();
 });
@@ -250,6 +250,7 @@ test("re-runs a single job from its hover control", async ({
   await page.goto("/project/local-fluentci");
   const job = page.getByRole("button", { name: /Build Studio/ });
   await expect(job).toHaveAttribute("aria-expanded", "false");
+  await page.getByRole("button", { name: "Following", exact: true }).click();
   await job.hover();
   const restart = page
     .getByRole("button", { name: "Re-run job", exact: true })
@@ -271,4 +272,199 @@ test("re-runs a single job from its hover control", async ({
     path: `test-results/rerun-job-${testInfo.project.name}.png`,
     fullPage: true,
   });
+});
+
+test("selects workflows from quick search with their parent project", async ({
+  page,
+}) => {
+  await page.goto("/project/local-fluentci/actions");
+  await page.getByRole("button", { name: "Manage workflow" }).click();
+  await page.getByRole("button", { name: "Duplicate workflow" }).click();
+  const dialog = page.getByRole("dialog", { name: "Duplicate workflow" });
+  await dialog.getByLabel("Workflow ID").fill("release");
+  await dialog.getByLabel("Name", { exact: true }).fill("Publish packages");
+  await dialog.getByRole("button", { name: "Duplicate workflow" }).click();
+  await expect(
+    page.getByRole("combobox", { name: "Workflow", exact: true }),
+  ).toHaveValue("release");
+  await page.getByRole("link", { name: "Execution", exact: true }).click();
+  await expect(page.getByRole("region", { name: "Run history" })).toContainText(
+    "0 runs",
+  );
+  await page.keyboard.press("ControlOrMeta+k");
+  const palette = page.getByRole("dialog", { name: "Quick search" });
+  await palette.getByRole("combobox").fill("Publish packages");
+  const result = palette.getByRole("option", {
+    name: /Publish packages.*fluentci/i,
+  });
+  await expect(result).toBeVisible();
+  await page.screenshot({
+    path: `test-results/workflow-search-${test.info().project.name}.png`,
+  });
+  await result.click();
+  await expect(page).toHaveURL(/workflow=release/);
+  await page.getByRole("link", { name: "Actions", exact: true }).click();
+  await expect(
+    page.getByRole("heading", { name: "Publish packages actions" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/workflow-actions-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+});
+
+test("composes CI events visually and keeps repository autocomplete custom", async ({
+  page,
+}) => {
+  await page.goto("/project/local-fluentci/actions");
+  const triggers = page.getByRole("region", {
+    name: "Workflow event triggers",
+  });
+  await triggers
+    .getByRole("checkbox", { name: "On pull request", exact: true })
+    .check();
+  await triggers.getByLabel("Target branches", { exact: true }).fill("main");
+  await triggers.getByLabel("UTC cron expressions").fill("0 6 * * 1-5");
+  await triggers.getByRole("button", { name: "Save triggers" }).click();
+  await expect(
+    triggers.getByRole("button", { name: "Saved triggers" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/workflow-triggers-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+  const showPanel = page.getByRole("button", {
+    name: "Show left panel",
+    exact: true,
+  });
+  if (await showPanel.isVisible()) await showPanel.click();
+  await page.getByRole("button", { name: "Add project", exact: true }).click();
+  const dialog = page.getByRole("dialog", { name: "Add a project" });
+  await dialog
+    .getByRole("button", { name: "Clone repository", exact: true })
+    .click();
+  const repository = dialog.getByRole("combobox", {
+    name: "Git repository URL",
+  });
+  await expect(repository).toHaveAttribute("autocomplete", "off");
+  await repository.fill("fluentci");
+  await dialog
+    .getByRole("option", {
+      name: "https://tangled.org/fluentci.io/fluentci",
+      exact: true,
+    })
+    .click();
+  await expect(repository).toHaveValue(
+    "https://tangled.org/fluentci.io/fluentci",
+  );
+});
+
+test("pins project tabs and promotes workflow controls into the header", async ({
+  page,
+}) => {
+  await page.goto("/project/local-fluentci/actions");
+  await expect(
+    page.getByRole("heading", { name: "Event triggers" }),
+  ).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 650));
+  const nav = page.getByRole("navigation", { name: "Project tabs" });
+  await expect
+    .poll(async () => (await nav.boundingBox())?.y)
+    .toBeGreaterThanOrEqual(56);
+  await expect.poll(async () => (await nav.boundingBox())?.y).toBeLessThan(58);
+  const controls = page.getByRole("group", {
+    name: "Header workflow controls",
+  });
+  await expect(controls).toBeVisible();
+  await expect(
+    controls.getByRole("combobox", { name: "Workflow", exact: true }),
+  ).toHaveValue("default");
+  await expect(
+    controls.getByRole("button", { name: "Manage workflow" }),
+  ).toBeEnabled();
+  await expect(
+    page
+      .getByRole("group", { name: "Header pipeline control" })
+      .getByRole("button", { name: "Cancel pipeline" }),
+  ).toBeEnabled();
+  await controls.getByRole("button", { name: "New workflow" }).click();
+  const dialog = page.getByRole("dialog", { name: "New workflow" });
+  await dialog.getByLabel("Workflow ID").fill("release");
+  await expect(
+    dialog.getByText(/Saved in \.fluentci\/workflows\/release\.toml/),
+  ).toBeVisible();
+  await dialog.getByLabel("Name", { exact: true }).fill("Release");
+  await dialog.getByRole("button", { name: "Create workflow" }).click();
+  await expect(page).toHaveURL(/workflow=release/);
+  await expect(dialog).not.toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "Release actions" }),
+  ).toBeVisible();
+  await page.evaluate(() => window.scrollTo(0, 650));
+  await expect(
+    controls.getByRole("combobox", { name: "Workflow", exact: true }),
+  ).toHaveValue("release");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/sticky-workflow-header-${test.info().project.name}.png`,
+  });
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(
+    page.getByRole("group", { name: "Header workflow controls" }),
+  ).not.toBeVisible();
+  await expect(
+    page.getByRole("combobox", { name: "Workflow", exact: true }),
+  ).toHaveValue("release");
+});
+
+test("suggests registry modules separately from local modules", async ({
+  page,
+}) => {
+  await page.goto("/project/local-fluentci/actions");
+  const module = page.getByRole("combobox", {
+    name: "Action 1 module",
+    exact: true,
+  });
+  await module.fill("sccache");
+  const local = page.getByRole("option", { name: "sccache", exact: true });
+  const registry = page.getByRole("option", {
+    name: "@fluentci.io/sccache@v0.1.0",
+    exact: true,
+  });
+  await expect(local.getByText("Local", { exact: true })).toBeVisible();
+  await expect(registry.getByText("Registry", { exact: true })).toBeVisible();
+  await registry.click();
+  await expect(module).toHaveValue("@fluentci.io/sccache@v0.1.0");
+  await page
+    .getByRole("combobox", {
+      name: "Action 1 functions / commands",
+      exact: true,
+    })
+    .fill("se");
+  await page.getByRole("option", { name: "setup", exact: true }).click();
+  await expect(
+    page.getByRole("combobox", {
+      name: "Action 1 functions / commands",
+      exact: true,
+    }),
+  ).toHaveValue("setup");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
 });

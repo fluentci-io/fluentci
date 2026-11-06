@@ -1,17 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useRef, useState } from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import { useQuery, useQueries } from "@tanstack/react-query";
 import {
   IconArrowDown as ArrowDown,
   IconArrowUp as ArrowUp,
   IconCornerDownLeft as CornerDownLeft,
   IconFolder as Folder,
+  IconGitBranch as WorkflowIcon,
   IconSearch as Search,
   IconTerminal2 as Terminal,
   IconX as X,
 } from "@tabler/icons-react";
-import type { Project, Run, SearchResult } from "../types";
-import { graphql, isActive } from "../api";
+import type { Project, Run, SearchResult, Workflow } from "../types";
+import { workflowSearch } from "../state";
+import { graphql, isActive, workflowFields } from "../api";
 import { date, statusLabel } from "./ui";
 
 interface Command {
@@ -38,6 +40,31 @@ export function CommandPalette({
   onClose: () => void;
 }) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const workflowId =
+    new URLSearchParams(location.search).get("workflow") ||
+    currentRun?.workflowId ||
+    "default";
+  const workflowQueries = useQueries({
+    queries: projects.map((project) => ({
+      queryKey: ["workflows", project.id],
+      queryFn: async ({ signal }: { signal: AbortSignal }) =>
+        (
+          await graphql<{ workflows: Workflow[] }>(
+            `query($id: ID!) { workflows(projectId: $id) { ${workflowFields} } }`,
+            { id: project.id },
+            signal,
+          )
+        ).workflows,
+    })),
+  });
+  const workflowCommands = projects.flatMap((project, index) =>
+    (workflowQueries[index].data || []).map((workflow) => ({
+      project,
+      workflow,
+    })),
+  );
+
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(0);
   const [debounced, setDebounced] = useState("");
@@ -60,7 +87,7 @@ export function CommandPalette({
       ).search,
     staleTime: 0,
   });
-  const commands = useMemo(() => {
+  const commands = (() => {
     const go = (path: string) => () => {
       navigate(path);
       onClose();
@@ -82,7 +109,7 @@ export function CommandPalette({
         [
           "export",
           "Export CI configuration",
-          "GitHub, GitLab, Azure, CircleCI, AWS",
+          "GitHub, GitLab, Azure, CircleCI, Semaphore, AWS",
         ],
         ["settings", "Project settings", "Name, tags, archive"],
       ])
@@ -91,13 +118,13 @@ export function CommandPalette({
           title,
           subtitle,
           group: "Current project",
-          execute: go(`${base}/${path}`),
+          execute: go(`${base}/${path}${workflowSearch(workflowId)}`),
         });
       if (onControl && !currentProject.archived)
         items.unshift({
           id: "control",
           title: `${isActive(currentRun?.status) ? "Cancel" : currentRun ? "Restart" : "Run"} pipeline`,
-          subtitle: currentProject.displayName || currentProject.name,
+          subtitle: `${currentProject.displayName || currentProject.name} · ${currentRun?.workflowName || workflowId}`,
           group: "Pipeline",
           execute: () => {
             onControl();
@@ -115,24 +142,27 @@ export function CommandPalette({
       })),
     );
     items.push(
+      ...workflowCommands.map(({ project, workflow }) => ({
+        id: `workflow-${project.id}-${workflow.id}`,
+        title: workflow.name,
+        subtitle: `${project.displayName || project.name} · ${workflow.id}${workflow.enabled ? "" : " · Disabled"}${project.archived ? " · Archived project" : ""}`,
+        group: "Workflows",
+        execute: go(`/project/${project.id}${workflowSearch(workflow.id)}`),
+      })),
+    );
+    items.push(
       ...runs.map((run) => ({
         id: `run-${run.id}`,
         title: `${statusLabel(run.status)} · ${run.title}`,
         subtitle: `${run.id.slice(0, 8)} · ${date(run.date)}`,
         group: "Recent runs",
-        execute: go(`/project/${run.projectId}/run/${run.id}`),
+        execute: go(
+          `/project/${run.projectId}/run/${run.id}${workflowSearch(run.workflowId)}`,
+        ),
       })),
     );
     return items;
-  }, [
-    projects,
-    runs,
-    currentProject,
-    currentRun,
-    navigate,
-    onClose,
-    onControl,
-  ]);
+  })();
   const local = commands.filter((command) =>
     `${command.title} ${command.subtitle}`
       .toLowerCase()
@@ -216,14 +246,14 @@ export function CommandPalette({
           aria-activedescendant={
             filtered[selected] ? `command-${selected}` : undefined
           }
-          aria-label="Search projects, runs, and commands"
+          aria-label="Search projects, workflows, runs, and commands"
           className="min-w-0 flex-1 bg-transparent text-base outline-none placeholder:text-muted"
           value={search}
           onChange={(event) => {
             setSearch(event.target.value);
             setSelected(0);
           }}
-          placeholder="Search projects, runs, commands…"
+          placeholder="Search projects, workflows, runs, commands…"
         />
         <button
           aria-label="Close quick search"
@@ -260,6 +290,8 @@ export function CommandPalette({
               <span className="flex size-8 shrink-0 items-center justify-center rounded-md border border-line bg-panel">
                 {command.group === "Projects" ? (
                   <Folder size={15} />
+                ) : command.group === "Workflows" ? (
+                  <WorkflowIcon size={15} />
                 ) : (
                   <Terminal size={15} />
                 )}
@@ -276,7 +308,8 @@ export function CommandPalette({
         ))}
         {!filtered.length && (
           <div className="px-4 py-12 text-center text-sm text-muted">
-            No results for “{search}”. Try a project name, run ID, or command.
+            No results for “{search}”. Try a workflow, project name, run ID, or
+            command.
           </div>
         )}
       </div>
@@ -293,7 +326,7 @@ export function CommandPalette({
             ? "Searching saved history…"
             : indexed.isError
               ? "Saved search unavailable"
-              : "Projects · runs · logs"}
+              : "Projects · workflows · runs · logs"}
         </span>
       </div>
     </dialog>

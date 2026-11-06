@@ -52,6 +52,11 @@ defs = new Mapping {
           format = "uri"
           maxLength = 2048
         }
+        ["logo"] = new StringField {
+          description = "Optional HTTP(S) picture URL for the module logo."
+          format = "uri"
+          maxLength = 2048
+        }
         ["subdir"] = new StringField {
           description = "Relative module source directory inside the Git repository."
           minLength = 1

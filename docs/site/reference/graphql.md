@@ -106,3 +106,54 @@ The example is an envelope sketch, not a complete job schema. Events supplement
 durable GraphQL state. Re-query after reconnecting instead of assuming the socket
 replays every missed event. The broadcast implementation can skip lagged updates.
 The compatibility field `exportActions` retains the argument spelling `plateform`.
+
+## Workflow-scoped actions and execution
+
+```graphql
+query Workflows($projectId: ID!) {
+  workflows(projectId: $projectId) {
+    id
+    name
+    description
+    enabled
+    env
+    path
+    revision
+    stepCount
+    legacy
+  }
+  actions(projectId: $projectId, workflowId: "ci") {
+    name
+    plugin
+    commands
+    enabled
+    useWasm
+    env
+    workingDirectory
+  }
+  getRuns(projectId: $projectId, workflowId: "ci") {
+    id
+    workflowId
+    workflowName
+    status
+  }
+}
+```
+
+`createWorkflow` takes `NewWorkflowInput` (`id`, `name`, optional `description`
+and `copyFrom`). `updateWorkflow` takes `WorkflowUpdateInput` (`name`,
+`description`, `enabled`, `env`, `events`, `expectedRevision`). IDs are immutable.
+`deleteWorkflow` removes a named file while preserving execution history.
+Workflow mutations emit a `workflow` event so connected clients refresh metadata.
+
+Pass `workflowId` to `saveActions`, `runPipeline`, `runJob`, `exportActions`,
+`getRuns`, and `countRuns` to select a workflow. Omitting it selects `default`
+for actions, execution and export, and all workflows for history queries.
+`saveActions`, `updateWorkflow` and `deleteWorkflow` accept `expectedRevision`
+to reject stale writes. Use the metadata's revision, or an empty string for a
+legacy default that has not yet been written to a file.
+
+`WorkflowEventsInput` contains optional `push`/`pullRequest` filters (`branches`,
+`tags`, `paths` arrays), `manual`, and a `schedule` array of UTC cron expressions.
+PR filters do not support tags. Send `null` for a disabled event. CI event settings
+are metadata only during local execution; `runPipeline` never evaluates them.

@@ -9,6 +9,12 @@ with status 1 and lists every problem without printing secret values.
 `GET /xrpc/_health` returns `{ "status": "ok" }` for liveness checks; `/health`
 remains available for existing probes.
 
+`GET /xrpc/io.fluentci.registry.getActorPackages?actor=alice.example&limit=20`
+returns an actor's indexed published versions. `actor` accepts a handle or DID;
+`limit` is 1–100 (default 20), and `cursor` continues the stable publication-time
+feed. Deleted records and inactive publishers are excluded. Optional `logo` URLs
+are included in plugin records and every package response.
+
 Uploads can provide `name` and a bare SemVer `version` as query parameters. The
 API resolves the authenticated DID's verified handle and returns a public URL
 such as `https://mod.fluentci.io/@alice.example/hello-ci/v1.0.0/hello-ci.wasm`.
@@ -30,21 +36,21 @@ bun run dev
 The server loads `apps/api/.env`; existing environment variables take precedence.
 `bun run jetstream` runs only the indexer and does not require upload settings.
 
-| Variable | Requirement / default |
-| --- | --- |
-| `S3_BUCKET` | Required for the server: destination bucket |
-| `S3_PUBLIC_URL` | Required for the server: public HTTPS download base URL |
-| `S3_REGION` | Optional; falls back to `AWS_REGION`, then `us-east-1` |
-| `S3_ENDPOINT` | Optional HTTPS endpoint for S3-compatible storage |
-| `S3_FORCE_PATH_STYLE` | Optional `true` or `false`; defaults to `false` |
-| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Set both or neither; otherwise the AWS SDK credential provider chain applies |
-| `HOST` | Defaults to `127.0.0.1` |
-| `PORT` | Integer from 1–65535; defaults to `3001` |
-| `DATABASE_URL` | Local SQLite file URL; defaults to `file:./data/registry.sqlite`, relative to `apps/api` |
-| `SERVICE_DID` | Valid `did:web` or `did:plc`; defaults to `did:web:api.fluentci.io` |
-| `JETSTREAM_URLS` | Comma-separated WSS endpoints; defaults to all four public US East/West instances |
-| `JETSTREAM_URL` | Legacy single-endpoint override, used when `JETSTREAM_URLS` is unset |
-| `JETSTREAM_ENABLED` | Optional `true` or `false`; defaults to `true` |
+| Variable                                     | Requirement / default                                                                    |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| `S3_BUCKET`                                  | Required for the server: destination bucket                                              |
+| `S3_PUBLIC_URL`                              | Required for the server: public HTTPS download base URL                                  |
+| `S3_REGION`                                  | Optional; falls back to `AWS_REGION`, then `us-east-1`                                   |
+| `S3_ENDPOINT`                                | Optional HTTPS endpoint for S3-compatible storage                                        |
+| `S3_FORCE_PATH_STYLE`                        | Optional `true` or `false`; defaults to `false`                                          |
+| `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` | Set both or neither; otherwise the AWS SDK credential provider chain applies             |
+| `HOST`                                       | Defaults to `127.0.0.1`                                                                  |
+| `PORT`                                       | Integer from 1–65535; defaults to `3001`                                                 |
+| `DATABASE_URL`                               | Local SQLite file URL; defaults to `file:./data/registry.sqlite`, relative to `apps/api` |
+| `SERVICE_DID`                                | Valid `did:web` or `did:plc`; defaults to `did:web:api.fluentci.io`                      |
+| `JETSTREAM_URLS`                             | Comma-separated WSS endpoints; defaults to all four public US East/West instances        |
+| `JETSTREAM_URL`                              | Legacy single-endpoint override, used when `JETSTREAM_URLS` is unset                     |
+| `JETSTREAM_ENABLED`                          | Optional `true` or `false`; defaults to `true`                                           |
 
 HTTP and WS URLs are allowed for loopback development services. Storage URLs
 must not contain credentials, query strings, or fragments. In-memory databases
@@ -75,18 +81,18 @@ source. Builds regenerate them automatically, and lint checks for drift.
 
 ## Source layout
 
-| Directory | Purpose |
-| --- | --- |
-| `src/fluentci_api/xrpc/` | Central route registration and one handler per endpoint under `io/fluentci/registry/` |
-| `src/fluentci_api/node/` | Node HTTP, XRPC transport, authentication and S3 bindings |
-| `src/fluentci_api/db/` | Gleam application queries, transactions, SQLite lifecycle and cursor encoding |
-| `src/fluentci_api/drizzle/` | Typed Drizzle bindings and a generic JavaScript execution bridge |
-| `src/fluentci_api/schema/` | Gleam table definitions, indexes, typed columns and row decoders |
-| `src/fluentci_api/jetstream/` | Jetstream validation, subscription and indexing |
-| `src/fluentci_api/lexicon/` | Generated Gleam models, encoders and runtime schemas |
-| `pkl/schema/` | Typed Pkl Lexicon schema |
-| `pkl/defs/` | Authoritative FluentCI Lexicon definitions |
-| `drizzle/` | SQLite migrations |
+| Directory                     | Purpose                                                                               |
+| ----------------------------- | ------------------------------------------------------------------------------------- |
+| `src/fluentci_api/xrpc/`      | Central route registration and one handler per endpoint under `io/fluentci/registry/` |
+| `src/fluentci_api/node/`      | Node HTTP, XRPC transport, authentication and S3 bindings                             |
+| `src/fluentci_api/db/`        | Gleam application queries, transactions, SQLite lifecycle and cursor encoding         |
+| `src/fluentci_api/drizzle/`   | Typed Drizzle bindings and a generic JavaScript execution bridge                      |
+| `src/fluentci_api/schema/`    | Gleam table definitions, indexes, typed columns and row decoders                      |
+| `src/fluentci_api/jetstream/` | Jetstream validation, subscription and indexing                                       |
+| `src/fluentci_api/lexicon/`   | Generated Gleam models, encoders and runtime schemas                                  |
+| `pkl/schema/`                 | Typed Pkl Lexicon schema                                                              |
+| `pkl/defs/`                   | Authoritative FluentCI Lexicon definitions                                            |
+| `drizzle/`                    | SQLite migrations                                                                     |
 
 For Linux deployment, see [the systemd service instructions](../../systemd/README.md).
 

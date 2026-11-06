@@ -2,6 +2,7 @@
 export const ids = {
   plugin: 'io.fluentci.plugin',
   registry_defs: 'io.fluentci.registry.defs',
+  registry_get_actor_packages: 'io.fluentci.registry.getActorPackages',
   registry_get_package: 'io.fluentci.registry.getPackage',
   registry_list_packages: 'io.fluentci.registry.listPackages',
   registry_publish: 'io.fluentci.registry.publish',
@@ -86,6 +87,12 @@ export const schemas = [
             repository: {
               type: 'string',
               description: 'Optional source Git repository URL.',
+              maxLength: 2048,
+              format: 'uri',
+            },
+            logo: {
+              type: 'string',
+              description: 'Optional HTTP(S) picture URL for the module logo.',
               maxLength: 2048,
               format: 'uri',
             },
@@ -237,6 +244,12 @@ export const schemas = [
             maxLength: 2048,
             format: 'uri',
           },
+          logo: {
+            type: 'string',
+            description: 'Optional HTTP(S) picture URL for the module logo.',
+            maxLength: 2048,
+            format: 'uri',
+          },
           subdir: {
             type: 'string',
             description: 'Relative module source directory inside the Git repository.',
@@ -252,6 +265,62 @@ export const schemas = [
             format: 'cid',
           },
         },
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.registry.getActorPackages',
+    description:
+      "List an actor's indexed published plugin versions, newest first, using cursor pagination.",
+    defs: {
+      main: {
+        type: 'query',
+        parameters: {
+          type: 'params',
+          required: ['actor'],
+          properties: {
+            actor: {
+              type: 'string',
+              format: 'at-identifier',
+            },
+            limit: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 100,
+              default: 20,
+            },
+            cursor: {
+              type: 'string',
+              maxLength: 4096,
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['packages'],
+            properties: {
+              packages: {
+                type: 'array',
+                items: {
+                  type: 'ref',
+                  ref: 'io.fluentci.registry.defs#packageView',
+                },
+              },
+              cursor: {
+                type: 'string',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'InvalidCursor',
+            description: 'The cursor is invalid or belongs to a different query.',
+          },
+        ],
       },
     },
   },

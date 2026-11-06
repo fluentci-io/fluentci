@@ -295,7 +295,7 @@ describe("local execution", () => {
     await userEvent.type(within(dialog).getByRole("combobox"), "edit pipeline");
     expect(within(dialog).getAllByRole("option")).toHaveLength(1);
     fireEvent.keyDown(dialog, { key: "Enter" });
-    expect(await screen.findByText("Pipeline actions")).toBeVisible();
+    expect(await screen.findByText("Default actions")).toBeVisible();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
@@ -487,7 +487,7 @@ describe("validated Studio forms", () => {
     );
     const dialog = screen.getByRole("dialog", { name: "Add a project" });
     await userEvent.type(
-      within(dialog).getByRole("textbox", { name: "Git repository URL" }),
+      within(dialog).getByRole("combobox", { name: "Git repository URL" }),
       "not a git url",
     );
     await userEvent.click(
@@ -561,4 +561,288 @@ it("follows the next active step and resumes after inspecting older output", asy
     expect(scroll).toHaveBeenCalledWith({ block: "nearest", behavior: "auto" }),
   );
   expect(screen.getByRole("button", { name: "Following" })).toBeVisible();
+});
+
+describe("workspace workflows", () => {
+  async function duplicateDefault(name = "Release", id = "release") {
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Manage workflow" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Duplicate workflow" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Duplicate workflow" });
+    await userEvent.clear(within(dialog).getByLabelText("Workflow ID"));
+    await userEvent.type(within(dialog).getByLabelText("Workflow ID"), id);
+    await userEvent.clear(within(dialog).getByLabelText("Name"));
+    await userEvent.type(within(dialog).getByLabelText("Name"), name);
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Duplicate workflow" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Workflow" })).toHaveValue(
+        id,
+      ),
+    );
+  }
+
+  it("creates a workflow with validation without modifying default actions", async () => {
+    const { api } = renderApp("/project/local-fluentci/actions", {
+      status: "SUCCESS",
+    });
+    await userEvent.click(
+      await screen.findByRole("button", { name: "New workflow" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "New workflow" });
+    await userEvent.type(
+      within(dialog).getByLabelText("Workflow ID"),
+      "../invalid",
+    );
+    await userEvent.type(within(dialog).getByLabelText("Name"), "Deploy");
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create workflow" }),
+    );
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "lowercase",
+    );
+    await userEvent.clear(within(dialog).getByLabelText("Workflow ID"));
+    await userEvent.type(
+      within(dialog).getByLabelText("Workflow ID"),
+      "deploy",
+    );
+    expect(
+      within(dialog).getByText(/Saved in \.fluentci\/workflows\/deploy\.toml/),
+    ).toBeVisible();
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Create workflow" }),
+    );
+    expect(await screen.findByText("Deploy actions")).toBeVisible();
+    expect(api.workflowActions.deploy).toEqual([]);
+    expect(api.workflowActions.default).toHaveLength(3);
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Workflow" }),
+      "default",
+    );
+    expect(await screen.findByText("Default actions")).toBeVisible();
+  });
+
+  it("scopes workflow exports, run history and job reruns", async () => {
+    const { api } = renderApp("/project/local-fluentci", { status: "SUCCESS" });
+    await duplicateDefault();
+    expect(api.workflowActions.release).toEqual(api.workflowActions.default);
+    expect(
+      within(screen.getByRole("region", { name: "Run history" })).getByText(
+        "0 runs",
+      ),
+    ).toBeVisible();
+    await userEvent.click(screen.getByRole("link", { name: "CI export" }));
+    expect(
+      await screen.findByText(/github · release · generated/),
+    ).toBeVisible();
+    await userEvent.click(screen.getByRole("link", { name: "Execution" }));
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Run pipeline" }),
+    );
+    await screen.findByText("Run Release", { exact: false });
+    expect(api.runs[0].workflowId).toBe("release");
+    await userEvent.selectOptions(
+      screen.getByRole("combobox", { name: "Workflow" }),
+      "default",
+    );
+    expect(
+      screen.queryByText("Run Release", { exact: false }),
+    ).not.toBeInTheDocument();
+    const reruns = await screen.findAllByRole("button", { name: "Re-run job" });
+    await userEvent.click(reruns[0]);
+    await waitFor(() => expect(api.runs[0].workflowId).toBe("default"));
+  });
+
+  it("renames, disables and deletes workflows while preserving history", async () => {
+    const { api, client } = renderApp("/project/local-fluentci", {
+      status: "SUCCESS",
+    });
+    await duplicateDefault();
+    await userEvent.click(screen.getByRole("button", { name: "Run pipeline" }));
+    await screen.findByText("Run Release", { exact: false });
+    api.runs[0].status = "SUCCESS";
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ["runs", project.id] });
+    });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Manage workflow" }),
+    );
+    let dialog = screen.getByRole("dialog", { name: "Manage workflow" });
+    await userEvent.clear(within(dialog).getByLabelText("Name"));
+    await userEvent.type(within(dialog).getByLabelText("Name"), "Ship");
+    await userEvent.click(within(dialog).getByLabelText("Enable workflow"));
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Save workflow" }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.getByRole("option", { name: "Ship · Disabled" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Restart pipeline" }),
+    ).toBeDisabled();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Manage workflow" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete workflow" }),
+    );
+    dialog = screen.getByRole("dialog", { name: "Delete workflow" });
+    await userEvent.click(
+      within(dialog).getByRole("button", { name: "Delete workflow" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByRole("combobox", { name: "Workflow" })).toHaveValue(
+        "default",
+      ),
+    );
+    expect(api.workflows.some((item) => item.id === "release")).toBe(false);
+    expect(api.runs.some((run) => run.workflowId === "release")).toBe(true);
+  });
+
+  it("finds workflows with their parent project and opens the selected workflow", async () => {
+    renderApp("/project/local-fluentci", { status: "SUCCESS" });
+    await duplicateDefault("Publish packages", "publish");
+    fireEvent.keyDown(window, { key: "k", metaKey: true });
+    const dialog = await screen.findByRole("dialog", { name: "Quick search" });
+    await userEvent.type(
+      within(dialog).getByRole("combobox"),
+      "Publish packages",
+    );
+    const result = await within(dialog).findByRole("option", {
+      name: /Publish packages.*fluentci/i,
+    });
+    expect(result).toHaveTextContent("publish");
+    await userEvent.click(result);
+    await waitFor(() =>
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByRole("combobox", { name: "Workflow" })).toHaveValue(
+      "publish",
+    );
+    expect(screen.getByRole("link", { name: "Actions" })).toHaveAttribute(
+      "href",
+      "/project/local-fluentci/actions?workflow=publish",
+    );
+    fireEvent.keyDown(window, { key: "k", metaKey: true });
+    const reopened = await screen.findByRole("dialog", {
+      name: "Quick search",
+    });
+    await userEvent.type(within(reopened).getByRole("combobox"), "fluentci");
+    expect(
+      await within(reopened).findByRole("option", {
+        name: /Publish packages.*publish/i,
+      }),
+    ).toBeVisible();
+  });
+});
+
+describe("workflow event composer and repository suggestions", () => {
+  it("edits event triggers visually without preventing a local run", async () => {
+    const { api } = renderApp("/project/local-fluentci/actions", {
+      status: "SUCCESS",
+    });
+    const section = await screen.findByRole("region", {
+      name: "Workflow event triggers",
+    });
+    expect(
+      within(section).getByText(/Local runs always start manually/),
+    ).toBeVisible();
+    await userEvent.click(
+      within(section).getByRole("checkbox", { name: "On push" }),
+    );
+    await userEvent.click(
+      within(section).getByRole("checkbox", { name: "On pull request" }),
+    );
+    await userEvent.type(
+      within(section).getByLabelText("Target branches"),
+      "main",
+    );
+    await userEvent.type(
+      within(section).getByLabelText("Pull request paths"),
+      "src/**",
+    );
+    await userEvent.type(
+      within(section).getByLabelText("UTC cron expressions"),
+      "0 6 * * 1-5",
+    );
+    await userEvent.click(
+      within(section).getByRole("button", { name: "Save triggers" }),
+    );
+    await within(section).findByRole("button", { name: "Saved triggers" });
+    expect(api.workflows[0].events).toEqual({
+      push: null,
+      pullRequest: { branches: ["main"], tags: [], paths: ["src/**"] },
+      manual: true,
+      schedule: ["0 6 * * 1-5"],
+    });
+    await userEvent.click(
+      screen.getByRole("button", { name: "Restart pipeline" }),
+    );
+    await waitFor(() => expect(api.runs[0].status).toBe("RUNNING"));
+  });
+
+  it("uses only Studio's repository dropdown with browser autocomplete disabled", async () => {
+    renderApp("/", { status: "SUCCESS" });
+    await userEvent.click(
+      screen.getAllByRole("button", { name: "Add project" })[0],
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Clone repository" }),
+    );
+    const dialog = screen.getByRole("dialog", { name: "Add a project" });
+    const input = within(dialog).getByRole("combobox", {
+      name: "Git repository URL",
+    });
+    expect(input).toHaveAttribute("autocomplete", "off");
+    expect(input).not.toHaveAttribute("list");
+    await userEvent.click(input);
+    await userEvent.type(input, "fluentci");
+    await userEvent.click(
+      await within(dialog).findByRole("option", {
+        name: "https://tangled.org/fluentci.io/fluentci",
+      }),
+    );
+    expect(input).toHaveValue("https://tangled.org/fluentci.io/fluentci");
+    expect(within(dialog).queryByRole("listbox")).not.toBeInTheDocument();
+  });
+});
+
+it("distinguishes local modules from registry packages and suggests published functions", async () => {
+  renderApp("/project/local-fluentci/actions", { status: "SUCCESS" });
+  const module = await screen.findByRole("combobox", {
+    name: "Action 1 module",
+  });
+  await userEvent.clear(module);
+  await userEvent.type(module, "sccache");
+  const local = await screen.findByRole("option", {
+    name: "sccache",
+  });
+  const published = await screen.findByRole("option", {
+    name: "@fluentci.io/sccache@v0.1.0",
+  });
+  expect(within(local).getByText("Local")).toBeVisible();
+  expect(within(published).getByText("Registry")).toBeVisible();
+  expect(published).toHaveTextContent("Shared compiler cache");
+  const logo = published.querySelector("img")!;
+  expect(logo).toHaveAttribute("src", "https://example.com/sccache-logo.png");
+  fireEvent.error(logo);
+  expect(published.querySelector("img")).toBeNull();
+  expect(published.querySelector("svg")).toBeInTheDocument();
+  expect(local.querySelector("svg")).toBeInTheDocument();
+  await userEvent.click(published);
+  expect(module).toHaveValue("@fluentci.io/sccache@v0.1.0");
+  const functions = screen.getByRole("combobox", {
+    name: "Action 1 functions / commands",
+  });
+  await userEvent.clear(functions);
+  await userEvent.type(functions, "se");
+  await userEvent.click(await screen.findByRole("option", { name: "setup" }));
+  expect(functions).toHaveValue("setup");
 });

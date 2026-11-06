@@ -52,3 +52,46 @@ session. See [account authentication](/registry/authentication/).
 
 For native packaging and its independent API listener, read
 [Desktop app](/studio/desktop/).
+
+## Workflows
+
+Use the workflow selector above the project tabs to switch between independent
+pipelines. **New workflow** creates a file under `.fluentci/workflows/`.
+**Manage workflow** edits its display name, description, shared environment and
+enabled state, or duplicates and deletes a named workflow. IDs remain fixed;
+existing projects retain their **Default** workflow.
+
+Actions, execution history, job reruns and CI exports follow the selected
+workflow. Draft actions remain attached to their workflow when switching between
+workflows. Save or discard action drafts before changing workflow metadata.
+Stale saves are rejected; use **Discard changes and reload** to load the saved
+file. Workflow files can also be edited in a text editor and committed to Git.
+
+Press **⌘K / Ctrl+K** to search workflows across projects. Results show the
+workflow name and parent project; opening a result selects that workflow. Saved
+runs and log matches continue to open their own workflow, including historical
+runs whose workflow file has been removed.
+
+In a terminal, list the same project workflows with `fluentci workflows`, expand
+steps grouped by workflow with `fluentci workflows --steps`, or execute one with
+`fluentci run --workflow <id>`.
+
+### Visual event triggers
+
+Open **Actions** to configure **Event triggers** above the steps. Toggle push,
+pull request and manual CI dispatch; add branch, tag and changed-path filters;
+and enter UTC cron schedules. **Save triggers** persists the selected workflow's
+`[on]` configuration. These conditions are translated by CI export and never
+prevent manual local execution. Provider-specific setup notes appear in exported
+YAML when triggers require external configuration. Save or discard action drafts
+before editing triggers.
+
+The clone-repository input uses Studio's Tangled repository suggestions with
+native browser autocomplete disabled.
+
+Pipeline tabs stay at the top while scrolling. Workflow selection, management,
+and the pipeline control become available in the header when their original
+controls scroll out of view. Module suggestions distinguish local declarations
+from registry packages, include published function names, and show module logos
+with an icon fallback. Registry suggestions require network access; local and
+custom module values remain usable offline.

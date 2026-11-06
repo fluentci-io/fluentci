@@ -69,6 +69,16 @@ export function decodeEvent(message) {
       url.password
     )
       throw new Error('Invalid Wasm URL');
+    if (p.logo !== undefined) {
+      const logo = new URL(p.logo);
+      if (
+        !['https:', 'http:'].includes(logo.protocol) ||
+        !logo.hostname ||
+        logo.username ||
+        logo.password
+      )
+        throw new Error('Invalid module logo URL');
+    }
     if (p.repository !== undefined) {
       const repository = new URL(p.repository);
       if (
@@ -103,6 +113,7 @@ export function decodeEvent(message) {
           p.functions == null ? new None() : new Some(decode_wire(p.functions)),
           p.size,
           p.repository == null ? new None() : new Some(p.repository),
+          p.logo == null ? new None() : new Some(p.logo),
           p.subdir == null ? new None() : new Some(p.subdir),
           uri,
           c.cid,

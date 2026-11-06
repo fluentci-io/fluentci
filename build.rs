@@ -1,4 +1,5 @@
 fn main() {
+    println!("cargo:rerun-if-changed=migrations");
     println!("cargo:rerun-if-changed=webui/dist");
     println!("cargo:rerun-if-changed=templates/sdk");
     if !std::path::Path::new("webui/dist/index.html").is_file() {

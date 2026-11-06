@@ -36,3 +36,6 @@ pub fn listen(server: Server, db: Db, stop_indexer: fn() -> Nil) -> Nil
 
 @external(javascript, "./runtime_ffi.mjs", "resolveAuthor")
 pub fn resolve_author(author: String) -> Promise(String)
+
+@external(javascript, "./runtime_ffi.mjs", "resolveActor")
+pub fn resolve_actor(server: Server, actor: String) -> Promise(String)

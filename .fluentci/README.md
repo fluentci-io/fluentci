@@ -14,14 +14,15 @@ fluentci run studio build
 fluentci run main build      # Studio + host release CLI
 ```
 
-| Module | Functions | Purpose |
-| --- | --- | --- |
-| `main` | `check`, `build` | Standard repository checks and release CLI build |
-| `rust` | `format`, `lint`, `test`, `check`, `build` | Cargo formatting, linting, tests, and builds |
-| `desktop` | `build`, `sign`, `package`, `upload` | macOS Studio builds, verified ad hoc signatures, installers, and release uploads |
-| `studio` | `install`, `build` | Frozen Bun dependency install and embedded Studio web assets |
-| `release` | `prepare`, `build`, `buildPrepared`, `check`, `package`, `upload`, `bsd*` | Release inputs, native builds, verification, and uploads |
-| `nix` | `check`, `metadata`, `flakehub`, `flakestry` | Flake validation, inspection, and explicit publishing |
+| Module      | Functions                                                                 | Purpose                                                                          |
+| ----------- | ------------------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `main`      | `check`, `build`                                                          | Standard repository checks and release CLI build                                 |
+| `rust`      | `format`, `lint`, `test`, `check`, `build`                                | Cargo formatting, linting, tests, and builds                                     |
+| `desktop`   | `build`, `sign`, `package`, `upload`                                      | macOS Studio builds, verified ad hoc signatures, installers, and release uploads |
+| `studio`    | `install`, `build`                                                        | Frozen Bun dependency install and embedded Studio web assets                     |
+| `release`   | `prepare`, `build`, `buildPrepared`, `check`, `package`, `upload`, `bsd*` | Release inputs, native builds, verification, and uploads                         |
+| `nix`       | `check`, `metadata`, `flakehub`, `flakestry`                              | Flake validation, inspection, and explicit publishing                            |
+| `nix-build` | `build`                                                                   | Build the locked FluentCI Nix package with `nix build`                           |
 
 `common` is a shared PureScript source package, not a Wasm module. The modules
 reuse it through Spago path dependencies. `main`, `rust`, and `release` compose
@@ -188,3 +189,19 @@ fluentci run desktop upload
 Outputs are `desktop/release-assets/FluentCI-Studio_<tag>_<target>.dmg`,
 `.app.zip`, and individual `.sha256` files. Packaging refuses to create archives
 if signing or verification fails. `sign` is also available as a separate job.
+
+## Nix package build
+
+`.github/workflows/nix-build.yml` runs on pushes to `main` and manual dispatch.
+It compiles `.fluentci/nix-build` once on Ubuntu, then downloads that Wasm in
+native x86_64 Linux, ARM64 Linux and ARM64 macOS jobs. Each job installs Nix and
+invokes the module's `build` export; no guest SDK compiler is needed on the build
+runners. The module only runs `nix build --no-write-lock-file .#fluentci`.
+
+This workflow intentionally has no x86_64 Darwin job. Regenerate the integrity-
+pinned Bun dependency expression after changing `bun.lock`:
+
+```sh
+bun scripts/generate-bun-nix.mjs
+bun scripts/generate-bun-nix.mjs --check
+```

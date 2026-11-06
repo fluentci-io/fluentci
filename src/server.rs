@@ -4,7 +4,7 @@ use crate::{
     db::Db,
     executor::{self, Events},
     models::*,
-    modules,
+    modules, workflows,
     workspace::Workspace,
 };
 use anyhow::{Context as _, Result};
@@ -36,6 +36,7 @@ type Api = Schema<Query, Mutation, EmptySubscription>;
 pub struct AppState {
     pub db: Db,
     pub events: Events,
+    pub registry_url: String,
 }
 
 impl AppState {
@@ -43,6 +44,7 @@ impl AppState {
         Self {
             db,
             events: broadcast::channel(1024).0,
+            registry_url: crate::registry::base_url(),
         }
     }
 }
@@ -122,6 +124,10 @@ fn directory_suggestions(root: &Path) -> Result<Vec<String>> {
 struct ModuleSuggestion {
     name: String,
     functions: Vec<String>,
+    origin: String,
+    logo: Option<String>,
+    version: Option<String>,
+    description: Option<String>,
 }
 
 pub struct Query;
@@ -212,8 +218,32 @@ impl Query {
         &self,
         ctx: &Context<'_>,
         project_id: ID,
+        workflow_id: Option<String>,
     ) -> async_graphql::Result<Vec<Action>> {
-        Ok(ctx.data::<AppState>()?.db.actions(&project_id).await?)
+        let db = &ctx.data::<AppState>()?.db;
+        let project = db
+            .project(&project_id)
+            .await?
+            .context("Project not found")?;
+        Ok(workflows::actions(
+            db,
+            &project,
+            workflow_id.as_deref().unwrap_or(workflows::DEFAULT),
+        )
+        .await?)
+    }
+
+    async fn workflows(
+        &self,
+        ctx: &Context<'_>,
+        project_id: ID,
+    ) -> async_graphql::Result<Vec<Workflow>> {
+        let db = &ctx.data::<AppState>()?.db;
+        let project = db
+            .project(&project_id)
+            .await?
+            .context("Project not found")?;
+        Ok(workflows::list(db, &project).await?)
     }
 
     async fn project_name_available(
@@ -258,6 +288,7 @@ impl Query {
             .await?
             .context("Project not found")?;
         let mut suggestions: BTreeMap<String, BTreeSet<String>> = BTreeMap::new();
+        let mut logos = BTreeMap::new();
         let root = Path::new(&project.path);
         let mut actions = db.actions(&project_id).await?;
         actions.extend(crate::detection::actions(root)?);
@@ -273,6 +304,7 @@ impl Query {
         for module in modules::discover(&workspace)? {
             // Missing or stale artifacts must not hide modules or saved suggestions.
             let functions = module.cached_functions().await.unwrap_or_default();
+            logos.insert(module.name.clone(), module.definition.logo.clone());
             suggestions
                 .entry(module.name)
                 .or_default()
@@ -281,8 +313,70 @@ impl Query {
         Ok(suggestions
             .into_iter()
             .map(|(name, functions)| ModuleSuggestion {
+                origin: if name.starts_with('@') {
+                    "REGISTRY"
+                } else {
+                    "LOCAL"
+                }
+                .into(),
+                logo: logos.remove(&name).flatten(),
                 name,
                 functions: functions.into_iter().collect(),
+                version: None,
+                description: None,
+            })
+            .collect())
+    }
+
+    async fn registry_modules(
+        &self,
+        ctx: &Context<'_>,
+        query: String,
+    ) -> async_graphql::Result<Vec<ModuleSuggestion>> {
+        let query = query.trim();
+        if !(2..=512).contains(&query.len()) {
+            return Err("Enter 2–512 characters to search the registry".into());
+        }
+        let registry_url = &ctx.data::<AppState>()?.registry_url;
+        let mut packages = None;
+        if query.starts_with('@')
+            && query.contains('/')
+            && let Ok(Ok(package)) = tokio::time::timeout(
+                std::time::Duration::from_secs(5),
+                crate::registry::resolve_at(query, registry_url),
+            )
+            .await
+        {
+            packages = Some(vec![package.metadata]);
+        }
+        let packages = match packages {
+            Some(packages) => packages,
+            None => crate::registry::search_packages_at(query, 10, registry_url).await?,
+        };
+        Ok(packages
+            .into_iter()
+            .filter_map(|package| {
+                let author = package.author?.trim_start_matches('@').to_owned();
+                let name = package.name?;
+                let version = package.version?;
+                if author.is_empty() || name.is_empty() {
+                    return None;
+                }
+                Some(ModuleSuggestion {
+                    name: format!("@{author}/{name}@v{}", version.trim_start_matches('v')),
+                    functions: package
+                        .functions
+                        .unwrap_or_default()
+                        .into_iter()
+                        .map(|function| function.name)
+                        .collect(),
+                    origin: "REGISTRY".into(),
+                    logo: package
+                        .logo
+                        .filter(|url| crate::config::validate_logo(url).is_ok()),
+                    version: Some(version),
+                    description: package.description,
+                })
             })
             .collect())
     }
@@ -300,6 +394,7 @@ impl Query {
         limit: Option<i32>,
         cursor: Option<String>,
         reverse: Option<bool>,
+        workflow_id: Option<String>,
     ) -> async_graphql::Result<Vec<Run>> {
         let offset = cursor
             .as_ref()
@@ -307,7 +402,10 @@ impl Query {
             .unwrap_or(0)
             + skip.unwrap_or(0).max(0) as usize;
         let mut runs = page(
-            ctx.data::<AppState>()?.db.runs(&project_id).await?,
+            ctx.data::<AppState>()?
+                .db
+                .workflow_runs(&project_id, workflow_id.as_deref())
+                .await?,
             skip,
             limit,
             cursor,
@@ -320,8 +418,18 @@ impl Query {
         Ok(runs)
     }
 
-    async fn count_runs(&self, ctx: &Context<'_>, project_id: ID) -> async_graphql::Result<i32> {
-        Ok(ctx.data::<AppState>()?.db.runs(&project_id).await?.len() as i32)
+    async fn count_runs(
+        &self,
+        ctx: &Context<'_>,
+        project_id: ID,
+        workflow_id: Option<String>,
+    ) -> async_graphql::Result<i32> {
+        Ok(ctx
+            .data::<AppState>()?
+            .db
+            .workflow_runs(&project_id, workflow_id.as_deref())
+            .await?
+            .len() as i32)
     }
 
     async fn jobs(&self, ctx: &Context<'_>) -> async_graphql::Result<Vec<Job>> {
@@ -364,12 +472,40 @@ impl Query {
         ctx: &Context<'_>,
         project_id: ID,
         plateform: String,
+        workflow_id: Option<String>,
     ) -> async_graphql::Result<String> {
-        Ok(crate::export::generate(
-            &plateform,
-            &ctx.data::<AppState>()?.db.actions(&project_id).await?,
-        )?)
+        let db = &ctx.data::<AppState>()?.db;
+        let project = db
+            .project(&project_id)
+            .await?
+            .context("Project not found")?;
+        let definition = workflows::definition(
+            db,
+            &project,
+            workflow_id.as_deref().unwrap_or(workflows::DEFAULT),
+        )
+        .await?;
+        Ok(crate::export::generate_workflow(&plateform, &definition)?)
     }
+}
+
+#[derive(InputObject)]
+struct NewWorkflowInput {
+    events: Option<WorkflowEvents>,
+    id: String,
+    name: String,
+    description: Option<String>,
+    copy_from: Option<String>,
+}
+
+#[derive(InputObject)]
+struct WorkflowUpdateInput {
+    events: Option<WorkflowEvents>,
+    name: Option<String>,
+    description: Option<String>,
+    enabled: Option<bool>,
+    env: Option<Vec<String>>,
+    expected_revision: Option<String>,
 }
 
 pub struct Mutation;
@@ -480,16 +616,106 @@ impl Mutation {
         &self,
         ctx: &Context<'_>,
         project_id: ID,
-        mut actions: Vec<Action>,
+        actions: Vec<Action>,
+        workflow_id: Option<String>,
+        expected_revision: Option<String>,
     ) -> async_graphql::Result<Vec<Action>> {
-        for a in &mut actions {
-            a.id = Some(id());
-        }
-        ctx.data::<AppState>()?
-            .db
-            .save_actions(&project_id, &actions)
-            .await?;
+        let s = ctx.data::<AppState>()?;
+        let project =
+            s.db.project(&project_id)
+                .await?
+                .context("Project not found")?;
+        let key = workflow_id.as_deref().unwrap_or(workflows::DEFAULT);
+        let workflow = workflows::update(
+            &s.db,
+            &project,
+            key,
+            workflows::Update {
+                actions: Some(actions.clone()),
+                expected_revision,
+                ..Default::default()
+            },
+        )
+        .await?;
+        executor::publish(Some(&s.events), "workflow", &workflow);
         Ok(actions)
+    }
+
+    async fn create_workflow(
+        &self,
+        ctx: &Context<'_>,
+        project_id: ID,
+        input: NewWorkflowInput,
+    ) -> async_graphql::Result<Workflow> {
+        let s = ctx.data::<AppState>()?;
+        let project =
+            s.db.project(&project_id)
+                .await?
+                .context("Project not found")?;
+        let workflow = workflows::create_with_events(
+            &s.db,
+            &project,
+            &input.id,
+            &input.name,
+            input.description,
+            input.copy_from.as_deref(),
+            input.events,
+        )
+        .await?;
+        executor::publish(Some(&s.events), "workflow", &workflow);
+        Ok(workflow)
+    }
+
+    async fn update_workflow(
+        &self,
+        ctx: &Context<'_>,
+        project_id: ID,
+        workflow_id: String,
+        input: WorkflowUpdateInput,
+    ) -> async_graphql::Result<Workflow> {
+        let s = ctx.data::<AppState>()?;
+        let project =
+            s.db.project(&project_id)
+                .await?
+                .context("Project not found")?;
+        let workflow = workflows::update(
+            &s.db,
+            &project,
+            &workflow_id,
+            workflows::Update {
+                events: input.events,
+                name: input.name,
+                description: input.description,
+                enabled: input.enabled,
+                env: input.env,
+                expected_revision: input.expected_revision,
+                ..Default::default()
+            },
+        )
+        .await?;
+        executor::publish(Some(&s.events), "workflow", &workflow);
+        Ok(workflow)
+    }
+
+    async fn delete_workflow(
+        &self,
+        ctx: &Context<'_>,
+        project_id: ID,
+        workflow_id: String,
+        expected_revision: Option<String>,
+    ) -> async_graphql::Result<bool> {
+        let s = ctx.data::<AppState>()?;
+        let project =
+            s.db.project(&project_id)
+                .await?
+                .context("Project not found")?;
+        let deleted = workflows::delete(&project, &workflow_id, expected_revision).await?;
+        executor::publish(
+            Some(&s.events),
+            "workflow",
+            serde_json::json!({"id": workflow_id}),
+        );
+        Ok(deleted)
     }
 
     async fn run_pipeline(
@@ -498,17 +724,20 @@ impl Mutation {
         project_id: ID,
         wait: Option<bool>,
         job_name: Option<String>,
+        workflow_id: Option<String>,
     ) -> async_graphql::Result<Run> {
         let s = ctx.data::<AppState>()?.clone();
         let project =
             s.db.project(&project_id)
                 .await?
                 .context("Project not found")?;
-        let run = if let Some(name) = job_name {
-            executor::prepare_job(&s.db, &project, &name).await?
-        } else {
-            executor::prepare(&s.db, &project).await?
-        };
+        let run = executor::prepare_workflow(
+            &s.db,
+            &project,
+            workflow_id.as_deref().unwrap_or(workflows::DEFAULT),
+            job_name.as_deref(),
+        )
+        .await?;
         if wait.unwrap_or(false) {
             return Ok(executor::execute_prepared(s.db, project, run, Some(s.events)).await?);
         }
@@ -536,13 +765,26 @@ impl Mutation {
         ctx: &Context<'_>,
         project_id: ID,
         job_name: String,
+        workflow_id: Option<String>,
     ) -> async_graphql::Result<Job> {
         let s = ctx.data::<AppState>()?.clone();
         let p =
             s.db.project(&project_id)
                 .await?
                 .context("Project not found")?;
-        Ok(executor::execute_job(s.db, p, &job_name, Some(s.events)).await?)
+        let run = executor::prepare_workflow(
+            &s.db,
+            &p,
+            workflow_id.as_deref().unwrap_or(workflows::DEFAULT),
+            Some(&job_name),
+        )
+        .await?;
+        let run = executor::execute_prepared(s.db, p, run, Some(s.events)).await?;
+        Ok(run
+            .jobs
+            .into_iter()
+            .find(|job| job.name == job_name)
+            .context("Job missing from run")?)
     }
 }
 

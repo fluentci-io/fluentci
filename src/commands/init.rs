@@ -93,6 +93,7 @@ pub(super) async fn execute(
             rev: None,
             subdir: None,
             repository: None,
+            logo: None,
             functions: vec![],
             version: Some("0.1.0".into()),
             description: None,
@@ -109,6 +110,9 @@ pub(super) async fn execute(
             command: Commands::One(format!("fluentci run {name} hello")),
             env: None,
             working_directory: None,
+            module: None,
+            enabled: true,
+            use_wasm: true,
         }],
     };
     scaffold::create_file(

@@ -6,7 +6,7 @@ import {
   makeRun,
   project as initialProject,
 } from "./fixtures";
-import type { Action, Log, Project, Run } from "../types";
+import type { Action, Log, Project, Run, Workflow } from "../types";
 
 // A single link keeps MSW's BroadcastChannel listener shared across scenarios.
 const events = ws.link(/\/ws$/);
@@ -25,7 +25,28 @@ export function createMockApi({
   noRuns?: boolean;
 } = {}) {
   let projects: Project[] = empty ? [] : [{ ...initialProject }];
-  let actions = structuredClone(initialActions);
+  const workflowActions: Record<string, Action[]> = {
+    default: structuredClone(initialActions),
+  };
+  let workflows: Workflow[] = [
+    {
+      id: "default",
+      name: "Default",
+      description: null,
+      enabled: true,
+      env: [],
+      path: null,
+      revision: null,
+      stepCount: initialActions.length,
+      legacy: true,
+      events: {
+        push: { branches: ["main"], tags: [], paths: [] },
+        pullRequest: null,
+        manual: true,
+        schedule: [],
+      },
+    },
+  ];
   const runs: Run[] =
     empty || noRuns ? [] : [makeRun(status), ...makeHistory()];
   const logs = runs.flatMap(makeLogs);
@@ -68,6 +89,10 @@ export function createMockApi({
   return {
     runs,
     logs,
+    workflowActions,
+    get workflows() {
+      return workflows;
+    },
     events,
     addLog,
     publish,
@@ -78,7 +103,74 @@ export function createMockApi({
           variables?: Record<string, unknown>;
         };
         let data: Record<string, unknown>;
-        if (/\bsearch\s*\(/.test(query)) {
+        if (/\bregistryModules\s*\(/.test(query)) {
+          const reference = "@fluentci.io/sccache@v0.1.0";
+          data = {
+            registryModules: reference.includes(String(v.query).toLowerCase())
+              ? [
+                  {
+                    name: reference,
+                    functions: ["setup", "clear"],
+                    origin: "REGISTRY",
+                    logo: "https://example.com/sccache-logo.png",
+                    version: "0.1.0",
+                    description: "Shared compiler cache for faster builds",
+                  },
+                ]
+              : [],
+          };
+        } else if (/\btangledRepositories\b/.test(query)) {
+          data = {
+            tangledRepositories: [
+              { cloneUrl: "https://tangled.org/fluentci.io/fluentci" },
+            ],
+          };
+        } else if (/\bcreateWorkflow\s*\(/.test(query)) {
+          const input = v.input as {
+            id: string;
+            name: string;
+            description: string;
+            copyFrom?: string;
+          };
+          if (workflows.some((item) => item.id === input.id))
+            return HttpResponse.json({
+              errors: [{ message: "Workflow ID already exists" }],
+            });
+          workflowActions[input.id] = structuredClone(
+            workflowActions[input.copyFrom || ""] || [],
+          );
+          const workflow: Workflow = {
+            id: input.id,
+            name: input.name,
+            description: input.description,
+            enabled: true,
+            env: input.copyFrom
+              ? [...workflows.find((item) => item.id === input.copyFrom)!.env]
+              : [],
+            path: `.fluentci/workflows/${input.id}.toml`,
+            revision: crypto.randomUUID(),
+            stepCount: workflowActions[input.id].length,
+            legacy: false,
+            events: structuredClone(
+              workflows.find(
+                (item) => item.id === (input.copyFrom || "default"),
+              )!.events,
+            ),
+          };
+          workflows.push(workflow);
+          data = { createWorkflow: workflow };
+        } else if (/\bupdateWorkflow\s*\(/.test(query)) {
+          const workflow = workflows.find((item) => item.id === v.workflow)!;
+          const input = v.input as Partial<Workflow>;
+          Object.assign(workflow, input, { revision: crypto.randomUUID() });
+          data = { updateWorkflow: workflow };
+        } else if (/\bdeleteWorkflow\s*\(/.test(query)) {
+          workflows = workflows.filter((item) => item.id !== v.workflow);
+          delete workflowActions[String(v.workflow)];
+          data = { deleteWorkflow: true };
+        } else if (/\bworkflows\s*\(/.test(query)) {
+          data = { workflows };
+        } else if (/\bsearch\s*\(/.test(query)) {
           const tokens = String(v.query || "")
             .toLowerCase()
             .split(/\W+/)
@@ -124,24 +216,55 @@ export function createMockApi({
               { name: ".", functions: ["build", "test", "release"] },
               { name: "rust", functions: ["build", "test", "fmt", "clippy"] },
               { name: "bun", functions: ["install", "run", "test"] },
+              { name: "sccache", functions: ["build"], origin: "LOCAL" },
             ],
           };
         } else if (/\bprojects\s*\(/.test(query)) data = { projects };
         else if (/\bproject\s*\(/.test(query))
           data = { project: projects.find((item) => item.id === v.id) || null };
         else if (/\bgetRuns\s*\(/.test(query))
-          data = { getRuns: runs.filter((run) => run.projectId === v.id) };
+          data = {
+            getRuns: runs.filter(
+              (run) =>
+                run.projectId === v.id &&
+                (!v.workflow || (run.workflowId || "default") === v.workflow),
+            ),
+          };
         else if (/\bgetRun\s*\(/.test(query))
           data = { getRun: runs.find((run) => run.id === v.id) || null };
         else if (/\blogs\s*\(/.test(query))
           data = { logs: logs.filter((log) => log.jobId === v.id) };
-        else if (/\bactions\s*\(/.test(query)) data = { actions };
+        else if (/\bactions\s*\(/.test(query))
+          data = {
+            actions: workflowActions[String(v.workflow || "default")] || [],
+          };
         else if (/\bsaveActions\s*\(/.test(query)) {
-          actions = v.actions as Action[];
+          const actions = v.actions as Action[];
+          workflowActions[String(v.workflow || "default")] = actions;
+          const workflow = workflows.find(
+            (item) => item.id === (v.workflow || "default"),
+          )!;
+          workflow.stepCount = actions.length;
+          workflow.revision = crypto.randomUUID();
           data = { saveActions: actions };
         } else if (/\brunPipeline\s*\(/.test(query)) {
           const run = makeRun("RUNNING", crypto.randomUUID());
           run.date = new Date().toISOString();
+          run.workflowId = String(v.workflow || "default");
+          run.workflowName =
+            workflows.find((item) => item.id === run.workflowId)?.name ||
+            "Default";
+          if (run.workflowId !== "default") {
+            run.title = `Run ${run.workflowName}`;
+            run.jobs = workflowActions[run.workflowId].map((action) => ({
+              id: crypto.randomUUID(),
+              name: action.name,
+              status: action.enabled ? "RUNNING" : "SKIPPED",
+              createdAt: run.date,
+              startedAt: run.date,
+              duration: null,
+            }));
+          }
           if (v.name) {
             run.title = `Re-run ${v.name}`;
             run.jobs.forEach((job) => {
@@ -162,7 +285,7 @@ export function createMockApi({
           publish("run", run);
         } else if (/\bexportActions\s*\(/.test(query))
           data = {
-            exportActions: `# ${v.provider} · generated from saved actions\nname: ci\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: fluentci run .\n`,
+            exportActions: `# ${v.provider} · ${v.workflow || "default"} · generated from saved actions\nname: ci\njobs:\n  build:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - run: fluentci run .\n`,
           };
         else if (/\bcreateProject\s*\(/.test(query)) {
           const project = {

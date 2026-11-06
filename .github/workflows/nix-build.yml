@@ -1,0 +1,64 @@
+name: Nix build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nix-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  prepare:
+    name: Compile Nix build Wasm module
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Install PureScript Wasm compiler toolchain
+        run: sh .fluentci/scripts/install-sdk-tools.sh
+      - name: Compile Nix module
+        working-directory: .fluentci/nix-build
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nix-build-wasm
+          path: .fluentci/nix-build/dist/plugin.wasm
+          if-no-files-found: error
+          retention-days: 1
+
+  build:
+    name: Build FluentCI (${{ matrix.system }})
+    needs: prepare
+    timeout-minutes: 120
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            system: x86_64-linux
+          - runner: ubuntu-24.04-arm
+            system: aarch64-linux
+          - runner: macos-latest
+            system: aarch64-darwin
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: cachix/install-nix-action@v31
+      - name: Set up FluentCI
+        uses: fluentci-io/setup-fluentci@next
+      - uses: actions/download-artifact@v4
+        with:
+          name: nix-build-wasm
+          path: .fluentci/nix-build/dist
+      - name: Build locked Nix package through FluentCI
+        run: fluentci --check-update=false run --wasm .fluentci/nix-build/dist/plugin.wasm build

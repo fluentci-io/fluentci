@@ -55,6 +55,9 @@ fn default_database() -> PathBuf {
 
 #[derive(Debug, Clone, Default, Args)]
 pub struct RunArgs {
+    /// Run a named workflow from .fluentci/workflows (defaults to the project workflow)
+    #[arg(long, conflicts_with = "wasm")]
+    pub workflow: Option<String>,
     /// Require registry dependencies to match fluentci.lock without changing it
     #[arg(long)]
     pub frozen_lockfile: bool,
@@ -86,6 +89,17 @@ pub enum Command {
     Update {
         /// Declared module alias or package reference (defaults to all)
         module: Option<String>,
+    },
+    /// List all workflows in the current project
+    Workflows {
+        /// Show only this workflow ID (defaults to all workflows)
+        workflow: Option<String>,
+        /// Emit workflow metadata as JSON
+        #[arg(long)]
+        json: bool,
+        /// Show detailed steps grouped under each workflow
+        #[arg(long)]
+        steps: bool,
     },
     /// Run a local or registry pipeline
     Run(RunArgs),
@@ -341,6 +355,9 @@ pub enum ProjectCommand {
     },
     /// Export saved project actions as a CI manifest
     Export {
+        /// Workflow ID to export
+        #[arg(long, default_value = "default")]
+        workflow: String,
         /// Project name or ID (defaults to the current directory's project)
         name: Option<String>,
         /// Generate a GitHub Actions workflow (the default provider)
@@ -355,6 +372,9 @@ pub enum ProjectCommand {
         /// Generate a CircleCI manifest
         #[arg(long, group = "provider")]
         circleci: bool,
+        /// Generate a Semaphore pipeline
+        #[arg(long, group = "provider")]
+        semaphore: bool,
         /// Generate an AWS CodeBuild buildspec
         #[arg(long, group = "provider")]
         aws: bool,

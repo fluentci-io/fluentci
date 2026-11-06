@@ -59,12 +59,26 @@ Cursors belong to their original search/filter; do not reuse one with a changed
 query or author. The SQL constraint prevents duplicate publisher/name/version
 records while allowing different publishers and new versions.
 
+## Actor publications
+
+`GET /xrpc/io.fluentci.registry.getActorPackages` requires `actor` (handle or
+DID), and accepts `limit` (1–100, default 20) and `cursor`. It returns
+`{ "packages": [...], "cursor": "..." }`, with the cursor omitted on the last page.
+Handles resolve to DIDs before lookup. Results include all indexed versions,
+ordered by publication time and record URI, and exclude deleted records and
+inactive accounts. Cursors are bound to the resolved actor.
+
+```sh
+curl -sS --get https://api.fluentci.io/xrpc/io.fluentci.registry.getActorPackages \
+  --data-urlencode 'actor=alice.example' --data-urlencode 'limit=20'
+```
+
 ## Package metadata fields
 
 Records and package views include `name`, `description`, `version`, `publishedAt`,
 `author`, `license`, `url`, `sha256`, and `size`. Package views also include `uri`
 and `cid`. Optional `repository` and `subdir` describe the source Git repository
-and module directory. Optional `functions` contains exported jobs with `name`,
+and module directory. Optional `logo` is an HTTP(S) picture URL. Optional `functions` contains exported jobs with `name`,
 `wasmParams`, `wasmResults`, and optional `description`, `args`, and `returnType`.
 Each argument has `name` and `type`, with an optional description.
 

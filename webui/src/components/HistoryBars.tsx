@@ -1,3 +1,4 @@
+import { workflowSearch } from "../state";
 import { Link } from "react-router-dom";
 import type { Run } from "../types";
 import { date, duration, statusLabel } from "./ui";
@@ -37,7 +38,7 @@ export function HistoryBars({
             style={{ maxWidth: compact ? 12 : 22 }}
           >
             <Link
-              to={`/project/${projectId}/run/${run.id}`}
+              to={`/project/${projectId}/run/${run.id}${workflowSearch(run.workflowId)}`}
               aria-label={label}
               className={`block w-full min-w-px rounded-sm transition-colors outline-offset-4 ${colors[run.status || ""] || "bg-muted/30"} ${selectedId === run.id ? "ring-2 ring-accent ring-offset-3 ring-offset-panel" : ""}`}
               style={{

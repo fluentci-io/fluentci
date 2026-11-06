@@ -35,6 +35,8 @@ pub struct Module {
     pub subdir: Option<PathBuf>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub repository: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logo: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub functions: Vec<crate::plugin_metadata::Function>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -78,6 +80,19 @@ pub fn validate_subdir(path: &Path) -> Result<()> {
                 std::path::Component::Normal(_) | std::path::Component::CurDir
             )),
         "subdir must stay inside the repository (no absolute paths or ..)"
+    );
+    Ok(())
+}
+
+pub fn validate_logo(value: &str) -> Result<()> {
+    let url = reqwest::Url::parse(value).context("Invalid module logo URL")?;
+    anyhow::ensure!(
+        value.len() <= 2048
+            && matches!(url.scheme(), "http" | "https")
+            && url.host_str().is_some()
+            && url.username().is_empty()
+            && url.password().is_none(),
+        "Module logo must be an HTTP(S) picture URL without credentials (up to 2048 characters)"
     );
     Ok(())
 }
@@ -133,15 +148,33 @@ pub struct Package {
     pub license: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Clone, Deserialize, Serialize)]
 pub struct Step {
     pub name: String,
     pub command: Commands,
     pub env: Option<Vec<String>>,
     pub working_directory: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub module: Option<String>,
+    #[serde(default = "enabled", skip_serializing_if = "is_enabled")]
+    pub enabled: bool,
+    #[serde(
+        default = "enabled",
+        rename = "wasm",
+        skip_serializing_if = "is_enabled"
+    )]
+    pub use_wasm: bool,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+fn enabled() -> bool {
+    true
+}
+
+fn is_enabled(value: &bool) -> bool {
+    *value
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(untagged)]
 pub enum Commands {
     One(String),
@@ -195,6 +228,9 @@ impl Config {
                     module.git.is_some() || module.repository.is_some(),
                     "subdir requires git or repository"
                 );
+            }
+            if let Some(logo) = &module.logo {
+                validate_logo(logo)?;
             }
             if let Some(repository) = &module.repository {
                 validate_repository(repository)?;
@@ -283,12 +319,12 @@ impl Config {
             .iter()
             .map(|step| {
                 let lines = step.command.lines();
-                if lines.is_empty() {
+                if lines.is_empty() || lines.iter().all(|line| line.trim().is_empty()) {
                     bail!("Step {:?} has no commands", step.name);
                 }
-                let (plugin, commands) = if lines.len() == 1
-                    && lines[0].starts_with("fluentci run ")
-                {
+                let (plugin, commands) = if let Some(module) = &step.module {
+                    (module.clone(), lines.join("\n"))
+                } else if lines.len() == 1 && lines[0].starts_with("fluentci run ") {
                     let mut words =
                         shlex::split(&lines[0]).context("Unclosed quote in pipeline command")?;
                     words.drain(..2);
@@ -315,8 +351,8 @@ impl Config {
                     name: step.name.clone(),
                     plugin,
                     commands,
-                    enabled: true,
-                    use_wasm: true,
+                    enabled: step.enabled,
+                    use_wasm: step.use_wasm,
                     env: step.env.clone(),
                     working_directory: step.working_directory.clone(),
                     ..Action::default()

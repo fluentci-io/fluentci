@@ -209,18 +209,27 @@ impl Db {
     }
 
     pub async fn save_run(&self, run: &Run) -> Result<()> {
+        self.save_run_data(run, None).await
+    }
+
+    pub async fn save_prepared_run(&self, run: &Run, actions: &[Action]) -> Result<()> {
+        self.save_run_data(run, Some(actions)).await
+    }
+
+    async fn save_run_data(&self, run: &Run, definition: Option<&[Action]>) -> Result<()> {
         let mut tx = self.0.begin().await?;
         let mut metadata = run.clone();
         metadata.jobs.clear();
         let (sql, values) = Query::insert()
             .into_table("runs")
-            .columns(["id", "project_id", "date", "status", "data"])
+            .columns(["id", "project_id", "date", "status", "data", "workflow_id"])
             .values([
                 run.id.clone().into(),
                 run.project_id.clone().into(),
                 run.date.clone().into(),
                 run.status.as_deref().unwrap_or("PENDING").into(),
                 serde_json::to_string(&metadata)?.into(),
+                run.workflow_id.clone().into(),
             ])?
             .on_conflict(
                 OnConflict::column("id")
@@ -260,6 +269,17 @@ impl Db {
                     .build_sqlx(SqliteQueryBuilder);
                 sqlx::query_with(&sql, values).execute(&mut *tx).await?;
             }
+        }
+        if let Some(actions) = definition {
+            let (sql, values) = Query::insert()
+                .into_table("run_definitions")
+                .columns(["run_id", "data"])
+                .values([
+                    run.id.clone().into(),
+                    serde_json::to_string(actions)?.into(),
+                ])?
+                .build_sqlx(SqliteQueryBuilder);
+            sqlx::query_with(&sql, values).execute(&mut *tx).await?;
         }
         tx.commit().await?;
         Ok(())
@@ -326,14 +346,35 @@ impl Db {
         Ok(jobs)
     }
 
-    pub async fn runs(&self, project: &str) -> Result<Vec<Run>> {
+    pub async fn run_actions(&self, run_id: &str) -> Result<Option<Vec<Action>>> {
         let (sql, values) = Query::select()
+            .column("data")
+            .from("run_definitions")
+            .and_where(Expr::col("run_id").eq(run_id))
+            .build_sqlx(SqliteQueryBuilder);
+        let data: Option<String> = sqlx::query_scalar_with(&sql, values)
+            .fetch_optional(&self.0)
+            .await?;
+        data.map(|data| serde_json::from_str(&data).map_err(Into::into))
+            .transpose()
+    }
+
+    pub async fn runs(&self, project: &str) -> Result<Vec<Run>> {
+        self.workflow_runs(project, None).await
+    }
+
+    pub async fn workflow_runs(&self, project: &str, workflow: Option<&str>) -> Result<Vec<Run>> {
+        let mut query = Query::select();
+        query
             .column("data")
             .from("runs")
             .and_where(Expr::col("project_id").eq(project))
             .order_by("date", Order::Asc)
-            .order_by("id", Order::Asc)
-            .build_sqlx(SqliteQueryBuilder);
+            .order_by("id", Order::Asc);
+        if let Some(workflow) = workflow {
+            query.and_where(Expr::col("workflow_id").eq(workflow));
+        }
+        let (sql, values) = query.build_sqlx(SqliteQueryBuilder);
         let rows: Vec<String> = sqlx::query_scalar_with(&sql, values)
             .fetch_all(&self.0)
             .await?;

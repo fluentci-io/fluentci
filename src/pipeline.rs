@@ -18,6 +18,42 @@ pub async fn run(args: &RunArgs, db: &Db) -> Result<()> {
         root
     };
     let pipeline = args.pipeline.as_deref().unwrap_or(".");
+    let workflow_id = args.workflow.as_deref().or_else(|| {
+        (pipeline == "." && !args.wasm && root.join(".fluentci/workflows").is_dir())
+            .then_some(crate::workflows::DEFAULT)
+    });
+    let workflow_id = match workflow_id {
+        Some(key) if args.workflow.is_none() => {
+            crate::workflows::file_definition(root, key)?.map(|_| key)
+        }
+        other => other,
+    };
+    if let Some(workflow_id) = workflow_id {
+        anyhow::ensure!(
+            pipeline == "." && args.jobs.is_empty(),
+            "Use --workflow without module names or function arguments"
+        );
+        let path = root.to_string_lossy().into_owned();
+        let mut project = if let Ok(key) = std::env::var("FLUENTCI_PROJECT_ID") {
+            db.project(&key).await?.context("Project not found")?
+        } else {
+            db.project(&path)
+                .await?
+                .unwrap_or_else(|| crate::models::Project::new(path.clone()))
+        };
+        project.path = path;
+        db.save_project(&project).await?;
+        let run = crate::executor::prepare_workflow(db, &project, workflow_id, None).await?;
+        crate::executor::execute_prepared_with_options(
+            db.clone(),
+            project,
+            run,
+            None,
+            args.frozen_lockfile,
+        )
+        .await?;
+        return Ok(());
+    }
     if pipeline == "."
         && let Ok(key) = std::env::var("FLUENTCI_PROJECT_ID")
     {
@@ -245,6 +281,14 @@ fn engine_command(module: &str, jobs: &[String]) -> Result<Command> {
 
 pub async fn action_command(action: &crate::models::Action, root: &Path) -> Result<Command> {
     action_command_at(action, root, root, false).await
+}
+
+pub async fn action_command_with_options(
+    action: &crate::models::Action,
+    root: &Path,
+    frozen_lockfile: bool,
+) -> Result<Command> {
+    action_command_at(action, root, root, frozen_lockfile).await
 }
 
 async fn action_command_at(

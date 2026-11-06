@@ -17,22 +17,50 @@ pub fn publish(events: Option<&Events>, channel: &str, data: impl serde::Seriali
 }
 
 pub async fn prepare(db: &Db, project: &Project) -> Result<Run> {
-    let mut actions = db.actions(&project.id).await?;
-    if actions.is_empty() {
-        actions = crate::detection::actions(Path::new(&project.path))?;
-        db.save_actions(&project.id, &actions).await?;
-    }
+    prepare_workflow(db, project, crate::workflows::DEFAULT, None).await
+}
+
+pub async fn prepare_workflow(
+    db: &Db,
+    project: &Project,
+    workflow_id: &str,
+    job: Option<&str>,
+) -> Result<Run> {
+    anyhow::ensure!(!project.archived.unwrap_or(false), "Project is archived");
+    let definition = crate::workflows::definition(db, project, workflow_id).await?;
+    definition.validate()?;
+    anyhow::ensure!(
+        definition.enabled,
+        "Workflow {:?} is disabled",
+        definition.name
+    );
+    let actions = definition.run_actions()?;
     anyhow::ensure!(
         !actions.is_empty(),
-        "No actions configured for project {}",
-        project.name
+        "No actions configured for workflow {:?}",
+        definition.name
     );
+    if let Some(name) = job {
+        let action = actions
+            .iter()
+            .find(|a| a.name == name)
+            .with_context(|| format!("Job {name:?} not found in workflow {workflow_id:?}"))?;
+        anyhow::ensure!(action.enabled, "Job {name:?} is disabled");
+    }
     let run = Run {
         id: id(),
         name: project.name.clone(),
         project: project.name.clone(),
         project_id: project.id.clone(),
-        title: format!("Run {}", project.name),
+        workflow_id: definition.id.clone(),
+        workflow_name: Some(definition.name.clone()),
+        title: if let Some(job) = job {
+            format!("Re-run {job}")
+        } else if workflow_id == crate::workflows::DEFAULT {
+            format!("Run {}", project.name)
+        } else {
+            format!("Run {}", definition.name)
+        },
         date: now(),
         status: Some("PENDING".into()),
         jobs: actions
@@ -40,14 +68,19 @@ pub async fn prepare(db: &Db, project: &Project) -> Result<Run> {
             .map(|a| Job {
                 id: id(),
                 name: a.name.clone(),
-                status: if a.enabled { "PENDING" } else { "SKIPPED" }.into(),
+                status: if a.enabled && job.is_none_or(|name| name == a.name) {
+                    "PENDING"
+                } else {
+                    "SKIPPED"
+                }
+                .into(),
                 created_at: now(),
                 ..Job::default()
             })
             .collect(),
         ..Run::default()
     };
-    db.save_run(&run).await?;
+    db.save_prepared_run(&run, &actions).await?;
     Ok(run)
 }
 
@@ -58,25 +91,7 @@ pub async fn execute(db: Db, project: Project, events: Option<Events>) -> Result
 
 /// Prepare a new run containing only the requested saved action.
 pub async fn prepare_job(db: &Db, project: &Project, name: &str) -> Result<Run> {
-    let mut actions = db.actions(&project.id).await?;
-    if actions.is_empty() {
-        actions = crate::detection::actions(Path::new(&project.path))?;
-        db.save_actions(&project.id, &actions).await?;
-    }
-    let action = actions
-        .iter()
-        .find(|action| action.name == name)
-        .with_context(|| format!("Job {name:?} not found"))?;
-    anyhow::ensure!(action.enabled, "Job {name:?} is disabled");
-    let mut run = prepare(db, project).await?;
-    for job in &mut run.jobs {
-        if job.name != name {
-            job.status = "SKIPPED".into();
-        }
-    }
-    run.title = format!("Re-run {name}");
-    db.save_run(&run).await?;
-    Ok(run)
+    prepare_workflow(db, project, crate::workflows::DEFAULT, Some(name)).await
 }
 
 pub async fn execute_job(
@@ -96,15 +111,37 @@ pub async fn execute_job(
 pub async fn execute_prepared(
     db: Db,
     project: Project,
-    mut run: Run,
+    run: Run,
     events: Option<Events>,
 ) -> Result<Run> {
+    execute_prepared_with_options(db, project, run, events, false).await
+}
+
+pub async fn execute_prepared_with_options(
+    db: Db,
+    project: Project,
+    mut run: Run,
+    events: Option<Events>,
+    frozen_lockfile: bool,
+) -> Result<Run> {
     let started = Instant::now();
-    let actions = db.actions(&project.id).await?;
+    let actions = if let Some(actions) = db.run_actions(&run.id).await? {
+        actions
+    } else {
+        crate::workflows::actions(&db, &project, &run.workflow_id).await?
+    };
     run.status = Some("RUNNING".into());
     db.save_run(&run).await?;
     publish(events.as_ref(), "run", &run);
-    let outcome = execute_actions(&db, &project, &mut run, &actions, events.as_ref()).await;
+    let outcome = execute_actions(
+        &db,
+        &project,
+        &mut run,
+        &actions,
+        events.as_ref(),
+        frozen_lockfile,
+    )
+    .await;
     if let Err(error) = &outcome {
         run.message = Some(format!("{error:#}"));
     }
@@ -150,6 +187,7 @@ async fn execute_actions(
     run: &mut Run,
     actions: &[Action],
     events: Option<&Events>,
+    frozen_lockfile: bool,
 ) -> Result<()> {
     for (index, action) in actions.iter().enumerate().filter(|(_, a)| a.enabled) {
         if run.jobs[index].status == "SKIPPED" {
@@ -170,7 +208,12 @@ async fn execute_actions(
         for command in pipeline::action_commands(action)? {
             let mut action = action.clone();
             action.commands = command;
-            let mut command = pipeline::action_command(&action, Path::new(&project.path)).await?;
+            let mut command = pipeline::action_command_with_options(
+                &action,
+                Path::new(&project.path),
+                frozen_lockfile,
+            )
+            .await?;
             command
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())

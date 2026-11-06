@@ -75,6 +75,7 @@ fn package(row: p.Row) -> Package {
     option.map(row.functions, function_metadata.from_string),
     size,
     row.repository,
+    row.logo,
     row.subdir,
     row.uri,
     cid,
@@ -153,6 +154,18 @@ pub fn list_packages(
     _, _ -> None
   }
   RegistryListPackagesOutput(packages, cursor)
+}
+
+pub fn actor_packages(
+  db: Db,
+  actor: String,
+  count: Int,
+  cursor_value: String,
+) -> Promise(Page) {
+  case actor {
+    "" -> fail("InvalidRequest", "Actor is required")
+    _ -> list_packages(db, "", actor, count, cursor_value)
+  }
 }
 
 pub fn get_package(
@@ -240,6 +253,7 @@ fn package_values(plugin: Package, time: Int) -> List(Assignment) {
     set(p.sha256(table), Some(plugin.sha256)),
     set(p.size(table), Some(plugin.size)),
     set(p.repository(table), plugin.repository),
+    set(p.logo(table), plugin.logo),
     set(p.subdir(table), plugin.subdir),
     set(
       p.functions(table),

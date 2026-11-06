@@ -54,18 +54,19 @@ SDK selectors: `rust`, `clojurescript`, `purescript`, `typescript`, `python`,
 
 ## Studio and projects
 
-| Command                            | Purpose                                                   |
-| ---------------------------------- | --------------------------------------------------------- |
-| `studio --port 6076`               | Serve Studio and its local API; open a browser by default |
-| `server --port 6076`               | Serve the local GraphQL/live-event API                    |
-| `project create`                   | Create an initially empty saved project                   |
-| `project list`                     | List saved projects                                       |
-| `project show NAME`                | Print project details by name or ID                       |
-| `project export [NAME] --github`   | Export enabled saved actions as GitHub YAML               |
-| `project export [NAME] --gitlab`   | Export GitLab configuration                               |
-| `project export [NAME] --azure`    | Export Azure Pipelines configuration                      |
-| `project export [NAME] --circleci` | Export CircleCI configuration                             |
-| `project export [NAME] --aws`      | Export an AWS CodeBuild buildspec                         |
+| Command                             | Purpose                                                   |
+| ----------------------------------- | --------------------------------------------------------- |
+| `studio --port 6076`                | Serve Studio and its local API; open a browser by default |
+| `server --port 6076`                | Serve the local GraphQL/live-event API                    |
+| `project create`                    | Create an initially empty saved project                   |
+| `project list`                      | List saved projects                                       |
+| `project show NAME`                 | Print project details by name or ID                       |
+| `project export [NAME] --github`    | Export enabled saved actions as GitHub YAML               |
+| `project export [NAME] --gitlab`    | Export GitLab configuration                               |
+| `project export [NAME] --azure`     | Export Azure Pipelines configuration                      |
+| `project export [NAME] --circleci`  | Export CircleCI configuration                             |
+| `project export [NAME] --semaphore` | Export a Semaphore pipeline (`.semaphore/semaphore.yml`)  |
+| `project export [NAME] --aws`       | Export an AWS CodeBuild buildspec                         |
 
 ## Registry and account
 
@@ -116,3 +117,27 @@ lockfile. `docs` renders a source module's `README.md` with `glow`; Git modules
 use the locked commit and configured subdirectory. Published packages use their
 optional repository/subdirectory metadata. Missing READMEs are reported without
 inventing a documentation URL.
+
+## Workflows
+
+```sh
+fluentci workflows
+fluentci workflows --steps
+fluentci workflows --json
+fluentci workflows ci --steps     # inspect one workflow
+fluentci workflows --steps --json
+fluentci run --workflow release
+```
+
+`workflows` lists every workflow in the current project, including the legacy
+`default` workflow. `--steps` expands the ordered steps **under each workflow**,
+showing enabled state, module, Wasm selection, working directory, commands, and
+configured environment. With `--json --steps`, each workflow contains its own
+`steps` array. Without `--steps`, JSON contains workflow summary metadata only.
+Listing also works before the project has been opened in Studio.
+
+`run --workflow <id>` executes a named workflow using shared root modules and
+records its own run history. It does not require `--wasm` and cannot be combined
+with module/function arguments. Manage workflow files in
+`.fluentci/workflows/*.toml` or use Studio's workflow controls. See
+[workflow configuration](/reference/configuration/#multiple-workflows).

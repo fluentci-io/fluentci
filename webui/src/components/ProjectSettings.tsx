@@ -257,18 +257,25 @@ const providers = [
   { id: "gitlab", name: "GitLab CI", file: ".gitlab-ci.yml" },
   { id: "azure", name: "Azure Pipelines", file: "azure-pipelines.yml" },
   { id: "circleci", name: "CircleCI", file: "config.yml" },
+  { id: "semaphore", name: "Semaphore", file: ".semaphore/semaphore.yml" },
   { id: "aws", name: "AWS CodeBuild", file: "buildspec.yml" },
 ];
 
-export function ExportView({ projectId }: { projectId: string }) {
+export function ExportView({
+  projectId,
+  workflowId = "default",
+}: {
+  projectId: string;
+  workflowId?: string;
+}) {
   const [provider, setProvider] = useState(providers[0]);
   const query = useQuery({
-    queryKey: ["export", projectId, provider.id],
+    queryKey: ["export", projectId, workflowId, provider.id],
     queryFn: async ({ signal }) =>
       (
         await graphql<{ exportActions: string }>(
-          "query($id: ID!, $provider: String!) { exportActions(projectId: $id, plateform: $provider) }",
-          { id: projectId, provider: provider.id },
+          "query($id: ID!, $provider: String!, $workflow: String!) { exportActions(projectId: $id, plateform: $provider, workflowId: $workflow) }",
+          { id: projectId, provider: provider.id, workflow: workflowId },
           signal,
         )
       ).exportActions,

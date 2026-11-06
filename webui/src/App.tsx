@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Link,
   NavLink,
@@ -9,12 +9,17 @@ import {
   useNavigate,
   useParams,
 } from "react-router-dom";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { repositorySchema, type RepositoryValues } from "./forms";
 import { isDesktop, isMacDesktop, openDesktopProject } from "./desktop";
 import { useAtom, useAtomValue } from "jotai";
-import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQueries,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import {
   IconActivity as Activity,
   IconDownload as ArrowDownToLine,
@@ -44,9 +49,18 @@ import {
   useProjects,
   useRun,
   useRuns,
+  useWorkflows,
 } from "./api";
-import { actionDraftsAtom, connectionAtom, projectSearchAtom } from "./state";
+import {
+  actionDraftsAtom,
+  connectionAtom,
+  projectSearchAtom,
+  workflowDraftKey,
+  workflowSearch,
+} from "./state";
 import type { Project, Run } from "./types";
+import { SuggestInput } from "./components/SuggestInput";
+import { WorkflowPicker } from "./components/WorkflowPicker";
 import { HistoryBars } from "./components/HistoryBars";
 import { PipelineControl } from "./components/PipelineControl";
 import { RunView } from "./components/RunView";
@@ -74,6 +88,10 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
   const client = useQueryClient();
+  const [toolbarVisibility, setToolbarVisibility] = useState({
+    control: false,
+    workflows: false,
+  });
   const [palette, setPalette] = useState(false);
   const [newProject, setNewProject] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(() => {
@@ -119,7 +137,22 @@ export default function App() {
   const allRuns = histories
     .flatMap((query) => query.data || [])
     .sort((a, b) => b.date.localeCompare(a.date));
-  const currentRuns = allRuns.filter((run) => run.projectId === projectId);
+  const linkedRunId = matchPath("/project/:id/run/:runId", location.pathname)
+    ?.params.runId;
+  const linkedRun = useRun(linkedRunId);
+  const workflowId =
+    new URLSearchParams(location.search).get("workflow") ||
+    linkedRun.data?.workflowId ||
+    "default";
+  const workflows = useWorkflows(projectId || "");
+  const selectedWorkflow = workflows.data?.find(
+    (item) => item.id === workflowId,
+  );
+  const currentRuns = allRuns.filter(
+    (run) =>
+      run.projectId === projectId &&
+      (run.workflowId || "default") === workflowId,
+  );
   const controllingRun =
     currentRuns.find((run) => isActive(run.status)) || currentRuns[0];
   const mutation = useMutation({
@@ -133,14 +166,18 @@ export default function App() {
           )
         ).cancelRun;
       }
-      if (drafts[projectId])
+      if (drafts[workflowDraftKey(projectId, workflowId)])
         throw new Error(
           "Save your action changes before starting the pipeline.",
         );
+      if (!selectedWorkflow)
+        throw new Error("Select an available workflow first.");
+      if (!selectedWorkflow.enabled)
+        throw new Error("This workflow is disabled.");
       return (
         await graphql<{ runPipeline: Run }>(
-          `mutation($id: ID!) { runPipeline(projectId: $id, wait: false) { ${runFields} } }`,
-          { id: projectId },
+          `mutation($id: ID!, $workflow: String!) { runPipeline(projectId: $id, workflowId: $workflow, wait: false) { ${runFields} } }`,
+          { id: projectId, workflow: workflowId },
         )
       ).runPipeline;
     },
@@ -151,7 +188,9 @@ export default function App() {
         ...(old || []).filter((item) => item.id !== run.id),
       ]);
       void client.invalidateQueries({ queryKey: ["runs", run.projectId] });
-      navigate(`/project/${run.projectId}/run/${run.id}`);
+      navigate(
+        `/project/${run.projectId}/run/${run.id}${workflowSearch(run.workflowId)}`,
+      );
     },
   });
   const control = useCallback(() => {
@@ -325,11 +364,53 @@ export default function App() {
                 : "Overview"}
             </span>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[10px] text-muted sm:flex">
-              <span className="size-1.5 rounded-full bg-accent" />
-              LOCAL FIRST
-            </span>
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+            {toolbarVisibility.workflows && currentProject && (
+              <div role="group" aria-label="Header workflow controls">
+                <WorkflowPicker
+                  compact
+                  projectId={currentProject.id}
+                  workflows={workflows.data || []}
+                  selected={selectedWorkflow}
+                  archived={
+                    !!currentProject.archived ||
+                    !!drafts[workflowDraftKey(currentProject.id, workflowId)]
+                  }
+                  onSelect={(next) => {
+                    const tab = ["actions", "export", "settings"].find((name) =>
+                      location.pathname.endsWith(`/${name}`),
+                    );
+                    navigate(
+                      `/project/${currentProject.id}${tab ? `/${tab}` : ""}${workflowSearch(next)}`,
+                    );
+                  }}
+                />
+              </div>
+            )}
+            {toolbarVisibility.control && currentProject && (
+              <div role="group" aria-label="Header pipeline control">
+                <PipelineControl
+                  compact
+                  run={controllingRun}
+                  pending={mutation.isPending}
+                  disabled={
+                    !!currentProject.archived ||
+                    workflows.isPending ||
+                    workflows.isError ||
+                    (!isActive(controllingRun?.status) &&
+                      !selectedWorkflow?.enabled)
+                  }
+                  onRun={control}
+                  onCancel={control}
+                />
+              </div>
+            )}
+            {!toolbarVisibility.control && (
+              <span className="hidden items-center gap-1.5 rounded-full border border-line px-2.5 py-1 text-[10px] text-muted sm:flex">
+                <span className="size-1.5 rounded-full bg-accent" />
+                LOCAL FIRST
+              </span>
+            )}
             <button
               className="icon-btn"
               aria-label="Open command palette"
@@ -337,9 +418,6 @@ export default function App() {
             >
               <Search size={17} />
             </button>
-            <span className="flex size-7 items-center justify-center rounded-full border border-line bg-panel text-[11px] font-medium text-muted">
-              FC
-            </span>
           </div>
         </header>
         <main className="mx-auto max-w-[1600px] px-4 py-5 md:px-6 md:py-6">
@@ -364,6 +442,9 @@ export default function App() {
               path="/project/:id/*"
               element={
                 <ProjectPage
+                  workflowId={workflowId}
+                  toolbarVisibility={toolbarVisibility}
+                  onToolbarVisibilityChange={setToolbarVisibility}
                   controllingRun={controllingRun}
                   pending={mutation.isPending}
                   control={control}
@@ -664,11 +745,20 @@ function ProjectCard({ project, runs }: { project: Project; runs: Run[] }) {
 }
 
 function ProjectPage({
+  workflowId,
+  toolbarVisibility,
+  onToolbarVisibilityChange,
   controllingRun,
   pending,
   control,
   controlError,
 }: {
+  workflowId: string;
+  toolbarVisibility: { control: boolean; workflows: boolean };
+  onToolbarVisibilityChange: (value: {
+    control: boolean;
+    workflows: boolean;
+  }) => void;
   controllingRun?: Run;
   pending: boolean;
   control: () => void;
@@ -676,7 +766,43 @@ function ProjectPage({
 }) {
   const { id = "" } = useParams();
   const project = useProject(id);
-  const runs = useRuns(id);
+  const loadedProjectId = project.data?.id;
+  const controlRef = useRef<HTMLDivElement>(null);
+  const workflowRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const reset = () =>
+      onToolbarVisibilityChange({ control: false, workflows: false });
+    reset();
+    if (!loadedProjectId || typeof IntersectionObserver === "undefined")
+      return reset;
+    const update = () =>
+      onToolbarVisibilityChange({
+        control:
+          !!controlRef.current &&
+          controlRef.current.getBoundingClientRect().bottom <= 56,
+        workflows:
+          !!workflowRef.current &&
+          workflowRef.current.getBoundingClientRect().bottom <= 56,
+      });
+    const observer = new IntersectionObserver(update, {
+      rootMargin: "-56px 0px 0px 0px",
+      threshold: 0,
+    });
+    if (controlRef.current) observer.observe(controlRef.current);
+    if (workflowRef.current) observer.observe(workflowRef.current);
+    update();
+    return () => {
+      observer.disconnect();
+      reset();
+    };
+  }, [id, loadedProjectId, onToolbarVisibilityChange]);
+  const runs = useRuns(id, workflowId);
+  const workflows = useWorkflows(id);
+  const selectedWorkflow = workflows.data?.find(
+    (item) => item.id === workflowId,
+  );
+  const navigate = useNavigate();
+  const drafts = useAtomValue(actionDraftsAtom);
   const location = useLocation();
   const runId = matchPath("/project/:id/run/:runId", location.pathname)?.params
     .runId;
@@ -685,6 +811,7 @@ function ProjectPage({
     detail.data ??
     (runId ? runs.data?.find((run) => run.id === runId) : runs.data?.[0]);
   const base = `/project/${id}`;
+  const search = workflowSearch(workflowId);
   const tab = location.pathname.endsWith("/actions")
     ? "actions"
     : location.pathname.endsWith("/settings")
@@ -723,11 +850,22 @@ function ProjectPage({
             {item.path}
           </p>
         </div>
-        <div className="flex flex-col items-end gap-2">
+        <div
+          ref={controlRef}
+          aria-hidden={toolbarVisibility.control || undefined}
+          className={`flex flex-col items-end gap-2 ${toolbarVisibility.control ? "invisible" : ""}`}
+        >
           <PipelineControl
             run={controllingRun}
             pending={pending}
-            disabled={!!item.archived || runs.isPending || runs.isError}
+            disabled={
+              !!item.archived ||
+              runs.isPending ||
+              runs.isError ||
+              workflows.isPending ||
+              workflows.isError ||
+              (!isActive(controllingRun?.status) && !selectedWorkflow?.enabled)
+            }
             onRun={control}
             onCancel={control}
           />
@@ -735,7 +873,7 @@ function ProjectPage({
             current?.id !== controllingRun?.id && (
               <Link
                 className="text-xs text-accent"
-                to={`${base}/run/${controllingRun!.id}`}
+                to={`${base}/run/${controllingRun!.id}${search}`}
               >
                 View active execution →
               </Link>
@@ -743,9 +881,40 @@ function ProjectPage({
         </div>
       </div>
       {!!controlError && <ErrorNotice error={controlError} />}
+      <div
+        ref={workflowRef}
+        aria-hidden={toolbarVisibility.workflows || undefined}
+        className={toolbarVisibility.workflows ? "invisible" : ""}
+      >
+        {workflows.error ? (
+          <ErrorNotice
+            error={workflows.error}
+            retry={() => void workflows.refetch()}
+          />
+        ) : workflows.isPending ? (
+          <Loading />
+        ) : (
+          <WorkflowPicker
+            projectId={id}
+            workflows={workflows.data || []}
+            selected={selectedWorkflow}
+            archived={
+              !!item.archived || !!drafts[workflowDraftKey(id, workflowId)]
+            }
+            onSelect={(next) =>
+              navigate(
+                `${base}${tab === "execution" ? "" : `/${tab}`}${workflowSearch(next)}`,
+              )
+            }
+          />
+        )}
+      </div>
+      {!workflows.isPending && !workflows.error && !selectedWorkflow && (
+        <ErrorNotice error="This workflow is no longer available. Select another workflow to continue; its previous runs remain accessible." />
+      )}
       <nav
         aria-label="Project tabs"
-        className="mb-7 flex gap-6 overflow-x-auto border-b border-line"
+        className="sticky top-14 z-20 mb-7 flex gap-6 overflow-x-auto border-b border-line bg-canvas pt-3"
       >
         {[
           {
@@ -775,7 +944,7 @@ function ProjectPage({
         ].map((item) => (
           <Link
             key={item.id}
-            to={`${base}${item.path}`}
+            to={`${base}${item.path}${search}`}
             aria-current={tab === item.id ? "page" : undefined}
             className={`flex items-center gap-2 whitespace-nowrap border-b-2 pb-3.5 text-xs transition-colors ${tab === item.id ? "border-accent text-accent" : "border-transparent text-muted hover:text-text"}`}
           >
@@ -785,11 +954,20 @@ function ProjectPage({
         ))}
       </nav>
       {tab === "actions" ? (
-        <ActionsEditor key={id} projectId={id} archived={!!item.archived} />
+        selectedWorkflow ? (
+          <ActionsEditor
+            key={`${id}:${workflowId}`}
+            projectId={id}
+            workflow={selectedWorkflow}
+            archived={!!item.archived}
+          />
+        ) : null
       ) : tab === "settings" ? (
         <ProjectSettings key={id} project={item} />
       ) : tab === "export" ? (
-        <ExportView projectId={id} />
+        selectedWorkflow ? (
+          <ExportView projectId={id} workflowId={workflowId} />
+        ) : null
       ) : (
         <>
           <div className="grid min-w-0 gap-5 xl:grid-cols-[240px_minmax(0,1fr)]">
@@ -811,7 +989,7 @@ function ProjectPage({
               />
               <Link
                 className="my-3 block px-1 text-[11px] text-accent hover:underline"
-                to={base}
+                to={`${base}${search}`}
               >
                 Latest run
               </Link>
@@ -819,7 +997,7 @@ function ProjectPage({
                 {runs.data?.map((run) => (
                   <Link
                     key={run.id}
-                    to={`${base}/run/${run.id}`}
+                    to={`${base}/run/${run.id}${search}`}
                     aria-current={current?.id === run.id ? "page" : undefined}
                     className={`block rounded-lg border p-2.5 transition-colors ${current?.id === run.id ? "border-accent/40 bg-accent/10" : "border-line hover:bg-elevated"}`}
                   >
@@ -863,8 +1041,10 @@ function ProjectPage({
                 <Empty icon={<Terminal size={24} />} title="Run not found">
                   Select another run from the build history.
                 </Empty>
-              ) : current && current.projectId !== id ? (
-                <ErrorNotice error="This run belongs to another project." />
+              ) : current &&
+                (current.projectId !== id ||
+                  (current.workflowId || "default") !== workflowId) ? (
+                <ErrorNotice error="This run belongs to another project or workflow." />
               ) : (
                 <RunView run={current} />
               )}
@@ -877,11 +1057,11 @@ function ProjectPage({
                   Continue in your terminal
                 </p>
                 <code className="mt-1 block font-mono text-[11px] text-muted">
-                  FLUENTCI_PROJECT_ID={id} fluentci run .
+                  FLUENTCI_PROJECT_ID={id} fluentci run --workflow {workflowId}
                 </code>
               </div>
               <CopyButton
-                value={`FLUENTCI_PROJECT_ID=${id} fluentci run .`}
+                value={`FLUENTCI_PROJECT_ID=${id} fluentci run --workflow ${workflowId}`}
                 label="Copy command"
               />
             </div>
@@ -894,7 +1074,7 @@ function ProjectPage({
 
 function NewProject({ onClose }: { onClose: () => void }) {
   const {
-    register,
+    control,
     handleSubmit,
     formState: { errors },
   } = useForm<RepositoryValues>({
@@ -903,6 +1083,19 @@ function NewProject({ onClose }: { onClose: () => void }) {
     mode: "onTouched",
   });
   const [mode, setMode] = useState<"local" | "clone">("local");
+  const repositories = useQuery({
+    queryKey: ["tangledRepositories"],
+    enabled: mode === "clone",
+    queryFn: async ({ signal }) =>
+      (
+        await graphql<{ tangledRepositories: { cloneUrl: string }[] }>(
+          "query { tangledRepositories { cloneUrl } }",
+          {},
+          signal,
+        )
+      ).tangledRepositories,
+    staleTime: 60_000,
+  });
   const client = useQueryClient();
   const navigate = useNavigate();
   const mutation = useMutation({
@@ -971,19 +1164,32 @@ function NewProject({ onClose }: { onClose: () => void }) {
       ) : (
         <form
           noValidate
+          autoComplete="off"
           onSubmit={handleSubmit((values) => mutation.mutate(values))}
         >
           <label className="field-label">
             Git repository URL
-            <input
-              autoFocus
-              className="input font-mono"
-              placeholder="https://github.com/you/project.git"
-              {...register("repository")}
-              aria-invalid={!!errors.repository}
-              aria-describedby={
-                errors.repository ? "repository-error" : undefined
-              }
+            <Controller
+              control={control}
+              name="repository"
+              render={({ field }) => (
+                <SuggestInput
+                  {...field}
+                  label="Git repository URL"
+                  suggestions={[
+                    ...new Set(
+                      (repositories.data || []).map(
+                        (repository) => repository.cloneUrl,
+                      ),
+                    ),
+                  ]}
+                  placeholder="https://github.com/you/project.git"
+                  invalid={!!errors.repository}
+                  describedBy={
+                    errors.repository ? "repository-error" : undefined
+                  }
+                />
+              )}
             />
           </label>
           {errors.repository && (

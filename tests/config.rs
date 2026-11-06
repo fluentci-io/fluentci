@@ -137,3 +137,22 @@ name = "@tsiry-sandratraina.com/sccache"
     }
     Ok(())
 }
+
+#[test]
+fn module_logo_is_optional_and_requires_an_http_picture_url() -> anyhow::Result<()> {
+    let config = fluentci::config::Config::parse(
+        "[[modules]]\nname='hello'\npath='.'\nlogo='https://cdn.example/hello.png'",
+    )?;
+    assert_eq!(
+        config.modules[0].logo.as_deref(),
+        Some("https://cdn.example/hello.png")
+    );
+    for invalid in [
+        "file:///tmp/logo.png",
+        "data:image/png;base64,abc",
+        "https://user:secret@example.com/logo.png",
+    ] {
+        assert!(fluentci::config::validate_logo(invalid).is_err());
+    }
+    Ok(())
+}

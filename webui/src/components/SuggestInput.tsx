@@ -1,3 +1,4 @@
+import { IconPackage } from "@tabler/icons-react";
 import { forwardRef, useId, useLayoutEffect, useRef, useState } from "react";
 
 export const SuggestInput = forwardRef<
@@ -7,6 +8,11 @@ export const SuggestInput = forwardRef<
     onChange: (value: string) => void;
     onBlur: () => void;
     suggestions: string[];
+    details?: Record<
+      string,
+      { badge: string; description?: string; logo?: string | null }
+    >;
+    onFocus?: () => void;
     label: string;
     multiline?: boolean;
     invalid?: boolean;
@@ -19,6 +25,8 @@ export const SuggestInput = forwardRef<
     onChange,
     onBlur,
     suggestions,
+    details = {},
+    onFocus,
     label,
     multiline,
     invalid,
@@ -96,6 +104,8 @@ export const SuggestInput = forwardRef<
     "aria-invalid": invalid || undefined,
     "aria-describedby": describedBy,
     autoComplete: "off",
+    autoCapitalize: "none",
+    autoCorrect: "off",
     spellCheck: false,
     placeholder,
     className: `input font-mono ${multiline ? "min-h-28 resize-y leading-6" : ""}`,
@@ -113,7 +123,10 @@ export const SuggestInput = forwardRef<
     ) => {
       setCursor(event.currentTarget.selectionStart ?? value.length);
     },
-    onFocus: () => setOpen(true),
+    onFocus: () => {
+      setOpen(true);
+      onFocus?.();
+    },
     onBlur: () => {
       setOpen(false);
       onBlur();
@@ -151,13 +164,39 @@ export const SuggestInput = forwardRef<
               key={option}
               id={`${id}-${index}`}
               role="option"
+              aria-label={option}
+              aria-description={
+                details[option]
+                  ? `${details[option].badge}. ${details[option].description || ""}`
+                  : undefined
+              }
               aria-selected={selected === index}
               className={`cursor-pointer rounded-md px-3 py-2 font-mono text-xs ${selected === index ? "bg-accent/15 text-text" : "text-muted"}`}
               onMouseDown={(event) => event.preventDefault()}
               onMouseEnter={() => setActive(index)}
               onClick={() => choose(option)}
             >
-              {option}
+              <div className="flex items-center justify-between gap-2">
+                {details[option] && (
+                  <ModuleLogo
+                    key={details[option].logo || "placeholder"}
+                    url={details[option].logo}
+                  />
+                )}
+                <span className="min-w-0 flex-1 break-all">{option}</span>
+                {details[option] && (
+                  <span
+                    className={`shrink-0 rounded border px-1.5 py-0.5 font-sans text-[9px] ${details[option].badge === "Registry" ? "border-accent/30 text-accent" : "border-line text-muted"}`}
+                  >
+                    {details[option].badge}
+                  </span>
+                )}
+              </div>
+              {details[option]?.description && (
+                <p className="mt-1 line-clamp-2 font-sans text-[10px] leading-4 text-muted">
+                  {details[option].description}
+                </p>
+              )}
             </li>
           ))}
         </ul>
@@ -165,3 +204,27 @@ export const SuggestInput = forwardRef<
     </div>
   );
 });
+
+function ModuleLogo({ url }: { url?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  const valid = url && /^https?:\/\//i.test(url);
+  return (
+    <span
+      className="flex size-7 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-canvas"
+      aria-hidden="true"
+    >
+      {valid && !failed ? (
+        <img
+          src={url}
+          alt=""
+          className="size-5 object-contain"
+          loading="lazy"
+          referrerPolicy="no-referrer"
+          onError={() => setFailed(true)}
+        />
+      ) : (
+        <IconPackage size={16} className="text-muted" />
+      )}
+    </span>
+  );
+}

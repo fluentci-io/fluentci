@@ -49,7 +49,7 @@ Studio, publishing, CLI options, and the registry API. The
   and settings in SQLite, with transactional writes and schema migrations.
 - **Live feedback:** stream execution events over WebSockets, inspect job logs,
   and cancel active runs from Studio.
-- **CI exports:** generate GitHub Actions, GitLab CI, Azure Pipelines, CircleCI,
+- **CI exports:** generate GitHub Actions, GitLab CI, Azure Pipelines, CircleCI, Semaphore,
   and AWS CodeBuild manifests from saved project actions.
 - **Engine integrations:** use the engine's secret providers, local and remote
   caches, services, and OpenTelemetry tracing from plugins.
@@ -124,15 +124,15 @@ transferred as Wasm to the platform jobs. See the
 
 ### Runtime tools
 
-| Workflow | Additional tools |
-| --- | --- |
-| Studio, GraphQL, project management | None |
-| Shell steps | Bash and the tools invoked by the step |
-| Published Wasm plugins | Tools required by the plugin or its environment provider |
-| Building local Rust plugins | Cargo, Rustup, and the `wasm32-unknown-unknown` target |
-| Existing TypeScript/Dagger pipelines | Deno and Dagger; Docker when required by the pipeline |
-| Terminal documentation | Glow |
-| Service controls | Overmind and its Unix sockets |
+| Workflow                             | Additional tools                                         |
+| ------------------------------------ | -------------------------------------------------------- |
+| Studio, GraphQL, project management  | None                                                     |
+| Shell steps                          | Bash and the tools invoked by the step                   |
+| Published Wasm plugins               | Tools required by the plugin or its environment provider |
+| Building local Rust plugins          | Cargo, Rustup, and the `wasm32-unknown-unknown` target   |
+| Existing TypeScript/Dagger pipelines | Deno and Dagger; Docker when required by the pipeline    |
+| Terminal documentation               | Glow                                                     |
+| Service controls                     | Overmind and its Unix sockets                            |
 
 Plugins and requested toolchains may be downloaded during execution. Hosted
 registry and runner commands require network access.
@@ -292,16 +292,16 @@ configuration overrides one farther up the directory tree.
 
 ### SDK build commands
 
-| SDK | Default build | Required tools |
-| --- | --- | --- |
-| Rust | Cargo release build for `wasm32-unknown-unknown` | Rust, Cargo, Rustup |
-| PureScript | `npm run build`: Spago → esbuild → extism-js | Node/npm, PureScript, Spago, extism-js |
-| ClojureScript | `npm run build`: Typed Clojure check → ClojureScript → esbuild → extism-js | JDK 21+, Clojure CLI, Node/npm, extism-js, Binaryen |
-| Gleam | `npm run build`: Gleam JS → esbuild → extism-js | Node/npm, Gleam, extism-js |
-| TypeScript | `npm run build`: esbuild → extism-js | Node/npm, extism-js |
-| ReScript | `npm run build`: ReScript → esbuild → extism-js | Node/npm, extism-js; compiler is a package dependency |
-| Elixir | `mix fluentci.plugin.build <entry> --output dist/plugin.wasm` | Elixir/Mix, Rust with the Wasm target |
-| Python | `uv run fluentci-plugin <entry> -o dist/plugin.wasm` | uv, extism-py, Binaryen |
+| SDK           | Default build                                                              | Required tools                                        |
+| ------------- | -------------------------------------------------------------------------- | ----------------------------------------------------- |
+| Rust          | Cargo release build for `wasm32-unknown-unknown`                           | Rust, Cargo, Rustup                                   |
+| PureScript    | `npm run build`: Spago → esbuild → extism-js                               | Node/npm, PureScript, Spago, extism-js                |
+| ClojureScript | `npm run build`: Typed Clojure check → ClojureScript → esbuild → extism-js | JDK 21+, Clojure CLI, Node/npm, extism-js, Binaryen   |
+| Gleam         | `npm run build`: Gleam JS → esbuild → extism-js                            | Node/npm, Gleam, extism-js                            |
+| TypeScript    | `npm run build`: esbuild → extism-js                                       | Node/npm, extism-js                                   |
+| ReScript      | `npm run build`: ReScript → esbuild → extism-js                            | Node/npm, extism-js; compiler is a package dependency |
+| Elixir        | `mix fluentci.plugin.build <entry> --output dist/plugin.wasm`              | Elixir/Mix, Rust with the Wasm target                 |
+| Python        | `uv run fluentci-plugin <entry> -o dist/plugin.wasm`                       | uv, extism-py, Binaryen                               |
 
 Every source-module run checks the SDK's required tools and reports all missing
 tools before starting its build. Checks also apply during discovery and to cached
@@ -479,14 +479,32 @@ the CLI from opening a browser automatically. To run only the API:
 fluentci server --port 6076
 ```
 
-Studio registers the current directory as a project. Saved project actions and
-execution history are shared with CLI commands through the same SQLite database.
+Studio registers the current directory as a project. Named workflows live in
+`.fluentci/workflows/*.toml`, with shared modules and services in `fluentci.toml`.
+Studio creates and manages these files; execution history is shared with the CLI
+through SQLite. Existing project actions remain the **Default** workflow.
+
+```sh
+fluentci workflows                # list every project workflow
+fluentci workflows --steps        # detailed steps grouped by workflow
+fluentci workflows ci --steps     # inspect one workflow
+fluentci workflows --steps --json # metadata and nested steps for scripts
+fluentci run --workflow ci
+```
+
+Use the workflow selector to switch actions, runs, and CI exports. The Actions
+composer visually configures push/PR events, branch/tag/path filters, manual CI
+dispatch and UTC schedules. These translate to CI providers and never gate local
+manual runs. Manage workflows
+to rename, duplicate, enable/disable, or delete them. Workflow IDs preserve history
+across display-name changes; prepared runs retain snapshots of their actions.
+See [workflow configuration](https://docs.fluentci.io/reference/configuration/#multiple-workflows).
 
 Studio includes a dark local workspace, a single status-aware Run/Cancel/Restart
 control, collapsible timed steps, live streaming logs, instant log filtering,
 and `.txt` log downloads. Build-history bars link to previous runs and show
 details on hover or keyboard focus. Press **⌘K / Ctrl+K** to search projects,
-runs, and persisted logs using SQLite FTS5; log results open the matching step.
+workflows (with parent project names), runs, and persisted logs using SQLite FTS5; log results open the matching step.
 Actions use ordered command forms, and saved actions can be exported to supported
 CI providers. See [Studio development](./webui/README.md) for Storybook, MSW mocks,
 and frontend tests.
@@ -513,6 +531,7 @@ fluentci project export <name> --github
 fluentci project export <name> --gitlab
 fluentci project export <name> --azure
 fluentci project export <name> --circleci
+fluentci project export <name> --semaphore
 fluentci project export <name> --aws
 ```
 
@@ -523,19 +542,19 @@ configuration file. GitHub Actions is the default provider when no flag is given
 
 Run `fluentci --help` or `fluentci <command> --help` for arguments and options.
 
-| Commands | Purpose |
-| --- | --- |
-| `run`, or no subcommand | Execute local or published pipelines |
-| `init`, `search` | Create pipelines and find reusable packages |
-| `modules` / `inspect`, `modules add` | Discover modules/functions and add local or URL modules |
-| `ls` / `list`, `docs` / `man` | List pipeline jobs and read documentation |
-| `studio`, `server` | Start the embedded UI or local GraphQL API |
-| `project create`, `list`, `show`, `export` | Manage saved projects and export CI manifests |
-| `whoami`, `publish` | Authenticate from environment variables and publish packages |
-| `agent`, `agent list` | Connect a hosted runner agent or list agents |
-| `repl [module]` | Start a native interactive pipeline session |
-| `up`, `down`, `ps`, `status`, `start`, `restart`, `stop`, `echo` | Control services and stream their logs |
-| `env`, `doctor`, `upgrade`, `community` | Inspect configuration, diagnose tools, update, and find support |
+| Commands                                                         | Purpose                                                         |
+| ---------------------------------------------------------------- | --------------------------------------------------------------- |
+| `run`, or no subcommand                                          | Execute local or published pipelines                            |
+| `init`, `search`                                                 | Create pipelines and find reusable packages                     |
+| `modules` / `inspect`, `modules add`                             | Discover modules/functions and add local or URL modules         |
+| `ls` / `list`, `docs` / `man`                                    | List pipeline jobs and read documentation                       |
+| `studio`, `server`                                               | Start the embedded UI or local GraphQL API                      |
+| `project create`, `list`, `show`, `export`                       | Manage saved projects and export CI manifests                   |
+| `whoami`, `publish`                                              | Authenticate from environment variables and publish packages    |
+| `agent`, `agent list`                                            | Connect a hosted runner agent or list agents                    |
+| `repl [module]`                                                  | Start a native interactive pipeline session                     |
+| `up`, `down`, `ps`, `status`, `start`, `restart`, `stop`, `echo` | Control services and stream their logs                          |
+| `env`, `doctor`, `upgrade`, `community`                          | Inspect configuration, diagnose tools, update, and find support |
 
 `fluentci run --remote-exec` is not supported. Run FluentCI directly on a CI runner.
 Service controls discover `.fluentci/*/Procfile` and use the associated Overmind sockets.
@@ -565,11 +584,11 @@ database. See [architecture](./docs/site/development/architecture.md).
 The embedded engine supports local and remote caches. Configure remote storage
 with the same variables used by FluentCI Engine:
 
-| Variable | Purpose |
-| --- | --- |
-| `FLUENTCI_CACHE_GCS_BUCKET` | Google Cloud Storage bucket |
-| `FLUENTCI_CACHE_S3_ENDPOINT` | S3-compatible endpoint, including R2 |
-| `FLUENTCI_CACHE_S3_BUCKET` | S3-compatible bucket |
+| Variable                      | Purpose                                           |
+| ----------------------------- | ------------------------------------------------- |
+| `FLUENTCI_CACHE_GCS_BUCKET`   | Google Cloud Storage bucket                       |
+| `FLUENTCI_CACHE_S3_ENDPOINT`  | S3-compatible endpoint, including R2              |
+| `FLUENTCI_CACHE_S3_BUCKET`    | S3-compatible bucket                              |
 | `FLUENTCI_CACHE_CDN_ENDPOINT` | Optional CDN endpoint for downloading cached data |
 
 GCS uses `GOOGLE_APPLICATION_CREDENTIALS`. S3-compatible storage uses
@@ -658,6 +677,11 @@ cargo test --release --locked
 For frontend development, start `cargo run --release -- server` and then run `bun run dev`
 inside `webui`. Vite proxies `/graphql` and `/ws` to the local API on port 6076.
 `nix develop` provides a development shell with Rust, Bun, and build tools.
+`nix build .#fluentci` builds the CLI with embedded Studio using Crane and Bun.
+Supported flake systems are x86_64 Linux, aarch64 Linux, and aarch64 macOS.
+After updating `bun.lock`, run `bun scripts/generate-bun-nix.mjs` and commit
+`nix/bun-deps.nix`. The Nix build workflow runs on pushes to main and manual dispatch.
+See [CI and exports](./docs/site/guides/ci.md) for workflow events and provider setup.
 
 See [Rust development notes](./docs/rust-port.md) for architecture and runtime
 requirements, and the [engine](./engine/UPSTREAM.md) and

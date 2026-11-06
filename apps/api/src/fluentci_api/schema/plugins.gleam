@@ -22,6 +22,7 @@ pub type Row {
     size: Option(Int),
     functions: Option(String),
     repository: Option(String),
+    logo: Option(String),
     subdir: Option(String),
     deleted: Bool,
     event_time: Int,
@@ -45,6 +46,7 @@ pub fn decoder() -> Decoder(Row) {
   use size <- decode.field("size", decode.optional(decode.int))
   use functions <- decode.field("functions", decode.optional(decode.string))
   use repository <- decode.field("repository", decode.optional(decode.string))
+  use logo <- decode.field("logo", decode.optional(decode.string))
   use subdir <- decode.field("subdir", decode.optional(decode.string))
   use deleted <- decode.field("deleted", decode.bool)
   use event_time <- decode.field("event_time", decode.int)
@@ -62,6 +64,7 @@ pub fn decoder() -> Decoder(Row) {
     size,
     functions,
     repository,
+    logo,
     subdir,
     deleted,
     event_time,
@@ -85,6 +88,7 @@ pub fn table() -> Table(Row) {
       integer_column("size", True, False),
       text_column("functions", True, False),
       text_column("repository", True, False),
+      text_column("logo", True, False),
       text_column("subdir", True, False),
       boolean_column("deleted"),
       integer_column("event_time", False, False),
@@ -92,6 +96,7 @@ pub fn table() -> Table(Row) {
     [
       index("plugin_name_author", ["name", "author"], False),
       index("plugin_page", ["published_at", "uri"], False),
+      index("plugin_actor_page", ["author", "published_at", "uri"], False),
       index("plugin_author_name_version", ["author", "name", "version"], True),
     ],
     decoder(),
@@ -160,4 +165,8 @@ pub fn repository(table: Table(Row)) -> Expression(Option(String)) {
 
 pub fn subdir(table: Table(Row)) -> Expression(Option(String)) {
   column(table, "subdir", optional(text()))
+}
+
+pub fn logo(table: Table(Row)) -> Expression(Option(String)) {
+  column(table, "logo", optional(text()))
 }

@@ -1,6 +1,8 @@
 use axum::{
+    Router,
     body::{Body, to_bytes},
     http::{Request, StatusCode},
+    routing::get,
 };
 use fluentci::{
     db::Db,
@@ -36,7 +38,17 @@ async fn graphql_crud_uses_sqlite() -> anyhow::Result<()> {
     assert!(schema.execute(query).await.errors.is_empty());
     let response=schema.execute(format!(r#"mutation {{ saveActions(projectId:"{id}",actions:[{{name:"hello",commands:"bash 'echo hello'",enabled:true,plugin:"shell",useWasm:true}}]){{name}} }}"#)).await;
     assert!(response.errors.is_empty(), "{:?}", response.errors);
-    assert_eq!(db.actions(id).await?.len(), 1);
+    assert_eq!(
+        fluentci::workflows::actions(&db, &project, "default")
+            .await?
+            .len(),
+        1
+    );
+    assert!(
+        temp.path()
+            .join(".fluentci/workflows/default.toml")
+            .is_file()
+    );
     let response=schema.execute(format!(r#"mutation {{ runPipeline(projectId:"{id}",wait:true){{status jobs{{status logs{{message}}}}}} }}"#)).await;
     assert!(response.errors.is_empty(), "{:?}", response.errors);
     assert_eq!(
@@ -168,7 +180,7 @@ build = ["this-command-must-never-run"]
 fn ci_exports_use_the_requested_setup_and_installer() -> anyhow::Result<()> {
     let github = fluentci::export::generate("github", &[])?;
     assert!(github.contains("fluentci-io/setup-fluentci@next"));
-    for provider in ["gitlab", "azure", "circleci", "aws"] {
+    for provider in ["gitlab", "azure", "circleci", "aws", "semaphore"] {
         let yaml = fluentci::export::generate(provider, &[])?;
         assert!(yaml.contains("curl -fsSL https://raw.githubusercontent.com/tsirysndr/fluentci/main/install.sh | sh"), "{provider}: {yaml}");
     }
@@ -311,5 +323,110 @@ async fn rerunning_a_job_executes_only_that_action_and_preserves_history() -> an
         .await;
     assert!(!invalid.errors.is_empty());
     assert_eq!(db.runs(&project.id).await?.len(), 2);
+    Ok(())
+}
+
+#[tokio::test]
+async fn registry_module_suggestions_return_versioned_references_and_function_metadata()
+-> anyhow::Result<()> {
+    let (_temp, db) = setup().await?;
+    let payload = serde_json::json!({
+        "name":"sccache", "author":"publisher.test", "version":"0.1.0",
+        "description":"A shared compiler cache", "url":"https://cdn.example/sccache.wasm",
+        "functions":[{"name":"setup"},{"name":"clear"}]
+    });
+    let search_payload = payload.clone();
+    let router = axum::Router::new()
+        .route(
+            "/xrpc/io.fluentci.registry.searchPackages",
+            axum::routing::get(
+                move |axum::extract::Query(query): axum::extract::Query<
+                    std::collections::HashMap<String, String>,
+                >| {
+                    let payload = search_payload.clone();
+                    async move {
+                        assert_eq!(query.get("q").map(String::as_str), Some("sccache"));
+                        axum::Json(serde_json::json!({"packages":[payload]}))
+                    }
+                },
+            ),
+        )
+        .route(
+            "/xrpc/io.fluentci.registry.getPackage",
+            axum::routing::get(
+                move |axum::extract::Query(query): axum::extract::Query<
+                    std::collections::HashMap<String, String>,
+                >| {
+                    let payload = payload.clone();
+                    async move {
+                        assert_eq!(
+                            query.get("author").map(String::as_str),
+                            Some("publisher.test")
+                        );
+                        axum::Json(serde_json::json!({"package":payload}))
+                    }
+                },
+            ),
+        );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let mut state = AppState::new(db);
+    state.registry_url = format!("http://{}", listener.local_addr()?);
+    let registry = tokio::spawn(async move {
+        axum::serve(listener, router).await.unwrap();
+    });
+    let schema = server::schema(state);
+    for query in ["sccache", "@publisher.test/sccache@v0.1.0"] {
+        let response = schema.execute(async_graphql::Request::new("query($query:String!){registryModules(query:$query){name functions origin version description}}")
+            .variables(async_graphql::Variables::from_json(serde_json::json!({"query":query})))).await;
+        assert!(response.errors.is_empty(), "{:?}", response.errors);
+        let data = response.data.into_json()?;
+        assert_eq!(
+            data["registryModules"][0]["name"],
+            "@publisher.test/sccache@v0.1.0"
+        );
+        assert_eq!(data["registryModules"][0]["origin"], "REGISTRY");
+        assert_eq!(
+            data["registryModules"][0]["functions"],
+            serde_json::json!(["setup", "clear"])
+        );
+    }
+    assert!(
+        !schema
+            .execute("{registryModules(query:\"a\"){name}}")
+            .await
+            .errors
+            .is_empty()
+    );
+    registry.abort();
+    Ok(())
+}
+
+#[tokio::test]
+async fn publishing_logo_requires_http_200_and_an_image_mime_type() -> anyhow::Result<()> {
+    let app = Router::new()
+        .route(
+            "/logo",
+            get(|| async { ([("content-type", "image/png; charset=binary")], "picture") }),
+        )
+        .route(
+            "/html",
+            get(|| async { ([("content-type", "text/html")], "not a picture") }),
+        )
+        .route("/missing", get(|| async { StatusCode::NOT_FOUND }))
+        .route("/no-content", get(|| async { StatusCode::NO_CONTENT }))
+        .route("/no-type", get(|| async { StatusCode::OK }));
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let base = format!("http://{}", listener.local_addr()?);
+    let server = tokio::spawn(async move { axum::serve(listener, app).await });
+    fluentci::publishing::validate_logo_url(&format!("{base}/logo")).await?;
+    for path in ["html", "missing", "no-content", "no-type"] {
+        assert!(
+            fluentci::publishing::validate_logo_url(&format!("{base}/{path}"))
+                .await
+                .is_err(),
+            "{path}"
+        );
+    }
+    server.abort();
     Ok(())
 }

@@ -8,6 +8,32 @@ export interface Project {
   tags: string[] | null;
 }
 
+export interface WorkflowFilter {
+  branches: string[];
+  tags: string[];
+  paths: string[];
+}
+
+export interface WorkflowEvents {
+  push: WorkflowFilter | null;
+  pullRequest: WorkflowFilter | null;
+  manual: boolean;
+  schedule: string[];
+}
+
+export interface Workflow {
+  events?: WorkflowEvents;
+  id: string;
+  name: string;
+  description: string | null;
+  enabled: boolean;
+  env: string[];
+  path: string | null;
+  revision: string | null;
+  stepCount: number;
+  legacy: boolean;
+}
+
 export interface Action {
   name: string;
   commands: string;
@@ -29,6 +55,8 @@ export interface Job {
 
 export interface Run {
   id: string;
+  workflowId?: string;
+  workflowName?: string | null;
   projectId: string;
   title: string;
   status: string | null;
@@ -59,6 +87,10 @@ export interface SearchResult {
 }
 
 export interface ModuleSuggestion {
+  logo?: string | null;
+  origin?: "LOCAL" | "REGISTRY";
+  version?: string | null;
+  description?: string | null;
   name: string;
   functions: string[];
 }

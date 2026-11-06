@@ -169,3 +169,126 @@ modules and steps. The `services` array defaults to empty. Definitions support
 Commands are literal argv arrays or explicit POSIX shell strings. See the
 [services guide](/guides/services/) for database examples, environment backends,
 Docker port allocation, scoped CI commands, and definitions supplied from code.
+
+## Multiple workflows
+
+Store named workflows in `.fluentci/workflows/*.toml`. Keep shared module and
+service declarations in the root `fluentci.toml`; workflow steps resolve module
+names and working directories against that project root.
+
+```toml
+# .fluentci/workflows/ci.toml
+id = "ci"
+name = "Continuous integration"
+description = "Build and test the workspace"
+enabled = true
+env = ["CI=true"]
+
+[[steps]]
+name = "Build"
+module = "main"
+command = "build"
+wasm = true
+
+[[steps]]
+name = "Tests"
+module = "main"
+command = "test"
+working_directory = "."
+```
+
+`id` is a unique, stable lowercase identifier (letters, digits, `_`, and `-`,
+starting with a letter; maximum 64 characters). `name` is an editable display
+name. Renaming the display name or file preserves the workflow's run history.
+`description` and `env` are optional; `enabled` defaults to `true`. Workflow
+variables apply to every step; a step's own variables take precedence.
+
+Steps accept the fields above plus `enabled` (default `true`), `wasm` (default
+`true`), `env`, and `working_directory`. `module` explicitly selects a module or
+`shell`. Without `module`, existing full commands such as
+`command = "fluentci run main test"` remain supported. For shell steps, use
+`module = "shell"` and put the shell script in `command`.
+
+```sh
+fluentci workflows                   # IDs, names, state, step counts and files
+fluentci workflows --steps           # detailed steps grouped by workflow
+fluentci workflows ci --steps     # inspect one workflow
+fluentci workflows --steps --json    # metadata with a steps array per workflow
+fluentci run --workflow ci
+```
+
+Workflows execute ordered steps. Define CI event triggers under `[on]`; these
+conditions affect exported CI manifests and are never evaluated by local runs.
+Even a workflow with every CI event disabled can be run locally with
+`fluentci run --workflow <id>` (provided the workflow itself is enabled).
+
+```toml
+[on]
+manual = true
+schedule = ["0 6 * * 1-5"] # UTC
+
+[on.push]
+branches = ["main", "release/**"]
+tags = ["v*"]
+paths = ["src/**", "fluentci.toml"]
+
+[on.pull_request]
+branches = ["main"] # target/base branches
+paths = ["src/**"]
+```
+
+Omit `push` or `pull_request` from an explicit `[on]` block to disable that event.
+An empty event table matches all refs/paths. Inclusive filters support `*`, `**`
+and `?`; branch and path conditions both must match. Branch-only push filters
+exclude tag pushes; tag-only filters exclude branch pushes. Tag pushes ignore
+path filters. Schedules use five numeric UTC cron fields with `*`, ranges,
+lists, and steps. Without an `[on]` block, defaults are pushes to `main` and
+manual CI dispatch. The visual **Event triggers** section of Studio's Actions
+composer edits and validates these settings.
+
+GitHub exports `on.push`, `on.pull_request`, `workflow_dispatch`, and `schedule`.
+GitLab maps events to `workflow.rules`, including target-branch and changed-path
+conditions; schedules must also be created in GitLab CI/CD settings. Azure maps
+to `trigger`, `pr`, and `schedules`; Azure Repos PR validation uses branch
+policies. CircleCI exports GitHub App event conditions and rejects static path
+filters it cannot represent. CircleCI schedules use project schedule triggers.
+AWS CodeBuild buildspec exports include a commented webhook-filter payload and
+EventBridge setup notes because triggers are configured outside the buildspec.
+Provider notes are included in generated YAML, rather than silently dropping
+unsupported conditions.
+
+```sh
+fluentci project export --workflow ci --github
+fluentci project export --workflow ci --gitlab
+```
+
+Studio can create, duplicate, rename, enable, disable, and delete workflows and
+edit their actions. It writes the same TOML files, with revision checks to reject
+stale saves. Commit the workflow files; ignore `.fluentci/workflows/.lock`, the
+local writer guard. Keep secrets out of version-controlled workflow files.
+
+Existing root `[[steps]]` and saved project actions remain available as the
+`default` workflow. Editing it in Studio creates
+`.fluentci/workflows/default.toml`. The default workflow cannot be deleted.
+Prepared runs snapshot their actions and environment in SQLite, so editing or
+deleting a workflow does not change work already prepared or its saved history.
+
+## Module logos
+
+Each `[[modules]]` entry can include an optional `logo` picture URL:
+
+```toml
+[[modules]]
+name = "sccache"
+path = ".fluentci/sccache"
+sdk = "purescript"
+version = "0.1.0"
+license = "MIT"
+logo = "https://cdn.example/sccache.png"
+```
+
+Publishing copies it into `io.fluentci.plugin` and verifies HTTP 200 plus an
+`image/*` Content-Type. `fluentci publish --logo URL` overrides the module value
+and also supports file/URL publishing. HTTP(S) URLs must not contain credentials.
+Studio module suggestions show the image, with a module icon for missing or
+unavailable pictures. Omitting `logo` preserves compatibility with older records.

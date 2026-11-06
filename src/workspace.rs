@@ -52,13 +52,14 @@ impl Workspace {
 }
 
 fn has_legacy_pipeline(directory: &Path) -> bool {
-    [
-        ".fluentci/mod.ts",
-        ".fluentci/Cargo.toml",
-        ".fluentci/plugin/Cargo.toml",
-    ]
-    .iter()
-    .any(|file| directory.join(file).is_file())
+    directory.join(".fluentci/workflows").is_dir()
+        || [
+            ".fluentci/mod.ts",
+            ".fluentci/Cargo.toml",
+            ".fluentci/plugin/Cargo.toml",
+        ]
+        .iter()
+        .any(|file| directory.join(file).is_file())
 }
 
 fn is_workspace(directory: &Path) -> Result<bool> {

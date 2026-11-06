@@ -33,3 +33,8 @@ sdk = "purescript"
 name = "desktop"
 path = ".fluentci/desktop"
 sdk = "purescript"
+
+[[modules]]
+name = "nix-build"
+path = ".fluentci/nix-build"
+sdk = "purescript"

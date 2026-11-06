@@ -32,3 +32,6 @@ fluentci.lock.guard
 
 # Python tooling bytecode
 __pycache__/
+
+# Workflow file writer guard
+.fluentci/workflows/.lock

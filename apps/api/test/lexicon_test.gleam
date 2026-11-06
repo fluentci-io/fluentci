@@ -23,6 +23,7 @@ pub fn generated_encoder_preserves_json_field_names_test() {
     size: 8,
     functions: None,
     repository: None,
+    logo: None,
     subdir: None,
   )
   |> models.encode_plugin
@@ -37,4 +38,11 @@ pub fn generated_pagination_encoder_handles_arrays_and_cursor_test() {
   |> models.encode_registry_list_packages_output
   |> json.to_string
   |> should.equal("{\"packages\":[],\"cursor\":\"next-page\"}")
+}
+
+pub fn generated_actor_parameters_require_actor_test() {
+  models.RegistryGetActorPackagesParameters("alice.example", Some(10), None)
+  |> models.encode_registry_get_actor_packages_parameters
+  |> json.to_string
+  |> should.equal("{\"actor\":\"alice.example\",\"limit\":10}")
 }

@@ -165,3 +165,12 @@ backfill rather than assuming all past records were streamed.
 Set `FLUENTCI_REGISTRY_URL` for a registry other than `https://api.fluentci.io`.
 `FLUENTCI_REGISTRY_DID` must match that API's service DID when uploading. These
 variables are distinct from the publisher's account DID.
+
+## Optional module logo
+
+Set `logo = "https://cdn.example/plugin.png"` in the selected `[[modules]]`
+entry, or pass `--logo URL` when publishing. FluentCI requests the URL and requires
+HTTP 200 and an `image/*` Content-Type before uploading or writing the record.
+The URL is stored as optional `logo` metadata; it is not copied into S3.
+Studio displays it beside module suggestions and falls back to a module icon if
+it cannot load. Existing records without a logo remain valid.

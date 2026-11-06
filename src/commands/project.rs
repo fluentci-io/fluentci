@@ -23,9 +23,11 @@ pub(super) async fn execute(db: &Db, command: ProjectCommand) -> Result<()> {
         }
         ProjectCommand::Export {
             name,
+            workflow,
             azure,
             gitlab,
             circleci,
+            semaphore,
             aws,
             ..
         } => {
@@ -37,6 +39,8 @@ pub(super) async fn execute(db: &Db, command: ProjectCommand) -> Result<()> {
                 "gitlab"
             } else if circleci {
                 "circleci"
+            } else if semaphore {
+                "semaphore"
             } else if aws {
                 "aws"
             } else {
@@ -44,7 +48,10 @@ pub(super) async fn execute(db: &Db, command: ProjectCommand) -> Result<()> {
             };
             print!(
                 "{}",
-                crate::export::generate(provider, &db.actions(&p.id).await?)?
+                crate::export::generate_workflow(
+                    provider,
+                    &crate::workflows::definition(db, &p, &workflow).await?
+                )?
             );
         }
     }
