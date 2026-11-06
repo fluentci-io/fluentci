@@ -264,7 +264,7 @@ pre {
   .module-result .module-logo img { position: absolute; inset: 0; }
   .module-result .module-logo svg { width: 32px; height: 32px; }
   .module-logo-large { @apply size-16 rounded-xl sm:size-20; }
-  .module-logo img { @apply size-full object-contain p-1; }
+  .module-logo img { @apply size-full rounded-lg object-contain p-1; }
   .module-author { @apply inline-flex max-w-full items-center gap-2 text-xs text-muted; }
   .author-avatar { @apply flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-raised font-mono text-[10px] text-accent; }
   .author-avatar img { @apply size-full object-cover; }
