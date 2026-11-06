@@ -80,6 +80,36 @@ curl -fsSL https://cli.fluentci.io | \
   FLUENTCI_INSTALL_DIR="$HOME/bin" sh
 ```
 
+### Install with APT
+
+On Debian/Ubuntu systems with glibc **2.39 or newer** (`amd64` and `arm64`):
+
+```sh
+echo "deb [trusted=yes] https://apt.fury.io/fluentci/ /" \
+  | sudo tee /etc/apt/sources.list.d/fluentci.list
+sudo apt-get update
+sudo apt-get install fluentci
+```
+
+### Install with DNF
+
+On Fedora and other DNF-based systems with glibc **2.39 or newer**
+(`x86_64` and `aarch64`):
+
+```sh
+sudo tee /etc/yum.repos.d/fluentci.repo <<'EOF'
+[fluentci]
+name=FluentCI
+baseurl=https://yum.fury.io/fluentci/
+enabled=1
+gpgcheck=0
+EOF
+sudo dnf install fluentci
+```
+
+Both Linux packages include the CLI and embedded Studio web interface. Start
+Studio with `fluentci studio`.
+
 ### Install with Homebrew
 
 Add and trust the FluentCI tap before installing:
