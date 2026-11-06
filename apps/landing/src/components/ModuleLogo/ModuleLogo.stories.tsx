@@ -12,3 +12,7 @@ export const Default: Story = { args: { plugin } };
 export const Placeholder: Story = {
   args: { plugin: { ...plugin, logo: undefined } },
 };
+
+export const LargePlaceholder: Story = {
+  args: { plugin: { ...plugin, logo: undefined }, large: true },
+};
