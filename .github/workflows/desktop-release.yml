@@ -19,7 +19,7 @@ concurrency:
 
 env:
   RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.tag || format('manual-{0}', github.run_number) }}
-  FLUENTCI_VERSION: '2026.11.04'
+  FLUENTCI_VERSION: 'v0.17.0'
   DESKTOP_MODULE: .fluentci/desktop/dist/plugin.wasm
 
 jobs:

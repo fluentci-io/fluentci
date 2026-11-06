@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
-      FLUENTCI_VERSION: '2026.11.04'
+      FLUENTCI_VERSION: 'v0.17.0'
       CARGO_BUILD_JOBS: '2'
       CARGO_TERM_COLOR: always
       # Keep release optimization while avoiding LTO for every test executable.
