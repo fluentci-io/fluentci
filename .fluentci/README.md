@@ -278,6 +278,15 @@ Outputs are `desktop/release-assets/FluentCI-Studio_<tag>_<target>.dmg`,
 `.app.zip`, and individual `.sha256` files. Packaging refuses to create archives
 if signing or verification fails. `sign` is also available as a separate job.
 
+After bundling, desktop CI runs `clean` to remove the workspace crates' Cargo
+products, stale debug builds, incremental directories, and installed frontend
+dependencies while preserving the app bundle, Bun download cache, and reusable
+Cargo dependency artifacts. Cleanup skips outside GitHub
+Actions. DMGs use explicit HFS+ capacity based on logical bytes and allocated
+blocks, with 50% headroom plus 128 MiB, and are verified before ZIP/checksum
+generation. This avoids undersized images when source files are sparse or
+compressed and reports runner disk space in the packaging log.
+
 ## Nix package build
 
 `.github/workflows/nix-build.yml` runs on pushes to `main` and manual dispatch.

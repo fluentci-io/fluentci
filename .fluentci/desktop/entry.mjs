@@ -1,1 +1,7 @@
-export { build, sign, package, upload } from "./output/CI.Desktop/index.js";
+export {
+  build,
+  clean,
+  sign,
+  package,
+  upload,
+} from "./output/CI.Desktop/index.js";

@@ -43,6 +43,8 @@ jobs:
         run: sh .fluentci/scripts/install-sdk-tools.sh
       - name: Compile the desktop module with FluentCI
         run: fluentci --check-update=false modules desktop --json
+      - name: Verify desktop packaging and cleanup safeguards
+        run: node --test .fluentci/desktop/test/*.test.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-release-module
@@ -98,6 +100,8 @@ jobs:
           key: desktop-release-${{ matrix.target }}
       - name: Build the desktop app with FluentCI
         run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" build
+      - name: Clean intermediate desktop builds with FluentCI
+        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" clean
       - name: Ad hoc sign, verify, and package the desktop app
         run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" package
       - name: Preserve desktop installers

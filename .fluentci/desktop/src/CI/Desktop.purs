@@ -1,4 +1,4 @@
-module CI.Desktop (build, sign, package, upload) where
+module CI.Desktop (build, clean, sign, package, upload) where
 
 import Prelude
 import CI.Support (requiredEnv, run, runIn, unwrap)
@@ -40,6 +40,33 @@ build = do
     , [ "bun", "run", "build", "--target", target, "--bundles", "app", "--no-sign" ]
     ]
 
+-- Discard workspace build products after bundling, keeping dependency caches and
+-- the finished .app. This is intentionally restricted to disposable CI runners.
+clean :: Effect Unit
+clean = do
+  target <- macosTarget
+  P.pipeline "desktop-clean"
+    # P.withEnv "APP" (appPath target)
+    # P.withEnv "TARGET" target
+    # P.shell """
+set -eu
+if [ "${GITHUB_ACTIONS:-}" != true ]; then
+  printf '%s\n' 'Skipping desktop build cleanup outside GitHub Actions'
+  exit 0
+fi
+test -s "$APP/Contents/MacOS/fluentci-desktop"
+df -h .
+cargo clean --release --locked --manifest-path desktop/src-tauri/Cargo.toml --target "$TARGET" --package fluentci --package fluentci-desktop
+rm -rf desktop/src-tauri/target/debug "desktop/src-tauri/target/$TARGET/debug"
+find desktop/src-tauri/target -type d -name bundle -prune -o -type d -name incremental -prune -exec rm -rf {} +
+# Frontend dependencies are not used after the app embeds its Studio assets.
+# Bun's global download cache and reusable Cargo dependency artifacts remain.
+rm -rf node_modules webui/node_modules desktop/node_modules apps/api/node_modules apps/landing/node_modules apps/modules/node_modules docs/node_modules
+test -s "$APP/Contents/MacOS/fluentci-desktop"
+df -h .
+"""
+    # P.stdout >>= unwrap >>= P.output >>= unwrap
+
 -- Match Rocksky Desktop: an ad hoc signature, with no Apple identity required.
 sign :: Effect Unit
 sign = do
@@ -68,7 +95,16 @@ trap 'rm -rf "$stage"' EXIT
 mkdir -p "$stage/FluentCI Studio"
 ditto "$APP" "$stage/FluentCI Studio/FluentCI Studio.app"
 ln -s /Applications "$stage/FluentCI Studio/Applications"
-hdiutil create -volname 'FluentCI Studio' -srcfolder "$stage/FluentCI Studio" -ov -format UDZO "$ASSET.dmg"
+# Allocated blocks can undercount sparse/compressed app binaries. Size the image
+# from both logical file bytes and allocated blocks, then reserve filesystem room.
+logical_kib=$(find "$stage/FluentCI Studio" -type f -exec stat -f '%z' {} + | awk '{bytes += $1} END {printf "%.0f\n", int((bytes + 1023) / 1024)}')
+allocated_kib=$(du -sk "$stage/FluentCI Studio" | awk '{print $1}')
+if [ "$allocated_kib" -gt "$logical_kib" ]; then logical_kib=$allocated_kib; fi
+image_mib=$(( (logical_kib + logical_kib / 2 + 131072 + 1023) / 1024 ))
+printf 'Creating %s MiB HFS+ image\n' "$image_mib"
+df -h . "$stage"
+hdiutil create -size "${image_mib}m" -fs HFS+ -volname 'FluentCI Studio' -srcfolder "$stage/FluentCI Studio" -ov -format UDZO "$ASSET.dmg"
+hdiutil verify "$ASSET.dmg"
 ditto -c -k --sequesterRsrc --keepParent "$APP" "$ASSET.app.zip"
 cd desktop/release-assets
 for file in "${ASSET##*/}.dmg" "${ASSET##*/}.app.zip"; do
