@@ -7,6 +7,7 @@ function command(program, args) {
   if (result.status !== 0)
     throw Error(`${program} failed with exit status ${result.status}`);
 }
-command("spago", ["build", "--purs-args", "--codegen js,docs,corefn"]);
+// Spago already generates JavaScript, docs.json, and CoreFn for inspection.
+command("spago", ["build"]);
 mkdirSync("dist", { recursive: true });
 await buildPlugin({ sdk: "purescript" });

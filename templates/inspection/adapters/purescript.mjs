@@ -27,7 +27,7 @@ export function inspectPurescript(entry, root, exportNames) {
       const path = join(output, name, "docs.json");
       if (!existsSync(path))
         throw Error(
-          `Missing compiler docs for ${name}; build with --codegen js,docs,corefn`,
+          `Missing compiler docs for ${name}; rebuild with spago build (or purs compile --codegen js,docs,corefn)`,
         );
       modules.set(name, JSON.parse(readFileSync(path, "utf8")));
     }
