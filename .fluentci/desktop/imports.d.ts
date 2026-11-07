@@ -1,5 +1,5 @@
 // Generated from schema/host.json. Guest import signatures.
-declare module "main" { export function build(): I32; export function sign(): I32; export function package(): I32; export function upload(): I32; }
+declare module "main" { export function build(): I32; export function clean(): I32; export function sign(): I32; export function package(): I32; export function upload(): I32; }
 declare module "extism:host" { interface user {
   add_secretmanager(value: I64): I64;
   as_service(value: I64): I64;

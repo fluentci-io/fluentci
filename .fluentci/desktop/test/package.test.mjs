@@ -16,6 +16,20 @@ import {
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { clean, package as packageApp } from "../output/CI.Desktop/index.js";
+import * as entry from "../entry.mjs";
+import { validateExports } from "../validate-exports.mjs";
+
+test("Wasm declarations include every desktop entry point", () => {
+  validateExports(entry);
+  assert.throws(
+    () =>
+      validateExports(
+        entry,
+        'declare module "main" { export function build(): I32; }',
+      ),
+    /Desktop Wasm declarations must match JavaScript exports/,
+  );
+});
 
 // Run compiled PureScript through a host bridge in a disposable fixture. No
 // FluentCI CLI is launched. Native DMG creation is an explicit macOS opt-in.
