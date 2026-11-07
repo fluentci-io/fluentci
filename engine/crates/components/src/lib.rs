@@ -1,5 +1,8 @@
 //! Native Component Model execution, independent of the Extism ABI.
 
+#[cfg(target_os = "openbsd")]
+extern crate wasmtime_wasi_openbsd as wasmtime_wasi;
+
 use anyhow::{bail, ensure, Context, Result};
 use fluentci_executor::Cancellation;
 use std::{

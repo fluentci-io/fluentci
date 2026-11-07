@@ -26,7 +26,7 @@ wasmtime-wasi = { version = "=49.0.5", default-features = false, features = ["p2
 
 [target.'cfg(target_os = "openbsd")'.dependencies]
 wasmtime = { version = "=41.0.4", default-features = false, features = [ "std", "runtime", "cranelift", "component-model"] }
-wasmtime-wasi = { version = "=41.0.4", default-features = false, features = ["p2"] }
+wasmtime-wasi-openbsd = { package = "wasmtime-wasi", path = "../../vendor/wasmtime-wasi-openbsd", version = "=41.0.4", default-features = false, features = ["p2"] }
 
 [dev-dependencies]
 wat = "1"

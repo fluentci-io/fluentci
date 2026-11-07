@@ -1,6 +1,6 @@
 [workspace]
 members = ["crates/*", "vendor/superconsole"]
-exclude = ["vendor/wasmtime", "vendor/extism-openbsd"]
+exclude = ["vendor/wasmtime", "vendor/extism-openbsd", "vendor/wasmtime-wasi-openbsd"]
 resolver = "2"
 
 [workspace.dependencies]
