@@ -169,9 +169,10 @@ async fn command_with_config(args: &RunArgs, root: &Path, config_root: &Path) ->
                 .context("No TypeScript runner found; run fluentci init")?;
             (".fluentci/import_map.json".into(), entry.into())
         } else {
-            let pkg = crate::lockfile::resolve(config_root, pipeline, args.frozen_lockfile).await?;
+            let pkg = crate::plugin_metadata::resolve(config_root, pipeline, args.frozen_lockfile)
+                .await?;
             if pkg.metadata.url.is_some() {
-                let artifact = registry::wasm_artifact(&pkg).await?;
+                let artifact = crate::plugin_metadata::prepare_package(&pkg).await?;
                 let mut command = engine_command(&artifact.to_string_lossy(), &args.jobs)?;
                 command
                     .current_dir(root)
@@ -260,9 +261,9 @@ async fn wasm_command(
     {
         pipeline.into()
     } else {
-        let package = crate::lockfile::resolve(config_root, pipeline, frozen).await?;
+        let package = crate::plugin_metadata::resolve(config_root, pipeline, frozen).await?;
         if package.metadata.url.is_some() {
-            registry::wasm_artifact(&package)
+            crate::plugin_metadata::prepare_package(&package)
                 .await?
                 .to_string_lossy()
                 .into_owned()

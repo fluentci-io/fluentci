@@ -699,11 +699,27 @@ pub async fn publish(
     let declared = if let Some(path) = &metadata_options.manifest {
         Some(crate::plugin_metadata::read_manifest(path, &bytes)?)
     } else {
-        definition
+        let declared = definition
             .filter(|m| !m.functions.is_empty())
-            .map(|m| m.functions.clone())
+            .map(|m| m.functions.clone());
+        if declared.is_some() {
+            declared
+        } else {
+            let manifest = workspace.root.join("fluentci.metadata.json");
+            if manifest.is_file() {
+                Some(crate::plugin_metadata::read_manifest(&manifest, &bytes)?)
+            } else {
+                None
+            }
+        }
     };
     let functions = crate::plugin_metadata::inspect(&bytes, declared)?;
+    let bytes = if external.is_none() {
+        crate::plugin_metadata::embed(&bytes, functions.clone())?
+    } else {
+        bytes
+    };
+    validate_wasm(&bytes)?;
     let publisher = auth::authenticate(db).await?;
     let digest = sha256::digest(bytes.as_slice());
     let size = bytes.len();

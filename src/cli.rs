@@ -334,6 +334,17 @@ pub enum ServiceCommand {
 
 #[derive(Debug, Subcommand)]
 pub enum ModuleCommand {
+    /// Embed SDK-neutral function and typed argument metadata in a Wasm artifact
+    Embed {
+        /// Compiled Wasm module
+        artifact: PathBuf,
+        /// JSON manifest containing a functions array
+        #[arg(long)]
+        manifest: PathBuf,
+        /// Destination artifact (defaults to replacing the input atomically)
+        #[arg(long)]
+        output: Option<PathBuf>,
+    },
     /// Scaffold and declare another workspace module
     Add {
         /// Unique name used to invoke the module

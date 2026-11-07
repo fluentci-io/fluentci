@@ -217,3 +217,14 @@ HTTP 200 and an `image/*` Content-Type before uploading or writing the record.
 The URL is stored as optional `logo` metadata; it is not copied into S3.
 Studio displays it beside module suggestions and falls back to a module icon if
 it cannot load. Existing records without a logo remain valid.
+
+## Immutable artifacts
+
+Once indexed, a published version’s download URL, SHA-256 checksum, and version
+are immutable. Jetstream ignores changes to these fields while continuing to
+apply description, function documentation, and other metadata edits. Deleting
+and recreating the same record does not replace its stored artifact identity.
+Publish a new version to distribute different Wasm bytes or a different URL.
+
+Module delete events are ignored: removing a PDS record does not remove its indexed
+publication or download counts. Event deduplication and checkpoints still advance.

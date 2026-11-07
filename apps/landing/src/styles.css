@@ -235,8 +235,12 @@ pre {
   .module-search-trigger {
     @apply flex items-center gap-2 rounded-md border border-line bg-panel px-3 py-2 text-xs text-muted transition-colors hover:border-accent/60;
   }
-  .module-search-trigger kbd { @apply ml-3; }
-  kbd { @apply rounded border border-line px-1.5 py-0.5 font-mono text-[11px] text-muted; }
+  .module-search-trigger kbd {
+    @apply ml-3;
+  }
+  kbd {
+    @apply rounded border border-line px-1.5 py-0.5 font-mono text-[11px] text-muted;
+  }
   .module-search-dialog {
     @apply fixed m-0 overflow-visible rounded-xl border border-line bg-panel p-0 text-ink shadow-2xl;
     inset: min(14vh, 110px) auto auto 50%;
@@ -244,15 +248,36 @@ pre {
     width: min(640px, calc(100vw - 24px));
     max-width: none;
   }
-  .module-search-dialog::backdrop { background: #0009; }
-  .module-search-surface { @apply overflow-hidden rounded-xl; }
-  .module-search-field { @apply flex items-center gap-3 border-b border-line px-4 py-4 text-muted; }
-  .module-search-field input { @apply min-w-0 flex-1 bg-transparent text-sm text-ink outline-none; }
-  .module-search-field input:focus-visible { outline: none; }
-  .module-results { max-height: min(55dvh, 480px); overflow-y: auto; padding: 6px; }
-  .module-result { @apply flex items-center gap-3 rounded-lg p-3 transition-colors; }
-  .module-result.is-selected { @apply bg-raised; }
-  .module-logo { aspect-ratio: 1; @apply flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-raised text-accent; }
+  .module-search-dialog::backdrop {
+    background: #0009;
+  }
+  .module-search-surface {
+    @apply overflow-hidden rounded-xl;
+  }
+  .module-search-field {
+    @apply flex items-center gap-3 border-b border-line px-4 py-4 text-muted;
+  }
+  .module-search-field input {
+    @apply min-w-0 flex-1 bg-transparent text-sm text-ink outline-none;
+  }
+  .module-search-field input:focus-visible {
+    outline: none;
+  }
+  .module-results {
+    max-height: min(55dvh, 480px);
+    overflow-y: auto;
+    padding: 6px;
+  }
+  .module-result {
+    @apply flex items-center gap-3 rounded-lg p-3 transition-colors;
+  }
+  .module-result.is-selected {
+    @apply bg-raised;
+  }
+  .module-logo {
+    aspect-ratio: 1;
+    @apply flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-raised text-accent;
+  }
   .module-result .module-logo {
     position: relative;
     align-self: center;
@@ -261,46 +286,137 @@ pre {
     min-width: 72px;
     min-height: 72px;
   }
-  .module-result .module-logo img { position: absolute; inset: 0; }
-  .module-result .module-logo svg { width: 32px; height: 32px; }
-  .module-logo-large { @apply size-16 rounded-xl sm:size-20; }
-  .module-logo img { @apply size-full rounded-lg object-contain p-1; }
-  .module-author { @apply inline-flex max-w-full items-center gap-2 text-xs text-muted; }
-  .author-avatar { @apply flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-raised font-mono text-[10px] text-accent; }
-  .author-avatar img { @apply size-full object-cover; }
-  .module-search-footer { @apply flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-[10px] text-muted; }
-  .search-message { @apply px-4 py-12 text-center text-sm leading-7 text-muted; }
-  .module-page-grid { @apply grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_320px]; }
-  .module-usage-panel { @apply min-w-0 lg:sticky lg:top-8; }
-  .usage-command { @apply mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-line bg-paper p-3; }
-  .usage-command code { @apply break-words text-sm leading-6 text-cyan; overflow-wrap: anywhere; }
-  .module-tag { @apply rounded border border-line bg-panel px-2 py-1 font-mono text-xs text-ink; }
-  .module-markdown { @apply text-sm leading-7 text-muted; overflow-wrap: anywhere; }
-  .module-markdown h1, .module-markdown h2, .module-markdown h3, .module-markdown h4 { @apply mb-4 mt-8 font-medium leading-snug text-ink; }
-  .module-markdown h1 { @apply text-2xl; }
-  .module-markdown h2 { @apply text-xl; }
-  .module-markdown h3 { @apply text-lg; }
-  .module-markdown p, .module-markdown ul, .module-markdown ol, .module-markdown blockquote { @apply my-4; }
-  .module-markdown ul { @apply list-disc pl-5; }
-  .module-markdown ol { @apply list-decimal pl-5; }
-  .module-markdown a { @apply text-accent underline underline-offset-4; }
-  .module-markdown pre { @apply my-5 overflow-x-auto rounded-lg border border-line bg-paper p-4 text-sm; overflow-wrap: normal; }
-  .module-markdown code { @apply text-cyan; }
-  .module-markdown img { @apply max-w-full rounded; }
-  .module-markdown table { @apply my-5 block max-w-full overflow-x-auto border-collapse; }
-  .module-markdown th, .module-markdown td { @apply border border-line px-3 py-2 text-left; }
-  .module-markdown blockquote { @apply border-l-2 border-accent pl-4; }
-  .module-markdown hr { @apply my-6 border-line; }
-  .download-line-chart { position: relative; margin-top: 8px; padding-top: 38px; }
-  .download-line-plot { display: block; width: 100%; height: auto; cursor: crosshair; touch-action: pan-y; }
-  .download-tooltip { @apply absolute top-0 z-10 flex -translate-x-1/2 flex-col gap-1 rounded-md border border-line bg-raised px-2.5 py-1.5 font-mono text-[10px] text-muted shadow-lg; pointer-events: none; white-space: nowrap; }
-  .download-tooltip strong { @apply text-xs font-medium text-ink; }
-
+  .module-result .module-logo img {
+    position: absolute;
+    inset: 0;
+  }
+  .module-result .module-logo svg {
+    width: 32px;
+    height: 32px;
+  }
+  .module-logo-large {
+    @apply size-16 rounded-xl sm:size-20;
+  }
+  .module-logo img {
+    @apply size-full rounded-lg object-contain p-1;
+  }
+  .module-author {
+    @apply inline-flex max-w-full items-center gap-2 text-xs text-muted;
+  }
+  .author-avatar {
+    @apply flex size-5 shrink-0 items-center justify-center overflow-hidden rounded-full bg-raised font-mono text-[10px] text-accent;
+  }
+  .author-avatar img {
+    @apply size-full object-cover;
+  }
+  .module-search-footer {
+    @apply flex flex-wrap items-center justify-between gap-3 border-t border-line px-4 py-3 text-[10px] text-muted;
+  }
+  .search-message {
+    @apply px-4 py-12 text-center text-sm leading-7 text-muted;
+  }
+  .module-page-grid {
+    @apply grid items-start gap-10 lg:grid-cols-[minmax(0,1fr)_320px];
+  }
+  .module-usage-panel {
+    @apply min-w-0 lg:sticky lg:top-8;
+  }
+  .usage-command {
+    @apply mt-4 grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3 rounded-lg border border-line bg-paper p-3;
+  }
+  .usage-command code {
+    @apply break-words text-sm leading-6 text-cyan;
+    overflow-wrap: anywhere;
+  }
+  .module-tag {
+    @apply rounded border border-line bg-panel px-2 py-1 font-mono text-xs text-ink;
+  }
+  .module-markdown {
+    @apply text-sm leading-7 text-muted;
+    overflow-wrap: anywhere;
+  }
+  .module-markdown h1,
+  .module-markdown h2,
+  .module-markdown h3,
+  .module-markdown h4 {
+    @apply mb-4 mt-8 font-medium leading-snug text-ink;
+  }
+  .module-markdown h1 {
+    @apply text-2xl;
+  }
+  .module-markdown h2 {
+    @apply text-xl;
+  }
+  .module-markdown h3 {
+    @apply text-lg;
+  }
+  .module-markdown p,
+  .module-markdown ul,
+  .module-markdown ol,
+  .module-markdown blockquote {
+    @apply my-4;
+  }
+  .module-markdown ul {
+    @apply list-disc pl-5;
+  }
+  .module-markdown ol {
+    @apply list-decimal pl-5;
+  }
+  .module-markdown a {
+    @apply text-accent underline underline-offset-4;
+  }
+  .module-markdown pre {
+    @apply my-5 overflow-x-auto rounded-lg border border-line bg-paper p-4 text-sm;
+    overflow-wrap: normal;
+  }
+  .module-markdown code {
+    @apply text-cyan;
+  }
+  .module-markdown img {
+    @apply max-w-full rounded;
+  }
+  .module-markdown table {
+    @apply my-5 block max-w-full overflow-x-auto border-collapse;
+  }
+  .module-markdown th,
+  .module-markdown td {
+    @apply border border-line px-3 py-2 text-left;
+  }
+  .module-markdown blockquote {
+    @apply border-l-2 border-accent pl-4;
+  }
+  .module-markdown hr {
+    @apply my-6 border-line;
+  }
+  .download-line-chart {
+    position: relative;
+    margin-top: 8px;
+    padding-top: 38px;
+  }
+  .download-line-plot {
+    display: block;
+    width: 100%;
+    height: auto;
+    cursor: crosshair;
+    touch-action: pan-y;
+  }
+  .download-tooltip {
+    @apply absolute top-0 z-10 flex -translate-x-1/2 flex-col gap-1 rounded-md border border-line bg-raised px-2.5 py-1.5 font-mono text-[10px] text-muted shadow-lg;
+    pointer-events: none;
+    white-space: nowrap;
+  }
+  .download-tooltip strong {
+    @apply text-xs font-medium text-ink;
+  }
 }
 
 @keyframes skeleton-shimmer {
-  from { background-position: 200% 0; }
-  to { background-position: -200% 0; }
+  from {
+    background-position: 200% 0;
+  }
+  to {
+    background-position: -200% 0;
+  }
 }
 
 @layer components {
@@ -308,14 +424,49 @@ pre {
     display: inline-block;
     border-radius: 4px;
     background-color: var(--color-raised);
-    background-image: linear-gradient(100deg, var(--color-panel) 20%, var(--color-raised) 45%, var(--color-panel) 70%);
+    background-image: linear-gradient(
+      100deg,
+      var(--color-panel) 20%,
+      var(--color-raised) 45%,
+      var(--color-panel) 70%
+    );
     background-size: 200% 100%;
     animation: skeleton-shimmer 1.8s ease-in-out infinite;
   }
-  .skeleton.rounded-full { border-radius: 9999px; }
-  .skeleton.rounded-lg { border-radius: 8px; }
-  .skeleton.rounded-xl { border-radius: 12px; }
-  @media (prefers-reduced-motion: reduce) {
-    .skeleton { animation: none; }
+  .skeleton.rounded-full {
+    border-radius: 9999px;
   }
+  .skeleton.rounded-lg {
+    border-radius: 8px;
+  }
+  .skeleton.rounded-xl {
+    border-radius: 12px;
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .skeleton {
+      animation: none;
+    }
+  }
+}
+
+.module-type-string {
+  color: #86efac;
+}
+.module-type-number {
+  color: #fcd34d;
+}
+.module-type-boolean {
+  color: #c4b5fd;
+}
+.module-type-other {
+  color: var(--color-cyan);
+}
+:root[data-theme="light"] .module-type-string {
+  color: #15803d;
+}
+:root[data-theme="light"] .module-type-number {
+  color: #b45309;
+}
+:root[data-theme="light"] .module-type-boolean {
+  color: #7c3aed;
 }

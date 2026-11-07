@@ -34,3 +34,39 @@ export const plugin: Plugin = {
     },
   ],
 };
+
+export const typedPlugin: Plugin = {
+  ...plugin,
+  functions: [
+    {
+      name: "build",
+      description: "Build a source directory with configurable concurrency.",
+      inputFormat: "json",
+      args: [
+        {
+          name: "src",
+          type: "string",
+          description: "Directory containing the project sources.",
+        },
+        {
+          name: "jobs",
+          type: "integer",
+          description: "Number of parallel build jobs.",
+        },
+        {
+          name: "verbose",
+          type: "boolean",
+          required: false,
+          description: "Print detailed build output.",
+        },
+      ],
+      returnType: "Result(string, BuildError)",
+    },
+    {
+      name: "clean",
+      description: "Remove generated build artifacts.",
+      args: [],
+      returnType: "Unit",
+    },
+  ],
+};

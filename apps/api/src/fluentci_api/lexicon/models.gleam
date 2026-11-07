@@ -109,7 +109,12 @@ pub fn encode_plugin(value: Plugin) -> json.Json {
 }
 
 pub type PluginArgument {
-  PluginArgument(name: String, type_: String, description: Option(String))
+  PluginArgument(
+    name: String,
+    type_: String,
+    description: Option(String),
+    required: Option(Bool),
+  )
 }
 
 pub fn encode_plugin_argument(value: PluginArgument) -> json.Json {
@@ -122,6 +127,11 @@ pub fn encode_plugin_argument(value: PluginArgument) -> json.Json {
       None -> []
       Some(item) -> [#("description", json.string(item))]
     })
+  let fields =
+    list.append(fields, case value.required {
+      None -> []
+      Some(item) -> [#("required", json.bool(item))]
+    })
   json.object(fields)
 }
 
@@ -133,6 +143,7 @@ pub type PluginFunction {
     return_type: Option(String),
     wasm_params: List(String),
     wasm_results: List(String),
+    input_format: Option(String),
   )
 }
 
@@ -164,6 +175,11 @@ pub fn encode_plugin_function(value: PluginFunction) -> json.Json {
     list.append(fields, case value.return_type {
       None -> []
       Some(item) -> [#("returnType", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.input_format {
+      None -> []
+      Some(item) -> [#("inputFormat", json.string(item))]
     })
   json.object(fields)
 }

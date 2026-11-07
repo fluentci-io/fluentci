@@ -340,6 +340,23 @@ fn mutate(db: Db, event: Event) -> Promise(Nil) {
   case event {
     Upsert(plugin, time, _) -> {
       let table = p.table()
+      // A delete tombstone may arrive before the first publication. Populate
+      // unknown fields once, then keep the artifact identity through updates
+      // and delete/recreate events while allowing descriptive metadata edits.
+      use existing <- promise.await(all(
+        db,
+        from(table) |> where(eq(p.uri(table), plugin.uri)) |> limit(1),
+      ))
+      let plugin = case existing {
+        [original, ..] ->
+          RegistryPackageView(
+            ..plugin,
+            url: option.unwrap(original.url, plugin.url),
+            sha256: option.unwrap(original.sha256, plugin.sha256),
+            version: option.unwrap(original.version, plugin.version),
+          )
+        [] -> plugin
+      }
       let values = package_values(plugin, time)
       use _ <- promise.map(all(
         db,
@@ -352,28 +369,9 @@ fn mutate(db: Db, event: Event) -> Promise(Nil) {
       ))
       Nil
     }
-    Delete(uri, author, time, _) -> {
-      let table = p.table()
-      let changes = [
-        set(p.deleted(table), True),
-        set(p.event_time(table), time),
-      ]
-      let values = [
-        set(p.uri(table), uri),
-        set(p.author(table), author),
-        ..changes
-      ]
-      use _ <- promise.map(all(
-        db,
-        insert(table, values)
-          |> on_conflict_do_update(
-            p.uri(table),
-            changes,
-            lt(p.event_time(table), time),
-          ),
-      ))
-      Nil
-    }
+    // Published package records are retained even if removed from the PDS.
+    // apply_event still records the event ID and advances the source checkpoint.
+    Delete(_, _, _, _) -> promise.resolve(Nil)
     Account(author, active, time, _) -> {
       let table = a.table()
       let values = [

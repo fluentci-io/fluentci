@@ -60,3 +60,12 @@ Wasm export. Check `fluentci modules MODULE --json` after rebuilding.
 Each guide below shows a pipeline sample and the corresponding starter's build
 requirements. Some starters initially print only a greeting; replace their
 source with the sample when following a guide.
+
+## Typed named arguments
+
+This SDK uses the shared [typed module arguments contract](/guides/module-arguments/).
+New SDK starters derive typed function and argument metadata during their build.
+Custom toolchains can register a contract in `fluentci.metadata.json` or
+`fluentci.toml`, opt into `inputFormat: "json"`, and decode the typed guest input
+with this language’s JSON facilities. `fluentci modules embed` makes an artifact
+self-describing for direct file/URL calls and `--help`.

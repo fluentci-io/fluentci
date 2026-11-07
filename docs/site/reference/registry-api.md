@@ -41,7 +41,7 @@ curl -sS --get https://api.fluentci.io/xrpc/io.fluentci.registry.searchPackages 
 
 The response contains `packages` and an optional `cursor`. FTS5 token-prefix
 search covers names and descriptions, normalizes accents, combines words with
-AND, and excludes deleted records and inactive authors. Results retain stable
+AND, and excludes internally hidden records and inactive authors. Results retain stable
 publication-time/URI pagination rather than exposing arbitrary FTS syntax.
 
 ## List and resolve
@@ -65,7 +65,7 @@ records while allowing different publishers and new versions.
 DID), and accepts `limit` (1–100, default 20) and `cursor`. It returns
 `{ "packages": [...], "cursor": "..." }`, with the cursor omitted on the last page.
 Handles resolve to DIDs before lookup. Results include all indexed versions,
-ordered by publication time and record URI, and exclude deleted records and
+ordered by publication time and record URI, and exclude internally hidden records and
 inactive accounts. Cursors are bound to the resolved actor.
 
 ```sh
@@ -126,3 +126,6 @@ Pkl definitions in `apps/api/pkl/defs` generate JSON lexicons, Gleam models and
 encoders, and the runtime schema bundle. Run `bun run lexicons:generate` or
 `bun run lexicons:check` in that workspace after changing Pkl sources. See
 [registry development](/development/registry/) for the implementation layout.
+
+Published download URLs, SHA-256 checksums, and versions are immutable. Jetstream
+metadata updates cannot replace them, and module delete events are ignored.

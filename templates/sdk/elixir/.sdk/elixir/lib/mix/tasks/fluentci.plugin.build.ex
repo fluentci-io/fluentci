@@ -20,7 +20,12 @@ defmodule Mix.Tasks.Fluentci.Plugin.Build do
     unless Code.ensure_loaded?(module) and function_exported?(module, :__fluentci_exports__, 0),
       do: Mix.raise("#{inspect(module)} must use FluentCI.Plugin")
 
-    source = FluentCI.Plugin.Codegen.source(module.__fluentci_exports__())
+    docs =
+      if function_exported?(module, :__fluentci_export_docs__, 0),
+        do: module.__fluentci_export_docs__(),
+        else: %{}
+
+    source = FluentCI.Plugin.Codegen.source(module.__fluentci_exports__(), docs)
     directory = Path.expand(Path.join([".fluentci", "plugins", Atom.to_string(module)]))
     File.mkdir_p!(Path.join(directory, "src"))
     File.write!(Path.join(directory, "src/lib.rs"), source)
@@ -74,6 +79,13 @@ defmodule Mix.Tasks.Fluentci.Plugin.Build do
     output = Path.expand(options[:output] || "dist/plugin.wasm")
     File.mkdir_p!(Path.dirname(output))
     File.cp!(artifact, output)
+
+    metadata = %{
+      sha256: :crypto.hash(:sha256, File.read!(output)) |> Base.encode16(case: :lower),
+      functions: FluentCI.Plugin.Codegen.metadata(module.__fluentci_exports__(), docs)
+    }
+
+    File.write!(Path.join(Path.dirname(output), "fluentci.metadata.json"), JSON.encode!(metadata))
     Mix.shell().info("Built #{output}")
   end
 

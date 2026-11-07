@@ -85,3 +85,12 @@ The bundled SDK includes composable OS/architecture detection, SHA-256/SHA-512,
 SSH, SCP, SFTP, rsync, FTP/FTPS, and S3 tasks. See the
 [primitive guide](/guides/primitives/) for this SDK’s entry point and example,
 plus provisioning, credential, cancellation, and caching behavior.
+
+## Typed named arguments
+
+This SDK uses the shared [typed module arguments contract](/guides/module-arguments/).
+New SDK starters derive typed function and argument metadata during their build.
+Custom toolchains can register a contract in `fluentci.metadata.json` or
+`fluentci.toml`, opt into `inputFormat: "json"`, and decode the typed guest input
+with this language’s JSON facilities. `fluentci modules embed` makes an artifact
+self-describing for direct file/URL calls and `--help`.

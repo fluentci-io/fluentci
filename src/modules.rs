@@ -161,8 +161,8 @@ impl LocalModule {
 
     pub async fn prepare_with_lock(&self, root: &Path, frozen: bool) -> Result<PathBuf> {
         if let ModuleSource::Registry(reference) = &self.source {
-            let package = crate::lockfile::resolve(root, reference, frozen).await?;
-            return crate::registry::wasm_artifact(&package).await;
+            let package = crate::plugin_metadata::resolve(root, reference, frozen).await?;
+            return crate::plugin_metadata::prepare_package(&package).await;
         }
         if let ModuleSource::Git(_) = &self.source {
             let source = crate::lockfile::git_source(root, &self.definition, frozen, false).await?;
@@ -177,14 +177,40 @@ impl LocalModule {
     }
 
     pub async fn prepare(&self) -> Result<PathBuf> {
+        let artifact = self.prepare_artifact().await?;
+        let declared = if !self.definition.functions.is_empty() {
+            self.definition.functions.clone()
+        } else if let ModuleSource::Path(source) = &self.source {
+            let directory = if source.is_dir() {
+                source.as_path()
+            } else {
+                source.parent().context("Missing module directory")?
+            };
+            let manifest = directory.join("fluentci.metadata.json");
+            if manifest.is_file() {
+                crate::plugin_metadata::read_manifest(
+                    &manifest,
+                    &tokio::fs::read(&artifact).await?,
+                )?
+            } else {
+                vec![]
+            }
+        } else {
+            vec![]
+        };
+        crate::plugin_metadata::annotated_artifact(&artifact, declared).await
+    }
+
+    async fn prepare_artifact(&self) -> Result<PathBuf> {
         if let ModuleSource::Git(_) = &self.source {
             let workspace = Workspace::current()?;
             return Box::pin(self.prepare_with_lock(&workspace.root, false)).await;
         }
         if let ModuleSource::Registry(reference) = &self.source {
             let workspace = Workspace::current()?;
-            let package = crate::lockfile::resolve(&workspace.root, reference, false).await?;
-            return crate::registry::wasm_artifact(&package).await;
+            let package =
+                crate::plugin_metadata::resolve(&workspace.root, reference, false).await?;
+            return crate::plugin_metadata::prepare_package(&package).await;
         }
         if let ModuleSource::Url(url) = &self.source {
             return download(url).await;

@@ -5,6 +5,7 @@ Does not copy build output or overwrite the CLI's local integration wrapper.
 """
 
 import argparse
+import json
 import re
 from pathlib import Path
 import shutil
@@ -27,6 +28,11 @@ def main():
     mappings.append((root / "engine/crates/cli/src", sibling / "crates/cli/src"))
     mappings.append((root / "engine/AGENTS.md", sibling / "AGENTS.md"))
     mappings.append((root / "engine/README.md", sibling / "README.md"))
+    mappings.append((root / "engine/docs/module-cli.md", sibling / "docs/module-cli.md"))
+    mappings.append((root / "engine/schema/module-cli.schema.json", sibling / "schema/module-cli.schema.json"))
+    mappings.append((root / "templates/inspection", sibling / "sdk/inspection"))
+    mappings.append((root / "templates/inspection/examples/clojurescript.mjs", sibling / "sdk/clojurescript/demo-plugin/build.mjs"))
+    mappings.append((root / "templates/inspection/examples/clojurescript-entry.cljs", sibling / "sdk/clojurescript/demo-plugin/src/demo/entry.cljs"))
     for name in ("src/content/line.rs", "src/superconsole.rs", "src/testing.rs"):
         relative = Path("vendor/superconsole") / name
         mappings.append((root / "engine" / relative, sibling / relative))
@@ -35,11 +41,27 @@ def main():
         for directory in ("src", "lib", "dev", "typings"):
             if (source / directory).is_dir():
                 mappings.append((source / directory, sibling / "sdk" / language / directory))
+        if language == "elixir":
+            mappings.append((source / "test/named_arguments_test.exs", sibling / "sdk/elixir/test/named_arguments_test.exs"))
         if language == "gleam":
             mappings.append((source / "gleam.toml", sibling / "sdk/gleam/gleam.toml"))
         if language == "purescript":
             mappings.append((source / "spago.yaml", sibling / "sdk/purescript/spago.yaml"))
+        if language in {"typescript", "gleam", "rescript", "purescript"}:
+            mappings.append((root / "templates/sdk" / language / "build.mjs", sibling / "sdk" / language / "demo-plugin/build.mjs"))
+        if language in {"typescript", "gleam", "rescript", "purescript", "clojurescript"}:
+            mappings.append((root / "templates/inspection/examples/.npmrc", sibling / "sdk" / language / "demo-plugin/.npmrc"))
     differing = []
+    for language in ("typescript", "gleam", "rescript", "purescript", "clojurescript"):
+        package_path = sibling / "sdk" / language / "demo-plugin/package.json"
+        package = json.loads(package_path.read_text())
+        dependencies = package.setdefault("devDependencies", {})
+        expected = {"@fluentci/inspection": "file:../../inspection", "typescript": "5.9.3"}
+        if any(dependencies.get(name) != version for name, version in expected.items()):
+            differing.append(str(package_path.relative_to(sibling)))
+            if args.write:
+                dependencies.update(expected)
+                package_path.write_text(json.dumps(package, indent=2) + "\n")
     # The CLI manifest has a local library wrapper. Synchronize only its package
     # version, preserving each repository's integration-specific manifest fields.
     source_manifest = root / "engine/crates/cli/Cargo.toml"

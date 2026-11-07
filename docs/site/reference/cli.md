@@ -162,3 +162,13 @@ records its own run history. It does not require `--wasm` and cannot be combined
 with module/function arguments. Manage workflow files in
 `.fluentci/workflows/*.toml` or use Studio's workflow controls. See
 [workflow configuration](/reference/configuration/#multiple-workflows).
+
+## Typed named arguments
+
+See [typed module arguments](/guides/module-arguments/) for the shared SDK contract.
+
+```sh
+fluentci modules embed dist/plugin.wasm --manifest fluentci.metadata.json
+fluentci run ./dist/plugin.wasm build --src demo --jobs 4 --verbose
+fluentci run ./dist/plugin.wasm build --help
+```

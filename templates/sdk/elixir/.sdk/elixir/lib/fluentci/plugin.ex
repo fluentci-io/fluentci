@@ -1,7 +1,7 @@
 defmodule FluentCI.Plugin.Input do
   @moduledoc "A plugin invocation's UTF-8 input, resolved inside Wasm."
-  defstruct []
-  @type t :: %__MODULE__{}
+  defstruct [:name, :type]
+  @type t :: %__MODULE__{name: String.t() | nil, type: String.t() | nil}
 end
 
 defmodule FluentCI.Plugin.Pipeline do
@@ -31,6 +31,7 @@ defmodule FluentCI.Plugin do
     quote do
       import FluentCI.Plugin
       Module.register_attribute(__MODULE__, :fluentci_exports, accumulate: true)
+      Module.register_attribute(__MODULE__, :fluentci_export_docs, accumulate: true)
       @before_compile FluentCI.Plugin
     end
   end
@@ -44,6 +45,8 @@ defmodule FluentCI.Plugin do
       end
 
     quote location: :keep do
+      @fluentci_export_docs {unquote(name), Module.get_attribute(__MODULE__, :doc)}
+      Module.delete_attribute(__MODULE__, :doc)
       @fluentci_exports {unquote(name), unquote(body)}
     end
   end
@@ -51,15 +54,29 @@ defmodule FluentCI.Plugin do
   defmacro __before_compile__(environment) do
     exports = environment.module |> Module.get_attribute(:fluentci_exports) |> Enum.reverse()
     names = Enum.map(exports, &elem(&1, 0))
+    docs = environment.module |> Module.get_attribute(:fluentci_export_docs) |> Map.new()
     if Enum.uniq(names) != names, do: raise(ArgumentError, "duplicate plugin export")
 
     quote do
       def __fluentci_exports__, do: unquote(Macro.escape(exports))
+      def __fluentci_export_docs__, do: unquote(Macro.escape(docs))
     end
   end
 
   @spec input() :: Input.t()
   def input, do: %Input{}
+
+  @doc "Read a typed named field from the standard JSON guest input; resolved inside Wasm."
+  @spec argument(String.t(), String.t()) :: Input.t()
+  def argument(name, type \\ "string") do
+    unless is_binary(name) and Regex.match?(~r/^[A-Za-z][A-Za-z0-9_-]*$/, name) and name != "help",
+      do: raise(ArgumentError, "invalid named argument")
+
+    unless type in ~w(string integer number boolean string[] integer[] number[] boolean[]),
+      do: raise(ArgumentError, "invalid named argument type")
+
+    %Input{name: name, type: type}
+  end
 
   @doc "Execute an independent host plan; matrix members run under the shared scheduler."
   def run_plan(%FluentCI.Host.Plan{} = plan, run_dir, options \\ []) do

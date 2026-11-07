@@ -3,11 +3,13 @@ from __future__ import annotations
 
 import argparse
 import ast
+from hashlib import sha256
 import os
 from pathlib import Path
 import shutil
 import subprocess
 from typing import Sequence
+from .inspection import inspect_entry, embed_inspection
 
 
 def entry_source(source: str, bindings: str) -> str:
@@ -55,13 +57,18 @@ def main(argv: Sequence[str] | None = None) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     generated = output.with_suffix(".entry.py")
     bindings = Path(__file__).with_name("_imports.py").read_text(encoding="utf-8")
-    generated.write_text(entry_source(source.read_text(encoding="utf-8"), bindings), encoding="utf-8")
+    source_text = source.read_text(encoding="utf-8")
+    native_module = "_fluentci_native_" + sha256(source_text.encode()).hexdigest()[:16]
+    functions, inspected, native_source = inspect_entry(source_text, native_module)
+    output.with_name(native_module + ".py").write_text(native_source, encoding="utf-8")
+    generated.write_text(entry_source(inspected, bindings), encoding="utf-8")
     environment = dict(os.environ)
-    paths = [str(Path(__file__).resolve().parents[1]), str(source.parent)]
+    paths = [str(Path(__file__).resolve().parents[1]), str(output.parent), str(source.parent)]
     if environment.get("PYTHONPATH"):
         paths.append(environment["PYTHONPATH"])
     environment["PYTHONPATH"] = os.pathsep.join(paths)
     subprocess.run([compiler, str(generated), "-o", str(output)], env=environment, check=True)
+    embed_inspection(output, functions)
 
 
 if __name__ == "__main__":

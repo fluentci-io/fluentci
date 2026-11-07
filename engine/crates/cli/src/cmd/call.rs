@@ -11,7 +11,58 @@ use fluentci_core::deps::Graph;
 use fluentci_ext::{pkgx::Pkgx, runner::Runner, Extension};
 use fluentci_shared::state::State;
 
+fn load(module: &str) -> Result<Wasm, Error> {
+    let wasm = match module.starts_with("http")
+        || module.starts_with("azurecr.io/")
+        || module.starts_with("ghcr.io/")
+        || module.starts_with("gcr.io/")
+    {
+        true => download_module(module)?,
+        false => Wasm::file(module),
+    };
+
+    match wasm {
+        Wasm::File { path, .. } => Ok(Wasm::data(fs::read(path)?)),
+        other => Ok(other),
+    }
+}
+
+fn metadata(wasm: &Wasm, function: &str) -> Result<super::metadata::Function, Error> {
+    let bytes = match wasm {
+        Wasm::Data { data, .. } => data.as_slice(),
+        _ => {
+            return Err(anyhow::anyhow!(
+                "Module metadata requires a downloaded artifact"
+            ))
+        }
+    };
+    super::metadata::inspect(bytes, None)?
+        .into_iter()
+        .find(|metadata| metadata.name == function)
+        .with_context(|| format!("Function {function:?} not found in module"))
+}
+
+pub fn call_argv(module: &str, function: &str, arguments: &[String]) -> Result<(), Error> {
+    let wasm = load(module)?;
+    let metadata = metadata(&wasm, function)?;
+    let input = super::arguments::encode(&metadata, arguments)?;
+    execute(wasm, function, &input)
+}
+
 pub fn call(module: &str, command: &str) -> Result<(), Error> {
+    let (function, input) = command.split_once(' ').unwrap_or((command, ""));
+    let wasm = load(module)?;
+    let metadata = metadata(&wasm, function)?;
+    let input = if metadata.input_format == super::metadata::InputFormat::Json {
+        let arguments = shlex::split(input).context("Unclosed quote in module arguments")?;
+        super::arguments::encode(&metadata, &arguments)?
+    } else {
+        input.to_owned()
+    };
+    execute(wasm, function, &input)
+}
+
+fn execute(wasm: Wasm, func: &str, args: &str) -> Result<(), Error> {
     match fluentci_core::init_tracer() {
         Ok(_) => {}
         Err(e) => {
@@ -37,24 +88,11 @@ pub fn call(module: &str, command: &str) -> Result<(), Error> {
         execution_failure: execution_failure.clone(),
     });
 
-    let module = match module.starts_with("http")
-        || module.starts_with("azurecr.io/")
-        || module.starts_with("ghcr.io/")
-        || module.starts_with("gcr.io/")
-    {
-        true => download_module(module)?,
-        false => Wasm::file(module),
-    };
-
-    let manifest = Manifest::new([module]);
+    let manifest = Manifest::new([wasm]);
     let mut plugin =
         fluentci_shared::host::register(PluginBuilder::new(manifest).with_wasi(true), user_data)
             .build()?;
 
-    let (func, args) = command.split_once(' ').unwrap_or((command, ""));
-    if func.is_empty() {
-        return Err(anyhow::anyhow!("a plugin export name is required"));
-    }
     let response = plugin
         .call::<&str, &str>(func, args)
         .map(str::to_owned)

@@ -45,6 +45,15 @@ jobs:
         run: sh .fluentci/scripts/install-sdk-tools.sh
       - name: Verify the Wasm compiler toolchain by building modules
         run: fluentci --check-update=false modules --json
+      - name: Test shared SDK metadata inspection
+        working-directory: templates/inspection
+        run: |
+          npm ci --ignore-scripts
+          npm test
+          python3 test_python.py
+          cargo test --release --locked --manifest-path rust/Cargo.toml
+          cargo clippy --release --locked --all-targets --manifest-path rust/Cargo.toml -- -D warnings
+          cargo fmt --manifest-path rust/Cargo.toml --check
       - name: Test PureScript Linux packaging and publishing
         working-directory: .fluentci/gemfury
         run: npm test

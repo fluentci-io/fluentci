@@ -1,0 +1,1 @@
+export { ModuleDocs } from "./ModuleDocs";

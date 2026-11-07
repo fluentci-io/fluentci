@@ -3435,9 +3435,12 @@ dependencies = [
  "md5",
  "regex",
  "reqwest 0.12.28",
+ "serde",
  "serde_json",
  "sha256",
+ "shlex 1.3.0",
  "tokio",
+ "wasmparser 0.243.0",
 ]
 
 [[package]]
@@ -7281,6 +7284,7 @@ version = "8.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d84e8ba78bd384263e5922f084cbe1b081c3b7e69add59c8fb097b879ba968a"
 dependencies = [
+ "globset",
  "sha2 0.11.1",
  "walkdir",
 ]

@@ -96,6 +96,7 @@ maxLength = 128 }
       ["type"] = new StringField { minLength = 1
 maxLength = 1024 }
       ["description"] = new StringField { maxLength = 2048 }
+      ["required"] = new BooleanField { description = "Defaults to true. False means the JSON input may omit this field." }
     }
   }
   ["function"] = new ObjectField {
@@ -109,6 +110,8 @@ maxLength = 256 }
 maxLength = 1024 }
       ["wasmParams"] = new ArrayField { items = new StringField {} }
       ["wasmResults"] = new ArrayField { items = new StringField {} }
+      ["inputFormat"] = new StringField { `enum` = List("text", "json")
+description = "Defaults to legacy text. json opts into the SDK-neutral typed named-argument object protocol." }
     }
   }
 

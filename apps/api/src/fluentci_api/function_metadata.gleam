@@ -16,7 +16,12 @@ fn argument_decoder() -> decode.Decoder(PluginArgument) {
     None,
     decode.optional(decode.string),
   )
-  decode.success(PluginArgument(name, type_, description))
+  use required <- decode.optional_field(
+    "required",
+    None,
+    decode.optional(decode.bool),
+  )
+  decode.success(PluginArgument(name, type_, description, required))
 }
 
 fn function_decoder() -> decode.Decoder(PluginFunction) {
@@ -38,6 +43,11 @@ fn function_decoder() -> decode.Decoder(PluginFunction) {
   )
   use params <- decode.field("wasmParams", decode.list(decode.string))
   use results <- decode.field("wasmResults", decode.list(decode.string))
+  use input_format <- decode.optional_field(
+    "inputFormat",
+    None,
+    decode.optional(decode.string),
+  )
   decode.success(PluginFunction(
     name,
     description,
@@ -45,6 +55,7 @@ fn function_decoder() -> decode.Decoder(PluginFunction) {
     returns,
     params,
     results,
+    input_format,
   ))
 }
 

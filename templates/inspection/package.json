@@ -1,0 +1,14 @@
+{
+  "name": "@fluentci/inspection",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": "./index.mjs",
+  "scripts": {
+    "test": "node --test test/*.test.mjs"
+  },
+  "dependencies": {
+    "typescript": "5.9.3",
+    "esbuild": "0.25.3"
+  }
+}

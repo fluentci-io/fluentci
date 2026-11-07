@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { plugin, author } from "../src/fixtures/registry";
+import { plugin, author, typedPlugin } from "../src/fixtures/registry";
 
 async function registry(
   page: import("@playwright/test").Page,
@@ -78,9 +78,9 @@ test("search opens with slash, shows identities and navigates to the record page
   const input = dialog.getByRole("combobox");
   await expect(input).toBeFocused();
   const result = dialog.getByRole("link", { name: /sccache/ });
-  await expect(result.getByLabel("1,284 downloads", { exact: true })).toHaveText(
-    "1,284",
-  );
+  await expect(
+    result.getByLabel("1,284 downloads", { exact: true }),
+  ).toHaveText("1,284");
   await expect(result).not.toContainText("downloads");
   await expect(dialog.getByRole("link", { name: /sccache/ })).toContainText(
     "@fluentci.io",
@@ -328,4 +328,107 @@ test("README code supports non-SDK languages with dark and light syntax themes",
     "<script>not executed</script>\n",
   );
   await expect(markdown.locator("script")).toHaveCount(0);
+});
+
+test("Docs tab shows the exposed function count, typed arguments, descriptions, and returns", async ({
+  page,
+}) => {
+  await registry(page);
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.registry.getPackage?*",
+    (route) => route.fulfill({ json: { package: typedPlugin } }),
+  );
+  await page.goto("/fluentci.io/plugin/sccache-0.1.0");
+  const tabs = page.getByRole("tablist", { name: "Module documentation" });
+  const readme = tabs.getByRole("tab", { name: "README" });
+  const docs = tabs.getByRole("tab", { name: "Docs 2", exact: true });
+  await expect(readme).toHaveAttribute("aria-selected", "true");
+  await readme.focus();
+  await page.keyboard.press("ArrowRight");
+  await expect(docs).toBeFocused();
+  await expect(docs).toHaveAttribute("aria-selected", "true");
+  const build = page.getByRole("region", {
+    name: "build function",
+    exact: true,
+  });
+  await expect(build).toContainText("--src");
+  await expect(build).toContainText(
+    "Directory containing the project sources.",
+  );
+  await expect(build).toContainText("--verbose");
+  await expect(build).toContainText("optional");
+  await expect(build).toContainText("Result(string, BuildError)");
+  await expect(build).toContainText(
+    "fluentci run sccache@0.1.0 build --src demo --jobs 1",
+  );
+  await expect(
+    page
+      .getByRole("navigation", { name: "Module functions" })
+      .getByRole("link", { name: "clean" }),
+  ).toHaveAttribute("href", "#function-1");
+  const before = await build
+    .locator(".module-type-string")
+    .first()
+    .evaluate((node) => getComputedStyle(node).color);
+  await page.evaluate(() => (document.documentElement.dataset.theme = "light"));
+  const after = await build
+    .locator(".module-type-string")
+    .first()
+    .evaluate((node) => getComputedStyle(node).color);
+  expect(after).not.toBe(before);
+  await docs.focus();
+  await page.keyboard.press("ArrowLeft");
+  await expect(readme).toBeFocused();
+  await expect(
+    page.getByRole("region", { name: "Module README" }),
+  ).toBeVisible();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
+test("F focuses function search and filters Docs without changing the exposed count", async ({
+  page,
+}) => {
+  await registry(page);
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.registry.getPackage?*",
+    (route) => route.fulfill({ json: { package: typedPlugin } }),
+  );
+  await page.goto("/fluentci.io/plugin/sccache-0.1.0");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("sccache");
+  await page.keyboard.press("f");
+  const search = page.getByPlaceholder("Search for functions", { exact: true });
+  await expect(search).toBeFocused();
+  await search.fill("build");
+  await expect(
+    page.getByRole("tab", { name: "Docs 2", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
+  await expect(
+    page.getByRole("region", { name: "build function", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "clean function", exact: true }),
+  ).toHaveCount(0);
+  await search.fill("remove");
+  await expect(
+    page.getByRole("region", { name: "clean function", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "build function", exact: true }),
+  ).toHaveCount(0);
+  await search.fill("missing-function");
+  await expect(page.getByRole("tabpanel").getByRole("status")).toContainText(
+    "No functions match",
+  );
+  await search.press("Escape");
+  await expect(search).toHaveValue("");
+  await expect(
+    page.getByRole("region", { name: "build function", exact: true }),
+  ).toBeVisible();
+  await expect(
+    page.getByRole("region", { name: "clean function", exact: true }),
+  ).toBeVisible();
 });

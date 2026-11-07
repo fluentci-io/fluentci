@@ -9,7 +9,7 @@ use crate::{
 };
 use anyhow::{Context, Result};
 use clap::CommandFactory;
-use std::{fmt::Write, path::Path, time::Duration};
+use std::{fmt::Write, path::Path};
 
 pub fn requested(args: &RunArgs) -> bool {
     args.help
@@ -103,33 +103,7 @@ async fn local_help(module: LocalModule, root: &Path, frozen: bool) -> Result<Mo
 }
 
 async fn registry_help(root: &Path, reference: &str, frozen: bool) -> Result<ModuleHelp> {
-    let mut package = crate::lockfile::resolve(root, reference, frozen).await?;
-    // Existing lockfiles pin artifacts but do not store source function metadata.
-    // Look up that exact publisher/version, never re-resolve a moving "latest".
-    if package
-        .metadata
-        .functions
-        .as_ref()
-        .is_none_or(Vec::is_empty)
-    {
-        let author = package
-            .metadata
-            .author
-            .as_deref()
-            .context("Missing module author")?;
-        let name = package
-            .metadata
-            .name
-            .as_deref()
-            .context("Missing module name")?;
-        let pinned = format!("@{author}/{name}@{}", package.version);
-        if let Ok(Ok(published)) =
-            tokio::time::timeout(Duration::from_secs(5), registry::resolve(&pinned)).await
-        {
-            apply_published_metadata(&mut package, published)?;
-        }
-        // Offline help can still inspect cached Wasm exports and embedded metadata.
-    }
+    let package = crate::plugin_metadata::resolve(root, reference, frozen).await?;
     let artifact = registry::wasm_artifact(&package).await?;
     artifact_help(
         reference,
@@ -142,23 +116,6 @@ async fn registry_help(root: &Path, reference: &str, frozen: bool) -> Result<Mod
         Some(package.version),
     )
     .await
-}
-
-fn apply_published_metadata(
-    locked: &mut registry::Resolved,
-    published: registry::Resolved,
-) -> Result<()> {
-    anyhow::ensure!(
-        locked.version == published.version
-            && locked.metadata.author == published.metadata.author
-            && locked.metadata.name == published.metadata.name
-            && locked.metadata.sha256.is_some()
-            && locked.metadata.sha256 == published.metadata.sha256,
-        "Published help metadata does not match the locked module's identity and checksum"
-    );
-    locked.metadata.functions = published.metadata.functions;
-    locked.metadata.description = published.metadata.description;
-    Ok(())
 }
 
 async fn artifact_help(
@@ -215,7 +172,18 @@ impl ModuleHelp {
             )?;
             if let Some(args) = &function.args {
                 for arg in args {
-                    write!(output, " <{}>", text(&arg.name))?;
+                    if function.input_format == crate::plugin_metadata::InputFormat::Json {
+                        write!(
+                            output,
+                            " {}--{} <{}>{}",
+                            if arg.required { "" } else { "[" },
+                            text(&arg.name),
+                            text(&arg.type_name),
+                            if arg.required { "" } else { "]" }
+                        )?;
+                    } else {
+                        write!(output, " <{}>", text(&arg.name))?;
+                    }
                 }
             } else {
                 write!(output, " [args...]")?;
@@ -229,7 +197,18 @@ impl ModuleHelp {
                 Some(args) if args.is_empty() => writeln!(output, "  No arguments.")?,
                 Some(args) => {
                     for arg in args {
-                        writeln!(output, "  {}: {}", text(&arg.name), text(&arg.type_name))?;
+                        writeln!(
+                            output,
+                            "  {}{}: {}{}",
+                            if function.input_format == crate::plugin_metadata::InputFormat::Json {
+                                "--"
+                            } else {
+                                ""
+                            },
+                            text(&arg.name),
+                            text(&arg.type_name),
+                            if arg.required { "" } else { " (optional)" }
+                        )?;
                         if let Some(description) = &arg.description {
                             writeln!(output, "    {}", text(description))?;
                         }
@@ -257,7 +236,18 @@ impl ModuleHelp {
                 write!(output, "  {}", text(&function.name))?;
                 if let Some(args) = &function.args {
                     for arg in args {
-                        write!(output, " <{}: {}>", text(&arg.name), text(&arg.type_name))?;
+                        write!(
+                            output,
+                            " <{}{}: {}>{}",
+                            if function.input_format == crate::plugin_metadata::InputFormat::Json {
+                                "--"
+                            } else {
+                                ""
+                            },
+                            text(&arg.name),
+                            text(&arg.type_name),
+                            if arg.required { "" } else { "?" }
+                        )?;
                     }
                 }
                 if let Some(returns) = &function.return_type {
@@ -266,6 +256,13 @@ impl ModuleHelp {
                 writeln!(output)?;
                 if let Some(description) = &function.description {
                     writeln!(output, "    {}", text(description))?;
+                }
+                if function.input_format == crate::plugin_metadata::InputFormat::Json {
+                    for arg in function.args.iter().flatten() {
+                        if let Some(description) = &arg.description {
+                            writeln!(output, "    --{}: {}", text(&arg.name), text(description))?;
+                        }
+                    }
                 }
             }
             writeln!(
@@ -286,6 +283,29 @@ impl ModuleHelp {
 mod tests {
     use super::*;
     use clap::Parser;
+
+    #[tokio::test]
+    async fn typed_named_help_lists_flags_descriptions_requiredness_and_return_type() -> Result<()>
+    {
+        let temp = tempfile::tempdir()?;
+        let artifact = temp.path().join("plugin.wasm");
+        tokio::fs::write(
+            &artifact,
+            wat::parse_str(r#"(module (func (export "build")))"#)?,
+        )
+        .await?;
+        let functions = serde_json::from_str(
+            r#"[{"name":"build","inputFormat":"json","args":[{"name":"src","type":"string","description":"Source directory"},{"name":"verbose","type":"boolean","required":false,"description":"Verbose logging"}],"returnType":"string"}]"#,
+        )?;
+        let help = artifact_help("demo", &artifact, Some(functions), None, None).await?;
+        let text = help.render(Some("build"))?;
+        assert!(text.contains("--src <string> [--verbose <boolean>]"));
+        assert!(text.contains("--src: string\n    Source directory"));
+        assert!(text.contains("--verbose: boolean (optional)"));
+        assert!(text.contains("Returns: string"));
+        assert!(help.render(None)?.contains("--src: Source directory"));
+        Ok(())
+    }
 
     fn metadata() -> Vec<Function> {
         serde_json::from_str(r#"[{"name":"build","description":"Build the project","args":[{"name":"directory","type":"String","description":"Project source directory"}],"returnType":"Effect String"},{"name":"clean","args":[],"description":"Remove build outputs"}]"#).unwrap()
@@ -411,7 +431,7 @@ mod tests {
                 "none" => published.metadata.sha256 = None,
                 _ => {}
             }
-            let result = apply_published_metadata(&mut locked, published);
+            let result = crate::plugin_metadata::apply_published_metadata(&mut locked, published);
             assert_eq!(result.is_ok(), mismatch == "matching");
         }
         assert_eq!(locked.metadata.functions.unwrap()[0].name, "build");

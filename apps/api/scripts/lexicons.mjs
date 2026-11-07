@@ -81,6 +81,8 @@ function fieldType(field, id) {
       return 'String';
     case 'integer':
       return 'Int';
+    case 'boolean':
+      return 'Bool';
     case 'ref':
       return resolveRef(field.ref, id);
     case 'array':
@@ -95,6 +97,8 @@ function encode(field, value, id) {
       return `json.string(${value})`;
     case 'integer':
       return `json.int(${value})`;
+    case 'boolean':
+      return `json.bool(${value})`;
     case 'ref':
       return `encode_${snake(resolveRef(field.ref, id))}(${value})`;
     case 'array':

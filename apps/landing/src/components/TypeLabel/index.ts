@@ -1,0 +1,1 @@
+export { TypeLabel } from "./TypeLabel";

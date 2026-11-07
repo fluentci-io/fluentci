@@ -1,0 +1,145 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FluentCI module CLI metadata v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "functions"
+  ],
+  "properties": {
+    "functions": {
+      "type": "array",
+      "maxItems": 256,
+      "items": {
+        "$ref": "#/$defs/function"
+      }
+    },
+    "sha256": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "pattern": "^[a-f0-9]{64}$"
+    }
+  },
+  "$defs": {
+    "argument": {
+      "type": "object",
+      "required": [
+        "name",
+        "type"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1024
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "required": {
+          "type": "boolean",
+          "default": true
+        }
+      }
+    },
+    "function": {
+      "type": "object",
+      "required": [
+        "name"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2048
+        },
+        "inputFormat": {
+          "enum": [
+            "text",
+            "json"
+          ],
+          "default": "text"
+        },
+        "args": {
+          "type": "array",
+          "maxItems": 64,
+          "items": {
+            "$ref": "#/$defs/argument"
+          }
+        },
+        "returnType": {
+          "type": "string",
+          "maxLength": 1024
+        },
+        "wasmParams": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "wasmResults": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "inputFormat"
+            ],
+            "properties": {
+              "inputFormat": {
+                "const": "json"
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "args"
+            ],
+            "properties": {
+              "args": {
+                "items": {
+                  "properties": {
+                    "name": {
+                      "pattern": "^(?!help$)[a-z][a-z0-9-]*$"
+                    },
+                    "type": {
+                      "enum": [
+                        "string",
+                        "integer",
+                        "number",
+                        "boolean",
+                        "string[]",
+                        "integer[]",
+                        "number[]",
+                        "boolean[]"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}

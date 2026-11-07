@@ -10,7 +10,7 @@ license = "MPL-2.0"
 [dependencies]
 fluentci-engine = { path = "engine/crates/cli" }
 fluentci-ext = { path = "engine/crates/ext" }
-rust-embed = { version = "8", features = ["debug-embed"] }
+rust-embed = { version = "8", features = ["debug-embed", "include-exclude"] }
 mime_guess = "2"
 anyhow = "1"
 async-graphql = "7"

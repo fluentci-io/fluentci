@@ -162,6 +162,10 @@ export const schemas = [
             type: 'string',
             maxLength: 2048,
           },
+          required: {
+            type: 'boolean',
+            description: 'Defaults to true. False means the JSON input may omit this field.',
+          },
         },
       },
       function: {
@@ -200,6 +204,12 @@ export const schemas = [
             items: {
               type: 'string',
             },
+          },
+          inputFormat: {
+            type: 'string',
+            description:
+              'Defaults to legacy text. json opts into the SDK-neutral typed named-argument object protocol.',
+            enum: ['text', 'json'],
           },
         },
       },

@@ -18,6 +18,7 @@ kview
 
 # Bun workspaces and Turborepo
 node_modules/
+apps/landing/storybook-static/
 .turbo/
 apps/*/dist/
 apps/*/test-results/

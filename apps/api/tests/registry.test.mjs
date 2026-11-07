@@ -125,7 +125,7 @@ test('migrations, search, SemVer latest selection, and stable query-bound pagina
   );
 });
 
-test('Jetstream is idempotent, rejects forged records, and persists delete tombstones and account state', async (t) => {
+test('Jetstream is idempotent, rejects forged records, and ignores deletes and persists account state', async (t) => {
   const connection = await fixture(t);
   const first = event();
   await add(connection, first, first);
@@ -137,8 +137,8 @@ test('Jetstream is idempotent, rejects forged records, and persists delete tombs
   );
   assert.equal((await db.list_packages(connection, '', '', 20, '')).packages.toArray().length, 1);
   const deleted = { ...first, time_us: 200, commit: { ...first.commit, operation: 'delete' } };
-  await add(connection, deleted, { ...first, time_us: 150 });
-  assert.equal((await db.list_packages(connection, '', '', 20, '')).packages.toArray().length, 0);
+  await add(connection, deleted, deleted, { ...first, time_us: 150 });
+  assert.equal((await db.list_packages(connection, '', '', 20, '')).packages.toArray().length, 1);
   assert.equal(await db.cursor(connection), 200);
   await add(connection, { ...first, time_us: 300 });
   await add(connection, { kind: 'account', did, time_us: 400, account: { active: false } });
@@ -177,7 +177,12 @@ test('function signatures survive Jetstream, SQLite and every registry response'
   const functions = [
     {
       name: 'build',
-      args: [{ name: 'directory', type: 'String' }],
+      description: 'Build source files',
+      inputFormat: 'json',
+      args: [
+        { name: 'directory', type: 'string', description: 'Source directory', required: true },
+        { name: 'verbose', type: 'boolean', required: false },
+      ],
       returnType: 'Effect String',
       wasmParams: [],
       wasmResults: ['i32'],
@@ -342,7 +347,7 @@ test('Jetstream subscribes to the collection and indexes a real WebSocket messag
   );
 });
 
-test('FTS5 supports prefixes, accents and literal input, and follows updates and tombstones', async (t) => {
+test('FTS5 supports prefixes, accents and literal input, and follows updates while ignoring deletes', async (t) => {
   const connection = await fixture(t);
   await add(
     connection,
@@ -365,12 +370,12 @@ test('FTS5 supports prefixes, accents and literal input, and follows updates and
   const deleted = event('rust-build', '1.0.0', 300);
   deleted.commit.operation = 'delete';
   await add(connection, deleted);
-  assert.equal((await search('format')).length, 0);
+  assert.equal((await search('format')).length, 1);
   await add(
     connection,
-    event('rust-build', '1.0.0', 250, did, { description: 'Obsolete compiler' }),
+    event('rust-build', '1.0.0', 250, did, { description: 'Compiler pipeline' }),
   );
-  assert.equal((await search('compiler')).length, 0);
+  assert.equal((await search('compiler')).length, 1);
 });
 
 async function waitFor(check) {
@@ -730,7 +735,7 @@ test('actor package feed resolves identities and paginates only visible publishe
   deleted.commit.operation = 'delete';
   delete deleted.commit.record;
   await add(connection, deleted);
-  assert.equal((await db.actor_packages(connection, did, 100, '')).packages.toArray().length, 2);
+  assert.equal((await db.actor_packages(connection, did, 100, '')).packages.toArray().length, 3);
   await add(connection, { kind: 'account', did, time_us: 105, account: { active: false } });
   const hidden = await fetch(`${base}?actor=${encodeURIComponent(did)}`);
   assert.deepEqual((await hidden.json()).packages, []);
@@ -976,4 +981,105 @@ test('download recording is disabled without a configured token', async (t) => {
     }),
   });
   assert.equal(response.status, 503);
+});
+
+test('published URL, checksum and version stay immutable while metadata edits and lifecycle events work', async (t) => {
+  const connection = await fixture(t);
+  const created = event('immutable', '1.0.0', 100);
+  await add(connection, created);
+  const initial = await db.get_package(connection, 'immutable', '1.0.0', did);
+  const changed = event('immutable', '1.0.0', 200, did, {
+    url: 'https://different.example/replaced.wasm',
+    sha256: 'f'.repeat(64),
+    description: 'Updated documentation',
+  });
+  changed.commit.operation = 'update';
+  await add(connection, changed);
+  const updated = await db.get_package(connection, 'immutable', '1.0.0', did);
+  assert.equal(updated.url, initial.url);
+  assert.equal(updated.sha256, initial.sha256);
+  assert.equal(updated.description, 'Updated documentation');
+  await db.apply_event(
+    connection,
+    new model.Upsert(
+      updated.withFields({
+        version: '9.0.0',
+        url: changed.commit.record.url,
+        sha256: 'b'.repeat(64),
+        description: 'Still editable',
+      }),
+      300,
+      'immutable-version-attempt',
+    ),
+  );
+  const preserved = await db.get_package(connection, 'immutable', '1.0.0', did);
+  assert.equal(preserved.version, '1.0.0');
+  assert.equal(preserved.url, initial.url);
+  assert.equal(preserved.sha256, initial.sha256);
+  assert.equal(preserved.description, 'Still editable');
+  for (const [column, value] of [
+    ['url', changed.commit.record.url],
+    ['sha256', 'b'.repeat(64)],
+    ['version', '9.0.0'],
+    ['url', null],
+  ]) {
+    await assert.rejects(
+      connection.client.execute({
+        sql: `UPDATE plugin_records SET ${column}=? WHERE uri=?`,
+        args: [value, initial.uri],
+      }),
+      /immutable/,
+    );
+  }
+  const deleted = event('immutable', '1.0.0', 400);
+  deleted.commit.operation = 'delete';
+  delete deleted.commit.record;
+  await add(connection, deleted, deleted);
+  const retained = await db.get_package(connection, 'immutable', '1.0.0', did);
+  assert.equal(retained.url, initial.url);
+  assert.equal(retained.description, 'Still editable');
+  const recreated = event('immutable', '1.0.0', 500, did, {
+    url: changed.commit.record.url,
+    sha256: 'c'.repeat(64),
+    description: 'Restored documentation',
+  });
+  await add(connection, recreated);
+  const restored = await db.get_package(connection, 'immutable', '1.0.0', did);
+  assert.equal(restored.url, initial.url);
+  assert.equal(restored.sha256, initial.sha256);
+  assert.equal(restored.version, '1.0.0');
+  assert.equal(restored.description, 'Restored documentation');
+  await add(
+    connection,
+    event('immutable', '2.0.0', 600, did, {
+      url: changed.commit.record.url,
+      sha256: 'd'.repeat(64),
+    }),
+  );
+  assert.equal(
+    (await db.get_package(connection, 'immutable', '2.0.0', did)).sha256,
+    'd'.repeat(64),
+  );
+});
+
+test('ignored deletes create no tombstones and legacy tombstones can initialize their artifact identity', async (t) => {
+  const connection = await fixture(t);
+  const deleted = event('late', '1.0.0', 100);
+  deleted.commit.operation = 'delete';
+  delete deleted.commit.record;
+  await add(connection, deleted);
+  assert.equal(
+    (await connection.client.execute('SELECT count(*) AS n FROM plugin_records')).rows[0].n,
+    0,
+  );
+  assert.equal(await db.cursor(connection), 100);
+  await connection.client.execute({
+    sql: 'INSERT INTO plugin_records(uri,author,deleted,event_time) VALUES(?,?,1,100)',
+    args: [`at://${did}/io.fluentci.plugin/late-1.0.0`, did],
+  });
+  await add(connection, event('late', '1.0.0', 200));
+  const plugin = await db.get_package(connection, 'late', '1.0.0', did);
+  assert.equal(plugin.url, 'https://plugins.example/late.wasm');
+  assert.equal(plugin.sha256, digest);
+  assert.equal(plugin.version, '1.0.0');
 });

@@ -323,3 +323,45 @@ Declared local modules retain precedence when invoked by their alias. Use an
 explicit `@handle/name` to select another publisher or disambiguate a local name.
 Official shorthand and `@fluentci.io/name` use the same canonical `fluentci.lock`
 package key. Studio labels official suggestions and accepts either spelling.
+
+## Typed named module functions
+
+The same metadata works for every SDK. Names and descriptions are used by CLI help
+and the registry Docs tab. `inputFormat = "json"` enables typed argument binding.
+
+```toml
+[[modules]]
+name = "builder"
+path = ".fluentci/builder"
+sdk = "purescript"
+
+[[modules.functions]]
+name = "build"
+description = "Build a source directory."
+inputFormat = "json"
+returnType = "string"
+
+[[modules.functions.args]]
+name = "src"
+type = "string"
+description = "Source directory."
+
+[[modules.functions.args]]
+name = "jobs"
+type = "integer"
+description = "Build concurrency."
+
+[[modules.functions.args]]
+name = "verbose"
+type = "boolean"
+required = false
+description = "Print detailed logs."
+```
+
+```sh
+fluentci run builder build --src demo --jobs 4 --verbose
+```
+
+The function receives `{"src":"demo","jobs":4,"verbose":true}` through its SDK's
+normal Extism input. See [typed module arguments](/guides/module-arguments/) for
+array types, manifest embedding, publishing, and SDK decoding.

@@ -6,6 +6,8 @@
     "build": "node build.mjs"
   },
   "devDependencies": {
-    "esbuild": "0.25.3"
+    "esbuild": "0.25.3",
+    "@fluentci/inspection": "file:.sdk/inspection",
+    "typescript": "5.9.3"
   }
 }

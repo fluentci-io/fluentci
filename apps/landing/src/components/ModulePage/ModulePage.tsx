@@ -1,13 +1,14 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { ModulePageSkeleton } from "../ModulePageSkeleton";
 import { SiteHeader } from "../SiteHeader";
 import { Author } from "../Author";
 import { ModuleLogo } from "../ModuleLogo";
-import { Readme } from "../Readme";
+import { ModuleDocumentation } from "../ModuleDocumentation";
 import { Downloads } from "../Downloads";
 import { DownloadIcon } from "../DownloadIcon";
 import { CopyCommand } from "../CopyCommand";
+import { FunctionSearch } from "../FunctionSearch";
 import {
   getPlugin,
   getProfiles,
@@ -36,12 +37,40 @@ export function ModulePage() {
   const [profile, setProfile] = useState<Profile>();
   const [error, setError] = useState("");
   const [retry, setRetry] = useState(0);
+  const [functionQuery, setFunctionQuery] = useState("");
+  const [functionSearchActive, setFunctionSearchActive] = useState(false);
+  const functionInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const focusFunctions = (event: KeyboardEvent) => {
+      if (
+        event.key.toLowerCase() !== "f" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        document.querySelector("dialog[open]")
+      )
+        return;
+      if (
+        event.target instanceof HTMLElement &&
+        event.target.closest("input, textarea, select, [contenteditable]")
+      )
+        return;
+      if (functionInput.current) {
+        event.preventDefault();
+        functionInput.current.focus();
+      }
+    };
+    document.addEventListener("keydown", focusFunctions);
+    return () => document.removeEventListener("keydown", focusFunctions);
+  }, []);
   useEffect(() => {
     const abort = new AbortController();
     setPlugin(undefined);
     setLatest(undefined);
     setProfile(undefined);
     setError("");
+    setFunctionQuery("");
+    setFunctionSearchActive(false);
     void (async () => {
       try {
         const item = await getPlugin(handle, rkey, abort.signal);
@@ -167,32 +196,22 @@ export function ModulePage() {
                   </a>
                 )}
               </div>
-              <Readme key={plugin.uri} plugin={plugin} />
-              {Boolean(plugin.functions?.length) && (
-                <section className="mt-10">
-                  <h2 className="mb-5 text-lg">Functions</h2>
-                  <div className="divide-y divide-line rounded-xl border border-line bg-panel px-5">
-                    {plugin.functions?.map((job) => (
-                      <div className="py-5" key={job.name}>
-                        <code className="block break-words text-sm text-cyan">
-                          {job.name}(
-                          {job.args
-                            ?.map((arg) => `${arg.name}: ${arg.type}`)
-                            .join(", ") ?? "…"}
-                          ){job.returnType ? ` → ${job.returnType}` : ""}
-                        </code>
-                        {job.description && (
-                          <p className="mt-2 text-sm text-muted">
-                            {job.description}
-                          </p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </section>
-              )}
+              <ModuleDocumentation
+                key={plugin.uri}
+                plugin={plugin}
+                handle={author}
+                query={functionQuery}
+                showDocs={functionSearchActive}
+              />
             </article>
             <aside className="module-usage-panel" aria-label="Module usage">
+              <FunctionSearch
+                value={functionQuery}
+                onChange={setFunctionQuery}
+                onFocus={() => setFunctionSearchActive(true)}
+                onBlur={() => setFunctionSearchActive(false)}
+                inputRef={functionInput}
+              />
               <h2 className="text-lg">Use this module</h2>
               <p className="mt-3 text-xs leading-6 text-muted">
                 Run directly from the registry.

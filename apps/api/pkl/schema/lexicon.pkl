@@ -9,7 +9,12 @@ class StringField extends Field {
   type = "string"
   minLength: Int?
   maxLength: Int?
+  `enum`: List<String>?
   format: "uri" | "datetime" | "cid" | "at-uri" | "at-identifier" | "did" | Null = null
+}
+
+class BooleanField extends Field {
+  type = "boolean"
 }
 
 class IntegerField extends Field {
@@ -33,7 +38,7 @@ class ArrayField extends Field {
 class ObjectField extends Field {
   type = "object"
   required: List<String> = List()
-  properties: Mapping<String, StringField | IntegerField | RefField | ArrayField>
+  properties: Mapping<String, StringField | IntegerField | BooleanField | RefField | ArrayField>
 }
 
 class Parameters {

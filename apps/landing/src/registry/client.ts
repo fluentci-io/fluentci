@@ -3,7 +3,13 @@ export const api = "https://api.fluentci.io/xrpc/io.fluentci.registry";
 export interface PluginFunction {
   name: string;
   description?: string;
-  args?: { name: string; type: string }[];
+  args?: {
+    name: string;
+    type: string;
+    description?: string;
+    required?: boolean;
+  }[];
+  inputFormat?: "text" | "json";
   returnType?: string;
 }
 
