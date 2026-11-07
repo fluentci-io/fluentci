@@ -58,6 +58,12 @@ jobs:
           gleam-version: "1.19.2"
       - uses: astral-sh/setup-uv@v6
         if: matrix.sdk == 'python'
+      - name: Set up Java 21 for Typed Clojure
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        if: matrix.sdk == 'clojurescript'
+        with:
+          distribution: temurin
+          java-version: "21"
       - uses: DeLaGuardo/setup-clojure@13.4
         if: matrix.sdk == 'clojurescript'
         with:
