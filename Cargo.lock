@@ -3342,7 +3342,7 @@ dependencies = [
 
 [[package]]
 name = "fluentci"
-version = "0.17.1"
+version = "0.17.2"
 dependencies = [
  "anyhow",
  "async-graphql",
@@ -3457,7 +3457,7 @@ dependencies = [
 
 [[package]]
 name = "fluentci-engine"
-version = "0.6.2"
+version = "0.6.3"
 dependencies = [
  "anyhow",
  "clap 3.2.25",

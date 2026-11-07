@@ -1,6 +1,6 @@
 [package]
 name = "fluentci"
-version = "0.17.1"
+version = "0.17.2"
 edition = "2024"
 # OpenBSD uses its native Rust 1.90 package; other targets need the newer Wasmtime compiler.
 rust-version = "1.90"

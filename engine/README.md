@@ -103,13 +103,13 @@ cargo run --release -p fluentci-engine -- serve
 
 ## 📦 Downloads
 
-Download **FluentCI Engine v0.6.2** for your platform:
+Download **FluentCI Engine v0.6.3** for your platform:
 
-- `Mac`: arm64: [fluentci-engine_v0.6.2_aarch64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_aarch64-apple-darwin.tar.gz) intel: [fluentci-engine_v0.6.2_x86_64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_x86_64-apple-darwin.tar.gz)
-- `Linux`: intel: [fluentci-engine_v0.6.2_x86_64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_x86_64-unknown-linux-gnu.tar.gz) arm64: [fluentci-engine_v0.6.2_aarch64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_aarch64-unknown-linux-gnu.tar.gz)
-- `FreeBSD`: x86_64: [fluentci-engine_v0.6.2_x86_64-unknown-freebsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_x86_64-unknown-freebsd.tar.gz)
-- `NetBSD`: x86_64: [fluentci-engine_v0.6.2_x86_64-unknown-netbsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_x86_64-unknown-netbsd.tar.gz)
-- `OpenBSD`: x86_64: [fluentci-engine_v0.6.2_x86_64-unknown-openbsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.2/fluentci-engine_v0.6.2_x86_64-unknown-openbsd.tar.gz)
+- `Mac`: arm64: [fluentci-engine_v0.6.3_aarch64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.3/fluentci-engine_v0.6.3_aarch64-apple-darwin.tar.gz) intel: [fluentci-engine_v0.6.3_x86_64-apple-darwin.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.3/fluentci-engine_v0.6.3_x86_64-apple-darwin.tar.gz)
+- `Linux`: intel: [fluentci-engine_v0.6.3_x86_64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.3/fluentci-engine_v0.6.3_x86_64-unknown-linux-gnu.tar.gz) arm64: [fluentci-engine_v0.6.3_aarch64-unknown-linux-gnu.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.3/fluentci-engine_v0.6.3_aarch64-unknown-linux-gnu.tar.gz)
+- `FreeBSD`: x86_64: [fluentci-engine_v0.6.3_x86_64-unknown-freebsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.3/fluentci-engine_v0.6.3_x86_64-unknown-freebsd.tar.gz)
+- `NetBSD`: x86_64: [fluentci-engine_v0.6.3_x86_64-unknown-netbsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.3/fluentci-engine_v0.6.3_x86_64-unknown-netbsd.tar.gz)
+- `OpenBSD`: x86_64: [fluentci-engine_v0.6.3_x86_64-unknown-openbsd.tar.gz](https://github.com/fluentci-io/fluentci-engine/releases/download/v0.6.3/fluentci-engine_v0.6.3_x86_64-unknown-openbsd.tar.gz)
 
 ## 📚 Documentation
 
