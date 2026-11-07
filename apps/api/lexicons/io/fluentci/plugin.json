@@ -198,10 +198,11 @@
         },
         "inputFormat": {
           "type": "string",
-          "description": "Defaults to legacy text. json opts into the SDK-neutral typed named-argument object protocol.",
+          "description": "Defaults to legacy text. json uses an SDK-neutral named-argument object; wit uses native component interface types.",
           "enum": [
             "text",
-            "json"
+            "json",
+            "wit"
           ]
         }
       }

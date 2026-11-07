@@ -29,6 +29,7 @@ pub(super) async fn execute(
         Some(ModuleCommand::Add {
             name,
             sdk,
+            runtime,
             path,
             url,
             entry,
@@ -39,6 +40,7 @@ pub(super) async fn execute(
                 path.as_deref(),
                 url.as_deref(),
                 entry.as_deref(),
+                runtime,
             )
             .await
         }

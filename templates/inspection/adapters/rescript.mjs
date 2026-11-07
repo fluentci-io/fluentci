@@ -45,6 +45,7 @@ export function inspectRescript(
   root,
   exportNames,
   tool = "rescript-tools",
+  component = false,
 ) {
   const bindings = sourceBindings(entry);
   const modules = new Map();
@@ -81,7 +82,17 @@ export function inspectRescript(
       signature.parameters.length === 1 &&
       signature.parameters[0].path === "unit"
     )
-      return { ...fn, invoke: { style: "legacy" } };
+      return {
+        ...fn,
+        ...(component ? { args: [] } : {}),
+        invoke: component
+          ? {
+              style: "rescript",
+              module: binding.module,
+              export: binding.export,
+            }
+          : { style: "legacy" },
+      };
     if (signature.parameters.length !== 1)
       throw Error(`${name}: use one typed argument record`);
     const type = signature.parameters[0];
@@ -110,6 +121,7 @@ export function inspectRescript(
       ...fn,
       args: fields,
       invoke: {
+        hasRecordArgument: true,
         style: "rescript",
         module: binding.module,
         export: binding.export,

@@ -1,0 +1,75 @@
+name: Component SDKs
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: components-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  component:
+    name: ${{ matrix.sdk }} component
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        sdk:
+          [
+            typescript,
+            purescript,
+            gleam,
+            rescript,
+            clojurescript,
+            python,
+            elixir,
+          ]
+    env:
+      FLUENTCI_COMPONENT_SDK: ${{ matrix.sdk }}
+      CARGO_BUILD_JOBS: "2"
+      CARGO_PROFILE_RELEASE_LTO: "false"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: "1.4.3"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip2
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: components-release-no-lto
+      - uses: erlef/setup-beam@v1
+        if: matrix.sdk == 'gleam' || matrix.sdk == 'elixir'
+        with:
+          otp-version: "28"
+          elixir-version: "1.20.4"
+          gleam-version: "1.19.2"
+      - uses: astral-sh/setup-uv@v6
+        if: matrix.sdk == 'python'
+      - uses: DeLaGuardo/setup-clojure@13.4
+        if: matrix.sdk == 'clojurescript'
+        with:
+          cli: "1.12.5.1654"
+      - name: Install PureScript compiler
+        if: matrix.sdk == 'purescript'
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends libgmp10 libtinfo6 libstdc++6
+          npm install --global purescript@0.15.16 spago@1.0.5
+      - name: Build Studio assets
+        working-directory: webui
+        run: bun install --frozen-lockfile --ignore-scripts && bun run build:web
+      - name: Compile generated WIT, inspect metadata, and invoke native component
+        run: cargo test --release --locked --test components language_component_starter_generates_wit_and_runs_without_extism -- --ignored --exact --nocapture

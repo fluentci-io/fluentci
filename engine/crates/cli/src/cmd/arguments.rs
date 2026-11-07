@@ -72,6 +72,10 @@ fn value(arg: &Argument, raw: &str) -> Result<Value> {
 
 /// Text exports retain their original input convention; JSON exports bind typed fields.
 pub fn encode(function: &Function, words: &[String]) -> Result<String> {
+    ensure!(
+        function.input_format != InputFormat::Wit,
+        "WIT arguments must be bound by the component runtime"
+    );
     validate(function)?;
     if function.input_format == InputFormat::Text {
         return Ok(words.join(" "));
@@ -144,6 +148,10 @@ pub fn encode(function: &Function, words: &[String]) -> Result<String> {
 
 /// Validate guest input too, including callers that bypass the command-line binder.
 pub fn validate_input(function: &Function, input: &str) -> Result<()> {
+    anyhow::ensure!(
+        function.input_format != InputFormat::Wit,
+        "WIT arguments must be validated against the native component signature"
+    );
     validate(function)?;
     if function.input_format == InputFormat::Text {
         return Ok(());

@@ -156,3 +156,10 @@ input format, and return types. The landing page's Docs tab renders the same dat
 The JSON Schema is `schema/module-cli.schema.json` in fluentci-engine.
 Metadata is read without instantiating the guest; exported function names and ABI
 are always verified against the actual Wasm artifact.
+
+## Native WIT components
+
+The engine detects component binaries and invokes their native WIT signatures
+without the Extism ABI. WIT arguments and return types are authoritative; metadata
+can add descriptions but cannot replace the ABI. See [components](components.md)
+for code-first generation in every SDK and the versioned host execution interface.

@@ -208,8 +208,8 @@ export const schemas = [
           inputFormat: {
             type: 'string',
             description:
-              'Defaults to legacy text. json opts into the SDK-neutral typed named-argument object protocol.',
-            enum: ['text', 'json'],
+              'Defaults to legacy text. json uses an SDK-neutral named-argument object; wit uses native component interface types.',
+            enum: ['text', 'json', 'wit'],
           },
         },
       },

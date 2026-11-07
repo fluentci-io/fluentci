@@ -1774,6 +1774,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "cap-net-ext"
+version = "3.4.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "150941cefd3df4de2fea24604ba4949371576f62e527410298333f7d431a1bc6"
+dependencies = [
+ "cap-primitives 3.4.6",
+ "cap-std",
+ "rustix 1.1.6",
+ "smallvec",
+]
+
+[[package]]
 name = "cap-primitives"
 version = "3.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3665,7 +3677,7 @@ dependencies = [
  "url 2.5.8",
  "uuid",
  "wasmtime 49.0.5",
- "wasmtime-wasi",
+ "wasmtime-wasi 49.0.5",
 ]
 
 [[package]]
@@ -3934,6 +3946,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "fluentci-components"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "fluentci-core",
+ "fluentci-executor",
+ "serde",
+ "serde_json",
+ "wasmtime 41.0.4",
+ "wasmtime 49.0.5",
+ "wasmtime-wasi 41.0.4",
+ "wasmtime-wasi 49.0.5",
+ "wit-component",
+ "wit-parser 0.258.3",
+]
+
+[[package]]
 name = "fluentci-core"
 version = "0.3.11"
 dependencies = [
@@ -3991,6 +4020,7 @@ dependencies = [
  "clap 3.2.25",
  "crossterm",
  "extism",
+ "fluentci-components",
  "fluentci-core",
  "fluentci-executor",
  "fluentci-ext",
@@ -8825,6 +8855,7 @@ version = "8.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0d84e8ba78bd384263e5922f084cbe1b081c3b7e69add59c8fb097b879ba968a"
 dependencies = [
+ "globset",
  "sha2 0.11.1",
  "walkdir",
 ]
@@ -12366,6 +12397,36 @@ dependencies = [
 
 [[package]]
 name = "wasmtime-wasi"
+version = "41.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc2eb9dc95baed3cd86fdfebf9f9f333337eb308bf8bd973e0c7b06d9418c35f"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bitflags 2.13.2",
+ "bytes",
+ "cap-fs-ext",
+ "cap-net-ext",
+ "cap-rand",
+ "cap-std",
+ "cap-time-ext",
+ "fs-set-times",
+ "futures",
+ "io-extras 0.18.4",
+ "io-lifetimes 2.0.4",
+ "rustix 1.1.6",
+ "system-interface",
+ "thiserror 2.0.21",
+ "tokio",
+ "tracing",
+ "url 2.5.8",
+ "wasmtime 41.0.4",
+ "wasmtime-wasi-io 41.0.4",
+ "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "wasmtime-wasi"
 version = "49.0.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "705b90d1fa1084cc73df656868948da77711b97f6b895d145a4949f86bcea674"
@@ -12383,10 +12444,23 @@ dependencies = [
  "tracing",
  "url 2.5.8",
  "wasmtime 49.0.5",
- "wasmtime-wasi-io",
+ "wasmtime-wasi-io 49.0.5",
  "wiggle 49.0.5",
  "windows-sys 0.61.2",
  "winx",
+]
+
+[[package]]
+name = "wasmtime-wasi-io"
+version = "41.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a0b8402f1e04385071fdd96aca97cba995d7376b572e42ce5841d5b6aaf6fa30"
+dependencies = [
+ "anyhow",
+ "async-trait",
+ "bytes",
+ "futures",
+ "wasmtime 41.0.4",
 ]
 
 [[package]]

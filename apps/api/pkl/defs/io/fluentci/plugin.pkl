@@ -110,8 +110,8 @@ maxLength = 256 }
 maxLength = 1024 }
       ["wasmParams"] = new ArrayField { items = new StringField {} }
       ["wasmResults"] = new ArrayField { items = new StringField {} }
-      ["inputFormat"] = new StringField { `enum` = List("text", "json")
-description = "Defaults to legacy text. json opts into the SDK-neutral typed named-argument object protocol." }
+      ["inputFormat"] = new StringField { `enum` = List("text", "json", "wit")
+description = "Defaults to legacy text. json uses an SDK-neutral named-argument object; wit uses native component interface types." }
     }
   }
 

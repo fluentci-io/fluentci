@@ -1,16 +1,32 @@
 //! Check SDK toolchains without executing partially available builds.
 
-use crate::config::Sdk;
+use crate::config::{ModuleRuntime, Sdk};
 use anyhow::{Context, Result};
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
 use std::path::{Path, PathBuf};
 
 pub fn require_sdk(sdk: Sdk, directory: &Path, pending_dependencies: bool) -> Result<()> {
-    let required: &[&str] = match sdk {
-        Sdk::Rust => &["cargo", "rustc", "rustup"],
-        Sdk::Purescript => &["node", "npm", "purs", "spago", "extism-js"],
-        Sdk::Clojurescript => &[
+    require_sdk_runtime(sdk, directory, pending_dependencies, ModuleRuntime::Extism)
+}
+
+pub fn require_sdk_runtime(
+    sdk: Sdk,
+    directory: &Path,
+    pending_dependencies: bool,
+    runtime: ModuleRuntime,
+) -> Result<()> {
+    let required: &[&str] = match (sdk, runtime) {
+        (Sdk::Rust, _) => &["cargo", "rustc", "rustup"],
+        (Sdk::Elixir, _) => &["elixir", "mix", "cargo", "rustc", "rustup"],
+        (Sdk::Purescript, ModuleRuntime::Component) => &["node", "npm", "purs", "spago"],
+        (Sdk::Clojurescript, ModuleRuntime::Component) => &["node", "npm", "java", "clojure"],
+        (Sdk::Gleam, ModuleRuntime::Component) => &["node", "npm", "gleam"],
+        (Sdk::Typescript, ModuleRuntime::Component) => &["node", "npm"],
+        (Sdk::Rescript, ModuleRuntime::Component) => &["node", "npm", "rescript"],
+        (Sdk::Python, ModuleRuntime::Component) => &["uv"],
+        (Sdk::Purescript, ModuleRuntime::Extism) => &["node", "npm", "purs", "spago", "extism-js"],
+        (Sdk::Clojurescript, ModuleRuntime::Extism) => &[
             "node",
             "npm",
             "java",
@@ -19,11 +35,10 @@ pub fn require_sdk(sdk: Sdk, directory: &Path, pending_dependencies: bool) -> Re
             "wasm-merge",
             "wasm-opt",
         ],
-        Sdk::Elixir => &["elixir", "mix", "cargo", "rustc", "rustup"],
-        Sdk::Gleam => &["node", "npm", "gleam", "extism-js"],
-        Sdk::Typescript => &["node", "npm", "extism-js"],
-        Sdk::Python => &["uv", "extism-py", "wasm-merge", "wasm-opt"],
-        Sdk::Rescript => &["node", "npm", "rescript", "extism-js"],
+        (Sdk::Gleam, ModuleRuntime::Extism) => &["node", "npm", "gleam", "extism-js"],
+        (Sdk::Typescript, ModuleRuntime::Extism) => &["node", "npm", "extism-js"],
+        (Sdk::Python, ModuleRuntime::Extism) => &["uv", "extism-py", "wasm-merge", "wasm-opt"],
+        (Sdk::Rescript, ModuleRuntime::Extism) => &["node", "npm", "rescript", "extism-js"],
     };
     let missing: Vec<_> = required
         .iter()

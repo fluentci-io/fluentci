@@ -389,6 +389,36 @@ test("Docs tab shows the exposed function count, typed arguments, descriptions, 
   ).toBe(true);
 });
 
+test("WIT component Docs show named flags and native return types", async ({
+  page,
+}) => {
+  await registry(page);
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.registry.getPackage?*",
+    (route) =>
+      route.fulfill({
+        json: {
+          package: {
+            ...typedPlugin,
+            functions: typedPlugin.functions.map((fn) => ({
+              ...fn,
+              inputFormat: "wit",
+            })),
+          },
+        },
+      }),
+  );
+  await page.goto("/fluentci.io/plugin/sccache-0.1.0");
+  await page.getByRole("tab", { name: "Docs 2", exact: true }).click();
+  const build = page.getByRole("region", {
+    name: "build function",
+    exact: true,
+  });
+  await expect(build).toContainText("--src");
+  await expect(build).toContainText("--verbose");
+  await expect(build).toContainText("Result(string, BuildError)");
+});
+
 test("F focuses function search and filters Docs without changing the exposed count", async ({
   page,
 }) => {

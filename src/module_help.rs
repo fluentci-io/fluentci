@@ -172,7 +172,7 @@ impl ModuleHelp {
             )?;
             if let Some(args) = &function.args {
                 for arg in args {
-                    if function.input_format == crate::plugin_metadata::InputFormat::Json {
+                    if function.input_format != crate::plugin_metadata::InputFormat::Text {
                         write!(
                             output,
                             " {}--{} <{}>{}",
@@ -200,7 +200,7 @@ impl ModuleHelp {
                         writeln!(
                             output,
                             "  {}{}: {}{}",
-                            if function.input_format == crate::plugin_metadata::InputFormat::Json {
+                            if function.input_format != crate::plugin_metadata::InputFormat::Text {
                                 "--"
                             } else {
                                 ""
@@ -239,7 +239,7 @@ impl ModuleHelp {
                         write!(
                             output,
                             " <{}{}: {}>{}",
-                            if function.input_format == crate::plugin_metadata::InputFormat::Json {
+                            if function.input_format != crate::plugin_metadata::InputFormat::Text {
                                 "--"
                             } else {
                                 ""
@@ -257,7 +257,7 @@ impl ModuleHelp {
                 if let Some(description) = &function.description {
                     writeln!(output, "    {}", text(description))?;
                 }
-                if function.input_format == crate::plugin_metadata::InputFormat::Json {
+                if function.input_format != crate::plugin_metadata::InputFormat::Text {
                     for arg in function.args.iter().flatten() {
                         if let Some(description) = &arg.description {
                             writeln!(output, "    --{}: {}", text(&arg.name), text(description))?;

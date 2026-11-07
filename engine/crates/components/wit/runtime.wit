@@ -1,0 +1,16 @@
+package fluentci:runtime@0.1.0;
+
+/// FluentCI capabilities shared by all component SDKs.
+interface host {
+  /// Execute a protocol-v1 FluentCI plan through the native DAG executor.
+  /// The plan and returned report use the existing SDK-neutral plan schema.
+  execute-plan: func(plan: string, run-dir: string) -> result<string, string>;
+  /// Read an environment variable from the current FluentCI invocation.
+  get-env: func(name: string) -> option<string>;
+  /// Write a line to the invocation log.
+  log: func(message: string);
+}
+
+world plugin {
+  import host;
+}

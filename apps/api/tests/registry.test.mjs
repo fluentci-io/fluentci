@@ -309,6 +309,27 @@ test('publish requires scoped service auth, validates Wasm, and sends immutable 
   assert.deepEqual(commands[0].input.Body, wasm);
   assert.equal(commands[0].input.ContentType, 'application/wasm');
   assert.match(commands[0].input.CacheControl, /immutable/);
+  const { parse } = await import('@bytecodealliance/jco');
+  const component = Buffer.from(
+    await parse(`(component
+    (core module $m (func (export "add") (param i32 i32) (result i32) local.get 0 local.get 1 i32.add))
+    (core instance $i (instantiate $m))
+    (func (export "add") (param "left" u32) (param "right" u32) (result u32)
+      (canon lift (core func $i "add"))))`),
+  );
+  const componentResponse = await fetch(endpoint, { method: 'POST', headers, body: component });
+  assert.equal(componentResponse.status, 200);
+  assert.equal(
+    (await componentResponse.json()).sha256,
+    createHash('sha256').update(component).digest('hex'),
+  );
+  assert.deepEqual(commands[1].input.Body, component);
+  const invalidComponent = Buffer.from([0, 97, 115, 109, 13, 0, 1, 0, 7, 127]);
+  assert.equal(
+    (await fetch(endpoint, { method: 'POST', headers, body: invalidComponent })).status,
+    400,
+  );
+  assert.equal(commands.length, 2);
   instance.s3 = {
     send: async () => {
       throw Error('storage offline');

@@ -44,6 +44,11 @@ fn metadata(wasm: &Wasm, function: &str) -> Result<super::metadata::Function, Er
 
 pub fn call_argv(module: &str, function: &str, arguments: &[String]) -> Result<(), Error> {
     let wasm = load(module)?;
+    if let Wasm::Data { data, .. } = &wasm {
+        if fluentci_components::is_component(data) {
+            return execute_component(data, function, arguments);
+        }
+    }
     let metadata = metadata(&wasm, function)?;
     let input = super::arguments::encode(&metadata, arguments)?;
     execute(wasm, function, &input)
@@ -52,6 +57,12 @@ pub fn call_argv(module: &str, function: &str, arguments: &[String]) -> Result<(
 pub fn call(module: &str, command: &str) -> Result<(), Error> {
     let (function, input) = command.split_once(' ').unwrap_or((command, ""));
     let wasm = load(module)?;
+    if let Wasm::Data { data, .. } = &wasm {
+        if fluentci_components::is_component(data) {
+            let words = shlex::split(input).context("Unclosed quote in component arguments")?;
+            return execute_component(data, function, &words);
+        }
+    }
     let metadata = metadata(&wasm, function)?;
     let input = if metadata.input_format == super::metadata::InputFormat::Json {
         let arguments = shlex::split(input).context("Unclosed quote in module arguments")?;
@@ -60,6 +71,20 @@ pub fn call(module: &str, command: &str) -> Result<(), Error> {
         input.to_owned()
     };
     execute(wasm, function, &input)
+}
+
+fn execute_component(bytes: &[u8], function: &str, words: &[String]) -> Result<(), Error> {
+    let cancellation = fluentci_executor::Cancellation::default();
+    let _signals = fluentci_core::signals::CancellationSignals::new(cancellation.clone())?;
+    let _ = fluentci_core::init_tracer();
+    let _ = fluentci_core::set_git_repo_metadata();
+    let result = fluentci_components::call(bytes, function, words, cancellation);
+    fluentci_core::shutdown_tracer();
+    let result = result?;
+    if !result.is_empty() {
+        println!("{result}");
+    }
+    Ok(())
 }
 
 fn execute(wasm: Wasm, func: &str, args: &str) -> Result<(), Error> {

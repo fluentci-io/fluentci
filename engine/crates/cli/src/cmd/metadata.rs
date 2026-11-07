@@ -31,6 +31,7 @@ pub enum InputFormat {
     #[default]
     Text,
     Json,
+    Wit,
 }
 
 impl InputFormat {
@@ -95,9 +96,16 @@ pub fn embed(wasm: &[u8], declared: Vec<Function>) -> Result<Vec<u8>> {
     let functions = inspect(wasm, Some(declared))?;
     let mut output = wasm.to_vec();
     let mut ranges = Vec::new();
+    let mut depth = 0usize;
     for payload in Parser::new(0).parse_all(wasm) {
-        if let Payload::CustomSection(section) = payload? {
-            if section.name() == "fluentci:metadata" {
+        let payload = payload?;
+        match &payload {
+            Payload::Version { .. } => depth += 1,
+            Payload::End(_) => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+        if let Payload::CustomSection(section) = payload {
+            if depth == 1 && section.name() == "fluentci:metadata" {
                 // range() starts at the custom section name, after its id/length.
                 let range = section.range();
                 let mut start = range.start - 1;
@@ -147,7 +155,134 @@ fn leb(mut value: usize, bytes: &mut Vec<u8>) {
     }
 }
 
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ComponentDocs {
+    functions: Vec<ComponentFunctionDocs>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ComponentFunctionDocs {
+    name: String,
+    description: String,
+    args: Vec<ComponentArgumentDocs>,
+}
+
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ComponentArgumentDocs {
+    name: String,
+    description: String,
+}
+
 pub fn inspect(wasm: &[u8], declared: Option<Vec<Function>>) -> Result<Vec<Function>> {
+    if fluentci_components::is_component(wasm) {
+        let surface = fluentci_components::Surface::parse(wasm)?;
+        let mut functions = surface
+            .functions
+            .iter()
+            .map(|function| Function {
+                name: function.name.clone(),
+                args: Some(
+                    function
+                        .arguments(&surface.resolve)
+                        .into_iter()
+                        .map(|argument| Argument {
+                            name: argument.name,
+                            type_name: argument.type_name,
+                            description: argument.description,
+                            required: argument.required,
+                        })
+                        .collect(),
+                ),
+                return_type: Some(function.returns(&surface.resolve)),
+                description: function.signature.docs.contents.clone(),
+                input_format: InputFormat::Wit,
+                wasm_params: vec![],
+                wasm_results: vec![],
+            })
+            .collect::<Vec<_>>();
+        let mut embedded = None;
+        let mut depth = 0usize;
+        for payload in Parser::new(0).parse_all(wasm) {
+            match payload? {
+                Payload::Version { .. } => depth += 1,
+                Payload::End(_) => depth = depth.saturating_sub(1),
+                Payload::CustomSection(section)
+                    if depth == 1 && section.name() == "fluentci:metadata" =>
+                {
+                    anyhow::ensure!(embedded.is_none(), "Duplicate component metadata");
+                    embedded = Some(manifest(section.data(), wasm)?);
+                }
+                Payload::CustomSection(section) if section.name() == "fluentci:component-docs" => {
+                    anyhow::ensure!(
+                        section.data().len() <= 256 * 1024,
+                        "Component documentation exceeds 256 KiB"
+                    );
+                    let docs: ComponentDocs = serde_json::from_slice(section.data())
+                        .context("Invalid component documentation")?;
+                    for definition in docs.functions {
+                        if let Some((index, _)) = surface
+                            .functions
+                            .iter()
+                            .enumerate()
+                            .find(|(_, function)| function.path.join("#") == definition.name)
+                        {
+                            let function = &mut functions[index];
+                            if !definition.description.is_empty() {
+                                function.description = Some(definition.description);
+                            }
+                            if let Some(arguments) = &mut function.args {
+                                for doc in definition.args {
+                                    if let Some(argument) = arguments
+                                        .iter_mut()
+                                        .find(|argument| argument.name == doc.name)
+                                    {
+                                        if !doc.description.is_empty() {
+                                            argument.description = Some(doc.description);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+        for declared in embedded.into_iter().chain(declared) {
+            for definition in declared {
+                let original = functions
+                    .iter_mut()
+                    .find(|function| function.name == definition.name)
+                    .context("Metadata references a non-exported WIT function")?;
+                let contract = |args: &Option<Vec<Argument>>| {
+                    args.as_ref().map(|args| {
+                        args.iter()
+                            .map(|arg| (arg.name.clone(), arg.type_name.clone(), arg.required))
+                            .collect::<Vec<_>>()
+                    })
+                };
+                anyhow::ensure!(
+                    contract(&original.args) == contract(&definition.args)
+                        && original.return_type == definition.return_type,
+                    "Component signatures come from WIT and cannot be overridden"
+                );
+                if definition.description.is_some() {
+                    original.description = definition.description;
+                }
+                if let (Some(original), Some(declared)) = (&mut original.args, definition.args) {
+                    for (original, declared) in original.iter_mut().zip(declared) {
+                        if declared.description.is_some() {
+                            original.description = declared.description;
+                        }
+                    }
+                }
+            }
+        }
+        return Ok(functions);
+    }
     let mut types = Vec::new();
     let mut indices = Vec::new();
     let mut exports = Vec::new();
@@ -318,6 +453,13 @@ fn merge_declarations(
 }
 
 pub fn functions(bytes: &[u8]) -> Result<Vec<String>> {
+    if fluentci_components::is_component(bytes) {
+        return Ok(fluentci_components::Surface::parse(bytes)?
+            .functions
+            .into_iter()
+            .map(|function| function.name)
+            .collect());
+    }
     let mut functions = Vec::new();
     for payload in Parser::new(0).parse_all(bytes) {
         if let Payload::ExportSection(exports) = payload? {

@@ -44,3 +44,23 @@ defmodule FluentCI.NamedArgumentsTest do
     assert_raise ArgumentError, fn -> Plugin.argument("src", "String") end
   end
 end
+
+defmodule FluentCI.ComponentGenerationTest do
+  use ExUnit.Case, async: true
+  alias FluentCI.Plugin
+
+  test "component signatures follow the actual typed DSL declarations" do
+    source = FluentCI.Plugin.Component.source(build: Plugin.argument("jobs", "integer"))
+    assert source =~ "pub r#jobs: i32"
+    assert source =~ "-> Result<String, String>"
+    refute source =~ "extism"
+    updated = FluentCI.Plugin.Component.source(build: Plugin.argument("jobs", "number"))
+    assert updated =~ "pub r#jobs: f64"
+  end
+
+  test "components reject untyped raw input" do
+    assert_raise ArgumentError, ~r/require named arguments/, fn ->
+      FluentCI.Plugin.Component.source(build: Plugin.input())
+    end
+  end
+end

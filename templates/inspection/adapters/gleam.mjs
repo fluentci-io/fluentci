@@ -3,7 +3,13 @@ import { join, relative, resolve } from "node:path";
 import { bindingFor, sourceBindings } from "../bindings.mjs";
 import { documentation, field } from "../common.mjs";
 
-export function inspectGleam(entry, root, exportNames, interfacePath) {
+export function inspectGleam(
+  entry,
+  root,
+  exportNames,
+  interfacePath,
+  component = false,
+) {
   const api = JSON.parse(readFileSync(interfacePath, "utf8"));
   const base = resolve(root, "build/dev/javascript", api.name);
   const bindings = sourceBindings(entry);
@@ -79,10 +85,21 @@ export function inspectGleam(entry, root, exportNames, interfacePath) {
     const result = {
       name,
       description: doc.description,
-      returnType: show(definition.return),
+      returnType: show(resolveType(definition.return)),
     };
     if (!definition.parameters.length)
-      return { ...result, invoke: { style: "legacy" } };
+      return {
+        ...result,
+        ...(component ? { args: [] } : {}),
+        invoke: component
+          ? {
+              style: "gleam",
+              fields: [],
+              module: binding.module,
+              export: binding.export,
+            }
+          : { style: "legacy" },
+      };
     if (definition.parameters.length !== 1)
       throw Error(`${name}: use one typed argument record`);
     const type = resolveType(definition.parameters[0].type);
@@ -117,6 +134,7 @@ export function inspectGleam(entry, root, exportNames, interfacePath) {
       ...result,
       args: fields.map(({ list, optional, ...arg }) => arg),
       invoke: {
+        hasRecordArgument: true,
         module: binding.module,
         export: binding.export,
         style: "gleam",

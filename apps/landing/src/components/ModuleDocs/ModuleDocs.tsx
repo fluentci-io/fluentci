@@ -87,7 +87,7 @@ export function ModuleDocs({
       </nav>
       <div className="min-w-0 divide-y divide-line">
         {visible.map(({ fn, index }) => {
-          const named = fn.inputFormat === "json";
+          const named = fn.inputFormat === "json" || fn.inputFormat === "wit";
           const arguments_ =
             fn.args
               ?.filter((arg) => arg.required !== false)

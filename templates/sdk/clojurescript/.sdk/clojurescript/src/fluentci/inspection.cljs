@@ -7,3 +7,10 @@
     (when-not (nil? result)
       (.outputString js/Host
         (if (string? result) result (js/JSON.stringify (clj->js result)))))))
+
+(defn component-invoke
+  "Call a typed component handler without the Extism ABI."
+  [function input]
+  (clj->js (if (undefined? input)
+             (function)
+             (function (js->clj input :keywordize-keys true)))))

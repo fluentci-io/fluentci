@@ -365,3 +365,21 @@ fluentci run builder build --src demo --jobs 4 --verbose
 The function receives `{"src":"demo","jobs":4,"verbose":true}` through its SDK's
 normal Extism input. See [typed module arguments](/guides/module-arguments/) for
 array types, manifest embedding, publishing, and SDK decoding.
+
+## Module runtime
+
+Modules default to `runtime = "extism"`. Set `runtime = "component"` to build a
+native WIT component with any SDK, or create one using
+`fluentci modules add tools --sdk python --runtime component`.
+
+```toml
+[[modules]]
+name = "tools"
+path = ".fluentci/tools"
+sdk = "python"
+runtime = "component"
+```
+
+The explicit component runtime rejects core Wasm artifacts. Prebuilt artifacts are
+otherwise detected automatically. WIT is generated from source on every build;
+see [WebAssembly components](/guides/components/) for SDK contracts and toolchains.

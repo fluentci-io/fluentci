@@ -46,7 +46,7 @@ export function programFor(entry, root) {
   return { program, source, checker: program.getTypeChecker() };
 }
 
-export function inspectTypescript(entry, root, exportNames) {
+export function inspectTypescript(entry, root, exportNames, component = false) {
   const { source, checker } = programFor(entry, root);
   const exports = checker.getExportsOfModule(
     checker.getSymbolAtLocation(source),
@@ -86,7 +86,12 @@ export function inspectTypescript(entry, root, exportNames) {
         name,
         returnType,
         description: doc.description,
-        invoke: { module: entry, export: name, style: "legacy" },
+        invoke: {
+          module: entry,
+          export: name,
+          style: component ? "record" : "legacy",
+        },
+        ...(component ? { args: [] } : {}),
       };
     if (signature.parameters.length !== 1 || signature.typeParameters?.length)
       throw Error(`${name}: use a single concrete typed argument record`);
@@ -169,7 +174,12 @@ export function inspectTypescript(entry, root, exportNames) {
       args,
       returnType,
       description: doc.description,
-      invoke: { module: entry, export: name, style: "record" },
+      invoke: {
+        module: entry,
+        export: name,
+        style: "record",
+        hasRecordArgument: true,
+      },
     };
   });
 }

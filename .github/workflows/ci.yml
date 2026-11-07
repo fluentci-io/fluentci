@@ -33,7 +33,7 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy
-          targets: wasm32-unknown-unknown
+          targets: wasm32-unknown-unknown,wasm32-wasip2
       - uses: oven-sh/setup-bun@v2
       - uses: actions/setup-node@v4
         with:
@@ -51,6 +51,7 @@ jobs:
           npm ci --ignore-scripts
           npm test
           python3 test_python.py
+          python3 test_python_component.py
           cargo test --release --locked --manifest-path rust/Cargo.toml
           cargo clippy --release --locked --all-targets --manifest-path rust/Cargo.toml -- -D warnings
           cargo fmt --manifest-path rust/Cargo.toml --check
@@ -60,6 +61,8 @@ jobs:
       - name: Run tests with FluentCI
         run: |
           FLUENTCI_BIN="$(command -v fluentci)" fluentci --check-update=false run main check
+      - name: Test native component starter and generated WIT
+        run: cargo test --release --locked --test components rust_component_starter_generates_wit_and_runs_without_extism -- --ignored --exact
 
   docs:
     name: Documentation workspace

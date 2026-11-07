@@ -9,7 +9,9 @@ defmodule Mix.Tasks.Fluentci.Plugin.Build do
   @impl Mix.Task
   def run(arguments) do
     {options, modules, invalid} =
-      OptionParser.parse(arguments, strict: [output: :string, pdk_path: :string])
+      OptionParser.parse(arguments,
+        strict: [output: :string, pdk_path: :string, runtime: :string]
+      )
 
     if invalid != [] or length(modules) != 1,
       do: Mix.raise("usage: mix fluentci.plugin.build Module --output plugin.wasm")
@@ -25,40 +27,123 @@ defmodule Mix.Tasks.Fluentci.Plugin.Build do
         do: module.__fluentci_export_docs__(),
         else: %{}
 
-    source = FluentCI.Plugin.Codegen.source(module.__fluentci_exports__(), docs)
-    directory = Path.expand(Path.join([".fluentci", "plugins", Atom.to_string(module)]))
-    File.mkdir_p!(Path.join(directory, "src"))
-    File.write!(Path.join(directory, "src/lib.rs"), source)
+    runtime = options[:runtime] || "extism"
 
-    dependency =
-      case options[:pdk_path] do
-        nil -> "fluentci-pdk = \"=0.2.6\""
-        path -> "fluentci-pdk = { path = #{inspect(Path.expand(path))}, version = \"0.2.6\" }"
+    unless runtime in ["extism", "component"],
+      do: Mix.raise("runtime must be extism or component")
+
+    if runtime == "component" do
+      build_component(module, docs, options)
+    else
+      source = FluentCI.Plugin.Codegen.source(module.__fluentci_exports__(), docs)
+      directory = Path.expand(Path.join([".fluentci", "plugins", Atom.to_string(module)]))
+      File.mkdir_p!(Path.join(directory, "src"))
+      File.write!(Path.join(directory, "src/lib.rs"), source)
+
+      dependency =
+        case options[:pdk_path] do
+          nil -> "fluentci-pdk = \"=0.2.6\""
+          path -> "fluentci-pdk = { path = #{inspect(Path.expand(path))}, version = \"0.2.6\" }"
+        end
+
+      manifest = """
+      [package]
+      name = "fluentci_elixir_plugin"
+      version = "0.1.0"
+      edition = "2021"
+      publish = false
+      [lib]
+      crate-type = ["cdylib"]
+      [dependencies]
+      extism-pdk = "=1.4.1"
+      serde_json = "1.0"
+      #{dependency}
+      [workspace]
+      """
+
+      manifest_path = Path.join(directory, "Cargo.toml")
+      changed = File.read(manifest_path) != {:ok, manifest}
+      File.write!(manifest_path, manifest)
+      environment = [{"CARGO_TARGET_DIR", Path.join(directory, "target")}]
+
+      if changed or not File.exists?(Path.join(directory, "Cargo.lock")) do
+        command!(["generate-lockfile", "--manifest-path", manifest_path], environment)
       end
 
-    manifest = """
+      command!(
+        [
+          "build",
+          "--release",
+          "--locked",
+          "--target",
+          "wasm32-unknown-unknown",
+          "--manifest-path",
+          manifest_path
+        ],
+        environment
+      )
+
+      artifact =
+        Path.join(directory, "target/wasm32-unknown-unknown/release/fluentci_elixir_plugin.wasm")
+
+      output = Path.expand(options[:output] || "dist/plugin.wasm")
+      File.mkdir_p!(Path.dirname(output))
+      File.cp!(artifact, output)
+
+      metadata = %{
+        sha256: :crypto.hash(:sha256, File.read!(output)) |> Base.encode16(case: :lower),
+        functions: FluentCI.Plugin.Codegen.metadata(module.__fluentci_exports__(), docs)
+      }
+
+      File.write!(
+        Path.join(Path.dirname(output), "fluentci.metadata.json"),
+        JSON.encode!(metadata)
+      )
+
+      Mix.shell().info("Built #{output}")
+    end
+  end
+
+  defp build_component(module, docs, options) do
+    directory = Path.expand(Path.join([".fluentci", "components", Atom.to_string(module)]))
+    File.mkdir_p!(Path.join(directory, "src"))
+
+    File.write!(
+      Path.join(directory, "src/jobs.rs"),
+      FluentCI.Plugin.Component.source(module.__fluentci_exports__(), docs)
+    )
+
+    File.write!(
+      Path.join(directory, "src/lib.rs"),
+      "mod jobs;\ninclude!(concat!(env!(\"OUT_DIR\"), \"/component.rs\"));\n"
+    )
+
+    inspection = Path.expand(".sdk/inspection/rust")
+    host = Path.expand(".sdk/wit/runtime.wit")
+
+    File.write!(
+      Path.join(directory, "build.rs"),
+      "fn main() { fluentci_inspection::generate_component(std::path::Path::new(&std::env::var(\"CARGO_MANIFEST_DIR\").unwrap()),std::path::Path::new(&std::env::var(\"OUT_DIR\").unwrap()),include_str!(#{inspect(host)})).unwrap(); }\n"
+    )
+
+    File.write!(Path.join(directory, "Cargo.toml"), """
     [package]
-    name = "fluentci_elixir_plugin"
+    name = "fluentci_elixir_component"
     version = "0.1.0"
     edition = "2021"
-    publish = false
     [lib]
     crate-type = ["cdylib"]
     [dependencies]
-    extism-pdk = "=1.4.1"
-    serde_json = "1.0"
-    #{dependency}
+    wit-bindgen = "=0.57.1"
+    serde_json = "1"
+    [build-dependencies]
+    fluentci-inspection = { path = #{inspect(inspection)} }
     [workspace]
-    """
+    """)
 
-    manifest_path = Path.join(directory, "Cargo.toml")
-    changed = File.read(manifest_path) != {:ok, manifest}
-    File.write!(manifest_path, manifest)
+    manifest = Path.join(directory, "Cargo.toml")
     environment = [{"CARGO_TARGET_DIR", Path.join(directory, "target")}]
-
-    if changed or not File.exists?(Path.join(directory, "Cargo.lock")) do
-      command!(["generate-lockfile", "--manifest-path", manifest_path], environment)
-    end
+    command!(["generate-lockfile", "--manifest-path", manifest], environment)
 
     command!(
       [
@@ -66,27 +151,22 @@ defmodule Mix.Tasks.Fluentci.Plugin.Build do
         "--release",
         "--locked",
         "--target",
-        "wasm32-unknown-unknown",
+        "wasm32-wasip2",
         "--manifest-path",
-        manifest_path
+        manifest
       ],
       environment
     )
 
-    artifact =
-      Path.join(directory, "target/wasm32-unknown-unknown/release/fluentci_elixir_plugin.wasm")
-
     output = Path.expand(options[:output] || "dist/plugin.wasm")
     File.mkdir_p!(Path.dirname(output))
-    File.cp!(artifact, output)
 
-    metadata = %{
-      sha256: :crypto.hash(:sha256, File.read!(output)) |> Base.encode16(case: :lower),
-      functions: FluentCI.Plugin.Codegen.metadata(module.__fluentci_exports__(), docs)
-    }
+    File.cp!(
+      Path.join(directory, "target/wasm32-wasip2/release/fluentci_elixir_component.wasm"),
+      output
+    )
 
-    File.write!(Path.join(Path.dirname(output), "fluentci.metadata.json"), JSON.encode!(metadata))
-    Mix.shell().info("Built #{output}")
+    Mix.shell().info("Built component #{output}")
   end
 
   defp command!(arguments, environment) do

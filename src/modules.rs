@@ -1,7 +1,7 @@
 //! Declared Wasm modules, Cargo artifact resolution, and export discovery.
 
 use crate::{
-    config::{Config, Module, Sdk},
+    config::{Config, Module, ModuleRuntime, Sdk},
     process, tools,
     workspace::Workspace,
 };
@@ -13,8 +13,6 @@ use std::{
 };
 use tokio::process::Command;
 use wasmparser::{ExternalKind, Parser, Payload};
-
-const WASM_TARGET: &str = "wasm32-unknown-unknown";
 
 #[derive(Debug)]
 pub struct LocalModule {
@@ -148,7 +146,7 @@ impl LocalModule {
                     .context("Module has no cdylib target")?;
                 metadata
                     .target_directory
-                    .join(WASM_TARGET)
+                    .join(self.definition.runtime.target())
                     .join("release")
                     .join(format!("{}.wasm", target.name.replace('-', "_")))
             }
@@ -178,6 +176,13 @@ impl LocalModule {
 
     pub async fn prepare(&self) -> Result<PathBuf> {
         let artifact = self.prepare_artifact().await?;
+        if self.definition.runtime == ModuleRuntime::Component {
+            anyhow::ensure!(
+                Parser::is_component(&tokio::fs::read(&artifact).await?),
+                "Module {:?} declares runtime = component but its artifact is a core Wasm module",
+                self.name
+            );
+        }
         let declared = if !self.definition.functions.is_empty() {
             self.definition.functions.clone()
         } else if let ModuleSource::Path(source) = &self.source {
@@ -245,7 +250,7 @@ impl LocalModule {
             "Module {:?} must point to a .wasm file, Rust crate directory, or Cargo.toml",
             self.name
         );
-        build(&manifest)
+        build_with_runtime(&manifest, self.definition.runtime)
             .await
             .with_context(|| format!("Building module {:?}", self.name))
     }
@@ -273,7 +278,12 @@ impl LocalModule {
                 | Sdk::Gleam
                 | Sdk::Typescript
                 | Sdk::Rescript => {
-                    tools::require_sdk(self.definition.sdk, source, true)?;
+                    tools::require_sdk_runtime(
+                        self.definition.sdk,
+                        source,
+                        true,
+                        self.definition.runtime,
+                    )?;
                     if !source.join("node_modules").is_dir() {
                         let install = if source.join("package-lock.json").is_file() {
                             "ci"
@@ -282,7 +292,12 @@ impl LocalModule {
                         };
                         process::execute_build("npm", [install], source).await?;
                     }
-                    tools::require_sdk(self.definition.sdk, source, false)?;
+                    tools::require_sdk_runtime(
+                        self.definition.sdk,
+                        source,
+                        false,
+                        self.definition.runtime,
+                    )?;
                     process::execute_build("npm", ["run", "build"], source).await?;
                 }
                 Sdk::Elixir => {
@@ -292,14 +307,20 @@ impl LocalModule {
                         .entry
                         .as_deref()
                         .context("Elixir SDK requires an entry module")?;
-                    process::execute_build("rustup", ["target", "add", WASM_TARGET], source)
-                        .await?;
+                    process::execute_build(
+                        "rustup",
+                        ["target", "add", self.definition.runtime.target()],
+                        source,
+                    )
+                    .await?;
                     process::execute_build("mix", ["deps.get"], source).await?;
                     process::execute_build(
                         "mix",
                         [
                             "fluentci.plugin.build",
                             entry,
+                            "--runtime",
+                            self.definition.runtime.name(),
                             "--output",
                             &artifact.to_string_lossy(),
                         ],
@@ -308,7 +329,33 @@ impl LocalModule {
                     .await?;
                 }
                 Sdk::Python => {
-                    tools::require_sdk(Sdk::Python, source, false)?;
+                    tools::require_sdk_runtime(
+                        Sdk::Python,
+                        source,
+                        false,
+                        self.definition.runtime,
+                    )?;
+                    if self.definition.runtime == ModuleRuntime::Component {
+                        process::execute_build(
+                            "uv",
+                            [
+                                "run",
+                                "build.py",
+                                "--source",
+                                self.definition.entry.as_deref().unwrap_or("plugin.py"),
+                                "--output",
+                                &artifact.to_string_lossy(),
+                            ],
+                            source,
+                        )
+                        .await?;
+                        anyhow::ensure!(
+                            artifact.is_file(),
+                            "Component build did not produce {}",
+                            artifact.display()
+                        );
+                        return Ok(artifact.canonicalize()?);
+                    }
                     let entry = self.definition.entry.as_deref().unwrap_or("plugin.py");
                     process::execute_build(
                         "uv",
@@ -370,6 +417,7 @@ pub fn discover(workspace: &Workspace) -> Result<Vec<LocalModule>> {
             name: ".".into(),
             definition: Module {
                 name: ".".into(),
+                runtime: ModuleRuntime::default(),
                 package: None,
                 git: None,
                 rev: None,
@@ -424,10 +472,28 @@ struct CargoTarget {
 }
 
 pub async fn build(manifest: &Path) -> Result<PathBuf> {
+    build_with_runtime(manifest, ModuleRuntime::default()).await
+}
+
+async fn build_with_runtime(manifest: &Path, runtime: ModuleRuntime) -> Result<PathBuf> {
     let manifest = manifest.canonicalize()?;
     let directory = manifest
         .parent()
         .context("Cargo manifest has no parent directory")?;
+    let crate_config: toml::Value = toml::from_str(&std::fs::read_to_string(&manifest)?)?;
+    let runtime = if crate_config
+        .get("package")
+        .and_then(|value| value.get("metadata"))
+        .and_then(|value| value.get("fluentci"))
+        .and_then(|value| value.get("runtime"))
+        .and_then(toml::Value::as_str)
+        == Some("component")
+    {
+        ModuleRuntime::Component
+    } else {
+        runtime
+    };
+    let target_triple = runtime.target();
     tools::require_sdk(Sdk::Rust, directory, false)?;
     let output = Command::new("cargo")
         .args([
@@ -458,14 +524,14 @@ pub async fn build(manifest: &Path) -> Result<PathBuf> {
         .iter()
         .find(|target| target.crate_types.iter().any(|kind| kind == "cdylib"))
         .context("Module must declare [lib] crate-type = [\"cdylib\"]")?;
-    process::execute_build("rustup", ["target", "add", WASM_TARGET], directory).await?;
+    process::execute_build("rustup", ["target", "add", target_triple], directory).await?;
     let mut command = Command::new("cargo");
     command
         .args([
             "build",
             "--release",
             "--target",
-            WASM_TARGET,
+            target_triple,
             "--manifest-path",
         ])
         .arg(&manifest)
@@ -474,7 +540,7 @@ pub async fn build(manifest: &Path) -> Result<PathBuf> {
     process::run_build(&mut command).await?;
     let artifact = metadata
         .target_directory
-        .join(WASM_TARGET)
+        .join(target_triple)
         .join("release")
         .join(format!("{}.wasm", target.name.replace('-', "_")));
     anyhow::ensure!(
@@ -486,6 +552,9 @@ pub async fn build(manifest: &Path) -> Result<PathBuf> {
 }
 
 pub fn functions(bytes: &[u8]) -> Result<Vec<String>> {
+    if fluentci_engine::components::is_component(bytes) {
+        return fluentci_engine::cmd::metadata::functions(bytes);
+    }
     let mut functions = Vec::new();
     for payload in Parser::new(0).parse_all(bytes) {
         if let Payload::ExportSection(exports) = payload? {
@@ -582,6 +651,7 @@ pub async fn add(
     path: Option<&Path>,
     url: Option<&str>,
     entry: Option<&str>,
+    runtime: ModuleRuntime,
 ) -> Result<()> {
     crate::config::validate_module_name(name)?;
     let workspace = Workspace::current()?;
@@ -613,6 +683,7 @@ pub async fn add(
     }
     let definition = Module {
         name: name.into(),
+        runtime,
         package: None,
         git: None,
         rev: None,
@@ -648,6 +719,9 @@ pub async fn add(
         table["url"] = toml_edit::value(url);
     }
     table["sdk"] = toml_edit::value(sdk.name());
+    if runtime == ModuleRuntime::Component {
+        table["runtime"] = toml_edit::value(runtime.name());
+    }
     if let Some(entry) = &definition.entry {
         table["entry"] = toml_edit::value(entry);
     }
@@ -681,7 +755,7 @@ pub async fn add(
                 .parent()
                 .context("Module has no parent directory")?,
         )?;
-        crate::scaffold::write(temporary.path(), name, sdk).await?;
+        crate::scaffold::write_with_runtime(temporary.path(), name, sdk, runtime).await?;
         tokio::fs::rename(temporary.path(), &destination).await?;
     }
     anyhow::ensure!(

@@ -71,7 +71,8 @@
                         (= '-> (nth annotation (- (count annotation) 2)))
                         (= (count parameters) (- (count annotation) 2)))
            (throw (ex-info "Exports need a single typed defn signature validated by Typed Clojure" {:function target})))
-         (let [metadata (cond-> {:name (name export) :returnType (pr-str (last annotation))}
+         (let [metadata (cond-> {:name (name export) :returnType (pr-str (last annotation))
+                                :componentReturnType (if (nil? (last annotation)) "unit" (try (wire (last annotation)) (catch clojure.lang.ExceptionInfo _ nil)))}
                           description (assoc :description description))]
            [(name export)
             (case (count parameters)

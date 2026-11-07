@@ -70,7 +70,8 @@
         "inputFormat": {
           "enum": [
             "text",
-            "json"
+            "json",
+            "wit"
           ],
           "default": "text"
         },

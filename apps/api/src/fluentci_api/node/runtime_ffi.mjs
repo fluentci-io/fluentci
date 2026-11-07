@@ -96,8 +96,19 @@ export async function upload(server, request) {
     chunks.push(Buffer.from(body));
   }
   const bytes = Buffer.concat(chunks);
-  if (!bytes.length || bytes.length > MAX_WASM_BYTES || !WebAssembly.validate(bytes))
+  if (!bytes.length || bytes.length > MAX_WASM_BYTES)
     throw new InvalidRequestError('Upload a valid Wasm module (maximum 64 MiB)', 'InvalidWasm');
+  if (bytes.subarray(0, 8).equals(Buffer.from([0, 97, 115, 109, 13, 0, 1, 0]))) {
+    try {
+      // Decode and check the component's type structure without instantiating it.
+      const { componentWit } = await import('@bytecodealliance/jco');
+      await componentWit(bytes);
+    } catch {
+      throw new InvalidRequestError('Upload a valid WebAssembly component', 'InvalidWasm');
+    }
+  } else if (!WebAssembly.validate(bytes)) {
+    throw new InvalidRequestError('Upload a valid Wasm module (maximum 64 MiB)', 'InvalidWasm');
+  }
   const author = request.auth.credentials.did;
   const digest = createHash('sha256').update(bytes).digest('hex');
   const { name, version } = request.params;

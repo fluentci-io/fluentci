@@ -9,6 +9,7 @@ import { inspectRescript } from "./adapters/rescript.mjs";
 import { inspectClojurescript } from "./adapters/clojurescript.mjs";
 import { publicMetadata } from "./common.mjs";
 import { wrapperSource } from "./wrappers.mjs";
+import { buildComponent } from "./components.mjs";
 import { embedInspection } from "./wasm.mjs";
 
 export function command(program, args, cwd) {
@@ -20,6 +21,7 @@ export function command(program, args, cwd) {
 
 export async function buildPlugin({
   sdk,
+  runtime = "extism",
   root = process.cwd(),
   entry = sdk === "typescript" ? "entry.ts" : "entry.mjs",
   output = "dist/plugin.wasm",
@@ -27,6 +29,8 @@ export async function buildPlugin({
   gleamInterface = "dist/gleam-interface.json",
   clojurescriptInterface = "dist/clojurescript-interface.json",
 }) {
+  if (!["extism", "component"].includes(runtime))
+    throw Error(`Unknown runtime ${runtime}`);
   root = resolve(root);
   entry = resolve(root, entry);
   const artifact = resolve(root, output);
@@ -49,20 +53,37 @@ export async function buildPlugin({
   if (!names.length || names.some((name) => name === "default"))
     throw Error("Expose named module functions from the entrypoint");
   let inspected;
-  if (sdk === "typescript") inspected = inspectTypescript(entry, root, names);
+  if (sdk === "typescript")
+    inspected = inspectTypescript(entry, root, names, runtime === "component");
   else if (sdk === "purescript")
-    inspected = inspectPurescript(entry, root, names);
+    inspected = inspectPurescript(entry, root, names, runtime === "component");
   else if (sdk === "gleam")
-    inspected = inspectGleam(entry, root, names, resolve(root, gleamInterface));
-  else if (sdk === "rescript") inspected = inspectRescript(entry, root, names);
+    inspected = inspectGleam(
+      entry,
+      root,
+      names,
+      resolve(root, gleamInterface),
+      runtime === "component",
+    );
+  else if (sdk === "rescript")
+    inspected = inspectRescript(
+      entry,
+      root,
+      names,
+      undefined,
+      runtime === "component",
+    );
   else if (sdk === "clojurescript")
     inspected = inspectClojurescript(
       entry,
       root,
       names,
       resolve(root, clojurescriptInterface),
+      runtime === "component",
     );
   else throw Error(`No compiler inspection adapter for ${sdk}`);
+  if (runtime === "component")
+    return buildComponent({ root, artifact, functions: inspected, sdk });
   const generated = join(directory, ".fluentci-entry.mjs");
   await writeFile(generated, wrapperSource(entry, inspected));
   const javascript = join(directory, "plugin.js");

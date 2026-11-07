@@ -83,7 +83,17 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
             standalone,
             wasm: _,
             sdk,
-        }) => init::execute(name.as_deref(), template.as_deref(), standalone, sdk).await,
+            runtime,
+        }) => {
+            init::execute(
+                name.as_deref(),
+                template.as_deref(),
+                standalone,
+                sdk,
+                runtime,
+            )
+            .await
+        }
         Some(Command::Search { query, limit }) => search::execute(&query, limit).await,
         Some(Command::Modules {
             command,

@@ -1,4 +1,4 @@
-use crate::config::Sdk;
+use crate::config::{ModuleRuntime, Sdk};
 use clap::{
     Args, Parser, Subcommand,
     builder::{Styles, styling::RgbColor},
@@ -137,6 +137,9 @@ pub enum Command {
         /// SDK used by the generated module
         #[arg(long, value_enum, default_value = "rust")]
         sdk: Sdk,
+        /// Wasm ABI used by the generated module
+        #[arg(long, value_enum, default_value = "extism")]
+        runtime: ModuleRuntime,
     },
     /// Search for reusable pipelines in the registry
     Search {
@@ -352,6 +355,9 @@ pub enum ModuleCommand {
         /// SDK used by the module
         #[arg(long, value_enum, default_value = "rust")]
         sdk: Sdk,
+        /// Wasm ABI used by the module (supported by every SDK)
+        #[arg(long, value_enum, default_value = "extism")]
+        runtime: ModuleRuntime,
         /// Register an existing module instead of generating one
         #[arg(long, conflicts_with = "url")]
         path: Option<PathBuf>,

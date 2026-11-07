@@ -10,4 +10,8 @@ serde_json = "1"
 syn = { version = "2", features = ["full", "extra-traits"] }
 quote = "1"
 
+[dev-dependencies]
+tempfile = "3"
+wit-parser = "=0.258.3"
+
 [workspace]

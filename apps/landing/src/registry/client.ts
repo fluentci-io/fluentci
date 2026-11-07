@@ -9,7 +9,7 @@ export interface PluginFunction {
     description?: string;
     required?: boolean;
   }[];
-  inputFormat?: "text" | "json";
+  inputFormat?: "text" | "json" | "wit";
   returnType?: string;
 }
 

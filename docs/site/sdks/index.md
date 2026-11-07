@@ -69,3 +69,9 @@ Custom toolchains can register a contract in `fluentci.metadata.json` or
 `fluentci.toml`, opt into `inputFormat: "json"`, and decode the typed guest input
 with this language’s JSON facilities. `fluentci modules embed` makes an artifact
 self-describing for direct file/URL calls and `--help`.
+
+## Native Wasm components
+
+Create a component module with `fluentci modules add tools --sdk typescript --runtime component`.
+All eight SDKs generate WIT and adapters from source signatures during the build.
+Extism remains the default. See [WebAssembly components](/guides/components/).

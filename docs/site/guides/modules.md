@@ -109,3 +109,9 @@ locked, including an omitted version or `@latest`. Commit the lockfile and use
 
 See the [field reference](/reference/configuration/) and
 [lockfile reference](/reference/lockfile/) for validation and frozen-mode behavior.
+
+## Native Wasm components
+
+Create a component module with `fluentci modules add tools --sdk typescript --runtime component`.
+All eight SDKs generate WIT and adapters from source signatures during the build.
+Extism remains the default. See [WebAssembly components](/guides/components/).

@@ -39,7 +39,13 @@ function name(bytes, state) {
 }
 
 export function annotate(bytes, functions) {
-  if (!bytes.subarray(0, 8).equals(Buffer.from([0, 97, 115, 109, 1, 0, 0, 0])))
+  const component = bytes
+    .subarray(0, 8)
+    .equals(Buffer.from([0, 97, 115, 109, 13, 0, 1, 0]));
+  if (
+    !component &&
+    !bytes.subarray(0, 8).equals(Buffer.from([0, 97, 115, 109, 1, 0, 0, 0]))
+  )
     throw Error("Expected a core Wasm module");
   const sections = [bytes.subarray(0, 8)];
   const exports = new Set();
@@ -53,7 +59,7 @@ export function annotate(bytes, functions) {
     const payload = bytes.subarray(state.offset, end);
     const reader = { offset: 0 };
     const replace = id === 0 && name(payload, reader) === "fluentci:metadata";
-    if (id === 7) {
+    if (!component && id === 7) {
       const count = uint(payload, reader);
       for (let i = 0; i < count; i++) {
         const value = name(payload, reader);
@@ -73,7 +79,7 @@ export function annotate(bytes, functions) {
   }
   const seen = new Set();
   for (const fn of functions) {
-    if (!exports.has(fn.name) || seen.has(fn.name))
+    if ((!component && !exports.has(fn.name)) || seen.has(fn.name))
       throw Error(`Inspection does not match Wasm export ${fn.name}`);
     seen.add(fn.name);
   }

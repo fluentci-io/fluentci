@@ -6,6 +6,9 @@ use serde_json::{json, Value};
 use std::{collections::BTreeMap, path::Path};
 use syn::{Attribute, Fields, FnArg, GenericArgument, Item, PathArguments, ReturnType, Type};
 
+mod component;
+pub use component::generate_component;
+
 fn docs(attributes: &[Attribute]) -> String {
     attributes
         .iter()

@@ -18,7 +18,7 @@ function constructor(type) {
     : undefined;
 }
 
-export function inspectPurescript(entry, root, exportNames) {
+export function inspectPurescript(entry, root, exportNames, component = false) {
   const bindings = sourceBindings(entry);
   const modules = new Map();
   let output;
@@ -159,8 +159,18 @@ export function inspectPurescript(entry, root, exportNames) {
     if (!(head?.module === "Prim" && head.name === "Function"))
       return {
         ...fn,
-        returnType: show(signature),
-        invoke: { style: "legacy" },
+        returnType: show(resolve(signature)),
+        ...(component ? { args: [] } : {}),
+        invoke: component
+          ? {
+              module: binding.module,
+              export: binding.export,
+              style: "purescript",
+              effect: head?.module === "Effect",
+              fields: [],
+              noArgumentValue: true,
+            }
+          : { style: "legacy" },
       };
     const argument = application(resolve(app.parameters[0]));
     const record = constructor(argument.head);
@@ -188,8 +198,9 @@ export function inspectPurescript(entry, root, exportNames) {
     return {
       ...fn,
       args: fields.map(({ optional, ...arg }) => arg),
-      returnType: show(app.parameters[1]),
+      returnType: show(resolve(app.parameters[1])),
       invoke: {
+        hasRecordArgument: true,
         module: binding.module,
         export: binding.export,
         style: "purescript",

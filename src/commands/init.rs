@@ -1,6 +1,6 @@
 use crate::{
     archive,
-    config::{self, Commands, Config, Module, Sdk, Step},
+    config::{self, Commands, Config, Module, ModuleRuntime, Sdk, Step},
     registry, scaffold,
     workspace::Workspace,
 };
@@ -12,6 +12,7 @@ pub(super) async fn execute(
     template: Option<&str>,
     standalone: bool,
     sdk: Sdk,
+    runtime: ModuleRuntime,
 ) -> Result<()> {
     let workspace = Workspace::current()?;
     let root = if standalone {
@@ -76,7 +77,7 @@ pub(super) async fn execute(
         }
         copy_tree(&source, &destination)?;
     } else {
-        scaffold::write(&destination, name, sdk).await?;
+        scaffold::write_with_runtime(&destination, name, sdk, runtime).await?;
     }
     let path = if standalone {
         std::path::PathBuf::from(".")
@@ -88,6 +89,7 @@ pub(super) async fn execute(
         package: None,
         modules: vec![Module {
             name: name.into(),
+            runtime,
             package: None,
             git: None,
             rev: None,

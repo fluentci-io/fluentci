@@ -25,6 +25,8 @@ pub struct Config {
 #[serde(deny_unknown_fields)]
 pub struct Module {
     pub name: String,
+    #[serde(default, skip_serializing_if = "ModuleRuntime::is_extism")]
+    pub runtime: ModuleRuntime,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub package: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -65,6 +67,34 @@ pub struct Module {
     pub artifact: Option<PathBuf>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub build: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize, ValueEnum)]
+#[serde(rename_all = "lowercase")]
+pub enum ModuleRuntime {
+    #[default]
+    Extism,
+    Component,
+}
+
+impl ModuleRuntime {
+    pub fn is_extism(&self) -> bool {
+        *self == Self::Extism
+    }
+
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Extism => "extism",
+            Self::Component => "component",
+        }
+    }
+
+    pub fn target(self) -> &'static str {
+        match self {
+            Self::Extism => "wasm32-unknown-unknown",
+            Self::Component => "wasm32-wasip2",
+        }
+    }
 }
 
 impl Module {

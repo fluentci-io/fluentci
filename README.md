@@ -811,3 +811,10 @@ Official registry modules published by `fluentci.io` can omit the handle:
 `@fluentci.io/sccache`. This also works in `[[modules]] package = "sccache"`,
 implicit `[[modules]] name = "sccache"`, and Studio workflow steps. Local module
 aliases retain precedence; other publishers require `@handle/name`.
+
+### Native WebAssembly components
+
+Create modules with `fluentci modules add tools --sdk purescript --runtime component`.
+All eight SDKs generate WIT and native guest adapters from their source contracts
+on every build. Extism remains available and is the default for existing modules.
+See [the component guide](https://docs.fluentci.io/guides/components/).

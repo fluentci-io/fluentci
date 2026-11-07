@@ -491,3 +491,9 @@ The root [`fluentci.toml`](fluentci.toml) declares PureScript Wasm CI modules un
 for Rust and provider end-to-end validation. GitHub Actions installs the CLI with
 `fluentci-io/setup-fluentci@next`; release modules are compiled once on Ubuntu and
 invoked as portable Wasm on the native Linux/macOS release runners.
+
+### Native WebAssembly components
+
+Core Extism modules and native WIT components run side by side. The engine detects
+the binary encoding and routes components directly to Wasmtime with WASI Preview 2.
+All eight SDKs support code-first WIT generation; see [the component guide](docs/components.md).
