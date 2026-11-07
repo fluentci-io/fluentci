@@ -119,6 +119,7 @@ defmodule Mix.Tasks.Fluentci.Plugin.Build do
     )
 
     inspection = Path.expand(".sdk/inspection/rust")
+    pdk = Path.expand(".sdk/inspection/component-rust")
     host = Path.expand(".sdk/wit/runtime.wit")
 
     File.write!(
@@ -136,6 +137,7 @@ defmodule Mix.Tasks.Fluentci.Plugin.Build do
     [dependencies]
     wit-bindgen = "=0.57.1"
     serde_json = "1"
+    fluentci-pdk = { path = #{inspect(pdk)} }
     [build-dependencies]
     fluentci-inspection = { path = #{inspect(inspection)} }
     [workspace]

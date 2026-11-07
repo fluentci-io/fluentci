@@ -74,6 +74,10 @@ jobs:
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends libgmp10 libtinfo6 libstdc++6
           npm install --global purescript@0.15.16 spago@1.0.5
+      - name: Check WIT host contract and generated SDKs
+        run: |
+          cargo run --release --locked --manifest-path tools/component-model/Cargo.toml -- . engine/schema/executor-model.json --check
+          python3 scripts/generate-component-host.py --check
       - name: Build Studio assets
         working-directory: webui
         run: bun install --frozen-lockfile --ignore-scripts && bun run build:web

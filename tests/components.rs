@@ -16,7 +16,15 @@ fn rust_component_starter_generates_wit_and_runs_without_extism() -> Result<()> 
         Sdk::Rust,
         ModuleRuntime::Component,
     ))?;
+    std::fs::write(
+        directory.path().join("src/jobs.rs"),
+        include_str!("../templates/components/parity/rust.rs"),
+    )?;
     let manifest = std::fs::read_to_string(directory.path().join("Cargo.toml"))?;
+    std::fs::write(
+        directory.path().join("Cargo.toml"),
+        manifest.replace("[dependencies]\n", "[dependencies]\nserde_json = \"1\"\n"),
+    )?;
     assert!(!manifest.contains("extism"));
     for args in [
         vec!["generate-lockfile"],
@@ -67,6 +75,7 @@ fn rust_component_starter_generates_wit_and_runs_without_extism() -> Result<()> 
         )?,
         "Hello, Tsiry!"
     );
+    assert_parity(&bytes)?;
     Ok(())
 }
 
@@ -92,6 +101,64 @@ fn language_component_starter_generates_wit_and_runs_without_extism() -> Result<
         sdk,
         ModuleRuntime::Component,
     ))?;
+    let (source, fixture) = match sdk {
+        Sdk::Typescript => (
+            "entry.ts",
+            include_str!("../templates/components/parity/typescript.ts"),
+        ),
+        Sdk::Purescript => (
+            "src/Main.purs",
+            include_str!("../templates/components/parity/purescript.purs"),
+        ),
+        Sdk::Gleam => (
+            "src/plugin.gleam",
+            include_str!("../templates/components/parity/gleam.gleam"),
+        ),
+        Sdk::Rescript => (
+            "src/Greeting.res",
+            include_str!("../templates/components/parity/rescript.res"),
+        ),
+        Sdk::Clojurescript => (
+            "src/main/plugin.cljc",
+            include_str!("../templates/components/parity/clojurescript.cljc"),
+        ),
+        Sdk::Python => (
+            "plugin.py",
+            include_str!("../templates/components/parity/python.py"),
+        ),
+        Sdk::Elixir => (
+            "lib/main.ex",
+            include_str!("../templates/components/parity/elixir.ex"),
+        ),
+        _ => unreachable!(),
+    };
+    std::fs::write(directory.path().join(source), fixture)?;
+    match sdk {
+        Sdk::Purescript | Sdk::Gleam | Sdk::Rescript => {
+            let entry = directory.path().join("entry.mjs");
+            std::fs::write(
+                &entry,
+                std::fs::read_to_string(&entry)?.replace("{ hello }", "{ hello, parity }"),
+            )?;
+        }
+        Sdk::Clojurescript => {
+            let entry = directory.path().join("entry.mjs");
+            let source = std::fs::read_to_string(&entry)?;
+            std::fs::write(
+                entry,
+                format!("{source}\nexport function parity() {{return plugin.parity();}}\n"),
+            )?;
+            let entry = directory.path().join("src/main/entry.cljs");
+            std::fs::write(
+                &entry,
+                std::fs::read_to_string(&entry)?.replace(
+                    ":hello plugin/hello",
+                    ":parity plugin/parity :hello plugin/hello",
+                ),
+            )?;
+        }
+        _ => {}
+    }
     let commands = match sdk {
         Sdk::Python => vec![("uv", vec!["run", "build.py"])],
         Sdk::Elixir => vec![
@@ -175,6 +242,7 @@ fn language_component_starter_generates_wit_and_runs_without_extism() -> Result<
             "Tsiry"
         );
     }
+    assert_parity(&bytes)?;
     Ok(())
 }
 
@@ -191,5 +259,24 @@ fn component_annotations_preserve_nested_core_sections() -> Result<()> {
             .any(|window| window == b"nested metadata")
     );
     assert_eq!(plugin_metadata::embed(&annotated, vec![])?, annotated);
+    Ok(())
+}
+
+fn assert_parity(bytes: &[u8]) -> Result<()> {
+    let directory = tempfile::tempdir()?;
+    let context = components::State::new(Default::default());
+    context
+        .lock()
+        .unwrap()
+        .graph
+        .lock()
+        .unwrap()
+        .environment
+        .insert(
+            "FLUENTCI_COMPONENT_RUN_DIR".into(),
+            directory.path().to_string_lossy().into_owned(),
+        );
+    let result = components::call_with_context(bytes, "parity", &[], Default::default(), context)?;
+    assert_eq!(result.trim_end(), "capability-parity");
     Ok(())
 }

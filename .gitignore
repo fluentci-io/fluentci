@@ -36,3 +36,7 @@ __pycache__/
 
 # Workflow file writer guard
 .fluentci/workflows/.lock
+
+# Standalone component SDK and model inspection build outputs
+/tools/component-model/target/
+/templates/inspection/component-rust/target/

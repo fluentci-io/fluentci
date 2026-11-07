@@ -3,7 +3,6 @@
 use anyhow::{bail, ensure, Context, Result};
 use fluentci_executor::Cancellation;
 use std::{
-    path::PathBuf,
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -21,9 +20,11 @@ use wasmtime_wasi::FsPerms;
 use wasmtime_wasi::{DirPerms, FilePerms};
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
+mod host_api;
 pub mod interface;
 mod values;
 
+pub use fluentci_common::host::State;
 pub use interface::{Argument, Function, Surface};
 
 /// Recognize the binary component encoding before interpreting any nested modules.
@@ -34,8 +35,7 @@ pub fn is_component(bytes: &[u8]) -> bool {
 struct Host {
     wasi: WasiCtx,
     table: ResourceTable,
-    cancellation: Cancellation,
-    failure: Option<fluentci_executor::diagnostics::ExecutionFailure>,
+    context: fluentci_common::host::Context,
 }
 
 impl WasiView for Host {
@@ -49,22 +49,52 @@ impl WasiView for Host {
 
 impl Host {
     fn execute(&mut self, plan: &str, directory: &str) -> Result<String> {
-        ensure!(!directory.is_empty(), "run-dir must name a fresh directory");
-        let base = std::env::current_dir()?;
-        let mut plan: fluentci_executor::Plan = serde_json::from_str(plan)?;
-        plan.resolve_paths(&base).map_err(anyhow::Error::msg)?;
-        let directory = PathBuf::from(directory);
-        let directory = if directory.is_relative() {
-            base.join(directory)
-        } else {
-            directory
-        };
-        let report = fluentci_core::execute_plan(&plan, &directory, &self.cancellation)?;
-        if self.failure.is_none() {
-            self.failure = report.failure();
-        }
-        Ok(serde_json::to_string(&report)?)
+        fluentci_common::host::execute_plan(&self.context,serde_json::json!({"plan":serde_json::from_str::<serde_json::Value>(plan)?,"run_dir":directory}).to_string())
     }
+
+    fn failure(&self) -> Option<fluentci_executor::diagnostics::ExecutionFailure> {
+        self.context
+            .lock()
+            .unwrap()
+            .execution_failure
+            .lock()
+            .unwrap()
+            .clone()
+    }
+}
+
+fn nested(
+    context: &fluentci_common::host::Context,
+    module: fluentci_types::Module,
+) -> Result<String> {
+    let bytes = if module.url.starts_with("https://") || module.url.starts_with("http://") {
+        let file = tempfile::NamedTempFile::new()?;
+        fluentci_ext::bootstrap::download(&module.url, file.path())?;
+        std::fs::read(file.path())?
+    } else {
+        std::fs::read(&module.url)?
+    };
+    ensure!(
+        is_component(&bytes),
+        "Nested core Wasm requires the dual-runtime host dispatcher"
+    );
+    let words =
+        shlex::split(&module.args).context("Unclosed quote in nested component arguments")?;
+    let cancellation = context
+        .lock()
+        .unwrap()
+        .graph
+        .lock()
+        .unwrap()
+        .cancellation
+        .clone();
+    call_with_context(
+        &bytes,
+        &module.function,
+        &words,
+        cancellation,
+        context.clone(),
+    )
 }
 
 struct Interrupt {
@@ -108,6 +138,18 @@ pub fn call(
     words: &[String],
     cancellation: Cancellation,
 ) -> Result<String> {
+    let context = fluentci_common::host::State::new(cancellation.clone());
+    context.lock().unwrap().caller = Some(nested);
+    call_with_context(bytes, name, words, cancellation, context)
+}
+
+pub fn call_with_context(
+    bytes: &[u8],
+    name: &str,
+    words: &[String],
+    cancellation: Cancellation,
+    context: fluentci_common::host::Context,
+) -> Result<String> {
     ensure!(
         !cancellation.is_cancelled(),
         "component execution was cancelled"
@@ -127,10 +169,24 @@ pub fn call(
     );
     let mut linker = Linker::new(&engine);
     wasmtime_wasi::p2::add_to_linker_sync(&mut linker)?;
+    host_api::register(&mut linker, &surface.resolve)?;
     let mut api = linker.instance("fluentci:runtime/host@0.1.0")?;
-    api.func_wrap("get-env", |_, (name,): (String,)| {
-        Ok((std::env::var(name).ok(),))
-    })?;
+    api.func_wrap(
+        "get-env",
+        |store: wasmtime::StoreContextMut<'_, Host>, (name,): (String,)| {
+            Ok((store
+                .data()
+                .context
+                .lock()
+                .unwrap()
+                .graph
+                .lock()
+                .unwrap()
+                .environment
+                .get(&name)
+                .cloned(),))
+        },
+    )?;
     api.func_wrap("log", |_, (message,): (String,)| {
         println!("{message}");
         Ok(())
@@ -158,8 +214,7 @@ pub fn call(
     let host = Host {
         wasi: wasi.build(),
         table: ResourceTable::new(),
-        cancellation: cancellation.clone(),
-        failure: None,
+        context,
     };
     let mut store = Store::new(&engine, host);
     store.set_epoch_deadline(1);
@@ -192,7 +247,7 @@ pub fn call(
             !cancellation.is_cancelled(),
             "component execution was cancelled"
         );
-        if let Some(failure) = store.data().failure.clone() {
+        if let Some(failure) = store.data().failure() {
             return Err(anyhow::Error::new(failure).context(error));
         }
         return Err(anyhow::Error::from(error)).context("Calling WIT export");
@@ -205,7 +260,7 @@ pub fn call(
         !cancellation.is_cancelled(),
         "component execution was cancelled"
     );
-    if let Some(failure) = store.data().failure.clone() {
+    if let Some(failure) = store.data().failure() {
         bail!(failure);
     }
     output
@@ -302,6 +357,21 @@ mod tests {
         let result = call(&bytes, "spin", &[], cancellation);
         worker.join().unwrap();
         assert!(result.unwrap_err().to_string().contains("cancelled"));
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod sdk_parity_tests {
+    use super::*;
+
+    #[test]
+    #[ignore = "requires a compiled SDK component in FLUENTCI_COMPONENT_FIXTURE"]
+    fn sdk_component_uses_native_capabilities() -> Result<()> {
+        let path = std::env::var("FLUENTCI_COMPONENT_FIXTURE")?;
+        let bytes = std::fs::read(path)?;
+        let result = call(&bytes, "parity", &[], Cancellation::default())?;
+        assert!(result.contains("capability-parity"), "{result}");
         Ok(())
     }
 }

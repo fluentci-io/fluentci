@@ -1,0 +1,2561 @@
+{
+  "cache::CachePolicy": {
+    "module": "cache",
+    "name": "CachePolicy",
+    "serde": {
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "inputs",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "outputs",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "toolchain",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "String"
+          }
+        },
+        {
+          "name": "toolchain_files",
+          "serde": {
+            "default": true,
+            "skip_serializing_if": "Vec::is_empty"
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "relocatable",
+          "serde": {
+            "default": true,
+            "skip_serializing_if": "is_false"
+          },
+          "type": {
+            "arguments": [],
+            "path": "bool"
+          }
+        }
+      ]
+    }
+  },
+  "cache::CacheResult": {
+    "module": "cache",
+    "name": "CacheResult",
+    "serde": {
+      "default": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "outcome",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "String"
+          }
+        },
+        {
+          "name": "key",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "reason",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "String"
+          }
+        },
+        {
+          "name": "components",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              },
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "BTreeMap"
+          }
+        }
+      ]
+    }
+  },
+  "executor::Plan": {
+    "module": "executor",
+    "name": "Plan",
+    "serde": {
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "workspace",
+          "serde": {
+            "default": true,
+            "skip_serializing_if": "Option::is_none"
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "workspace::Workspace"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "version",
+          "serde": {
+            "default": "protocol_version"
+          },
+          "type": {
+            "arguments": [],
+            "path": "u32"
+          }
+        },
+        {
+          "name": "tasks",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "Task"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "jobs",
+          "serde": {
+            "default": "default_jobs"
+          },
+          "type": {
+            "arguments": [],
+            "path": "usize"
+          }
+        },
+        {
+          "name": "max_services",
+          "serde": {
+            "default": "default_services"
+          },
+          "type": {
+            "arguments": [],
+            "path": "usize"
+          }
+        },
+        {
+          "name": "fail_fast",
+          "serde": {
+            "default": "default_true"
+          },
+          "type": {
+            "arguments": [],
+            "path": "bool"
+          }
+        },
+        {
+          "name": "inherit_env",
+          "serde": {
+            "default": "default_true"
+          },
+          "type": {
+            "arguments": [],
+            "path": "bool"
+          }
+        },
+        {
+          "name": "cache_dir",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "resource_dir",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ],
+            "path": "Option"
+          }
+        }
+      ]
+    }
+  },
+  "executor::RunOutcome": {
+    "module": "executor",
+    "name": "RunOutcome",
+    "serde": {
+      "rename_all": "snake_case"
+    },
+    "shape": {
+      "variants": [
+        {
+          "name": "Succeeded",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Failed",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Cancelled",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        }
+      ]
+    }
+  },
+  "executor::RunResult": {
+    "module": "executor",
+    "name": "RunResult",
+    "serde": {},
+    "shape": {
+      "record": [
+        {
+          "name": "outcome",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "RunOutcome"
+          }
+        },
+        {
+          "name": "tasks",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "TaskResult"
+              }
+            ],
+            "path": "Vec"
+          }
+        }
+      ]
+    }
+  },
+  "executor::Status": {
+    "module": "executor",
+    "name": "Status",
+    "serde": {
+      "rename_all": "snake_case"
+    },
+    "shape": {
+      "variants": [
+        {
+          "name": "Pending",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Running",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Ready",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Stopping",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Succeeded",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Failed",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Skipped",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Cancelled",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "TimedOut",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        }
+      ]
+    }
+  },
+  "executor::Task": {
+    "module": "executor",
+    "name": "Task",
+    "serde": {
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "id",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "String"
+          }
+        },
+        {
+          "name": "needs",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "program",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [],
+            "path": "String"
+          }
+        },
+        {
+          "name": "args",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "cwd",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "PathBuf"
+          }
+        },
+        {
+          "name": "file_operation",
+          "serde": {
+            "default": true,
+            "skip_serializing_if": "Option::is_none"
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "files::Operation"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "primitive",
+          "serde": {
+            "default": true,
+            "skip_serializing_if": "Option::is_none"
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "remote::Operation"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "env_files",
+          "serde": {
+            "default": true,
+            "skip_serializing_if": "Vec::is_empty"
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "env",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              },
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "BTreeMap"
+          }
+        },
+        {
+          "name": "resources",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "shared_resources",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "package_install",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "packages::Install"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "package_environment",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "packages::Provider"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "resource_wait_timeout_ms",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "u64"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "timeout_ms",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "u64"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "cache",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "cache::CachePolicy"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "service",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "service::Service"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "policy",
+          "serde": {
+            "default": true,
+            "skip_serializing_if": "workflow::Policy::is_default"
+          },
+          "type": {
+            "arguments": [],
+            "path": "workflow::Policy"
+          }
+        }
+      ]
+    }
+  },
+  "executor::TaskResult": {
+    "module": "executor",
+    "name": "TaskResult",
+    "serde": {},
+    "shape": {
+      "record": [
+        {
+          "name": "id",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "String"
+          }
+        },
+        {
+          "name": "status",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "Status"
+          }
+        },
+        {
+          "name": "exit_code",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "i32"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "signal",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "i32"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "file_result",
+          "serde": {
+            "default": true,
+            "skip_serializing_if": "Option::is_none"
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "serde_json::Value"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "error",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "duration_ms",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "u128"
+          }
+        },
+        {
+          "name": "stdout",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "PathBuf"
+          }
+        },
+        {
+          "name": "stderr",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "PathBuf"
+          }
+        },
+        {
+          "name": "probe_logs",
+          "serde": {
+            "skip_serializing_if": "Option::is_none"
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "service::ProbeLogs"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "cache",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "cache::CacheResult"
+          }
+        },
+        {
+          "name": "wait_reason",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "attempts",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "workflow::Attempt"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "outputs",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              },
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "BTreeMap"
+          }
+        },
+        {
+          "name": "artifacts",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              },
+              {
+                "arguments": [],
+                "path": "workflow::Artifact"
+              }
+            ],
+            "path": "BTreeMap"
+          }
+        },
+        {
+          "name": "condition_skipped",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [],
+            "path": "bool"
+          }
+        },
+        {
+          "name": "allowed_failure",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [],
+            "path": "bool"
+          }
+        }
+      ]
+    }
+  },
+  "files::Operation": {
+    "module": "files",
+    "name": "Operation",
+    "serde": {
+      "deny_unknown_fields": true,
+      "rename_all": "snake_case",
+      "tag": "op"
+    },
+    "shape": {
+      "variants": [
+        {
+          "name": "ReadText",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "limit_bytes",
+                "serde": {
+                  "default": "read_limit"
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "u64"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "ReadBytes",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "limit_bytes",
+                "serde": {
+                  "default": "read_limit"
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "u64"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "WriteText",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "text",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              },
+              {
+                "name": "overwrite",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "bool"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "WriteBytes",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "bytes",
+                "serde": {},
+                "type": {
+                  "arguments": [
+                    {
+                      "arguments": [],
+                      "path": "u8"
+                    }
+                  ],
+                  "path": "Vec"
+                }
+              },
+              {
+                "name": "overwrite",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "bool"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "CopyFile",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "source",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "destination",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "overwrite",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "bool"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "CopyTree",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "source",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "destination",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "overwrite",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "bool"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Move",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "source",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "destination",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "overwrite",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "bool"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Mkdir",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "parents",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "bool"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Remove",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "recursive",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "bool"
+                }
+              },
+              {
+                "name": "missing_ok",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "bool"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Stat",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Exists",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "List",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Glob",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "pattern",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Hash",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Chmod",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "mode",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "u32"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Symlink",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "target",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              },
+              {
+                "name": "path",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "PathBuf"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "packages::Install": {
+    "module": "packages",
+    "name": "Install",
+    "serde": {
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "provider",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "Provider"
+          }
+        },
+        {
+          "name": "packages",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "Vec"
+          }
+        }
+      ]
+    }
+  },
+  "packages::MacPortsBackend": {
+    "module": "packages",
+    "name": "MacPortsBackend",
+    "serde": {
+      "rename_all": "snake_case"
+    },
+    "shape": {
+      "variants": [
+        {
+          "name": "Native",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Rust",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        }
+      ]
+    }
+  },
+  "packages::Manager": {
+    "module": "packages",
+    "name": "Manager",
+    "serde": {
+      "rename_all": "snake_case"
+    },
+    "shape": {
+      "variants": [
+        {
+          "name": "Homebrew",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Macports",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Freebsd",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Netbsd",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Openbsd",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        }
+      ]
+    }
+  },
+  "packages::Provider": {
+    "module": "packages",
+    "name": "Provider",
+    "serde": {
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "manager",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "Manager"
+          }
+        },
+        {
+          "name": "backend",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [],
+            "path": "MacPortsBackend"
+          }
+        },
+        {
+          "name": "executable",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ],
+            "path": "Option"
+          }
+        }
+      ]
+    }
+  },
+  "primitive::Action": {
+    "module": "primitive",
+    "name": "Action",
+    "serde": {
+      "rename_all": "snake_case"
+    },
+    "shape": {
+      "variants": [
+        {
+          "name": "Get",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Put",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "List",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Delete",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        }
+      ]
+    }
+  },
+  "primitive::Algorithm": {
+    "module": "primitive",
+    "name": "Algorithm",
+    "serde": {
+      "rename_all": "lowercase"
+    },
+    "shape": {
+      "variants": [
+        {
+          "name": "Sha256",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Sha512",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        }
+      ]
+    }
+  },
+  "primitive::Direction": {
+    "module": "primitive",
+    "name": "Direction",
+    "serde": {
+      "rename_all": "snake_case"
+    },
+    "shape": {
+      "variants": [
+        {
+          "name": "Upload",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Download",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        }
+      ]
+    }
+  },
+  "primitive::Input": {
+    "module": "primitive",
+    "name": "Input",
+    "serde": {
+      "content": "value",
+      "deny_unknown_fields": true,
+      "rename_all": "snake_case",
+      "tag": "source"
+    },
+    "shape": {
+      "variants": [
+        {
+          "name": "Text",
+          "serde": {},
+          "shape": {
+            "tuple": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ]
+          }
+        },
+        {
+          "name": "File",
+          "serde": {},
+          "shape": {
+            "tuple": [
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "primitive::Operation": {
+    "module": "primitive",
+    "name": "Operation",
+    "serde": {
+      "deny_unknown_fields": true,
+      "rename_all": "snake_case",
+      "tag": "kind"
+    },
+    "shape": {
+      "variants": [
+        {
+          "name": "Os",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Arch",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Digest",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "algorithm",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Algorithm"
+                }
+              },
+              {
+                "name": "input",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Input"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Ssh",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "connection",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Ssh"
+                }
+              },
+              {
+                "name": "command",
+                "serde": {},
+                "type": {
+                  "arguments": [
+                    {
+                      "arguments": [],
+                      "path": "String"
+                    }
+                  ],
+                  "path": "Vec"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Scp",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "connection",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Ssh"
+                }
+              },
+              {
+                "name": "direction",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Direction"
+                }
+              },
+              {
+                "name": "source",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              },
+              {
+                "name": "destination",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Sftp",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "connection",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Ssh"
+                }
+              },
+              {
+                "name": "direction",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Direction"
+                }
+              },
+              {
+                "name": "source",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              },
+              {
+                "name": "destination",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Rsync",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "connection",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Ssh"
+                }
+              },
+              {
+                "name": "direction",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Direction"
+                }
+              },
+              {
+                "name": "source",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              },
+              {
+                "name": "destination",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Ftp",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "url",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              },
+              {
+                "name": "action",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Action"
+                }
+              },
+              {
+                "name": "path",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [
+                    {
+                      "arguments": [],
+                      "path": "PathBuf"
+                    }
+                  ],
+                  "path": "Option"
+                }
+              },
+              {
+                "name": "username_env",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [
+                    {
+                      "arguments": [],
+                      "path": "String"
+                    }
+                  ],
+                  "path": "Option"
+                }
+              },
+              {
+                "name": "password_env",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [
+                    {
+                      "arguments": [],
+                      "path": "String"
+                    }
+                  ],
+                  "path": "Option"
+                }
+              },
+              {
+                "name": "install",
+                "serde": {
+                  "default": "install"
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "bool"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "Ftps",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "url",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              },
+              {
+                "name": "action",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Action"
+                }
+              },
+              {
+                "name": "path",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [
+                    {
+                      "arguments": [],
+                      "path": "PathBuf"
+                    }
+                  ],
+                  "path": "Option"
+                }
+              },
+              {
+                "name": "username_env",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [
+                    {
+                      "arguments": [],
+                      "path": "String"
+                    }
+                  ],
+                  "path": "Option"
+                }
+              },
+              {
+                "name": "password_env",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [
+                    {
+                      "arguments": [],
+                      "path": "String"
+                    }
+                  ],
+                  "path": "Option"
+                }
+              },
+              {
+                "name": "install",
+                "serde": {
+                  "default": "install"
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "bool"
+                }
+              }
+            ]
+          }
+        },
+        {
+          "name": "S3",
+          "serde": {},
+          "shape": {
+            "record": [
+              {
+                "name": "bucket",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              },
+              {
+                "name": "key",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "String"
+                }
+              },
+              {
+                "name": "action",
+                "serde": {},
+                "type": {
+                  "arguments": [],
+                  "path": "Action"
+                }
+              },
+              {
+                "name": "path",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [
+                    {
+                      "arguments": [],
+                      "path": "PathBuf"
+                    }
+                  ],
+                  "path": "Option"
+                }
+              },
+              {
+                "name": "endpoint",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [
+                    {
+                      "arguments": [],
+                      "path": "String"
+                    }
+                  ],
+                  "path": "Option"
+                }
+              },
+              {
+                "name": "region",
+                "serde": {
+                  "default": true
+                },
+                "type": {
+                  "arguments": [
+                    {
+                      "arguments": [],
+                      "path": "String"
+                    }
+                  ],
+                  "path": "Option"
+                }
+              },
+              {
+                "name": "install",
+                "serde": {
+                  "default": "install"
+                },
+                "type": {
+                  "arguments": [],
+                  "path": "bool"
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "primitive::Ssh": {
+    "module": "primitive",
+    "name": "Ssh",
+    "serde": {
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "host",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "String"
+          }
+        },
+        {
+          "name": "user",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "port",
+          "serde": {
+            "default": "port"
+          },
+          "type": {
+            "arguments": [],
+            "path": "u16"
+          }
+        },
+        {
+          "name": "identity",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "install",
+          "serde": {
+            "default": "install"
+          },
+          "type": {
+            "arguments": [],
+            "path": "bool"
+          }
+        }
+      ]
+    }
+  },
+  "service::Probe": {
+    "module": "service",
+    "name": "Probe",
+    "serde": {
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "program",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "String"
+          }
+        },
+        {
+          "name": "args",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "Vec"
+          }
+        },
+        {
+          "name": "interval_ms",
+          "serde": {
+            "default": "probe_interval"
+          },
+          "type": {
+            "arguments": [],
+            "path": "u64"
+          }
+        },
+        {
+          "name": "timeout_ms",
+          "serde": {
+            "default": "probe_timeout"
+          },
+          "type": {
+            "arguments": [],
+            "path": "u64"
+          }
+        }
+      ]
+    }
+  },
+  "service::ProbeLogs": {
+    "module": "service",
+    "name": "ProbeLogs",
+    "serde": {},
+    "shape": {
+      "record": [
+        {
+          "name": "stdout",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "PathBuf"
+          }
+        },
+        {
+          "name": "stderr",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "PathBuf"
+          }
+        }
+      ]
+    }
+  },
+  "service::Service": {
+    "module": "service",
+    "name": "Service",
+    "serde": {
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "readiness",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "Probe"
+          }
+        },
+        {
+          "name": "health",
+          "serde": {
+            "default": true,
+            "skip_serializing_if": "Option::is_none"
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "Probe"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "startup_timeout_ms",
+          "serde": {
+            "default": "startup_timeout"
+          },
+          "type": {
+            "arguments": [],
+            "path": "u64"
+          }
+        },
+        {
+          "name": "shutdown_timeout_ms",
+          "serde": {
+            "default": "shutdown_timeout"
+          },
+          "type": {
+            "arguments": [],
+            "path": "u64"
+          }
+        },
+        {
+          "name": "failure_threshold",
+          "serde": {
+            "default": "failure_threshold"
+          },
+          "type": {
+            "arguments": [],
+            "path": "usize"
+          }
+        }
+      ]
+    }
+  },
+  "workflow::Artifact": {
+    "module": "workflow",
+    "name": "Artifact",
+    "serde": {},
+    "shape": {
+      "record": [
+        {
+          "name": "path",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "PathBuf"
+          }
+        },
+        {
+          "name": "size",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "u64"
+          }
+        },
+        {
+          "name": "sha256",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "String"
+          }
+        }
+      ]
+    }
+  },
+  "workflow::Attempt": {
+    "module": "workflow",
+    "name": "Attempt",
+    "serde": {},
+    "shape": {
+      "record": [
+        {
+          "name": "number",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "usize"
+          }
+        },
+        {
+          "name": "status",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "Status"
+          }
+        },
+        {
+          "name": "exit_code",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "i32"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "duration_ms",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "u128"
+          }
+        },
+        {
+          "name": "error",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              }
+            ],
+            "path": "Option"
+          }
+        }
+      ]
+    }
+  },
+  "workflow::Condition": {
+    "module": "workflow",
+    "name": "Condition",
+    "serde": {
+      "rename_all": "snake_case"
+    },
+    "shape": {
+      "variants": [
+        {
+          "name": "Success",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Failure",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Always",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        },
+        {
+          "name": "Never",
+          "serde": {},
+          "shape": {
+            "unit": true
+          }
+        }
+      ]
+    }
+  },
+  "workflow::OutputRef": {
+    "module": "workflow",
+    "name": "OutputRef",
+    "serde": {
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "task",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "String"
+          }
+        },
+        {
+          "name": "name",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "String"
+          }
+        }
+      ]
+    }
+  },
+  "workflow::Policy": {
+    "module": "workflow",
+    "name": "Policy",
+    "serde": {
+      "default": true,
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "when",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "Condition"
+          }
+        },
+        {
+          "name": "retry",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "Retry"
+              }
+            ],
+            "path": "Option"
+          }
+        },
+        {
+          "name": "allow_failure",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "bool"
+          }
+        },
+        {
+          "name": "outputs",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              },
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ],
+            "path": "BTreeMap"
+          }
+        },
+        {
+          "name": "artifacts",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              },
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ],
+            "path": "BTreeMap"
+          }
+        },
+        {
+          "name": "bindings",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "String"
+              },
+              {
+                "arguments": [],
+                "path": "OutputRef"
+              }
+            ],
+            "path": "BTreeMap"
+          }
+        }
+      ]
+    }
+  },
+  "workflow::Retry": {
+    "module": "workflow",
+    "name": "Retry",
+    "serde": {
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "max_attempts",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "u32"
+          }
+        },
+        {
+          "name": "delay_ms",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "u64"
+          }
+        },
+        {
+          "name": "max_delay_ms",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "u64"
+          }
+        },
+        {
+          "name": "exit_codes",
+          "serde": {
+            "default": true
+          },
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "i32"
+              }
+            ],
+            "path": "Vec"
+          }
+        }
+      ]
+    }
+  },
+  "workspace::Workspace": {
+    "module": "workspace",
+    "name": "Workspace",
+    "serde": {
+      "deny_unknown_fields": true
+    },
+    "shape": {
+      "record": [
+        {
+          "name": "source",
+          "serde": {},
+          "type": {
+            "arguments": [],
+            "path": "PathBuf"
+          }
+        },
+        {
+          "name": "inputs",
+          "serde": {},
+          "type": {
+            "arguments": [
+              {
+                "arguments": [],
+                "path": "PathBuf"
+              }
+            ],
+            "path": "Vec"
+          }
+        }
+      ]
+    }
+  }
+}

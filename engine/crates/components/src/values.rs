@@ -115,7 +115,7 @@ fn payload(resolve: &Resolve, ty: Option<Type>, value: &Value) -> Result<Option<
     }
 }
 
-fn value_for(resolve: &Resolve, ty: Type, value: &Value) -> Result<Val> {
+pub(crate) fn value_for(resolve: &Resolve, ty: Type, value: &Value) -> Result<Val> {
     macro_rules! signed {
         ($kind:ident,$ty:ty) => {
             Val::$kind(
@@ -280,7 +280,7 @@ fn value_for(resolve: &Resolve, ty: Type, value: &Value) -> Result<Val> {
     })
 }
 
-fn json_value(value: &Val) -> Result<Value> {
+pub(crate) fn json_value(value: &Val) -> Result<Value> {
     Ok(match value {
         Val::Bool(value) => json!(value),
         Val::S8(value) => json!(value),

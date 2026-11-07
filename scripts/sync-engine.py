@@ -54,6 +54,10 @@ def main():
             mappings.append((root / "templates/sdk" / language / "build.mjs", sibling / "sdk" / language / "demo-plugin/build.mjs"))
         if language in {"typescript", "gleam", "rescript", "purescript", "clojurescript"}:
             mappings.append((root / "templates/inspection/examples/.npmrc", sibling / "sdk" / language / "demo-plugin/.npmrc"))
+    for name in ("host.json", "host-rust.json", "pdk-modules.json", "executor-model.json"):
+        mappings.append((root / "engine/schema" / name, sibling / "schema" / name))
+    mappings.append((root / "scripts/generate-component-host.py", sibling / "scripts/generate-component-host.py"))
+    mappings.append((root / "tools/component-model", sibling / "tools/component-model"))
     differing = []
     for language in ("typescript", "gleam", "rescript", "purescript", "clojurescript"):
         package_path = sibling / "sdk" / language / "demo-plugin/package.json"

@@ -1,0 +1,3646 @@
+{
+  "models": {
+    "cache-policy": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "inputs",
+          "wit": "inputs",
+          "type": {
+            "kind": "list",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "outputs",
+          "wit": "outputs",
+          "type": {
+            "kind": "list",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "toolchain",
+          "wit": "toolchain",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "toolchain_files",
+          "wit": "toolchain-files",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "list",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "relocatable",
+          "wit": "relocatable",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "cache-result": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "outcome",
+          "wit": "outcome",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "key",
+          "wit": "key",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "reason",
+          "wit": "reason",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "components",
+          "wit": "components",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "map",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "plan": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "workspace",
+          "wit": "workspace",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "workspace"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "version",
+          "wit": "version",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u32"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "tasks",
+          "wit": "tasks",
+          "type": {
+            "kind": "list",
+            "value": {
+              "kind": "ref",
+              "name": "task"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "jobs",
+          "wit": "jobs",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u64"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "max_services",
+          "wit": "max-services",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u64"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "fail_fast",
+          "wit": "fail-fast",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "inherit_env",
+          "wit": "inherit-env",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "cache_dir",
+          "wit": "cache-dir",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "resource_dir",
+          "wit": "resource-dir",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "run-outcome": {
+      "kind": "variant",
+      "cases": [
+        {
+          "name": "succeeded",
+          "wit": "succeeded"
+        },
+        {
+          "name": "failed",
+          "wit": "failed"
+        },
+        {
+          "name": "cancelled",
+          "wit": "cancelled"
+        }
+      ],
+      "tag": null,
+      "content": null
+    },
+    "run-result": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "outcome",
+          "wit": "outcome",
+          "type": {
+            "kind": "ref",
+            "name": "run-outcome"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "tasks",
+          "wit": "tasks",
+          "type": {
+            "kind": "list",
+            "value": {
+              "kind": "ref",
+              "name": "task-result"
+            }
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "task-status": {
+      "kind": "variant",
+      "cases": [
+        {
+          "name": "pending",
+          "wit": "pending"
+        },
+        {
+          "name": "running",
+          "wit": "running"
+        },
+        {
+          "name": "ready",
+          "wit": "ready"
+        },
+        {
+          "name": "stopping",
+          "wit": "stopping"
+        },
+        {
+          "name": "succeeded",
+          "wit": "succeeded"
+        },
+        {
+          "name": "failed",
+          "wit": "failed"
+        },
+        {
+          "name": "skipped",
+          "wit": "skipped"
+        },
+        {
+          "name": "cancelled",
+          "wit": "cancelled"
+        },
+        {
+          "name": "timed_out",
+          "wit": "timed-out"
+        }
+      ],
+      "tag": null,
+      "content": null
+    },
+    "task": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "needs",
+          "wit": "needs",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "list",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "program",
+          "wit": "program",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "args",
+          "wit": "args",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "list",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "cwd",
+          "wit": "cwd",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "file_operation",
+          "wit": "file-operation",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "file-operation"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "primitive",
+          "wit": "primitive",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "primitive-operation"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "env_files",
+          "wit": "env-files",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "list",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "env",
+          "wit": "env",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "map",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "resources",
+          "wit": "resources",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "list",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "shared_resources",
+          "wit": "shared-resources",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "list",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "package_install",
+          "wit": "package-install",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "package-install"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "package_environment",
+          "wit": "package-environment",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "list",
+              "value": {
+                "kind": "ref",
+                "name": "package-provider"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "resource_wait_timeout_ms",
+          "wit": "resource-wait-timeout-ms",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u64"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "timeout_ms",
+          "wit": "timeout-ms",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u64"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "cache",
+          "wit": "cache",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "cache-policy"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "service",
+          "wit": "service",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "service-config"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "policy",
+          "wit": "policy",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "workflow-policy"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "task-result": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "status",
+          "wit": "status",
+          "type": {
+            "kind": "ref",
+            "name": "task-status"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "exit_code",
+          "wit": "exit-code",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "s32"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "signal",
+          "wit": "signal",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "s32"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "file_result",
+          "wit": "file-result",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "json"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "error",
+          "wit": "error",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "duration_ms",
+          "wit": "duration-ms",
+          "type": {
+            "kind": "scalar",
+            "type": "u64"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "stdout",
+          "wit": "stdout",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "stderr",
+          "wit": "stderr",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "probe_logs",
+          "wit": "probe-logs",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "probe-logs"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "cache",
+          "wit": "cache",
+          "type": {
+            "kind": "ref",
+            "name": "cache-result"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "wait_reason",
+          "wit": "wait-reason",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "attempts",
+          "wit": "attempts",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "list",
+              "value": {
+                "kind": "ref",
+                "name": "attempt"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "outputs",
+          "wit": "outputs",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "map",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "artifacts",
+          "wit": "artifacts",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "map",
+              "value": {
+                "kind": "ref",
+                "name": "artifact"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "condition_skipped",
+          "wit": "condition-skipped",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "allowed_failure",
+          "wit": "allowed-failure",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "file-operation-read-text": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "limit_bytes",
+          "wit": "limit-bytes",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u64"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "file-operation-read-bytes": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "limit_bytes",
+          "wit": "limit-bytes",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u64"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "file-operation-write-text": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "text",
+          "wit": "text",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "overwrite",
+          "wit": "overwrite",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "file-operation-write-bytes": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "bytes",
+          "wit": "bytes",
+          "type": {
+            "kind": "list",
+            "value": {
+              "kind": "scalar",
+              "type": "u8"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "overwrite",
+          "wit": "overwrite",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "file-operation-copy-file": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "source",
+          "wit": "source",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "destination",
+          "wit": "destination",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "overwrite",
+          "wit": "overwrite",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "file-operation-copy-tree": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "source",
+          "wit": "source",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "destination",
+          "wit": "destination",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "overwrite",
+          "wit": "overwrite",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "file-operation-move": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "source",
+          "wit": "source",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "destination",
+          "wit": "destination",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "overwrite",
+          "wit": "overwrite",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "file-operation-mkdir": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "parents",
+          "wit": "parents",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "file-operation-remove": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "recursive",
+          "wit": "recursive",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "missing_ok",
+          "wit": "missing-ok",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "file-operation-stat": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "file-operation-exists": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "file-operation-list": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "file-operation-glob": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "pattern",
+          "wit": "pattern",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "file-operation-hash": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "file-operation-chmod": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "mode",
+          "wit": "mode",
+          "type": {
+            "kind": "scalar",
+            "type": "u32"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "file-operation-symlink": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "target",
+          "wit": "target",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "file-operation": {
+      "kind": "variant",
+      "cases": [
+        {
+          "name": "read_text",
+          "wit": "read-text",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-read-text"
+          }
+        },
+        {
+          "name": "read_bytes",
+          "wit": "read-bytes",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-read-bytes"
+          }
+        },
+        {
+          "name": "write_text",
+          "wit": "write-text",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-write-text"
+          }
+        },
+        {
+          "name": "write_bytes",
+          "wit": "write-bytes",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-write-bytes"
+          }
+        },
+        {
+          "name": "copy_file",
+          "wit": "copy-file",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-copy-file"
+          }
+        },
+        {
+          "name": "copy_tree",
+          "wit": "copy-tree",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-copy-tree"
+          }
+        },
+        {
+          "name": "move",
+          "wit": "move",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-move"
+          }
+        },
+        {
+          "name": "mkdir",
+          "wit": "mkdir",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-mkdir"
+          }
+        },
+        {
+          "name": "remove",
+          "wit": "remove",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-remove"
+          }
+        },
+        {
+          "name": "stat",
+          "wit": "stat",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-stat"
+          }
+        },
+        {
+          "name": "exists",
+          "wit": "exists",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-exists"
+          }
+        },
+        {
+          "name": "list",
+          "wit": "list",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-list"
+          }
+        },
+        {
+          "name": "glob",
+          "wit": "glob",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-glob"
+          }
+        },
+        {
+          "name": "hash",
+          "wit": "hash",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-hash"
+          }
+        },
+        {
+          "name": "chmod",
+          "wit": "chmod",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-chmod"
+          }
+        },
+        {
+          "name": "symlink",
+          "wit": "symlink",
+          "type": {
+            "kind": "ref",
+            "name": "file-operation-symlink"
+          }
+        }
+      ],
+      "tag": "op",
+      "content": null
+    },
+    "package-install": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "provider",
+          "wit": "provider",
+          "type": {
+            "kind": "ref",
+            "name": "package-provider"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "packages",
+          "wit": "packages",
+          "type": {
+            "kind": "list",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "mac-ports-backend": {
+      "kind": "variant",
+      "cases": [
+        {
+          "name": "native",
+          "wit": "native"
+        },
+        {
+          "name": "rust",
+          "wit": "rust"
+        }
+      ],
+      "tag": null,
+      "content": null
+    },
+    "package-manager": {
+      "kind": "variant",
+      "cases": [
+        {
+          "name": "homebrew",
+          "wit": "homebrew"
+        },
+        {
+          "name": "macports",
+          "wit": "macports"
+        },
+        {
+          "name": "freebsd",
+          "wit": "freebsd"
+        },
+        {
+          "name": "netbsd",
+          "wit": "netbsd"
+        },
+        {
+          "name": "openbsd",
+          "wit": "openbsd"
+        }
+      ],
+      "tag": null,
+      "content": null
+    },
+    "package-provider": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "manager",
+          "wit": "manager",
+          "type": {
+            "kind": "ref",
+            "name": "package-manager"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "backend",
+          "wit": "backend",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "mac-ports-backend"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "executable",
+          "wit": "executable",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "action": {
+      "kind": "variant",
+      "cases": [
+        {
+          "name": "get",
+          "wit": "get"
+        },
+        {
+          "name": "put",
+          "wit": "put"
+        },
+        {
+          "name": "list",
+          "wit": "list"
+        },
+        {
+          "name": "delete",
+          "wit": "delete"
+        }
+      ],
+      "tag": null,
+      "content": null
+    },
+    "algorithm": {
+      "kind": "variant",
+      "cases": [
+        {
+          "name": "sha256",
+          "wit": "sha256"
+        },
+        {
+          "name": "sha512",
+          "wit": "sha512"
+        }
+      ],
+      "tag": null,
+      "content": null
+    },
+    "direction": {
+      "kind": "variant",
+      "cases": [
+        {
+          "name": "upload",
+          "wit": "upload"
+        },
+        {
+          "name": "download",
+          "wit": "download"
+        }
+      ],
+      "tag": null,
+      "content": null
+    },
+    "digest-input": {
+      "kind": "variant",
+      "cases": [
+        {
+          "name": "text",
+          "wit": "text",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        },
+        {
+          "name": "file",
+          "wit": "file",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ],
+      "tag": "source",
+      "content": "value"
+    },
+    "primitive-operation-digest": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "algorithm",
+          "wit": "algorithm",
+          "type": {
+            "kind": "ref",
+            "name": "algorithm"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "input",
+          "wit": "input",
+          "type": {
+            "kind": "ref",
+            "name": "digest-input"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "primitive-operation-ssh": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "connection",
+          "wit": "connection",
+          "type": {
+            "kind": "ref",
+            "name": "ssh-connection"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "command",
+          "wit": "command",
+          "type": {
+            "kind": "list",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "primitive-operation-scp": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "connection",
+          "wit": "connection",
+          "type": {
+            "kind": "ref",
+            "name": "ssh-connection"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "direction",
+          "wit": "direction",
+          "type": {
+            "kind": "ref",
+            "name": "direction"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "source",
+          "wit": "source",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "destination",
+          "wit": "destination",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "primitive-operation-sftp": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "connection",
+          "wit": "connection",
+          "type": {
+            "kind": "ref",
+            "name": "ssh-connection"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "direction",
+          "wit": "direction",
+          "type": {
+            "kind": "ref",
+            "name": "direction"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "source",
+          "wit": "source",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "destination",
+          "wit": "destination",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "primitive-operation-rsync": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "connection",
+          "wit": "connection",
+          "type": {
+            "kind": "ref",
+            "name": "ssh-connection"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "direction",
+          "wit": "direction",
+          "type": {
+            "kind": "ref",
+            "name": "direction"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "source",
+          "wit": "source",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "destination",
+          "wit": "destination",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "primitive-operation-ftp": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "url",
+          "wit": "url",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "action",
+          "wit": "action",
+          "type": {
+            "kind": "ref",
+            "name": "action"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "username_env",
+          "wit": "username-env",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "password_env",
+          "wit": "password-env",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "install",
+          "wit": "install",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "primitive-operation-ftps": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "url",
+          "wit": "url",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "action",
+          "wit": "action",
+          "type": {
+            "kind": "ref",
+            "name": "action"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "username_env",
+          "wit": "username-env",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "password_env",
+          "wit": "password-env",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "install",
+          "wit": "install",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "primitive-operation-s3": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "bucket",
+          "wit": "bucket",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "key",
+          "wit": "key",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "action",
+          "wit": "action",
+          "type": {
+            "kind": "ref",
+            "name": "action"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "endpoint",
+          "wit": "endpoint",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "region",
+          "wit": "region",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "install",
+          "wit": "install",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "primitive-operation": {
+      "kind": "variant",
+      "cases": [
+        {
+          "name": "os",
+          "wit": "os"
+        },
+        {
+          "name": "arch",
+          "wit": "arch"
+        },
+        {
+          "name": "digest",
+          "wit": "digest",
+          "type": {
+            "kind": "ref",
+            "name": "primitive-operation-digest"
+          }
+        },
+        {
+          "name": "ssh",
+          "wit": "ssh",
+          "type": {
+            "kind": "ref",
+            "name": "primitive-operation-ssh"
+          }
+        },
+        {
+          "name": "scp",
+          "wit": "scp",
+          "type": {
+            "kind": "ref",
+            "name": "primitive-operation-scp"
+          }
+        },
+        {
+          "name": "sftp",
+          "wit": "sftp",
+          "type": {
+            "kind": "ref",
+            "name": "primitive-operation-sftp"
+          }
+        },
+        {
+          "name": "rsync",
+          "wit": "rsync",
+          "type": {
+            "kind": "ref",
+            "name": "primitive-operation-rsync"
+          }
+        },
+        {
+          "name": "ftp",
+          "wit": "ftp",
+          "type": {
+            "kind": "ref",
+            "name": "primitive-operation-ftp"
+          }
+        },
+        {
+          "name": "ftps",
+          "wit": "ftps",
+          "type": {
+            "kind": "ref",
+            "name": "primitive-operation-ftps"
+          }
+        },
+        {
+          "name": "s3",
+          "wit": "s3",
+          "type": {
+            "kind": "ref",
+            "name": "primitive-operation-s3"
+          }
+        }
+      ],
+      "tag": "kind",
+      "content": null
+    },
+    "ssh-connection": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "host",
+          "wit": "host",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "user",
+          "wit": "user",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "port",
+          "wit": "port",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u16"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "identity",
+          "wit": "identity",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "install",
+          "wit": "install",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "probe": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "program",
+          "wit": "program",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "args",
+          "wit": "args",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "list",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "interval_ms",
+          "wit": "interval-ms",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u64"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "timeout_ms",
+          "wit": "timeout-ms",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u64"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "probe-logs": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "stdout",
+          "wit": "stdout",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "stderr",
+          "wit": "stderr",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "service-config": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "readiness",
+          "wit": "readiness",
+          "type": {
+            "kind": "ref",
+            "name": "probe"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "health",
+          "wit": "health",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "probe"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "startup_timeout_ms",
+          "wit": "startup-timeout-ms",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u64"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "shutdown_timeout_ms",
+          "wit": "shutdown-timeout-ms",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u64"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "failure_threshold",
+          "wit": "failure-threshold",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "u64"
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "artifact": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "size",
+          "wit": "size",
+          "type": {
+            "kind": "scalar",
+            "type": "u64"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "sha256",
+          "wit": "sha256",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "attempt": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "number",
+          "wit": "number",
+          "type": {
+            "kind": "scalar",
+            "type": "u64"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "status",
+          "wit": "status",
+          "type": {
+            "kind": "ref",
+            "name": "task-status"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "exit_code",
+          "wit": "exit-code",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "s32"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "duration_ms",
+          "wit": "duration-ms",
+          "type": {
+            "kind": "scalar",
+            "type": "u64"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "error",
+          "wit": "error",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "condition": {
+      "kind": "variant",
+      "cases": [
+        {
+          "name": "success",
+          "wit": "success"
+        },
+        {
+          "name": "failure",
+          "wit": "failure"
+        },
+        {
+          "name": "always",
+          "wit": "always"
+        },
+        {
+          "name": "never",
+          "wit": "never"
+        }
+      ],
+      "tag": null,
+      "content": null
+    },
+    "output-ref": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "task",
+          "wit": "task",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "name",
+          "wit": "name",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "workflow-policy": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "when",
+          "wit": "when",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "condition"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "retry",
+          "wit": "retry",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "ref",
+              "name": "retry"
+            }
+          },
+          "omitNull": false
+        },
+        {
+          "name": "allow_failure",
+          "wit": "allow-failure",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "bool"
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "outputs",
+          "wit": "outputs",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "map",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "artifacts",
+          "wit": "artifacts",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "map",
+              "value": {
+                "kind": "scalar",
+                "type": "string"
+              }
+            }
+          },
+          "omitNull": true
+        },
+        {
+          "name": "bindings",
+          "wit": "bindings",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "map",
+              "value": {
+                "kind": "ref",
+                "name": "output-ref"
+              }
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "retry": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "max_attempts",
+          "wit": "max-attempts",
+          "type": {
+            "kind": "scalar",
+            "type": "u32"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "delay_ms",
+          "wit": "delay-ms",
+          "type": {
+            "kind": "scalar",
+            "type": "u64"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "max_delay_ms",
+          "wit": "max-delay-ms",
+          "type": {
+            "kind": "scalar",
+            "type": "u64"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "exit_codes",
+          "wit": "exit-codes",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "list",
+              "value": {
+                "kind": "scalar",
+                "type": "s32"
+              }
+            }
+          },
+          "omitNull": true
+        }
+      ]
+    },
+    "workspace": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "source",
+          "wit": "source",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          },
+          "omitNull": false
+        },
+        {
+          "name": "inputs",
+          "wit": "inputs",
+          "type": {
+            "kind": "list",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          },
+          "omitNull": false
+        }
+      ]
+    },
+    "devbox-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "devenv-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "envhub-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "flox-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "git-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "hermit-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "mise-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "nix-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "pipeline-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "pixi-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "pkgx-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "proto-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "service-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "directory-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        },
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "file-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        },
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "cache-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        },
+        {
+          "name": "key",
+          "wit": "key",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        },
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "secret-handle": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "id",
+          "wit": "id",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        },
+        {
+          "name": "name",
+          "wit": "name",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        },
+        {
+          "name": "mount",
+          "wit": "mount",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "chmod-options": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "path",
+          "wit": "path",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        },
+        {
+          "name": "mode",
+          "wit": "mode",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "nix-args": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "impure",
+          "wit": "impure",
+          "type": {
+            "kind": "scalar",
+            "type": "bool"
+          }
+        }
+      ]
+    },
+    "module": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "url",
+          "wit": "url",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        },
+        {
+          "name": "function",
+          "wit": "function",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        },
+        {
+          "name": "args",
+          "wit": "args",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "aws-config": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "aws_access_key_id",
+          "wit": "aws-access-key-id",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "aws_secret_access_key",
+          "wit": "aws-secret-access-key",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "aws_region",
+          "wit": "aws-region",
+          "type": {
+            "kind": "scalar",
+            "type": "string"
+          }
+        }
+      ]
+    },
+    "azure-credential": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "azure_tenant_id",
+          "wit": "azure-tenant-id",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "azure_client_id",
+          "wit": "azure-client-id",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "azure_client_secret",
+          "wit": "azure-client-secret",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "azure-config": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "credential",
+          "wit": "credential",
+          "type": {
+            "kind": "ref",
+            "name": "azure-credential"
+          }
+        },
+        {
+          "name": "azure_keyvault_name",
+          "wit": "azure-keyvault-name",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "azure_keyvault_url",
+          "wit": "azure-keyvault-url",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "google-config": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "google_credentials_file",
+          "wit": "google-credentials-file",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "google_credentials_json",
+          "wit": "google-credentials-json",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "google_project",
+          "wit": "google-project",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "hashicorp-vault-config": {
+      "kind": "record",
+      "fields": [
+        {
+          "name": "vault_address",
+          "wit": "vault-address",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "vault_token",
+          "wit": "vault-token",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        },
+        {
+          "name": "vault_cacert",
+          "wit": "vault-cacert",
+          "type": {
+            "kind": "option",
+            "value": {
+              "kind": "scalar",
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "secret-provider": {
+      "kind": "variant",
+      "tag": null,
+      "content": null,
+      "cases": [
+        {
+          "name": "Aws",
+          "wit": "aws",
+          "type": {
+            "kind": "ref",
+            "name": "aws-config"
+          }
+        },
+        {
+          "name": "Azure",
+          "wit": "azure",
+          "type": {
+            "kind": "ref",
+            "name": "azure-config"
+          }
+        },
+        {
+          "name": "Google",
+          "wit": "google",
+          "type": {
+            "kind": "ref",
+            "name": "google-config"
+          }
+        },
+        {
+          "name": "Hashicorp",
+          "wit": "hashicorp",
+          "type": {
+            "kind": "ref",
+            "name": "hashicorp-vault-config"
+          }
+        }
+      ]
+    }
+  },
+  "operations": {
+    "add_secretmanager": {
+      "wit": "add-secretmanager",
+      "input": {
+        "kind": "ref",
+        "name": "secret-provider"
+      },
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": true,
+      "outputJson": false
+    },
+    "as_service": {
+      "wit": "as-service",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "service-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "branch": {
+      "wit": "branch",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": null,
+      "inputJson": false,
+      "outputJson": false
+    },
+    "cache": {
+      "wit": "cache",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "cache-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "call": {
+      "wit": "call",
+      "input": {
+        "kind": "ref",
+        "name": "module"
+      },
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": true,
+      "outputJson": false
+    },
+    "chmod": {
+      "wit": "chmod",
+      "input": {
+        "kind": "ref",
+        "name": "chmod-options"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "file-handle"
+      },
+      "inputJson": true,
+      "outputJson": true
+    },
+    "commit": {
+      "wit": "commit",
+      "input": null,
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": false,
+      "outputJson": false
+    },
+    "devbox": {
+      "wit": "devbox",
+      "input": null,
+      "output": {
+        "kind": "ref",
+        "name": "devbox-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "devenv": {
+      "wit": "devenv",
+      "input": null,
+      "output": {
+        "kind": "ref",
+        "name": "devenv-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "directory": {
+      "wit": "directory",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "directory-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "entries": {
+      "wit": "entries",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "list",
+        "value": {
+          "kind": "scalar",
+          "type": "string"
+        }
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "envhub": {
+      "wit": "envhub",
+      "input": null,
+      "output": {
+        "kind": "ref",
+        "name": "envhub-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "execute_plan": {
+      "wit": "execute-plan",
+      "input": {
+        "kind": "ref",
+        "name": "plan"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "run-result"
+      },
+      "inputJson": false,
+      "outputJson": false
+    },
+    "file": {
+      "wit": "file",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "file-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "flox": {
+      "wit": "flox",
+      "input": null,
+      "output": {
+        "kind": "ref",
+        "name": "flox-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "get_arch": {
+      "wit": "get-arch",
+      "input": null,
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": false,
+      "outputJson": false
+    },
+    "get_env": {
+      "wit": "get-env",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": false,
+      "outputJson": false
+    },
+    "get_os": {
+      "wit": "get-os",
+      "input": null,
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": false,
+      "outputJson": false
+    },
+    "get_secret": {
+      "wit": "get-secret",
+      "input": {
+        "kind": "list",
+        "value": {
+          "kind": "scalar",
+          "type": "string"
+        }
+      },
+      "output": {
+        "kind": "list",
+        "value": {
+          "kind": "ref",
+          "name": "secret-handle"
+        }
+      },
+      "inputJson": true,
+      "outputJson": true
+    },
+    "get_secret_plaintext": {
+      "wit": "get-secret-plaintext",
+      "input": {
+        "kind": "list",
+        "value": {
+          "kind": "scalar",
+          "type": "string"
+        }
+      },
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": true,
+      "outputJson": false
+    },
+    "git": {
+      "wit": "git",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "git-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "has_env": {
+      "wit": "has-env",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "scalar",
+        "type": "bool"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "hermit": {
+      "wit": "hermit",
+      "input": null,
+      "output": {
+        "kind": "ref",
+        "name": "hermit-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "http": {
+      "wit": "http",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "file-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "install": {
+      "wit": "install",
+      "input": null,
+      "output": null,
+      "inputJson": false,
+      "outputJson": false
+    },
+    "md5": {
+      "wit": "md5",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": false,
+      "outputJson": false
+    },
+    "mise": {
+      "wit": "mise",
+      "input": null,
+      "output": {
+        "kind": "ref",
+        "name": "mise-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "nix": {
+      "wit": "nix",
+      "input": {
+        "kind": "ref",
+        "name": "nix-args"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "nix-handle"
+      },
+      "inputJson": true,
+      "outputJson": true
+    },
+    "pipeline": {
+      "wit": "pipeline",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "pipeline-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "pixi": {
+      "wit": "pixi",
+      "input": null,
+      "output": {
+        "kind": "ref",
+        "name": "pixi-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "pkgx": {
+      "wit": "pkgx",
+      "input": null,
+      "output": {
+        "kind": "ref",
+        "name": "pkgx-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "proto": {
+      "wit": "proto",
+      "input": null,
+      "output": {
+        "kind": "ref",
+        "name": "proto-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "remove_env": {
+      "wit": "remove-env",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": null,
+      "inputJson": false,
+      "outputJson": false
+    },
+    "set_envs": {
+      "wit": "set-envs",
+      "input": {
+        "kind": "list",
+        "value": {
+          "kind": "tuple",
+          "items": [
+            {
+              "kind": "scalar",
+              "type": "string"
+            },
+            {
+              "kind": "scalar",
+              "type": "string"
+            }
+          ]
+        }
+      },
+      "output": null,
+      "inputJson": true,
+      "outputJson": false
+    },
+    "set_runner": {
+      "wit": "set-runner",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": null,
+      "inputJson": false,
+      "outputJson": false
+    },
+    "set_secret": {
+      "wit": "set-secret",
+      "input": {
+        "kind": "list",
+        "value": {
+          "kind": "scalar",
+          "type": "string"
+        }
+      },
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": true,
+      "outputJson": false
+    },
+    "sha256": {
+      "wit": "sha256",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": false,
+      "outputJson": false
+    },
+    "stderr": {
+      "wit": "stderr",
+      "input": null,
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": false,
+      "outputJson": false
+    },
+    "stdout": {
+      "wit": "stdout",
+      "input": null,
+      "output": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "inputJson": false,
+      "outputJson": false
+    },
+    "tar_czvf": {
+      "wit": "tar-czvf",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "file-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "tar_xzvf": {
+      "wit": "tar-xzvf",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "directory-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "tree": {
+      "wit": "tree",
+      "input": null,
+      "output": {
+        "kind": "ref",
+        "name": "directory-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "trust": {
+      "wit": "trust",
+      "input": null,
+      "output": null,
+      "inputJson": false,
+      "outputJson": false
+    },
+    "unzip": {
+      "wit": "unzip",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "directory-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    },
+    "wait_on": {
+      "wit": "wait-on",
+      "input": {
+        "kind": "list",
+        "value": {
+          "kind": "scalar",
+          "type": "u32"
+        }
+      },
+      "output": null,
+      "inputJson": true,
+      "outputJson": false
+    },
+    "with_cache": {
+      "wit": "with-cache",
+      "input": {
+        "kind": "ref",
+        "name": "cache-handle"
+      },
+      "output": null,
+      "inputJson": true,
+      "outputJson": false
+    },
+    "with_exec": {
+      "wit": "with-exec",
+      "input": {
+        "kind": "list",
+        "value": {
+          "kind": "scalar",
+          "type": "string"
+        }
+      },
+      "output": null,
+      "inputJson": true,
+      "outputJson": false
+    },
+    "with_file": {
+      "wit": "with-file",
+      "input": {
+        "kind": "ref",
+        "name": "file-handle"
+      },
+      "output": null,
+      "inputJson": true,
+      "outputJson": false
+    },
+    "with_packages": {
+      "wit": "with-packages",
+      "input": {
+        "kind": "list",
+        "value": {
+          "kind": "scalar",
+          "type": "string"
+        }
+      },
+      "output": null,
+      "inputJson": true,
+      "outputJson": false
+    },
+    "with_secret_variable": {
+      "wit": "with-secret-variable",
+      "input": {
+        "kind": "list",
+        "value": {
+          "kind": "scalar",
+          "type": "string"
+        }
+      },
+      "output": null,
+      "inputJson": true,
+      "outputJson": false
+    },
+    "with_service": {
+      "wit": "with-service",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": null,
+      "inputJson": false,
+      "outputJson": false
+    },
+    "with_workdir": {
+      "wit": "with-workdir",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": null,
+      "inputJson": false,
+      "outputJson": false
+    },
+    "zip": {
+      "wit": "zip",
+      "input": {
+        "kind": "scalar",
+        "type": "string"
+      },
+      "output": {
+        "kind": "ref",
+        "name": "file-handle"
+      },
+      "inputJson": false,
+      "outputJson": true
+    }
+  }
+}

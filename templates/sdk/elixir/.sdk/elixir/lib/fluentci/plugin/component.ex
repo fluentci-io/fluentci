@@ -1,6 +1,5 @@
 defmodule FluentCI.Plugin.Component do
-  @moduledoc "Generate typed Rust jobs and WIT from the compiled Elixir plugin DSL."
-  alias FluentCI.Plugin.{Input, Pipeline}
+  @moduledoc "Typed WIT jobs over the same DSL implementation as Extism guests."
 
   def source(exports, docs \\ %{}) do
     metadata = FluentCI.Plugin.Codegen.metadata(exports, docs)
@@ -36,7 +35,7 @@ defmodule FluentCI.Plugin.Component do
 
         input =
           Enum.map_join(fields, ",", fn field ->
-            "#{literal(field.name)}: args.#{identifier(field.name)}"
+            "#{JSON.encode!(field.name)}: args.#{identifier(field.name)}"
           end)
 
         doc =
@@ -44,12 +43,25 @@ defmodule FluentCI.Plugin.Component do
             do: "/// " <> String.replace(definition.description, "\n", "\n/// ") <> "\n",
             else: ""
 
+        body = FluentCI.Plugin.Codegen.component_body(value)
+
         record_source <>
           doc <>
-          "pub fn #{identifier(Atom.to_string(name))}(#{parameters}) -> Result<String, String> {\nlet _input = serde_json::json!({#{input}});\n#{body(value)}\n}\n"
+          "pub fn #{identifier(Atom.to_string(name))}(#{parameters}) -> Result<String, String> {\nlet input = serde_json::json!({#{input}}).to_string();\nlet _ = &input;\nlet run = || -> Result<String, Error> {\n#{body}\n};\nrun().map_err(|error| error.to_string())\n}\n"
       end)
 
-    Enum.join(functions, "\n")
+    helpers = ~S"""
+    use fluentci_pdk::{dag, component::Error};
+    #[allow(dead_code)]
+    fn quote(value: &str) -> String { format!("'{}'", value.replace('\'', "'\\''")) }
+    #[allow(dead_code)]
+    unsafe fn execute_plan(request: String) -> Result<String, Error> {
+      let request: serde_json::Value = serde_json::from_str(&request)?;
+      fluentci_pdk::run_plan_value(&request["plan"], request["run_dir"].as_str().ok_or_else(|| Error::msg("Missing run directory"))?)
+    }
+    """
+
+    helpers <> Enum.join(functions, "\n")
   end
 
   defp identifier(name) do
@@ -72,79 +84,5 @@ defmodule FluentCI.Plugin.Component do
         "boolean" -> "bool"
       end
     end
-  end
-
-  defp literal(value), do: JSON.encode!(value) <> ".to_string()"
-
-  defp value(%Input{name: name}),
-    do:
-      "_input[#{JSON.encode!(name)}].as_str().map(str::to_owned).unwrap_or_else(|| _input[#{JSON.encode!(name)}].to_string())"
-
-  defp value(text) when is_binary(text), do: literal(text)
-
-  defp body(%Input{} = input), do: "Ok(#{value(input)})"
-  defp body(text) when is_binary(text), do: "Ok(#{value(text)})"
-
-  defp body(%FluentCI.Plugin.Execution{plan: plan, run_dir: directory, fail_on_error: strict}) do
-    {:ok, encoded} = FluentCI.Host.compile(plan)
-    execution(value(encoded), value(directory), strict)
-  end
-
-  defp body(%Pipeline{} = pipeline) do
-    {tasks, _, _, _} =
-      Enum.reduce(pipeline.steps, {[], "." |> literal(), [], nil}, fn step,
-                                                                      {tasks, cwd, env, previous} ->
-        case step do
-          {:workdir, path} ->
-            {tasks, value(path), env, previous}
-
-          {:env, key, data} ->
-            {tasks, cwd, env ++ ["(#{value(key)}, #{value(data)})"], previous}
-
-          {:cache, _, _} ->
-            raise ArgumentError,
-                  "component pipelines use typed Host task cache policies; legacy pipeline cache mounts are not supported"
-
-          command ->
-            id = "step-#{length(tasks)}"
-
-            {program, arguments} =
-              case command do
-                {:exec, [program | arguments]} ->
-                  {value(program), Enum.map_join(arguments, ",", &value/1)}
-
-                {:shell, text} ->
-                  {literal("sh"), literal("-c") <> "," <> value(text)}
-              end
-
-            needs = if previous, do: JSON.encode!([previous]), else: "[]"
-
-            task =
-              "serde_json::json!({\"id\": #{JSON.encode!(id)}, \"program\": #{program}, \"args\": [#{arguments}], \"cwd\": #{cwd}, \"env\": [#{Enum.join(env, ",")}].into_iter().collect::<std::collections::BTreeMap<String,String>>(), \"needs\": #{needs}})"
-
-            {tasks ++ [task], cwd, env, id}
-        end
-      end)
-
-    # Native component pipelines return the structured execution report. Explicit
-    # plans expose the same report, including task logs, statuses and durations.
-    plan =
-      "serde_json::json!({\"version\":1, \"inherit_env\":false, \"jobs\":4, \"max_services\":8, \"fail_fast\":true, \"tasks\":[#{Enum.join(tasks, ",")}]}).to_string()"
-
-    execution(
-      plan,
-      ~S'format!(".fluentci/runs/component-{}", std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|e| e.to_string())?.as_nanos())',
-      true
-    )
-  end
-
-  defp execution(plan, directory, strict) do
-    check =
-      if strict,
-        do:
-          "if serde_json::from_str::<serde_json::Value>(&response).map_err(|e| e.to_string())?[\"outcome\"] != \"succeeded\" { return Err(\"plan failed; see the run report\".to_string()); }",
-        else: ""
-
-    "let response = crate::fluentci::runtime::host::execute_plan(&#{plan}, &#{directory})?;\n#{check}\nOk(response)"
   end
 end

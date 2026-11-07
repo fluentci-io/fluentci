@@ -78,7 +78,10 @@ fn execute_component(bytes: &[u8], function: &str, words: &[String]) -> Result<(
     let _signals = fluentci_core::signals::CancellationSignals::new(cancellation.clone())?;
     let _ = fluentci_core::init_tracer();
     let _ = fluentci_core::set_git_repo_metadata();
-    let result = fluentci_components::call(bytes, function, words, cancellation);
+    let context = fluentci_shared::state::State::new(cancellation.clone());
+    context.lock().unwrap().caller = Some(fluentci_shared::module_call::invoke);
+    let result =
+        fluentci_components::call_with_context(bytes, function, words, cancellation, context);
     fluentci_core::shutdown_tracer();
     let result = result?;
     if !result.is_empty() {
@@ -111,6 +114,8 @@ fn execute(wasm: Wasm, func: &str, args: &str) -> Result<(), Error> {
         rx: Arc::new(Mutex::new(rx)),
         runner: "default".into(),
         execution_failure: execution_failure.clone(),
+        caller: Some(fluentci_shared::module_call::invoke),
+        call_depth: 0,
     });
 
     let manifest = Manifest::new([wasm]);

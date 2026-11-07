@@ -1,12 +1,6 @@
-use extism::{convert::Json, *};
-use fluentci_common::pixi::pixi as common_pixi;
-
 use crate::state::State;
+use extism::{convert::Json, *};
 
 host_fn!(pub pixi(user_data: State;) -> Json<Pixi> {
-    let state = user_data.get()?;
-    let state = state.lock().unwrap();
-    let graph = state.graph.clone();
-    let pixi = common_pixi(graph, true)?;
-    Ok(Json(pixi))
+    fluentci_common::host::pixi(&user_data.get()?).map(|value| Json(value.into_inner()))
 });

@@ -1,6 +1,7 @@
 import { build } from "esbuild";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { embedInspection } from "./wasm.mjs";
 
 export function witName(name) {
@@ -121,12 +122,14 @@ export function componentContract(functions, sdk) {
   });
   return {
     functions: definitions,
-    wit: `package fluentci:module@0.1.0;\n\ninterface api {\n${definitions.map((fn) => fn.declaration).join("\n")}\n}\n\nworld plugin {\n  import fluentci:runtime/host@0.1.0;\n  export api;\n}\n`,
+    wit: `package fluentci:module@0.1.0;\n\ninterface api {\n${definitions.map((fn) => fn.declaration).join("\n")}\n}\n\nworld plugin {\n  import fluentci:runtime/host@0.1.0;\n  import fluentci:runtime/api@0.1.0;\n  export api;\n}\n`,
   };
 }
 
 export function componentSource(functions) {
-  const imports = [];
+  const imports = [
+    `import { setInvocationInput } from ${JSON.stringify(fileURLToPath(new URL("./component-host.mjs", import.meta.url)))};`,
+  ];
   const members = functions.map((fn, index) => {
     const invoke = fn.invoke;
     if (invoke.style === "clojurescript")
@@ -149,6 +152,9 @@ export function componentSource(functions) {
       statements.push(
         `if (input[${JSON.stringify(arg.name)}] === undefined) delete input[${JSON.stringify(arg.name)}];`,
       );
+    statements.push(
+      `setInvocationInput(${args.length ? "JSON.stringify(input)" : '\"\"'});`,
+    );
     const hasRecord = args.length > 0 || invoke.hasRecordArgument;
     let value = "input";
     if (invoke.style === "purescript") {
@@ -234,6 +240,7 @@ export async function buildComponent({ root, artifact, functions, sdk }) {
     format: "esm",
     platform: "neutral",
     external: ["fluentci:runtime/*"],
+    inject: [fileURLToPath(new URL("./component-host.mjs", import.meta.url))],
   });
   const { componentize } = await import(
     process.env.FLUENTCI_COMPONENTIZE_JS ?? "@bytecodealliance/componentize-js"

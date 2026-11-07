@@ -8,6 +8,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import tempfile
 
 
 def wit_name(name: str) -> str:
@@ -113,8 +114,8 @@ def inspect_component(source: str) -> tuple[str, str, list[dict]]:
         metadata.append({"name": name, "inputFormat": "wit", "args": fields, "returnType": result or "unit", **({"description": description} if description else {})})
     if not metadata:
         raise ValueError("Expose at least one public typed function")
-    wit = "package fluentci:module@0.1.0;\n\ninterface api {\n" + "\n".join(declarations) + "\n}\n\nworld plugin {\n  import fluentci:runtime/host@0.1.0;\n  export api;\n}\n"
-    wrapper = "from wit_world import exports\nimport _fluentci_native as native\n\nclass Api(exports.Api):\n" + "\n".join(methods)
+    wit = "package fluentci:module@0.1.0;\n\ninterface api {\n" + "\n".join(declarations) + "\n}\n\nworld plugin {\n  import fluentci:runtime/host@0.1.0;\n  import fluentci:runtime/api@0.1.0;\n  export api;\n}\n"
+    wrapper = "from python_component_host import install\ninstall()\nfrom wit_world import exports\nimport _fluentci_native as native\n\nclass Api(exports.Api):\n" + "\n".join(methods)
     return wit, wrapper, metadata
 
 
@@ -127,11 +128,16 @@ def build_component(source: Path, artifact: Path) -> None:
     shutil.copyfile(source.parent / ".sdk/wit/runtime.wit", output / "wit/deps/runtime/runtime.wit")
     (output / "_fluentci_component.py").write_text(wrapper)
     shutil.copyfile(source, output / "_fluentci_native.py")
+    for filename in ["python_component_host.py", "component-host-schema.json"]:
+        shutil.copyfile(Path(__file__).with_name(filename), output / filename)
     compiler = shutil.which("componentize-py")
     if not compiler:
         raise RuntimeError("componentize-py is required; install the project's Python dependencies")
-    subprocess.run([compiler, "-d", str(output / "wit"), "-w", "plugin", "bindings", str(output)], check=True)
-    subprocess.run([compiler, "-d", str(output / "wit"), "-w", "plugin", "componentize", "--python-path", str(output), "--python-path", str(source.parent), "_fluentci_component", "-o", str(artifact)], check=True)
+    with tempfile.TemporaryDirectory(prefix="fluentci-python-bindings-") as temporary:
+        bindings = Path(temporary) / "bindings"
+        subprocess.run([compiler, "-d", str(output / "wit"), "-w", "plugin", "bindings", str(bindings)], check=True)
+        shutil.copytree(bindings, output, dirs_exist_ok=True)
+    subprocess.run([compiler, "-d", str(output / "wit"), "-w", "plugin", "componentize", "--python-path", str(output), "--python-path", str(source.parent), "--python-path", str(source.parent / ".sdk/python/src"), "_fluentci_component", "-o", str(artifact)], check=True)
     # Append only a root custom section: nested component bytes stay untouched.
     def leb(value):
         encoded = bytearray()

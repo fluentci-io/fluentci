@@ -24,3 +24,5 @@ pub mod state;
 
 #[path = "generated/host_functions.rs"]
 pub mod host;
+
+pub mod module_call;

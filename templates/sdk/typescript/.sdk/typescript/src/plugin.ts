@@ -404,7 +404,7 @@ export class Client extends BaseClient {
    * @returns {void}
    */
   setEnvs = (envs: Record<string, string>): void => {
-    const mem = Memory.fromJsonObject(envs);
+    const mem = Memory.fromJsonObject(Object.entries(envs));
     set_envs(mem.offset);
   };
 

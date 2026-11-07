@@ -9,7 +9,7 @@ use std::path::PathBuf;
 #[command(
     name = "fluentci",
     version,
-    about = "FluentCI — CI/CD pipelines powered by Wasm and Dagger",
+    about = "FluentCI — CI/CD pipelines powered by Wasm",
     disable_help_flag = true,
     defer(configure_run_help),
     subcommand_precedence_over_arg = true,

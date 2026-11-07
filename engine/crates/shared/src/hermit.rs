@@ -1,21 +1,10 @@
-use extism::{convert::Json, *};
-use fluentci_common::hermit as common_hermit;
-
 use crate::state::State;
+use extism::{convert::Json, *};
 
 host_fn!(pub hermit(user_data: State;) -> Json<Hermit> {
-    let state = user_data.get()?;
-    let state = state.lock().unwrap();
-    let graph = state.graph.clone();
-
-    let hermit = common_hermit::hermit(graph, true)?;
-    Ok(Json(hermit))
+    fluentci_common::host::hermit(&user_data.get()?).map(|value| Json(value.into_inner()))
 });
 
 host_fn!(pub install(user_data: State;) {
-    let state = user_data.get()?;
-    let state = state.lock().unwrap();
-    let graph = state.graph.clone();
-    common_hermit::install(graph)?;
-    Ok(())
+    fluentci_common::host::install(&user_data.get()?)
 });

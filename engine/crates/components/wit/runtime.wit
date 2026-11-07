@@ -14,3 +14,455 @@ interface host {
 world plugin {
   import host;
 }
+
+// Generated full SDK capabilities.
+/// Complete SDK host capabilities; all operations use native engine implementations.
+interface api {
+  enum action { get, put, %list, delete }
+  enum algorithm { sha256, sha512 }
+  record artifact {
+    path: string,
+    size: u64,
+    sha256: string,
+  }
+  record attempt {
+    number: u64,
+    status: task-status,
+    exit-code: option<s32>,
+    duration-ms: u64,
+    error: option<string>,
+  }
+  record aws-config {
+    aws-access-key-id: option<string>,
+    aws-secret-access-key: option<string>,
+    aws-region: string,
+  }
+  record azure-config {
+    credential: azure-credential,
+    azure-keyvault-name: option<string>,
+    azure-keyvault-url: option<string>,
+  }
+  record azure-credential {
+    azure-tenant-id: option<string>,
+    azure-client-id: option<string>,
+    azure-client-secret: option<string>,
+  }
+  record cache-handle {
+    id: string,
+    key: string,
+    path: string,
+  }
+  record cache-policy {
+    inputs: list<string>,
+    outputs: list<string>,
+    toolchain: string,
+    toolchain-files: option<list<string>>,
+    relocatable: option<bool>,
+  }
+  record cache-result {
+    outcome: option<string>,
+    key: option<string>,
+    reason: option<string>,
+    components: option<list<tuple<string, string>>>,
+  }
+  record chmod-options {
+    path: string,
+    mode: string,
+  }
+  enum condition { success, failure, always, never }
+  record devbox-handle {
+    id: string,
+  }
+  record devenv-handle {
+    id: string,
+  }
+  variant digest-input {
+    text(string),
+    file(string),
+  }
+  enum direction { upload, download }
+  record directory-handle {
+    id: string,
+    path: string,
+  }
+  record envhub-handle {
+    id: string,
+  }
+  record file-handle {
+    id: string,
+    path: string,
+  }
+  variant file-operation {
+    read-text(file-operation-read-text),
+    read-bytes(file-operation-read-bytes),
+    write-text(file-operation-write-text),
+    write-bytes(file-operation-write-bytes),
+    copy-file(file-operation-copy-file),
+    copy-tree(file-operation-copy-tree),
+    move(file-operation-move),
+    mkdir(file-operation-mkdir),
+    remove(file-operation-remove),
+    stat(file-operation-stat),
+    exists(file-operation-exists),
+    %list(file-operation-list),
+    glob(file-operation-glob),
+    hash(file-operation-hash),
+    chmod(file-operation-chmod),
+    symlink(file-operation-symlink),
+  }
+  record file-operation-chmod {
+    path: string,
+    mode: u32,
+  }
+  record file-operation-copy-file {
+    source: string,
+    destination: string,
+    overwrite: option<bool>,
+  }
+  record file-operation-copy-tree {
+    source: string,
+    destination: string,
+    overwrite: option<bool>,
+  }
+  record file-operation-exists {
+    path: string,
+  }
+  record file-operation-glob {
+    pattern: string,
+  }
+  record file-operation-hash {
+    path: string,
+  }
+  record file-operation-list {
+    path: string,
+  }
+  record file-operation-mkdir {
+    path: string,
+    parents: option<bool>,
+  }
+  record file-operation-move {
+    source: string,
+    destination: string,
+    overwrite: option<bool>,
+  }
+  record file-operation-read-bytes {
+    path: string,
+    limit-bytes: option<u64>,
+  }
+  record file-operation-read-text {
+    path: string,
+    limit-bytes: option<u64>,
+  }
+  record file-operation-remove {
+    path: string,
+    recursive: option<bool>,
+    missing-ok: option<bool>,
+  }
+  record file-operation-stat {
+    path: string,
+  }
+  record file-operation-symlink {
+    target: string,
+    path: string,
+  }
+  record file-operation-write-bytes {
+    path: string,
+    bytes: list<u8>,
+    overwrite: option<bool>,
+  }
+  record file-operation-write-text {
+    path: string,
+    text: string,
+    overwrite: option<bool>,
+  }
+  record flox-handle {
+    id: string,
+  }
+  record git-handle {
+    id: string,
+  }
+  record google-config {
+    google-credentials-file: option<string>,
+    google-credentials-json: option<string>,
+    google-project: option<string>,
+  }
+  record hashicorp-vault-config {
+    vault-address: option<string>,
+    vault-token: option<string>,
+    vault-cacert: option<string>,
+  }
+  record hermit-handle {
+    id: string,
+  }
+  enum mac-ports-backend { native, rust }
+  record mise-handle {
+    id: string,
+  }
+  record module {
+    url: string,
+    function: string,
+    args: string,
+  }
+  record nix-args {
+    impure: bool,
+  }
+  record nix-handle {
+    id: string,
+  }
+  record output-ref {
+    task: string,
+    name: string,
+  }
+  record package-install {
+    provider: package-provider,
+    packages: list<string>,
+  }
+  enum package-manager { homebrew, macports, freebsd, netbsd, openbsd }
+  record package-provider {
+    manager: package-manager,
+    backend: option<mac-ports-backend>,
+    executable: option<string>,
+  }
+  record pipeline-handle {
+    id: string,
+  }
+  record pixi-handle {
+    id: string,
+  }
+  record pkgx-handle {
+    id: string,
+  }
+  record plan {
+    workspace: option<workspace>,
+    version: option<u32>,
+    tasks: list<task>,
+    jobs: option<u64>,
+    max-services: option<u64>,
+    fail-fast: option<bool>,
+    inherit-env: option<bool>,
+    cache-dir: option<string>,
+    resource-dir: option<string>,
+  }
+  variant primitive-operation {
+    os,
+    arch,
+    digest(primitive-operation-digest),
+    ssh(primitive-operation-ssh),
+    scp(primitive-operation-scp),
+    sftp(primitive-operation-sftp),
+    rsync(primitive-operation-rsync),
+    ftp(primitive-operation-ftp),
+    ftps(primitive-operation-ftps),
+    s3(primitive-operation-s3),
+  }
+  record primitive-operation-digest {
+    algorithm: algorithm,
+    input: digest-input,
+  }
+  record primitive-operation-ftp {
+    url: string,
+    action: action,
+    path: option<string>,
+    username-env: option<string>,
+    password-env: option<string>,
+    install: option<bool>,
+  }
+  record primitive-operation-ftps {
+    url: string,
+    action: action,
+    path: option<string>,
+    username-env: option<string>,
+    password-env: option<string>,
+    install: option<bool>,
+  }
+  record primitive-operation-rsync {
+    connection: ssh-connection,
+    direction: direction,
+    source: string,
+    destination: string,
+  }
+  record primitive-operation-s3 {
+    bucket: string,
+    key: string,
+    action: action,
+    path: option<string>,
+    endpoint: option<string>,
+    region: option<string>,
+    install: option<bool>,
+  }
+  record primitive-operation-scp {
+    connection: ssh-connection,
+    direction: direction,
+    source: string,
+    destination: string,
+  }
+  record primitive-operation-sftp {
+    connection: ssh-connection,
+    direction: direction,
+    source: string,
+    destination: string,
+  }
+  record primitive-operation-ssh {
+    connection: ssh-connection,
+    command: list<string>,
+  }
+  record probe {
+    program: string,
+    args: option<list<string>>,
+    interval-ms: option<u64>,
+    timeout-ms: option<u64>,
+  }
+  record probe-logs {
+    stdout: string,
+    stderr: string,
+  }
+  record proto-handle {
+    id: string,
+  }
+  record retry {
+    max-attempts: u32,
+    delay-ms: u64,
+    max-delay-ms: u64,
+    exit-codes: option<list<s32>>,
+  }
+  enum run-outcome { succeeded, failed, cancelled }
+  record run-result {
+    outcome: run-outcome,
+    tasks: list<task-result>,
+  }
+  record secret-handle {
+    id: string,
+    name: string,
+    mount: string,
+  }
+  variant secret-provider {
+    aws(aws-config),
+    azure(azure-config),
+    google(google-config),
+    hashicorp(hashicorp-vault-config),
+  }
+  record service-config {
+    readiness: probe,
+    health: option<probe>,
+    startup-timeout-ms: option<u64>,
+    shutdown-timeout-ms: option<u64>,
+    failure-threshold: option<u64>,
+  }
+  record service-handle {
+    id: string,
+  }
+  record ssh-connection {
+    host: string,
+    user: option<string>,
+    port: option<u16>,
+    identity: option<string>,
+    install: option<bool>,
+  }
+  record task {
+    id: string,
+    needs: option<list<string>>,
+    program: option<string>,
+    args: option<list<string>>,
+    cwd: string,
+    file-operation: option<file-operation>,
+    primitive: option<primitive-operation>,
+    env-files: option<list<string>>,
+    env: option<list<tuple<string, string>>>,
+    resources: option<list<string>>,
+    shared-resources: option<list<string>>,
+    package-install: option<package-install>,
+    package-environment: option<list<package-provider>>,
+    resource-wait-timeout-ms: option<u64>,
+    timeout-ms: option<u64>,
+    cache: option<cache-policy>,
+    service: option<service-config>,
+    policy: option<workflow-policy>,
+  }
+  record task-result {
+    id: string,
+    status: task-status,
+    exit-code: option<s32>,
+    signal: option<s32>,
+    file-result: option<string>,
+    error: option<string>,
+    duration-ms: u64,
+    stdout: string,
+    stderr: string,
+    probe-logs: option<probe-logs>,
+    cache: cache-result,
+    wait-reason: option<string>,
+    attempts: option<list<attempt>>,
+    outputs: option<list<tuple<string, string>>>,
+    artifacts: option<list<tuple<string, artifact>>>,
+    condition-skipped: option<bool>,
+    allowed-failure: option<bool>,
+  }
+  enum task-status { pending, running, ready, stopping, succeeded, failed, skipped, cancelled, timed-out }
+  record workflow-policy {
+    when: option<condition>,
+    retry: option<retry>,
+    allow-failure: option<bool>,
+    outputs: option<list<tuple<string, string>>>,
+    artifacts: option<list<tuple<string, string>>>,
+    bindings: option<list<tuple<string, output-ref>>>,
+  }
+  record workspace {
+    source: string,
+    inputs: list<string>,
+  }
+  add-secretmanager: func(input: secret-provider) -> result<string, string>;
+  as-service: func(input: string) -> result<service-handle, string>;
+  branch: func(input: string) -> result<_, string>;
+  cache: func(input: string) -> result<cache-handle, string>;
+  call: func(input: module) -> result<string, string>;
+  chmod: func(input: chmod-options) -> result<file-handle, string>;
+  commit: func() -> result<string, string>;
+  devbox: func() -> result<devbox-handle, string>;
+  devenv: func() -> result<devenv-handle, string>;
+  directory: func(input: string) -> result<directory-handle, string>;
+  entries: func(input: string) -> result<list<string>, string>;
+  envhub: func() -> result<envhub-handle, string>;
+  execute-plan: func(plan: plan, run-dir: string) -> result<run-result, string>;
+  file: func(input: string) -> result<file-handle, string>;
+  flox: func() -> result<flox-handle, string>;
+  get-arch: func() -> result<string, string>;
+  get-env: func(input: string) -> result<string, string>;
+  get-os: func() -> result<string, string>;
+  get-secret: func(input: list<string>) -> result<list<secret-handle>, string>;
+  get-secret-plaintext: func(input: list<string>) -> result<string, string>;
+  git: func(input: string) -> result<git-handle, string>;
+  has-env: func(input: string) -> result<bool, string>;
+  hermit: func() -> result<hermit-handle, string>;
+  http: func(input: string) -> result<file-handle, string>;
+  install: func() -> result<_, string>;
+  md5: func(input: string) -> result<string, string>;
+  mise: func() -> result<mise-handle, string>;
+  nix: func(input: nix-args) -> result<nix-handle, string>;
+  pipeline: func(input: string) -> result<pipeline-handle, string>;
+  pixi: func() -> result<pixi-handle, string>;
+  pkgx: func() -> result<pkgx-handle, string>;
+  proto: func() -> result<proto-handle, string>;
+  remove-env: func(input: string) -> result<_, string>;
+  set-envs: func(input: list<tuple<string, string>>) -> result<_, string>;
+  set-runner: func(input: string) -> result<_, string>;
+  set-secret: func(input: list<string>) -> result<string, string>;
+  sha256: func(input: string) -> result<string, string>;
+  stderr: func() -> result<string, string>;
+  stdout: func() -> result<string, string>;
+  tar-czvf: func(input: string) -> result<file-handle, string>;
+  tar-xzvf: func(input: string) -> result<directory-handle, string>;
+  tree: func() -> result<directory-handle, string>;
+  trust: func() -> result<_, string>;
+  unzip: func(input: string) -> result<directory-handle, string>;
+  wait-on: func(input: list<u32>) -> result<_, string>;
+  with-cache: func(input: cache-handle) -> result<_, string>;
+  with-exec: func(input: list<string>) -> result<_, string>;
+  with-file: func(input: file-handle) -> result<_, string>;
+  with-packages: func(input: list<string>) -> result<_, string>;
+  with-secret-variable: func(input: list<string>) -> result<_, string>;
+  with-service: func(input: string) -> result<_, string>;
+  with-workdir: func(input: string) -> result<_, string>;
+  zip: func(input: string) -> result<file-handle, string>;
+}
+
+world sdk { import api; }

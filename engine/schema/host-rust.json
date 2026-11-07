@@ -1,0 +1,214 @@
+{
+  "add_secretmanager": {
+    "argument": "Json<Provider>",
+    "result": "String"
+  },
+  "as_service": {
+    "argument": "String",
+    "result": "Json<Service>"
+  },
+  "branch": {
+    "argument": "String",
+    "result": "()"
+  },
+  "cache": {
+    "argument": "String",
+    "result": "Json<Cache>"
+  },
+  "call": {
+    "argument": "Json<Module>",
+    "result": "String"
+  },
+  "chmod": {
+    "argument": "Json<Chmod>",
+    "result": "Json<File>"
+  },
+  "commit": {
+    "argument": null,
+    "result": "String"
+  },
+  "devbox": {
+    "argument": null,
+    "result": "Json<Devbox>"
+  },
+  "devenv": {
+    "argument": null,
+    "result": "Json<Devenv>"
+  },
+  "directory": {
+    "argument": "String",
+    "result": "Json<Directory>"
+  },
+  "entries": {
+    "argument": "String",
+    "result": "Json<Vec<String>>"
+  },
+  "envhub": {
+    "argument": null,
+    "result": "Json<Envhub>"
+  },
+  "execute_plan": {
+    "argument": "String",
+    "result": "String"
+  },
+  "file": {
+    "argument": "String",
+    "result": "Json<File>"
+  },
+  "flox": {
+    "argument": null,
+    "result": "Json<Flox>"
+  },
+  "get_arch": {
+    "argument": null,
+    "result": "String"
+  },
+  "get_env": {
+    "argument": "String",
+    "result": "String"
+  },
+  "get_os": {
+    "argument": null,
+    "result": "String"
+  },
+  "get_secret": {
+    "argument": "Json<Vec<String>>",
+    "result": "Json<Vec<Secret>>"
+  },
+  "get_secret_plaintext": {
+    "argument": "Json<Vec<String>>",
+    "result": "String"
+  },
+  "git": {
+    "argument": "String",
+    "result": "Json<Git>"
+  },
+  "has_env": {
+    "argument": "String",
+    "result": "Json<bool>"
+  },
+  "hermit": {
+    "argument": null,
+    "result": "Json<Hermit>"
+  },
+  "http": {
+    "argument": "String",
+    "result": "Json<File>"
+  },
+  "install": {
+    "argument": null,
+    "result": "()"
+  },
+  "md5": {
+    "argument": "String",
+    "result": "String"
+  },
+  "mise": {
+    "argument": null,
+    "result": "Json<Mise>"
+  },
+  "nix": {
+    "argument": "Json<NixArgs>",
+    "result": "Json<Nix>"
+  },
+  "pipeline": {
+    "argument": "String",
+    "result": "Json<Pipeline>"
+  },
+  "pixi": {
+    "argument": null,
+    "result": "Json<Pixi>"
+  },
+  "pkgx": {
+    "argument": null,
+    "result": "Json<Pkgx>"
+  },
+  "proto": {
+    "argument": null,
+    "result": "Json<Proto>"
+  },
+  "remove_env": {
+    "argument": "String",
+    "result": "()"
+  },
+  "set_envs": {
+    "argument": "Json<Vec<(String,String)>>",
+    "result": "()"
+  },
+  "set_runner": {
+    "argument": "String",
+    "result": "()"
+  },
+  "set_secret": {
+    "argument": "Json<Vec<String>>",
+    "result": "String"
+  },
+  "sha256": {
+    "argument": "String",
+    "result": "String"
+  },
+  "stderr": {
+    "argument": null,
+    "result": "String"
+  },
+  "stdout": {
+    "argument": null,
+    "result": "String"
+  },
+  "tar_czvf": {
+    "argument": "String",
+    "result": "Json<File>"
+  },
+  "tar_xzvf": {
+    "argument": "String",
+    "result": "Json<Directory>"
+  },
+  "tree": {
+    "argument": null,
+    "result": "Json<Directory>"
+  },
+  "trust": {
+    "argument": null,
+    "result": "()"
+  },
+  "unzip": {
+    "argument": "String",
+    "result": "Json<Directory>"
+  },
+  "wait_on": {
+    "argument": "Json<Vec<u32>>",
+    "result": "()"
+  },
+  "with_cache": {
+    "argument": "Json<Cache>",
+    "result": "()"
+  },
+  "with_exec": {
+    "argument": "Json<Vec<String>>",
+    "result": "()"
+  },
+  "with_file": {
+    "argument": "Json<File>",
+    "result": "()"
+  },
+  "with_packages": {
+    "argument": "Json<Vec<String>>",
+    "result": "()"
+  },
+  "with_secret_variable": {
+    "argument": "Json<Vec<String>>",
+    "result": "()"
+  },
+  "with_service": {
+    "argument": "String",
+    "result": "()"
+  },
+  "with_workdir": {
+    "argument": "String",
+    "result": "()"
+  },
+  "zip": {
+    "argument": "String",
+    "result": "Json<File>"
+  }
+}

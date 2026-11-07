@@ -1,12 +1,6 @@
-use extism::{convert::Json, *};
-use fluentci_common::pipeline::pipeline as common_pipeline;
-
 use crate::state::State;
+use extism::{convert::Json, *};
 
 host_fn!(pub pipeline(user_data: State; name: String) -> Json<Pipeline> {
-    let state = user_data.get()?;
-    let state = state.lock().unwrap();
-    let graph = state.graph.clone();
-    let pipeline = common_pipeline(graph, name)?;
-    Ok(Json(pipeline))
+    fluentci_common::host::pipeline(&user_data.get()?, name).map(|value| Json(value.into_inner()))
 });

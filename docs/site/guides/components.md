@@ -96,9 +96,9 @@ Arbitrary classes, higher-order functions and promises are not exported.
 Expose native return values from component functions. Extism `Host.outputString`,
 `extism.output_str`, and raw `input()` calls are not component APIs. ClojureScript
 initializes its compiled runtime lazily, after component instantiation, so compiler
-snapshotting does not capture runtime random state. Elixir component pipelines and
-`run_plan` return a structured execution report; legacy cache mounts must be
-expressed as typed Host task cache policies.
+snapshotting does not capture runtime random state. Elixir pipelines use the same
+DSL implementation and return stdout, just like Extism guests. `run_plan` returns
+the execution report; cache mounts remain available in both runtimes.
 
 Python example (`plugin.py`):
 
@@ -144,19 +144,35 @@ resource handles are not standalone CLI jobs.
 
 ## FluentCI host capabilities
 
-The SDK supplies `fluentci:runtime/host@0.1.0`; module authors do not maintain its WIT.
-Rust bindings expose it as `crate::fluentci::runtime::host`:
+The SDK supplies the **`fluentci:runtime@0.1.0`** package. Its version remains
+`0.1.0`; the original `host` interface is preserved and the new `api` interface
+provides all 53 existing SDK host operations through typed WIT imports.
 
-- `get_env(name)` reads an invocation environment variable.
-- `log(message)` writes to the invocation log.
-- `execute_plan(plan, run_dir)` runs an existing protocol-v1 FluentCI plan and
-  returns its JSON report, or an error.
+Both runtimes call the same native implementation for:
 
-Plans use the existing native DAG executor, including environments, cache policies,
-services, lifecycle management, and composable primitives. The JSON payload is the
-existing cross-language plan transport; execution still uses the compiled native
-DAG. Failed executions retain structured diagnostics and cancellation propagates
-to both the executor and running component code.
+- Pipelines, command execution, working directories, stdout and stderr.
+- Files, directories, archive operations, hashes, HTTP downloads and Git.
+- Environment variables, caches, secrets and secret providers.
+- Services and readiness waits; Nix, Devbox, Devenv, Flox, Pkgx, Mise,
+  Pixi, Hermit, Proto and Envhub environments.
+- Nested module calls and native DAG execution, including file operations,
+  service lifecycle, resource limits, packages and remote primitives such as rsync.
+
+The `api.execute-plan` operation accepts a WIT `plan` record and returns a typed
+`run-result`. Task variants, service probes, cache policies and primitives come
+from the real executor declarations. The generator and drift checks keep them
+synchronized. Dynamic JSON fields remain explicitly encoded strings; whole plans
+and reports do not cross this interface as JSON strings.
+
+Existing SDK pipelines work in components without rewriting their host calls.
+JavaScript and Python guest adapters translate their SDK values to typed imports.
+Rust and Elixir use a generated `fluentci-pdk` transport with no Extism dependency.
+Module developers continue maintaining their source functions; builds supply WIT
+and bindings automatically.
+
+The original `host` interface still supplies `get-env`, `log` and the legacy JSON
+`execute-plan` operation for existing components. Native execution preserves
+structured diagnostics, and cancellation propagates to the executor and component.
 
 WASI exposes invocation environment variables, standard streams, and the current
 project directory. This initial runtime targets synchronous WASI Preview 2

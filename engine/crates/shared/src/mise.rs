@@ -1,20 +1,10 @@
-use extism::{convert::Json, *};
-use fluentci_common::mise as common_mise;
-
 use crate::state::State;
+use extism::{convert::Json, *};
 
 host_fn!(pub mise(user_data: State;) -> Json<Mise> {
-    let state = user_data.get()?;
-    let state = state.lock().unwrap();
-    let graph = state.graph.clone();
-    let mise = common_mise::mise(graph, true)?;
-    Ok(Json(mise))
+    fluentci_common::host::mise(&user_data.get()?).map(|value| Json(value.into_inner()))
 });
 
 host_fn!(pub trust(user_data: State;) {
-    let state = user_data.get()?;
-    let state = state.lock().unwrap();
-    let graph = state.graph.clone();
-    common_mise::trust(graph)?;
-    Ok(())
+    fluentci_common::host::trust(&user_data.get()?)
 });

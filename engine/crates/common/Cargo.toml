@@ -25,3 +25,7 @@ uuid = {version = "1.8.0", features = [
   "fast-rng",
   "macro-diagnostics",
 ]}
+
+fluentci-executor = {path="../executor",version="0.1.2"}
+serde = {version="1",features=["derive"]}
+serde_json = "1"

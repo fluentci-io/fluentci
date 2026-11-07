@@ -3393,10 +3393,13 @@ dependencies = [
  "anyhow",
  "dirs 5.0.1",
  "fluentci-core",
+ "fluentci-executor",
  "fluentci-ext",
  "fluentci-secrets",
  "fluentci-types",
  "regex",
+ "serde",
+ "serde_json",
  "sha256",
  "uuid",
 ]
@@ -3406,10 +3409,15 @@ name = "fluentci-components"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "fluentci-common",
  "fluentci-core",
  "fluentci-executor",
+ "fluentci-ext",
+ "fluentci-types",
  "serde",
  "serde_json",
+ "shlex 1.3.0",
+ "tempfile",
  "wasmtime 41.0.4",
  "wasmtime 49.0.5",
  "wasmtime-wasi 41.0.4",
@@ -3637,6 +3645,7 @@ dependencies = [
  "extism",
  "extism-pdk",
  "fluentci-common",
+ "fluentci-components",
  "fluentci-core",
  "fluentci-executor",
  "fluentci-ext",
@@ -3645,6 +3654,8 @@ dependencies = [
  "fluentci-types",
  "serde",
  "serde_json",
+ "shlex 1.3.0",
+ "tempfile",
  "uuid",
 ]
 

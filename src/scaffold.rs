@@ -62,7 +62,7 @@ pub async fn write_with_runtime(
             create_file(&destination, std::str::from_utf8(&asset.data)?).await?;
         }
         create_file(&directory.join("Cargo.toml"), &format!(
-            "[package]\nname = {}\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[package.metadata.fluentci]\nruntime = \"component\"\n\n[lib]\ncrate-type = [\"cdylib\"]\n\n[dependencies]\nwit-bindgen = \"=0.57.1\"\n\n[build-dependencies]\nfluentci-inspection = {{ path = \".sdk/inspection/rust\" }}\n\n[workspace]\nexclude = [\".sdk/inspection/rust\"]\n",toml::Value::String(name.into())
+            "[package]\nname = {}\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[package.metadata.fluentci]\nruntime = \"component\"\n\n[lib]\ncrate-type = [\"cdylib\"]\n\n[dependencies]\nwit-bindgen = \"=0.57.1\"\nfluentci-pdk = {{ path = \".sdk/inspection/component-rust\" }}\n\n[build-dependencies]\nfluentci-inspection = {{ path = \".sdk/inspection/rust\" }}\n\n[workspace]\nexclude = [\".sdk/inspection/rust\", \".sdk/inspection/component-rust\", \".sdk/inspection/component-types\", \".sdk/inspection/component-primitives\"]\n",toml::Value::String(name.into())
         )).await?;
         create_file(&directory.join("build.rs"), "fn main() {\n    fluentci_inspection::generate_component(std::path::Path::new(&std::env::var(\"CARGO_MANIFEST_DIR\").unwrap()), std::path::Path::new(&std::env::var(\"OUT_DIR\").unwrap()), include_str!(\".sdk/wit/runtime.wit\")).expect(\"Generating component WIT and bindings\");\n}\n").await?;
         create_file(

@@ -322,7 +322,7 @@ pub fn generate_component(manifest: &Path, output: &Path, host_wit: &str) -> Res
         "Expose at least one public function from src/jobs.rs"
     );
     interface
-        .push_str("}\n\nworld plugin {\nimport fluentci:runtime/host@0.1.0;\nexport api;\n}\n");
+        .push_str("}\n\nworld plugin {\nimport fluentci:runtime/host@0.1.0;\nimport fluentci:runtime/api@0.1.0;\nexport api;\n}\n");
     let wit = output.join("wit");
     std::fs::create_dir_all(wit.join("deps/fluentci-runtime"))?;
     std::fs::write(wit.join("module.wit"), interface)?;
@@ -356,7 +356,7 @@ mod tests {
         let source = "pub struct Args { /// Source directory.\n pub src: String, pub jobs: u32 }\n/// Build a project.\npub fn build(args: Args) -> Result<String, String> { todo!() }\n";
         let file = root.path().join("src/jobs.rs");
         std::fs::write(&file, source)?;
-        let host = "package fluentci:runtime@0.1.0; interface host {}";
+        let host = "package fluentci:runtime@0.1.0; interface host {} interface api {}";
         generate_component(root.path(), &output, host)?;
         let mut resolve = wit_parser::Resolve::default();
         resolve.push_dir(output.join("wit"))?;
