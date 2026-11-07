@@ -14,7 +14,7 @@ use jacquard::{
 use serde::{Deserialize, Serialize};
 use std::{
     io::{self, IsTerminal},
-    path::Path,
+    path::{Path, PathBuf},
     time::Duration,
 };
 
@@ -125,7 +125,7 @@ pub fn validate_metadata(
     );
     anyhow::ensure!(
         !license.trim().is_empty() && license.len() <= 128,
-        "Set license in the selected module in fluentci.toml (for example MIT or MPL-2.0)"
+        "Set license in fluentci-module.toml or the selected module in fluentci.toml (for example MIT or MPL-2.0)"
     );
     Ok(())
 }
@@ -220,13 +220,28 @@ pub async fn download(value: &str) -> Result<Vec<u8>> {
     Ok(bytes)
 }
 
+fn publishing_config(root: &Path, selected: Option<&str>) -> Option<PathBuf> {
+    let manifest = root.join(crate::module_manifest::FILE);
+    if selected.is_none() && manifest.is_file() {
+        Some(manifest)
+    } else {
+        config::find(root)
+    }
+}
+
+fn publishing_workspace(start: &Path, selected: Option<&str>) -> Result<Workspace> {
+    let mut workspace = Workspace::discover(start)?;
+    workspace.config = publishing_config(&workspace.root, selected);
+    Ok(workspace)
+}
+
 fn metadata(
     root: &Path,
     selected: Option<&str>,
     overrides: &MetadataOptions,
     artifact: bool,
 ) -> Result<(String, String, String, String)> {
-    let config_path = config::find(root);
+    let config_path = publishing_config(root, selected);
     let config = config_path
         .as_ref()
         .map(|path| config::Config::read(path))
@@ -573,7 +588,7 @@ fn complete_metadata(
     .collect::<Vec<_>>();
     anyhow::ensure!(
         interactive || missing.is_empty(),
-        "Missing publishing metadata: {}. Supply these flags or set module metadata in fluentci.toml; run in an interactive terminal to enter missing fields",
+        "Missing publishing metadata: {}. Supply these flags or set module metadata in fluentci-module.toml or fluentci.toml; run in an interactive terminal to enter missing fields",
         missing.join(", ")
     );
     if interactive {
@@ -607,7 +622,7 @@ pub async fn publish(
     module: Option<&str>,
     metadata_options: &MetadataOptions,
 ) -> Result<()> {
-    let workspace = Workspace::current()?;
+    let workspace = publishing_workspace(&std::env::current_dir()?, module)?;
     let (name, version, description, license) = metadata(
         &workspace.root,
         module,
@@ -650,8 +665,10 @@ pub async fn publish(
         tokio::fs::read(artifact).await?
     };
     validate_wasm(&bytes)?;
-    let config = config::find(&workspace.root)
-        .map(|path| config::Config::read(&path))
+    let config = workspace
+        .config
+        .as_ref()
+        .map(|path| config::Config::read(path))
         .transpose()?;
     let definition = config.as_ref().and_then(|config| {
         let selected = module.or(metadata_options.name.as_deref());
@@ -1025,6 +1042,60 @@ mod tests {
             )?;
             assert_eq!(fields.1, "1.2.3");
         }
+        Ok(())
+    }
+
+    #[test]
+    fn publishing_from_module_root_uses_its_manifest_without_flags() -> anyhow::Result<()> {
+        let project = tempfile::tempdir()?;
+        std::fs::write(
+            project.path().join("fluentci.toml"),
+            "[[modules]]\nname='workspace-job'\npath='.'\nversion='9.9.9'\nlicense='Apache-2.0'\n",
+        )?;
+        let root = project.path().join("module");
+        std::fs::create_dir(&root)?;
+        std::fs::write(
+            root.join("fluentci-module.toml"),
+            "name='publish-me'\nversion='1.2.3'\nlicense='MIT'\ndescription='Reusable tools'\nsdk='typescript'\nruntime='component'\ntopics=['build']\nrepository='https://github.com/example/tools'\nreadme_url='https://example.com/README.md'\n",
+        )?;
+        for colocated_workspace in [false, true] {
+            if colocated_workspace {
+                std::fs::copy(
+                    project.path().join("fluentci.toml"),
+                    root.join("fluentci.toml"),
+                )?;
+            }
+            let workspace = super::publishing_workspace(&root, None)?;
+            assert_eq!(workspace.root, root.canonicalize()?);
+            assert_eq!(
+                workspace.config,
+                Some(workspace.root.join("fluentci-module.toml"))
+            );
+            let modules = crate::modules::discover(&workspace)?;
+            assert_eq!(modules.len(), 1);
+            assert_eq!(modules[0].name, "publish-me");
+            assert_eq!(modules[0].definition.sdk, crate::config::Sdk::Typescript);
+            assert_eq!(
+                modules[0].definition.runtime,
+                crate::config::ModuleRuntime::Component
+            );
+            assert_eq!(modules[0].definition.topics, ["build"]);
+            assert_eq!(
+                metadata(&workspace.root, None, None)?,
+                (
+                    "publish-me".into(),
+                    "1.2.3".into(),
+                    "Reusable tools".into(),
+                    "MIT".into()
+                )
+            );
+        }
+        let explicit = super::publishing_workspace(&root, Some("workspace-job"))?;
+        assert_eq!(explicit.config, Some(explicit.root.join("fluentci.toml")));
+        assert_eq!(
+            crate::modules::discover(&explicit)?[0].name,
+            "workspace-job"
+        );
         Ok(())
     }
 

@@ -8,7 +8,29 @@ source: "registry/publishing.md"
 
 ## Set package metadata
 
-Add metadata to each module in `fluentci.toml`:
+At a module root, put metadata in `fluentci-module.toml` and run `fluentci publish`:
+
+```toml
+name = "ci"
+version = "1.0.0"
+license = "MIT"
+description = "Reusable build checks"
+sdk = "typescript"
+runtime = "component"
+
+[dependencies]
+```
+
+```sh
+fluentci publish
+```
+
+FluentCI installs declared dependencies, builds the module using its SDK and runtime,
+and publishes its metadata and artifact. Neither `--wasm` nor `--module` is required.
+The module manifest takes precedence when `fluentci.toml` exists alongside it;
+use `--module` to explicitly select a workspace module instead.
+
+For workspace modules, metadata can also be declared in `fluentci.toml`:
 
 ```toml
 [[modules]]
