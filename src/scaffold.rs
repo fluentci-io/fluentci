@@ -37,7 +37,7 @@ pub async fn write(directory: &Path, name: &str, sdk: Sdk) -> Result<()> {
     }
     if sdk == Sdk::Rust {
         let manifest = format!(
-            "[package]\nname = {}\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ncrate-type = [\"cdylib\"]\n\n[dependencies]\nextism-pdk = \"=1.4.1\"\nserde = {{ version = \"1\", features = [\"derive\"] }}\n\n[build-dependencies]\nfluentci-inspection = {{ path = \".sdk/inspection/rust\" }}\n\n[workspace]\n",
+            "[package]\nname = {}\nversion = \"0.1.0\"\nedition = \"2021\"\n\n[lib]\ncrate-type = [\"cdylib\"]\n\n[dependencies]\nextism-pdk = \"=1.4.1\"\nserde = {{ version = \"1\", features = [\"derive\"] }}\n\n[build-dependencies]\nfluentci-inspection = {{ path = \".sdk/inspection/rust\" }}\n\n[workspace]\nexclude = [\".sdk/inspection/rust\"]\n",
             toml::Value::String(name.into())
         );
         create_file(&directory.join("Cargo.toml"), &manifest).await?;
@@ -95,4 +95,31 @@ pub async fn create_file(path: &Path, content: &str) -> Result<()> {
         .with_context(|| format!("Creating {} (existing files are preserved)", path.display()))?;
     file.write_all(content.as_bytes()).await?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tokio::process::Command;
+
+    #[tokio::test]
+    async fn rust_starter_resolves_its_nested_inspection_workspace() -> Result<()> {
+        let directory = tempfile::tempdir()?;
+        write(directory.path(), "inspection-starter", Sdk::Rust).await?;
+        let output = Command::new("cargo")
+            .args(["metadata", "--no-deps", "--format-version", "1"])
+            .current_dir(directory.path())
+            .output()
+            .await?;
+        assert!(
+            output.status.success(),
+            "{}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        let metadata: serde_json::Value = serde_json::from_slice(&output.stdout)?;
+        let root = directory.path().canonicalize()?;
+        assert_eq!(metadata["workspace_root"].as_str(), root.to_str());
+        assert_eq!(metadata["workspace_members"].as_array().unwrap().len(), 1);
+        Ok(())
+    }
 }

@@ -52,6 +52,13 @@ source types cannot reveal arbitrary parsing performed inside those functions.
 For existing projects, adopt the starter's updated build tooling. Rust needs the
 `fluentci-inspection` build dependency, the `generate` call in `build.rs`, and
 `include!(concat!(env!("OUT_DIR"), "/fluentci_metadata.rs"));` in `src/lib.rs`.
+The module's `Cargo.toml` must keep the helper outside its workspace:
+
+```toml
+[workspace]
+exclude = [".sdk/inspection/rust"]
+```
+
 ClojureScript entrypoints must expose the internal `__fluentci_invoke` bridge from
 `fluentci.inspection/invoke!` as shown in the starter. Existing hosted Wasm needs
 to be rebuilt and republished to acquire source signatures.
