@@ -66,13 +66,18 @@ test(
           },
           { root, native: true },
         );
-        buildPackage({ target, version: "v0.17.0" })();
+        buildPackage({ target, version: `v${version}` })();
         const dir = join(root, "target/release-assets");
         const deb = join(dir, `fluentci_${version}_${debArch}.deb`);
         const rpm = join(dir, `fluentci-${version}-1.${rpmArch}.rpm`);
         assert.equal(
           command("dpkg-deb", ["--field", deb, "Package"]),
           "fluentci",
+        );
+        const packageVersion = version.replaceAll("-", "~");
+        assert.equal(
+          command("dpkg-deb", ["--field", deb, "Version"]),
+          packageVersion,
         );
         assert.equal(
           command("rpm", [
@@ -83,6 +88,16 @@ test(
             rpm,
           ]),
           "fluentci",
+        );
+        assert.equal(
+          command("rpm", [
+            "--query",
+            "--package",
+            "--queryformat",
+            "%{VERSION}",
+            rpm,
+          ]),
+          packageVersion,
         );
         const listing = command("rpm", ["--query", "--package", "--list", rpm]);
         assert.match(listing, /\/usr\/bin\/fluentci/);
