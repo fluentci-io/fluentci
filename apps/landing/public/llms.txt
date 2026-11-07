@@ -1,50 +1,233 @@
 # FluentCI
 
-> FluentCI is an open-source, programmable CI/CD tool for building, testing, and deploying locally or on runners, with reusable WebAssembly plugins and a local Studio UI.
+> FluentCI is an open-source, typed, programmable CI/CD tool for building, testing, and deploying locally or on runners. It combines a Rust CLI, WebAssembly engine, eight language SDKs, local Studio web/desktop app, and AT Protocol module registry.
 
 Website: https://fluentci.io
+Documentation: https://docs.fluentci.io
+Documentation index: https://docs.fluentci.io/llms.txt
 Repository: https://github.com/fluentci-io/fluentci
+Engine: https://github.com/fluentci-io/fluentci-engine
+Registry API: https://api.fluentci.io/xrpc
+Module downloads: https://modules.fluentci.io
 
-Define pipelines in TOML or write Wasm plugins with the Rust, ClojureScript,
-PureScript, TypeScript, Python, Gleam, Elixir, or ReScript SDK. Wasm contains the
-pipeline logic; commands execute on the host using its installed tools and files.
-SDK builds require their language toolchains. ClojureScript starters check shared
-`.cljc` source with Typed Clojure before compiling to JavaScript and Wasm.
-
-Install the CLI:
+## Install and start
 
 ```sh
 curl -fsSL https://cli.fluentci.io | sh
 export PATH="$HOME/.local/bin:$PATH"
-fluentci --version
-```
-
-Create and run a ClojureScript pipeline:
-
-```sh
 fluentci init --sdk clojurescript
 fluentci run main hello
+fluentci studio
 ```
 
-Add a module to an existing workspace with
-`fluentci modules add ci --sdk purescript`, then run `fluentci run ci hello`.
-The root `fluentci.toml` declares modules and steps. Module paths are relative to
-that configuration file. Local execution requires no account.
+The installer resolves the latest release and verifies checksums. FLUENTCI_VERSION
+and FLUENTCI_INSTALL_DIR override its version and destination; set them on the
+receiving sh process. Local execution and Studio require no account. Source
+modules need their SDK compiler; precompiled Wasm still needs the tools used by
+its jobs.
 
-Run `fluentci studio` to manage projects, inspect execution history, follow live
-logs, view pipeline spans, and export CI configuration. Studio is available in a
-browser and as a desktop app.
+Homebrew: run `brew tap fluentci-io/tap` and `brew trust fluentci-io/tap`, then
+`brew install fluentci-io/tap/fluentci`. The macOS desktop app is available with
+`brew install --cask fluentci-io/tap/fluentci-studio`.
+
+Nix: enable the public cache with `cachix use fluentci`, then install using
+`nix profile install github:fluentci-io/fluentci`. Supported flake platforms are
+x86_64-linux, aarch64-linux, and aarch64-darwin. The installation guide also covers
+APT and DNF packages.
+
+## SDKs, typed arguments, and native Wasm components
+
+Supported SDKs: Rust, PureScript, ClojureScript, TypeScript, Python, Gleam, Elixir,
+and ReScript. Wasm contains orchestration logic; host commands run through the
+engine. Elixir compiles a CI DSL subset, not arbitrary BEAM programs.
+ClojureScript checks shared .cljc source with Typed Clojure before compilation.
+
+Extism core Wasm remains supported and is the default. Native WebAssembly
+components run directly in Wasmtime with WASI Preview 2 and versioned WIT host
+imports. Create a component in an existing workspace with:
+
+```sh
+fluentci modules add deploy --sdk purescript --runtime component
+```
+
+For a new workspace, use `fluentci init --sdk rust --runtime component`.
+The corresponding [[modules]] field is runtime = "component". Artifact execution
+detects the binary encoding; explicit component declarations reject core Wasm.
+Component starters do not require an Extism guest compiler.
+
+All eight SDKs can regenerate WIT and guest adapters from source contracts on
+each build; developers do not have to maintain duplicate WIT. Rust uses parsed
+signatures checked by compilation; JavaScript targets use compiler/type-checker
+interfaces; Python uses annotations, dataclasses/TypedDicts, and aliases; Elixir
+uses its executable DSL declarations. Unsupported or ambiguous types fail rather
+than being guessed. Source comments provide descriptions. Rust/Elixir use
+wit-bindgen, Python uses componentize-py, and JavaScript targets use ComponentizeJS.
+
+Published function metadata includes descriptions, named arguments, argument
+types, required/optional state, and return types. SDK inspection keeps metadata
+synchronized on rebuild. Component arguments are validated against actual WIT.
+Legacy Extism raw-text exports retain their ABI and do not automatically acquire
+named flags. Component functions return values instead of using Extism input/output.
+
+```sh
+fluentci run main --help
+fluentci run main hello --help
+fluentci run main hello --name Tsiry
+```
+
+The final example assumes the Rust component starter's typed hello function.
+Supported flags follow the inspected function contract. WIT identifiers and
+corresponding CLI flags use kebab-case.
+
+## Workspaces, workflows, and locking
+
+Root fluentci.toml declares shared modules, services, and default steps. Module
+sources can be SDK projects, precompiled .wasm files, HTTP(S) Wasm URLs, registry
+packages, or Git repositories. Git sources support rev and subdir for monorepos.
+Paths resolve from the configuration/project root.
+
+Store multiple workflows in .fluentci/workflows/<id>.toml. Each has its own
+name, description, environment, steps, and execution history, sharing root modules
+and services:
+
+```sh
+fluentci workflows
+fluentci workflows --steps --json
+fluentci workflows release --steps
+fluentci run --workflow release
+```
+
+CI events cover push, pull request, manual dispatch, and schedules with supported
+branch/tag/path filters. These affect CI exports, not manual local triggering.
+Studio offers a visual event composer. Exports support GitHub Actions, GitLab CI,
+Azure Pipelines, CircleCI, Semaphore, and AWS CodeBuild. Provider limitations and
+required external setup are documented in exports; trigger support differs.
+
+Registry references use @handle/name with optional @version or @latest. Official
+@fluentci.io/name modules can be referenced as name. Omitted/latest versions
+initially resolve the latest stable release. Direct package or Wasm URL invocation
+works without fluentci.toml:
+
+```sh
+fluentci run @tsiry-sandratraina.com/sccache@v0.1.0 --help
+fluentci https://example.com/module.wasm --help
+```
+
+The URL is illustrative. fluentci.lock pins registry versions, artifact URLs,
+SHA-256 checksums, and Git commits. `fluentci install` resolves dependencies;
+`fluentci install --frozen-lockfile` enforces locks; `fluentci update` refreshes
+resolutions deliberately. SDK dependency locks remain separate. `fluentci docs`
+renders available module READMEs with Glow, honoring explicit readme_url or
+repository/subdir discovery and locked Git sources where applicable.
+
+## Native execution, services, and primitives
+
+The engine compiles validated DAGs into indexed graphs with contiguous adjacency
+arrays and incremental scheduling for ordinary dependency flows. JSON remains
+readable interchange/debugging data, without a required internal graph round trip.
+Native plans support typed matrices, dependencies, concurrency limits, retries,
+conditions, allowed failures, outputs, artifacts, resources, caches, cancellation,
+service probes, logs, and replayable event journals.
+
+Composable primitives include filesystem operations, OS/CPU architecture detection,
+SHA-256/SHA-512 text/file digests, SSH, SCP, SFTP, rsync, FTP, FTPS, and S3. rsync
+is already a typed primitive backed by a native rsync 3+ client over SSH. Supported
+client tools can be provisioned through the host package manager when installation
+is enabled; remote tools must exist remotely. Credentials can reference task
+environment variables.
+
+The built-in POSIX process manager supervises background databases and other
+services on macOS, Linux, FreeBSD, NetBSD, and OpenBSD. Define services in TOML,
+Procfiles, or code. Backends include host, Nix, Devbox, Devenv, Pkgx, and Docker,
+subject to platform/backend availability. Lifecycle support includes readiness,
+health checks, dependencies, restart policies, logs, and cleanup. Commands include
+fluentci up, ps, logs, restart, and down.
+
+Pipeline environments also integrate Flox, Hermit, EnvHub, Pixi, and Mise. Local
+and remote caches and OpenTelemetry tracing are supported. Environment providers
+and their tools remain external dependencies.
+
+## Registry, publishing, and authentication
+
+Publishing uses FLUENTCI_ACCOUNT (handle or DID) and FLUENTCI_APP_PASSWORD.
+`fluentci whoami` authenticates and shows account information; this flow has no
+login command. Identity is remembered in ~/.fluentci/account.json without app
+passwords or session tokens. Authentication can trigger background indexing of
+public Tangled repositories into local SQLite for Studio clone suggestions.
+
+Name, version, and license are required per module in fluentci.toml; version is
+not read from package.version. Optional metadata includes description, repository,
+subdir, logo, readme_url, topics, os, and arch. Interactive publishing prompts for
+missing fields, offers license/platform completion, and lets users skip optional
+fields. Non-interactive runs require explicit required metadata.
+
+```sh
+fluentci publish --module deploy
+fluentci publish --name example --version 1.0.0 --license MIT --file dist/plugin.wasm
+```
+
+Publishing can build source, use --file, or validate --url to skip uploading.
+External Wasm URLs must end in .wasm and return HTTP 200. Logo URLs must return
+HTTP 200 with an image MIME type. Core Wasm and components are supported, with
+inspected function/argument/return metadata.
+
+The API verifies publisher-scoped service authentication, stores immutable Wasm
+in S3-compatible storage, and returns its public URL and checksum. The CLI writes
+an io.fluentci.plugin record to the publisher's PDS using the name-version key.
+Package identity is publisher scoped. Canonical download paths follow
+/handle/module/v<version>/module.wasm; /@handle paths remain compatible. Public
+downloads use modules.fluentci.io.
+
+The Gleam/Node XRPC API uses SQLite, FTS5, Drizzle Gleam bindings, and multiple
+deduplicated Jetstream connections. Endpoints provide package search with RSQL
+platform filters, lookup, paginated lists, and actor package feeds. The root
+returns an API overview; /xrpc/_health is the health endpoint.
+
+PDS updates can change descriptive metadata. Jetstream preserves published
+artifact URL, SHA-256, and version, and ignores delete events. Download counters
+are registry owned. HTTP 200 Wasm GETs through the proxy asynchronously record
+deduplicated total/daily download counts without blocking the download response.
+
+## Studio and module discovery
+
+Studio runs in a browser or Tauri desktop app with native macOS window controls.
+It manages projects/workflows, execution bars and stats, live auto-following logs,
+job re-runs, span timelines, and a bottom status line. Git controls show/switch
+branches and pull changes; workflows/local modules refresh after branch changes.
+Quick search includes workflows and parent projects. Module suggestions distinguish
+local and registry modules and show logos or placeholders.
+
+The landing page offers dark/light themes and a slash-shortcut search modal.
+Results include module identity, logo, description, author, and available download
+counts. Official @fluentci.io modules display unqualified names. Module pages show
+README Markdown with syntax highlighting, typed function Docs and function search,
+usage examples, version/date, author, license, repository, topics/platform metadata,
+and available weekly download history.
 
 ## Documentation
 
-- [CLI documentation](https://raw.githubusercontent.com/fluentci-io/fluentci/main/README.md): Installation, configuration, workspace modules, commands, Studio, and CI exports.
-- [SDK starter templates](https://raw.githubusercontent.com/fluentci-io/fluentci/main/templates/README.md): Embedded starter projects and build requirements.
-- [ClojureScript starter](https://raw.githubusercontent.com/fluentci-io/fluentci/main/templates/sdk/clojurescript/README.md): Static checking, compilation, Wasm exports, and local SDK layout.
-- [Engine documentation](https://raw.githubusercontent.com/fluentci-io/fluentci-engine/main/README.md): Pipeline runtime, host execution, environment providers, and engine usage.
-- [Guest SDKs](https://raw.githubusercontent.com/fluentci-io/fluentci-engine/main/sdk/README.md): Language SDK documentation and examples.
+- [Installation](https://docs.fluentci.io/getting-started/installation/): CLI, package managers, Nix, and platforms.
+- [Modules](https://docs.fluentci.io/guides/modules/): Local, URL, registry, and Git sources.
+- [WebAssembly components](https://docs.fluentci.io/guides/components/): Automatic WIT generation, SDK toolchains, native imports, and supported types.
+- [Typed arguments](https://docs.fluentci.io/guides/module-arguments/): Inspected signatures, flags, descriptions, and legacy compatibility.
+- [Configuration](https://docs.fluentci.io/reference/configuration/): fluentci.toml, workflows, events, and services.
+- [Lockfile](https://docs.fluentci.io/reference/lockfile/): Reproducible registry/Git resolutions.
+- [Native plans](https://docs.fluentci.io/guides/native-plans/): Graph compilation, matrices, and scheduling.
+- [Primitives](https://docs.fluentci.io/guides/primitives/): Files, host facts, digests, transfers, rsync, and provisioning.
+- [Services](https://docs.fluentci.io/guides/services/): Built-in supervision and development environments.
+- [CI exports](https://docs.fluentci.io/guides/ci/): Provider mappings, event support, and setup.
+- [SDKs](https://docs.fluentci.io/sdks/): All eight language SDKs.
+- [Studio](https://docs.fluentci.io/studio/): Projects, workflows, history, logs, and spans.
+- [Publishing](https://docs.fluentci.io/registry/publishing/): Metadata, validation, uploads, and PDS records.
+- [Authentication](https://docs.fluentci.io/registry/authentication/): Environment credentials, identity, and Tangled indexing.
+- [Registry API](https://docs.fluentci.io/reference/registry-api/): XRPC queries, filters, and pagination.
+- [CLI reference](https://docs.fluentci.io/reference/cli/): Unified CLI commands; engine-only commands are not automatically top-level commands.
 
 ## Optional
 
-- [Registry API](https://raw.githubusercontent.com/fluentci-io/fluentci/main/apps/api/README.md): Gleam XRPC API, AT Protocol plugin records, SQLite indexing, and publishing storage configuration.
-- [Contributing](https://github.com/fluentci-io/fluentci#contributing): Development and contribution guidance.
-- [Community](https://discord.gg/H7M28d9dRk): FluentCI Discord.
+- [Source README](https://raw.githubusercontent.com/fluentci-io/fluentci/main/README.md): Installation, Turborepo development, and contributions.
+- [Engine sources](https://github.com/fluentci-io/fluentci-engine): Runtime and shared SDK implementation.
+- [Registry deployment](https://docs.fluentci.io/development/registry/): Configuration, storage, Jetstream, and systemd.
+- [Community](https://discord.gg/H7M28d9dRk): Discord.
+- [Bluesky](https://bsky.app/profile/fluentci.io): Project updates.
+- [Tangled](https://tangled.org/fluentci.io/fluentci): Project repository.
