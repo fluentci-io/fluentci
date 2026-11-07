@@ -6,6 +6,7 @@ license = "MPL-2.0"
 description = "Native WIT component runtime for FluentCI"
 
 [dependencies]
+wasm-compose = { version = "=0.243.0", default-features = false }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

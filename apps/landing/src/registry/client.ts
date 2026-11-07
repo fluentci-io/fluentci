@@ -38,6 +38,8 @@ export interface Profile {
   did: string;
   handle: string;
   avatar?: string;
+  displayName?: string;
+  description?: string;
 }
 
 export function httpUrl(value?: string): string | undefined {
@@ -213,4 +215,30 @@ export function readmeUrl(plugin: Plugin) {
     plugin.subdir?.split("/").filter((part) => part && part !== ".") ?? [];
   if (subdir.includes("..")) return undefined;
   return `https://raw.githubusercontent.com/${parts.map(encodeURIComponent).join("/")}/HEAD/${[...subdir, "README.md"].map(encodeURIComponent).join("/")}`;
+}
+
+export async function getProfile(
+  actor: string,
+  signal: AbortSignal,
+): Promise<Profile | undefined> {
+  const cached = [...profiles.values()].find(
+    (profile) =>
+      profile.did === actor ||
+      profile.handle.toLowerCase() === actor.toLowerCase(),
+  );
+  if (cached) return cached;
+  const response = await fetch(
+    `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?${new URLSearchParams({ actor })}`,
+    { signal },
+  );
+  if (!response.ok) return undefined;
+  const profile = (await response.json()) as Profile;
+  if (
+    !profile.did?.startsWith("did:") ||
+    !profile.handle ||
+    profile.handle === "handle.invalid"
+  )
+    return undefined;
+  profiles.set(profile.did, profile);
+  return profile;
 }

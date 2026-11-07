@@ -39,8 +39,13 @@ function StoryRouter({
       path: "/$handle/plugin/$rkey",
       component: () => children,
     });
+    const publisher = createRoute({
+      getParentRoute: () => root,
+      path: "/$handle",
+      component: () => children,
+    });
     return createRouter({
-      routeTree: root.addChildren([home, module]),
+      routeTree: root.addChildren([home, module, publisher]),
       history: createMemoryHistory({ initialEntries: [path] }),
     });
   });
@@ -62,6 +67,19 @@ const preview: Preview = {
     layout: "padded",
     msw: {
       handlers: [
+        http.get(
+          "https://api.fluentci.io/xrpc/io.fluentci.registry.getActorPackages",
+          () => HttpResponse.json({ packages: [plugin], total: 1 }),
+        ),
+        http.get(
+          "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile",
+          () =>
+            HttpResponse.json({
+              ...author,
+              displayName: "FluentCI",
+              description: "Build pipelines in any language.",
+            }),
+        ),
         http.get(
           "https://api.fluentci.io/xrpc/io.fluentci.registry.listPackages",
           () => HttpResponse.json({ packages: [plugin] }),

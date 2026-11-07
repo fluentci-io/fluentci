@@ -1,4 +1,5 @@
 import ts from "typescript";
+import { existsSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { field, documentation } from "../common.mjs";
 import { fileURLToPath } from "node:url";
@@ -29,7 +30,15 @@ export function programFor(entry, root) {
     };
   }
   const ambient = fileURLToPath(new URL("../guest.d.ts", import.meta.url));
-  const program = ts.createProgram([resolve(entry), ambient], options);
+  const dependencyTypes = join(root, "fluentci_modules/imports.d.ts");
+  const program = ts.createProgram(
+    [
+      resolve(entry),
+      ambient,
+      ...(existsSync(dependencyTypes) ? [dependencyTypes] : []),
+    ],
+    options,
+  );
   const source = program.getSourceFile(resolve(entry));
   if (!source) throw Error(`Cannot inspect ${entry}`);
   const errors = program

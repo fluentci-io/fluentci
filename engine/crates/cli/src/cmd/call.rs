@@ -116,8 +116,16 @@ fn execute(wasm: Wasm, func: &str, args: &str) -> Result<(), Error> {
         execution_failure: execution_failure.clone(),
         caller: Some(fluentci_shared::module_call::invoke),
         call_depth: 0,
+        dependency_scopes: vec![],
     });
 
+    let _dependency_scope = match &wasm {
+        Wasm::Data { data, .. } => Some(fluentci_shared::module_dependencies::Scope::enter(
+            &user_data.get()?,
+            data,
+        )?),
+        _ => None,
+    };
     let manifest = Manifest::new([wasm]);
     let mut plugin =
         fluentci_shared::host::register(PluginBuilder::new(manifest).with_wasi(true), user_data)

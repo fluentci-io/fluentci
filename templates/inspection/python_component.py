@@ -124,6 +124,15 @@ def build_component(source: Path, artifact: Path) -> None:
     wit, wrapper, metadata = inspect_component(source.read_text())
     output = artifact.parent / ".component-py"
     (output / "wit/deps/runtime").mkdir(parents=True, exist_ok=True)
+    dependency_file = source.parent / ".fluentci/dependencies/interfaces.json"
+    dependencies = json.loads(dependency_file.read_text()) if dependency_file.is_file() else []
+    imports = []
+    for dependency in dependencies:
+        destination = output / "wit/deps" / ("dependency-" + dependency["alias"])
+        destination.mkdir(parents=True, exist_ok=True)
+        (destination / "dependency.wit").write_text(dependency["wit"])
+        imports.append(f"import {dependency['import']};")
+    wit = wit.replace("world plugin {", "world plugin {\n" + "\n".join(imports))
     (output / "wit/module.wit").write_text(wit)
     shutil.copyfile(source.parent / ".sdk/wit/runtime.wit", output / "wit/deps/runtime/runtime.wit")
     (output / "_fluentci_component.py").write_text(wrapper)

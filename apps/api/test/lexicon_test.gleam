@@ -45,7 +45,13 @@ pub fn generated_pagination_encoder_handles_arrays_and_cursor_test() {
 }
 
 pub fn generated_actor_parameters_require_actor_test() {
-  models.RegistryGetActorPackagesParameters("alice.example", Some(10), None)
+  models.RegistryGetActorPackagesParameters(
+    actor: "alice.example",
+    q: None,
+    latest: None,
+    limit: Some(10),
+    cursor: None,
+  )
   |> models.encode_registry_get_actor_packages_parameters
   |> json.to_string
   |> should.equal("{\"actor\":\"alice.example\",\"limit\":10}")

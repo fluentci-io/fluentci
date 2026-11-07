@@ -2,6 +2,10 @@ import { build } from "esbuild";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+  addDependencyInterfaces,
+  dependencyInterfaces,
+} from "./dependencies.mjs";
 import { embedInspection } from "./wasm.mjs";
 
 export function witName(name) {
@@ -225,7 +229,10 @@ export async function buildComponent({ root, artifact, functions, sdk }) {
   const { wit, functions: contract } = componentContract(functions, sdk);
   const witDir = join(directory, "wit");
   await mkdir(join(witDir, "deps/runtime"), { recursive: true });
-  await writeFile(join(witDir, "module.wit"), wit);
+  await writeFile(
+    join(witDir, "module.wit"),
+    await addDependencyInterfaces(root, witDir, wit),
+  );
   await writeFile(
     join(witDir, "deps/runtime/runtime.wit"),
     await readFile(join(root, ".sdk/wit/runtime.wit")),
@@ -240,6 +247,27 @@ export async function buildComponent({ root, artifact, functions, sdk }) {
     format: "esm",
     platform: "neutral",
     external: ["fluentci:runtime/*"],
+    plugins: [
+      {
+        name: "fluentci-dependencies",
+        setup(build) {
+          build.onResolve(
+            { filter: /^fluentci:dependency\// },
+            async ({ path }) => {
+              const alias = path.slice("fluentci:dependency/".length);
+              const dependency = (await dependencyInterfaces(root)).find(
+                (dependency) => dependency.alias === alias,
+              );
+              if (!dependency)
+                throw Error(
+                  `Unknown module dependency ${alias}; run fluentci install`,
+                );
+              return { path: dependency.import, external: true };
+            },
+          );
+        },
+      },
+    ],
     inject: [fileURLToPath(new URL("./component-host.mjs", import.meta.url))],
   });
   const { componentize } = await import(

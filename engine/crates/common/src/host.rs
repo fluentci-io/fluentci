@@ -75,6 +75,7 @@ pub struct State {
     pub execution_failure: Arc<Mutex<Option<fluentci_executor::diagnostics::ExecutionFailure>>>,
     pub caller: Option<ModuleCaller>,
     pub call_depth: usize,
+    pub dependency_scopes: Vec<std::collections::BTreeMap<String, Vec<u8>>>,
 }
 
 impl State {
@@ -89,6 +90,7 @@ impl State {
             execution_failure: Arc::new(Mutex::new(None)),
             caller: None,
             call_depth: 0,
+            dependency_scopes: vec![],
         }))
     }
 }

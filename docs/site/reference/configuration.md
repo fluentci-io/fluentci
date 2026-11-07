@@ -88,6 +88,16 @@ Unknown fields are rejected. Registry sources cannot override `build`, `entry`,
 or `artifact`; URL sources cannot override `build` or `artifact`. Rust normally
 resolves artifacts through Cargo; artifact overrides require a custom build.
 
+## Module manifests
+
+`fluentci-module.toml` at a module source root owns that module's metadata and build
+settings. Workspace declarations retain the alias and source path; publishing reads
+the module's own name and version. A standalone module manifest also serves as a
+configuration boundary. Its `[dependencies]` are installed with `fluentci add` or
+`fluentci install` into `fluentci_modules/`, separate from workspace `[[modules]]`.
+See [module dependencies](/guides/module-dependencies/) for the manifest format,
+locking, native WIT imports, and SDK calls.
+
 ## Registry aliases and versions
 
 ```toml

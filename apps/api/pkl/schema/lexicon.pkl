@@ -44,7 +44,7 @@ class ObjectField extends Field {
 class Parameters {
   type = "params"
   required: List<String> = List()
-  properties: Mapping<String, StringField | IntegerField>
+  properties: Mapping<String, StringField | IntegerField | BooleanField>
 }
 
 class Body {

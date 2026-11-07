@@ -46,3 +46,6 @@ pub fn download_event(request: Request) -> RegistryRecordDownloadInput
 
 @external(javascript, "./runtime_ffi.mjs", "currentDay")
 pub fn current_day() -> String
+
+@external(javascript, "./runtime_ffi.mjs", "flag")
+pub fn flag(request: Request, key: String) -> Bool

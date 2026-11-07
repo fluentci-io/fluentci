@@ -182,6 +182,7 @@ export function SearchDialog({ close }: { close: () => void }) {
                 role="option"
                 aria-selected={selected === index}
                 id={`module-result-${index}`}
+                className="relative"
               >
                 <Link
                   to="/$handle/plugin/$rkey"
@@ -216,15 +217,32 @@ export function SearchDialog({ close }: { close: () => void }) {
                       </span>
                     )}
                     <span className="mt-2 flex items-center justify-between gap-3">
-                      <Author
-                        profile={profiles[plugin.author]}
-                        fallback={plugin.author}
-                      />
+                      <span className="invisible" aria-hidden="true">
+                        <Author
+                          profile={profiles[plugin.author]}
+                          fallback={plugin.author}
+                        />
+                      </span>
                       <span className="shrink-0 font-mono text-xs text-muted">
                         {plugin.version}
                       </span>
                     </span>
                   </span>
+                </Link>
+                <Link
+                  to="/$handle"
+                  params={{
+                    handle: profiles[plugin.author]?.handle ?? plugin.author,
+                  }}
+                  className="search-result-author-link"
+                  aria-label={`View @${profiles[plugin.author]?.handle ?? plugin.author} profile`}
+                  onClick={close}
+                  onKeyDown={(event) => event.stopPropagation()}
+                >
+                  <Author
+                    profile={profiles[plugin.author]}
+                    fallback={plugin.author}
+                  />
                 </Link>
               </div>
             ))

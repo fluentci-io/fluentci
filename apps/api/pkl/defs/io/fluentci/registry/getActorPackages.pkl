@@ -11,6 +11,8 @@ defs = new Mapping {
         ["actor"] = new StringField {
           format = "at-identifier"
         }
+        ["q"] = new StringField { maxLength = 1000 }
+        ["latest"] = new BooleanField {}
         ["limit"] = new IntegerField {
           minimum = 1
           maximum = 100
@@ -31,6 +33,7 @@ defs = new Mapping {
               ref = "io.fluentci.registry.defs#packageView"
             }
           }
+          ["total"] = new IntegerField { minimum = 0 }
           ["cursor"] = new StringField {
           }
         }

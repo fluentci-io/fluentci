@@ -15,14 +15,15 @@ fluentci install
 The CLI resolves registry modules declared in `fluentci.toml`, downloads verified
 Wasm artifacts, checks out Git module sources, and writes `fluentci.lock` in the
 workspace root. Local source modules still use their SDK's own dependency tools.
-HTTP URL modules are cached separately and are not registry dependency locks.
+Dependencies declared by `fluentci-module.toml` are included too. Direct Wasm
+URL dependencies are pinned by checksum and reused from the verified cache.
 
 Registry dependencies pin the resolved version, publisher DID, Wasm URL and
 SHA-256, registry origin, and available record URI/CID and source metadata.
 Git dependencies pin an exact commit for the requested branch, tag, or revision.
 The file also records module aliases and their source references.
 
-Commit `fluentci.lock` with `fluentci.toml`. A `latest` dependency stays at its
+Commit `fluentci.lock` with `fluentci.toml` or `fluentci-module.toml`. A `latest` dependency stays at its
 locked version on subsequent runs, even after the publisher releases an update.
 
 ## Run and update

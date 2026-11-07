@@ -129,3 +129,12 @@ encoders, and the runtime schema bundle. Run `bun run lexicons:generate` or
 
 Published download URLs, SHA-256 checksums, and versions are immutable. Jetstream
 metadata updates cannot replace them, and module delete events are ignored.
+
+## Publisher module profiles
+
+`io.fluentci.registry.getActorPackages` accepts an actor handle or DID. `latest=true`
+returns one most recently published version per module name; `q` filters this list
+using FTS. Responses include `total` (the actor's unfiltered visible module count)
+and an optional query-bound `cursor`. Omit `latest` to retain the version feed.
+The landing profile routes `/:handle` and `/:did` use these fields for filtering,
+infinite loading, and exact counts. Author handles link to these internal profiles.

@@ -148,6 +148,18 @@ pub async fn write_with_runtime(
             .await?;
         }
     }
+    let metadata = format!(
+        "name = {}\nversion = \"0.1.0\"\nsdk = {}\nruntime = {}\n\n[dependencies]\n",
+        toml::Value::String(name.into()),
+        toml::Value::String(sdk.name().into()),
+        toml::Value::String(runtime.name().into())
+    );
+    let metadata = if sdk == Sdk::Elixir {
+        metadata.replace("\n[dependencies]", "\nentry = \"Main\"\n\n[dependencies]")
+    } else {
+        metadata
+    };
+    create_file(&directory.join(crate::module_manifest::FILE), &metadata).await?;
     Ok(())
 }
 

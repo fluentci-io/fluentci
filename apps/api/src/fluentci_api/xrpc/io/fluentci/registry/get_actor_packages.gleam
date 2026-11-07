@@ -10,13 +10,15 @@ pub fn register(server: Server, database: Db) -> Nil {
       server,
       runtime.param(request, "actor"),
     ))
-    use page <- promise.map(db.actor_packages(
+    use page <- promise.map(db.actor_profile_packages(
       database,
       actor,
+      runtime.param(request, "q"),
+      runtime.flag(request, "latest"),
       runtime.limit(request),
       runtime.param(request, "cursor"),
     ))
-    models.RegistryGetActorPackagesOutput(page.packages, page.cursor)
+    page
     |> models.encode_registry_get_actor_packages_output
     |> json.to_string
     |> runtime.json

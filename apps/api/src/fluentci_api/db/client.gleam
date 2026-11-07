@@ -3,10 +3,10 @@
 import fluentci_api/db/connection
 import fluentci_api/db/filters
 import fluentci_api/drizzle/orm.{
-  type Assignment, type Condition, type Query, all, and, asc, desc, eq,
-  eq_columns, from, gt, inner_join, insert, is_null, left_join, limit, lt,
-  matches, on_conflict_do_nothing, on_conflict_do_update, or, order_by, set,
-  transaction, where,
+  type Assignment, type Condition, type Query, alias, all, and, asc, count_rows,
+  desc, eq, eq_columns, from, gt, gt_columns, inner_join, insert, is_null,
+  left_join, limit, lt, lt_columns, matches, not_exists, on_conflict_do_nothing,
+  on_conflict_do_update, or, order_by, set, transaction, where,
 }
 import fluentci_api/function_metadata
 import fluentci_api/lexicon/models.{
@@ -112,7 +112,7 @@ pub fn list_packages(
   count: Int,
   cursor_value: String,
 ) -> Promise(Page) {
-  list_filtered(db, query, author, count, cursor_value, "")
+  list_filtered(db, query, author, count, cursor_value, "", False)
 }
 
 pub fn search_packages(
@@ -123,7 +123,7 @@ pub fn search_packages(
   cursor_value: String,
   rsql: String,
 ) -> Promise(Page) {
-  list_filtered(db, query, author, count, cursor_value, rsql)
+  list_filtered(db, query, author, count, cursor_value, rsql, False)
 }
 
 fn list_filtered(
@@ -133,10 +133,25 @@ fn list_filtered(
   count: Int,
   cursor_value: String,
   rsql: String,
+  newest_only: Bool,
 ) -> Promise(Page) {
   let plugins = p.table()
-  let filter = query_hash(query, author <> "\n" <> rsql)
+  let filter =
+    query_hash(
+      query,
+      author
+        <> "\n"
+        <> rsql
+        <> case newest_only {
+        True -> "\nlatest"
+        False -> ""
+      },
+    )
   let conditions = [visibility(), filters.parse(rsql)]
+  let conditions = case newest_only {
+    True -> [newest_version(), ..conditions]
+    False -> conditions
+  }
   let conditions = case author {
     "" -> conditions
     _ -> [eq(p.author(plugins), author), ..conditions]
@@ -419,4 +434,60 @@ pub fn apply_event(db: Db, event: Event) -> Promise(Nil) {
   }
   use _ <- promise.await(apply)
   save_checkpoint(tx, time)
+}
+
+fn newest_version() -> Condition {
+  let plugins = p.table()
+  let newer = alias(plugins, "newer_plugin")
+  not_exists(
+    from(newer)
+    |> where(
+      and([
+        eq(p.deleted(newer), False),
+        eq_columns(p.author(newer), p.author(plugins)),
+        eq_columns(p.name(newer), p.name(plugins)),
+        or([
+          gt_columns(p.published_at(newer), p.published_at(plugins)),
+          and([
+            eq_columns(p.published_at(newer), p.published_at(plugins)),
+            lt_columns(p.uri(newer), p.uri(plugins)),
+          ]),
+        ]),
+      ]),
+    ),
+  )
+}
+
+pub fn actor_profile_packages(
+  db: Db,
+  actor: String,
+  query: String,
+  newest_only: Bool,
+  count: Int,
+  cursor: String,
+) -> Promise(models.RegistryGetActorPackagesOutput) {
+  case actor {
+    "" -> fail("InvalidRequest", "Actor is required")
+    _ -> Nil
+  }
+  let conditions = [visibility(), eq(p.author(p.table()), actor)]
+  let conditions = case newest_only {
+    True -> [newest_version(), ..conditions]
+    False -> conditions
+  }
+  use total <- promise.await(count_rows(db, visible() |> where(and(conditions))))
+  use page <- promise.map(list_filtered(
+    db,
+    query,
+    actor,
+    count,
+    cursor,
+    "",
+    newest_only,
+  ))
+  models.RegistryGetActorPackagesOutput(
+    packages: page.packages,
+    cursor: page.cursor,
+    total: Some(total),
+  )
 }

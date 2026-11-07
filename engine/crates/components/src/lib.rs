@@ -20,11 +20,13 @@ use wasmtime_wasi::FsPerms;
 use wasmtime_wasi::{DirPerms, FilePerms};
 use wasmtime_wasi::{WasiCtx, WasiCtxView, WasiView};
 
+pub mod composition;
 mod host_api;
 pub mod interface;
 mod values;
 
 pub use fluentci_common::host::State;
+pub use fluentci_common::module_dependencies;
 pub use interface::{Argument, Function, Surface};
 
 /// Recognize the binary component encoding before interpreting any nested modules.
@@ -78,8 +80,7 @@ fn nested(
         is_component(&bytes),
         "Nested core Wasm requires the dual-runtime host dispatcher"
     );
-    let words =
-        shlex::split(&module.args).context("Unclosed quote in nested component arguments")?;
+    let words = dependency_arguments(&module.args)?;
     let cancellation = context
         .lock()
         .unwrap()
@@ -129,6 +130,31 @@ impl Drop for Interrupt {
             let _ = worker.join();
         }
     }
+}
+
+/// Decode a typed JSON input object or the existing CLI-style argument string.
+pub fn dependency_arguments(input: &str) -> Result<Vec<String>> {
+    if let Ok(serde_json::Value::Object(fields)) = serde_json::from_str(input) {
+        return fields
+            .into_iter()
+            .map(|(name, value)| {
+                ensure!(
+                    !name.is_empty()
+                        && name
+                            .chars()
+                            .all(|ch| ch.is_ascii_alphanumeric() || ch == '-' || ch == '_'),
+                    "Invalid dependency argument name"
+                );
+                let value = if let serde_json::Value::String(value) = value {
+                    value
+                } else {
+                    value.to_string()
+                };
+                Ok(format!("--{name}={value}"))
+            })
+            .collect();
+    }
+    shlex::split(input).context("Unclosed quote in nested component arguments")
 }
 
 /// Validate typed arguments before instantiation, then call a WIT export.

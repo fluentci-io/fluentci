@@ -400,6 +400,13 @@ export const schemas = [
               type: 'string',
               format: 'at-identifier',
             },
+            q: {
+              type: 'string',
+              maxLength: 1000,
+            },
+            latest: {
+              type: 'boolean',
+            },
             limit: {
               type: 'integer',
               minimum: 1,
@@ -424,6 +431,10 @@ export const schemas = [
                   type: 'ref',
                   ref: 'io.fluentci.registry.defs#packageView',
                 },
+              },
+              total: {
+                type: 'integer',
+                minimum: 0,
               },
               cursor: {
                 type: 'string',

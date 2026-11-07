@@ -309,6 +309,8 @@ pub fn encode_registry_package_view(value: RegistryPackageView) -> json.Json {
 pub type RegistryGetActorPackagesParameters {
   RegistryGetActorPackagesParameters(
     actor: String,
+    q: Option(String),
+    latest: Option(Bool),
     limit: Option(Int),
     cursor: Option(String),
   )
@@ -318,6 +320,16 @@ pub fn encode_registry_get_actor_packages_parameters(
   value: RegistryGetActorPackagesParameters,
 ) -> json.Json {
   let fields = [#("actor", json.string(value.actor))]
+  let fields =
+    list.append(fields, case value.q {
+      None -> []
+      Some(item) -> [#("q", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.latest {
+      None -> []
+      Some(item) -> [#("latest", json.bool(item))]
+    })
   let fields =
     list.append(fields, case value.limit {
       None -> []
@@ -334,6 +346,7 @@ pub fn encode_registry_get_actor_packages_parameters(
 pub type RegistryGetActorPackagesOutput {
   RegistryGetActorPackagesOutput(
     packages: List(RegistryPackageView),
+    total: Option(Int),
     cursor: Option(String),
   )
 }
@@ -347,6 +360,11 @@ pub fn encode_registry_get_actor_packages_output(
       json.array(value.packages, fn(item) { encode_registry_package_view(item) }),
     ),
   ]
+  let fields =
+    list.append(fields, case value.total {
+      None -> []
+      Some(item) -> [#("total", json.int(item))]
+    })
   let fields =
     list.append(fields, case value.cursor {
       None -> []

@@ -400,10 +400,50 @@ impl Config {
     }
 
     pub fn read(path: &Path) -> Result<Self> {
-        Self::parse(
+        if path
+            .file_name()
+            .is_some_and(|name| name == crate::module_manifest::FILE)
+        {
+            let manifest = crate::module_manifest::Manifest::read(
+                path.parent().context("Missing module root")?,
+            )?
+            .context("Missing module manifest")?;
+            return Ok(Self {
+                services: vec![],
+                steps: vec![],
+                package: None,
+                modules: vec![manifest.module],
+            });
+        }
+        let mut configuration = Self::parse(
             &std::fs::read_to_string(path)
                 .with_context(|| format!("Reading {}", path.display()))?,
-        )
+        )?;
+        for module in &mut configuration.modules {
+            if let Some(source) = &module.path {
+                let source = path
+                    .parent()
+                    .context("Missing configuration directory")?
+                    .join(source);
+                if source.is_file() && !source.file_name().is_some_and(|name| name == "Cargo.toml")
+                {
+                    continue;
+                }
+                let directory = if source.is_dir() {
+                    source.as_path()
+                } else {
+                    source.parent().unwrap_or(&source)
+                };
+                if let Some(manifest) = crate::module_manifest::Manifest::read(directory)? {
+                    *module = Module {
+                        name: module.name.clone(),
+                        path: module.path.clone(),
+                        ..manifest.module
+                    };
+                }
+            }
+        }
+        Ok(configuration)
     }
 
     pub fn actions(&self) -> Result<Vec<Action>> {
@@ -458,6 +498,7 @@ pub fn find(root: &Path) -> Option<PathBuf> {
     [
         root.join("fluentci.toml"),
         root.join(".fluentci/fluentci.toml"),
+        root.join(crate::module_manifest::FILE),
     ]
     .into_iter()
     .find(|p| p.is_file())

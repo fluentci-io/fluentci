@@ -470,3 +470,19 @@ pre {
 :root[data-theme="light"] .module-type-boolean {
   color: #7c3aed;
 }
+
+@layer components {
+  .publisher-identity { @apply flex items-start gap-5 sm:gap-7; }
+  .publisher-avatar { @apply flex size-20 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-raised text-3xl text-accent sm:size-24; }
+  .publisher-avatar img { @apply size-full object-cover; }
+  .publisher-filter { @apply flex w-full items-center gap-2.5 rounded-lg border border-line bg-panel px-3 py-2.5 text-muted focus-within:border-accent sm:w-72; }
+  .publisher-filter input { @apply min-w-0 flex-1 bg-transparent text-sm text-ink outline-none; }
+  .publisher-module { @apply flex items-start gap-4 border-b border-line py-7 transition-colors hover:bg-panel; }
+  .publisher-module .module-logo { @apply size-16 shrink-0; }
+}
+@layer components {
+  .search-result-author-link { @apply absolute bottom-3 left-24 max-w-[calc(100%-9rem)] rounded-sm focus-visible:outline-accent; }
+}
+@layer components {
+  .publisher-module h3 { overflow-wrap: anywhere; }
+}

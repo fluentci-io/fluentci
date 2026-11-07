@@ -96,6 +96,8 @@ pub struct RunArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Add a dependency to fluentci-module.toml and install it
+    Add(AddArgs),
     /// Resolve registry modules, download Wasm, and generate fluentci.lock
     Install {
         /// Reject missing or changed dependency locks
@@ -414,4 +416,28 @@ pub enum ProjectCommand {
         #[arg(long, group = "provider")]
         aws: bool,
     },
+}
+
+#[derive(Debug, Clone, Default, Args)]
+pub struct AddArgs {
+    /// Registry module reference, URL, local path, or alias when using a source flag
+    pub module: String,
+    /// Dependency alias used in imports and function calls
+    #[arg(long)]
+    pub alias: Option<String>,
+    /// Local module directory or prebuilt Wasm artifact
+    #[arg(long, conflicts_with_all=["url","git"])]
+    pub path: Option<PathBuf>,
+    /// Public Wasm artifact URL
+    #[arg(long, conflicts_with_all=["path","git"])]
+    pub url: Option<String>,
+    /// Git repository containing the module
+    #[arg(long, conflicts_with_all=["path","url"])]
+    pub git: Option<String>,
+    /// Git branch, tag, or commit
+    #[arg(long, requires = "git")]
+    pub rev: Option<String>,
+    /// Module source subdirectory inside a Git repository
+    #[arg(long, requires = "git")]
+    pub subdir: Option<PathBuf>,
 }

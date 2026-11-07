@@ -1104,3 +1104,56 @@ test('ignored deletes create no tombstones and legacy tombstones can initialize 
   assert.equal(plugin.sha256, digest);
   assert.equal(plugin.version, '1.0.0');
 });
+
+test('publisher profiles page distinct modules with exact totals and query-bound cursors', async (t) => {
+  const connection = await fixture(t);
+  await add(
+    connection,
+    event('alpha', '1.0.0', 100, did, {
+      publishedAt: '2026-11-05T00:00:00.000Z',
+      description: 'Old description',
+    }),
+    event('alpha', '2.0.0', 200, did, {
+      publishedAt: '2026-11-06T00:00:00.000Z',
+      description: 'Compiler tooling',
+    }),
+    event('beta', '1.0.0', 300, did, { publishedAt: '2026-11-07T00:00:00.000Z' }),
+    event('foreign', '1.0.0', 400, other),
+  );
+  const first = await db.actor_profile_packages(connection, did, '', true, 1, '');
+  assert.equal(first.total[0], 2);
+  assert.deepEqual(
+    first.packages.toArray().map((value) => value.name),
+    ['beta'],
+  );
+  const second = await db.actor_profile_packages(connection, did, '', true, 1, first.cursor[0]);
+  assert.deepEqual(
+    second.packages.toArray().map((value) => [value.name, value.version]),
+    [['alpha', '2.0.0']],
+  );
+  const filtered = await db.actor_profile_packages(connection, did, 'Compiler', true, 20, '');
+  assert.equal(filtered.total[0], 2);
+  assert.deepEqual(
+    filtered.packages.toArray().map((value) => value.name),
+    ['alpha'],
+  );
+  assert.equal(
+    (await db.actor_profile_packages(connection, did, 'Old', true, 20, '')).packages.toArray()
+      .length,
+    0,
+  );
+  await assert.rejects(
+    db.actor_profile_packages(connection, did, 'Compiler', true, 1, first.cursor[0]),
+    /Cursor/,
+  );
+  const { url } = await server(t, connection);
+  const response = await fetch(
+    url +
+      '/xrpc/io.fluentci.registry.getActorPackages?' +
+      new URLSearchParams({ actor: did, latest: 'true', q: 'alpha' }),
+  );
+  assert.equal(response.status, 200);
+  const data = await response.json();
+  assert.equal(data.total, 2);
+  assert.equal(data.packages[0].version, '2.0.0');
+});

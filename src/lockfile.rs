@@ -20,6 +20,8 @@ struct Lockfile {
     packages: BTreeMap<String, LockedPackage>,
     #[serde(default)]
     git: BTreeMap<String, LockedGit>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    urls: BTreeMap<String, LockedUrl>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -47,6 +49,12 @@ struct LockedPackage {
     os: Option<Vec<String>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     arch: Option<Vec<String>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct LockedUrl {
+    sha256: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -79,7 +87,7 @@ fn declarations(root: &Path) -> Result<BTreeMap<String, String>> {
     let config = config::find(root)
         .map(|path| config::Config::read(&path))
         .transpose()?;
-    config
+    let mut declared: BTreeMap<String, String> = config
         .into_iter()
         .flat_map(|config| config.modules)
         .filter_map(|module| {
@@ -98,7 +106,24 @@ fn declarations(root: &Path) -> Result<BTreeMap<String, String>> {
                 })
             }
         })
-        .collect()
+        .collect::<Result<_>>()?;
+    for (alias, module) in crate::module_manifest::declarations(root)? {
+        let value = if let Some(reference) = module.registry_package() {
+            key(reference)?
+        } else if module.git.is_some() {
+            format!(
+                "{}:{}",
+                git_key(&module),
+                module.subdir.as_deref().unwrap_or(Path::new(".")).display()
+            )
+        } else if let Some(url) = &module.url {
+            format!("url:{url}")
+        } else {
+            format!("path:{}", toml::to_string(&module)?)
+        };
+        declared.insert(alias, value);
+    }
+    Ok(declared)
 }
 
 async fn guard(root: &Path) -> Result<File> {
@@ -258,12 +283,26 @@ pub async fn resolve(root: &Path, reference: &str, frozen: bool) -> Result<regis
 
 pub async fn install(frozen: bool, update: bool, selected: Option<&str>) -> Result<()> {
     let workspace = Workspace::current()?;
-    let root = &workspace.root;
+    install_at(&workspace.root, frozen, update, selected).await
+}
+
+pub async fn install_at(
+    root: &Path,
+    frozen: bool,
+    update: bool,
+    selected: Option<&str>,
+) -> Result<()> {
     let modules = declarations(root)?;
     let config = config::find(root)
         .map(|path| config::Config::read(&path))
         .transpose()?;
-    let git_modules = config
+    let dependencies = crate::module_manifest::declarations(root)?;
+    for (_, module) in &dependencies {
+        if let Some(url) = &module.url {
+            url_source_inner(root, url, frozen, update).await?;
+        }
+    }
+    let mut git_modules = config
         .as_ref()
         .map(|config| {
             config
@@ -275,6 +314,15 @@ pub async fn install(frozen: bool, update: bool, selected: Option<&str>) -> Resu
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
+    git_modules.extend(
+        dependencies
+            .iter()
+            .filter(|(key, module)| {
+                module.git.is_some()
+                    && selected.is_none_or(|selected| selected == key || selected == module.name)
+            })
+            .map(|(_, module)| module),
+    );
     let selected_git = !git_modules.is_empty();
     for module in git_modules {
         git_source(root, module, frozen, update).await?;
@@ -282,7 +330,11 @@ pub async fn install(frozen: bool, update: bool, selected: Option<&str>) -> Resu
     let mut references: Vec<String> = modules
         .iter()
         .filter(|(name, _)| selected.is_none_or(|selected| name.as_str() == selected))
-        .filter(|(_, reference)| !reference.starts_with("git:"))
+        .filter(|(_, reference)| {
+            !reference.starts_with("git:")
+                && !reference.starts_with("path:")
+                && !reference.starts_with("url:")
+        })
         .map(|(_, reference)| reference.clone())
         .collect();
     if let Some(selected) = selected
@@ -330,6 +382,22 @@ pub async fn install(frozen: bool, update: bool, selected: Option<&str>) -> Resu
     if !frozen {
         lock.modules = modules;
         write(root, &lock)?;
+    }
+    drop(_guard);
+    let mut sources = vec![root.to_owned()];
+    if let Some(configuration) = config {
+        for module in configuration.modules {
+            if let Some(path) = module.path {
+                sources.push(root.join(path));
+            }
+        }
+    }
+    sources.sort();
+    sources.dedup();
+    for source in sources {
+        if source.is_dir() {
+            crate::module_manifest::prepare(&source, root, frozen, &mut vec![]).await?;
+        }
     }
     Ok(())
 }
@@ -385,6 +453,83 @@ pub async fn git_source(
         write(root, &lock)?;
     }
     Ok(source)
+}
+
+/// URL dependencies are pinned by digest just like registry artifacts.
+pub async fn url_source(root: &Path, url: &str, frozen: bool) -> Result<PathBuf> {
+    url_source_inner(root, url, frozen, false).await
+}
+
+async fn url_source_inner(root: &Path, url: &str, frozen: bool, update: bool) -> Result<PathBuf> {
+    crate::publishing::wasm_url(url)?;
+    let _guard = guard(root).await?;
+    let mut lock = read(root)?;
+    let modules = declarations(root)?;
+    if frozen {
+        anyhow::ensure!(
+            root.join("fluentci.lock").is_file() && modules == lock.modules,
+            "fluentci.lock is missing or out of date; run fluentci install"
+        );
+    }
+    let entry = lock.urls.get(url);
+    let directory = dirs::cache_dir()
+        .context("No cache directory")?
+        .join("fluentci/url-dependencies");
+    if let Some(entry) = entry {
+        anyhow::ensure!(
+            entry.sha256.len() == 64 && entry.sha256.bytes().all(|byte| byte.is_ascii_hexdigit()),
+            "Invalid URL dependency checksum"
+        );
+        let artifact = directory.join(format!("{}.wasm", entry.sha256));
+        if !update && let Ok(bytes) = tokio::fs::read(&artifact).await {
+            anyhow::ensure!(
+                sha256::digest(&bytes) == entry.sha256,
+                "Cached URL dependency checksum mismatch"
+            );
+            if !frozen {
+                lock.modules = modules;
+                write(root, &lock)?;
+            }
+            return Ok(artifact);
+        }
+    }
+    anyhow::ensure!(
+        !frozen || entry.is_some(),
+        "URL dependency is missing from fluentci.lock; run fluentci install"
+    );
+    let bytes = crate::publishing::download(url).await?;
+    let digest = sha256::digest(&bytes);
+    if let Some(entry) = entry {
+        anyhow::ensure!(
+            update || entry.sha256 == digest,
+            "URL dependency checksum changed; run fluentci update to accept a new artifact"
+        );
+    }
+    tokio::fs::create_dir_all(&directory).await?;
+    let artifact = directory.join(format!("{digest}.wasm"));
+    crate::modules::write_if_changed(&artifact, &bytes)?;
+    if !frozen {
+        lock.urls.insert(url.into(), LockedUrl { sha256: digest });
+        lock.modules = modules;
+        write(root, &lock)?;
+    }
+    Ok(artifact)
+}
+
+pub async fn ensure_declarations(root: &Path, frozen: bool) -> Result<()> {
+    let _guard = guard(root).await?;
+    let mut lock = read(root)?;
+    let modules = declarations(root)?;
+    if frozen {
+        anyhow::ensure!(
+            root.join("fluentci.lock").is_file() && modules == lock.modules,
+            "fluentci.lock is missing or out of date; run fluentci install"
+        );
+    } else {
+        lock.modules = modules;
+        write(root, &lock)?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

@@ -259,13 +259,42 @@ fn metadata(
         anyhow::ensure!(selected.is_none(), "Module not found");
         None
     };
-    let source = module.and_then(|module| module.path.as_ref()).map(|path| {
-        config_path
+    let declared_module = module;
+    let owned_manifest = if let Some(module) = module {
+        module
+            .path
             .as_ref()
-            .and_then(|path| path.parent())
-            .unwrap_or(root)
-            .join(path)
-    });
+            .map(|source| {
+                let source = config_path
+                    .as_ref()
+                    .and_then(|path| path.parent())
+                    .unwrap_or(root)
+                    .join(source);
+                let directory = if source.is_dir() {
+                    source.as_path()
+                } else {
+                    source.parent().unwrap_or(&source)
+                };
+                crate::module_manifest::Manifest::read(directory)
+            })
+            .transpose()?
+            .flatten()
+    } else {
+        crate::module_manifest::Manifest::read(root)?
+    };
+    let module = owned_manifest
+        .as_ref()
+        .map(|manifest| &manifest.module)
+        .or(module);
+    let source = declared_module
+        .and_then(|module| module.path.as_ref())
+        .map(|path| {
+            config_path
+                .as_ref()
+                .and_then(|path| path.parent())
+                .unwrap_or(root)
+                .join(path)
+        });
     let mut manifests = Vec::new();
     if let Some(source) = source {
         manifests.push(
@@ -306,7 +335,7 @@ fn metadata(
         repository: None,
         manifest: None,
         name: overrides.name.clone().or_else(|| {
-            if artifact {
+            if artifact && owned_manifest.is_none() {
                 None
             } else {
                 module

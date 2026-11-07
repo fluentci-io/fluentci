@@ -117,6 +117,11 @@ pub fn table() -> Table(Row) {
       index("plugin_name_author", ["name", "author"], False),
       index("plugin_page", ["published_at", "uri"], False),
       index("plugin_actor_page", ["author", "published_at", "uri"], False),
+      index(
+        "plugin_actor_latest",
+        ["author", "name", "published_at", "uri"],
+        False,
+      ),
       index("plugin_author_name_version", ["author", "name", "version"], True),
     ],
     decoder(),

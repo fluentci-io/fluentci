@@ -25,6 +25,30 @@ Component builds do not require Extism guest compilers. Rust and Elixir target
 language targets use ComponentizeJS. Generated WIT and bindings are build outputs,
 not files developers must maintain.
 
+## Module dependencies
+
+The workspace CLI supports a `fluentci-module.toml` at each module root. Declare
+registry, local, Git, or URL dependencies there and install them with `fluentci add`
+or `fluentci install`. Artifacts and generated editor declarations live in the
+gitignored `fluentci_modules/` directory; `fluentci.lock` pins downloaded content.
+
+The engine's `composition` API derives an import interface from a dependency's
+compiled WIT and type-checks the connection before composing it into the parent.
+Imports retain their fully qualified interface identities, keeping the resulting
+component compatible with the supported Wasmtime versions. Published composed
+artifacts carry their dependencies without requiring the publisher's local paths.
+TypeScript component imports use `fluentci:dependency/<alias>`; generated
+declarations provide editor completion and type checking. Rust and Python use
+their native WIT binding generators.
+
+Extism artifacts instead carry a portable `fluentci:dependencies` custom section.
+Nested module calls resolve aliases in the calling artifact's own dependency
+scope, including transitive dependencies. This avoids leaking aliases from one
+module into another.
+
+See the [module dependency guide](https://docs.fluentci.io/guides/module-dependencies/)
+for manifests, installation, lockfiles, and SDK call examples.
+
 ```toml
 [[modules]]
 name = "main"
@@ -67,16 +91,16 @@ or infer behavior. Manual WIT remains available for custom interfaces.
 
 ## Automatic inspection in every SDK
 
-| SDK | Source of signatures | Component compiler |
-| --- | --- | --- |
-| Rust | Parsed public functions and records in `src/jobs.rs`, checked by Rust compilation | `wit-bindgen`, `wasm32-wasip2` |
-| TypeScript | TypeScript compiler type checker, including inferred return types | ComponentizeJS |
-| PureScript | Fresh compiler `docs.json` and CoreFn exports | ComponentizeJS |
-| Gleam | Fresh package interface and public record constructors | ComponentizeJS |
-| ReScript | Compiler documentation for exported signatures and fields | ComponentizeJS |
-| ClojureScript | Typed Clojure signatures, validated before ClojureScript compilation | ComponentizeJS |
-| Python | AST annotations, local dataclasses/TypedDicts, aliases and docstrings | componentize-py |
-| Elixir | The same compiled `defplugin` DSL declarations used to generate executable jobs | Rust component guest |
+| SDK           | Source of signatures                                                              | Component compiler             |
+| ------------- | --------------------------------------------------------------------------------- | ------------------------------ |
+| Rust          | Parsed public functions and records in `src/jobs.rs`, checked by Rust compilation | `wit-bindgen`, `wasm32-wasip2` |
+| TypeScript    | TypeScript compiler type checker, including inferred return types                 | ComponentizeJS                 |
+| PureScript    | Fresh compiler `docs.json` and CoreFn exports                                     | ComponentizeJS                 |
+| Gleam         | Fresh package interface and public record constructors                            | ComponentizeJS                 |
+| ReScript      | Compiler documentation for exported signatures and fields                         | ComponentizeJS                 |
+| ClojureScript | Typed Clojure signatures, validated before ClojureScript compilation              | ComponentizeJS                 |
+| Python        | AST annotations, local dataclasses/TypedDicts, aliases and docstrings             | componentize-py                |
+| Elixir        | The same compiled `defplugin` DSL declarations used to generate executable jobs   | Rust component guest           |
 
 Every build regenerates WIT. Unsupported types, unresolved contracts, duplicate
 WIT names, and untyped exports fail instead of generating guessed types. Python

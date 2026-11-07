@@ -71,10 +71,29 @@ impl LocalModule {
             })?;
             ModuleSource::Path(source)
         };
+        let definition = if let ModuleSource::Path(source) = &source
+            && (source.is_dir() || source.file_name().is_some_and(|name| name == "Cargo.toml"))
+        {
+            let directory = if source.is_dir() {
+                source.as_path()
+            } else {
+                source.parent().context("Missing module directory")?
+            };
+            if let Some(manifest) = crate::module_manifest::Manifest::read(directory)? {
+                let mut definition = manifest.module;
+                definition.name = module.name.clone();
+                definition.path = module.path.clone();
+                definition
+            } else {
+                module.clone()
+            }
+        } else {
+            module.clone()
+        };
         Ok(Self {
             name: module.name.clone(),
             source,
-            definition: module.clone(),
+            definition,
         })
     }
 
@@ -158,24 +177,72 @@ impl LocalModule {
     }
 
     pub async fn prepare_with_lock(&self, root: &Path, frozen: bool) -> Result<PathBuf> {
-        if let ModuleSource::Registry(reference) = &self.source {
+        let declaration = crate::module_manifest::Manifest::read(root)?
+            .and_then(|manifest| manifest.dependencies.get(&self.name).cloned());
+        let artifact = if let ModuleSource::Registry(reference) = &self.source {
             let package = crate::plugin_metadata::resolve(root, reference, frozen).await?;
-            return crate::plugin_metadata::prepare_package(&package).await;
-        }
-        if let ModuleSource::Git(_) = &self.source {
+            crate::plugin_metadata::prepare_package(&package).await?
+        } else if let ModuleSource::Git(_) = &self.source {
             let source = crate::lockfile::git_source(root, &self.definition, frozen, false).await?;
-            let local = Self {
-                name: self.name.clone(),
-                definition: self.definition.clone(),
-                source: ModuleSource::Path(source),
-            };
-            return Box::pin(local.prepare()).await;
+            let local = Self::resolve(
+                &source.join("fluentci.toml"),
+                &Module {
+                    path: Some(".".into()),
+                    git: None,
+                    rev: None,
+                    subdir: None,
+                    ..self.definition.clone()
+                },
+            )?;
+            Box::pin(local.prepare_local(root, frozen, &mut vec![])).await?
+        } else if let ModuleSource::Url(url) = &self.source
+            && declaration.is_some()
+        {
+            crate::lockfile::url_source(root, url.as_str(), frozen).await?
+        } else {
+            self.prepare_local(root, frozen, &mut vec![]).await?
+        };
+        if let Some(dependency) = declaration {
+            crate::module_manifest::dependencies::install_artifact(
+                root,
+                &self.name,
+                &dependency,
+                &artifact,
+            )
+        } else {
+            Ok(artifact)
         }
-        self.prepare().await
     }
 
     pub async fn prepare(&self) -> Result<PathBuf> {
+        let workspace = Workspace::current()?;
+        self.prepare_local(&workspace.root, false, &mut vec![])
+            .await
+    }
+
+    pub(crate) async fn prepare_local(
+        &self,
+        root: &Path,
+        frozen: bool,
+        stack: &mut Vec<PathBuf>,
+    ) -> Result<PathBuf> {
+        let source = match &self.source {
+            ModuleSource::Path(source) if source.is_dir() => Some(source.as_path()),
+            ModuleSource::Path(source)
+                if source.file_name().is_some_and(|name| name == "Cargo.toml") =>
+            {
+                source.parent()
+            }
+            _ => None,
+        };
+        let dependencies = if let Some(source) = source {
+            crate::module_manifest::prepare(source, root, frozen, stack).await?
+        } else {
+            Default::default()
+        };
         let artifact = self.prepare_artifact().await?;
+        let artifact =
+            crate::module_manifest::dependencies::finish(&artifact, &dependencies).await?;
         if self.definition.runtime == ModuleRuntime::Component {
             anyhow::ensure!(
                 Parser::is_component(&tokio::fs::read(&artifact).await?),
@@ -203,6 +270,8 @@ impl LocalModule {
         } else {
             vec![]
         };
+        let artifact =
+            crate::module_manifest::dependencies::finish(&artifact, &dependencies).await?;
         crate::plugin_metadata::annotated_artifact(&artifact, declared).await
     }
 
@@ -384,7 +453,22 @@ impl LocalModule {
 
 pub fn resolve(root: &Path, name: &str) -> Result<Option<LocalModule>> {
     let workspace = Workspace::discover(root)?;
+    if let Some(manifest) = crate::module_manifest::Manifest::read(&workspace.root)?
+        && let Some(dependency) = manifest.dependencies.get(name)
+    {
+        return LocalModule::resolve(
+            &workspace.root.join(crate::module_manifest::FILE),
+            &dependency.definition(name)?,
+        )
+        .map(Some);
+    }
     let Some(path) = workspace.config else {
+        if let Some(manifest) = crate::module_manifest::Manifest::read(&workspace.root)?
+            && (name == "." || name == manifest.module.name)
+        {
+            return LocalModule::resolve(&workspace.root.join("fluentci.toml"), &manifest.module)
+                .map(Some);
+        }
         return Ok(None);
     };
     let config = Config::read(&path)?;
@@ -593,7 +677,14 @@ struct Discovery {
 
 pub async fn inspect(name: Option<&str>, json: bool) -> Result<()> {
     let workspace = Workspace::current()?;
-    let modules = discover(&workspace)?;
+    let modules = if let Some(name) = name {
+        vec![
+            resolve(&workspace.root, name)?
+                .with_context(|| format!("No declared module named {name:?}"))?,
+        ]
+    } else {
+        discover(&workspace)?
+    };
     if let Some(name) = name {
         anyhow::ensure!(
             modules.iter().any(|module| module.name == name),
@@ -659,6 +750,12 @@ pub async fn add(
         .config
         .as_ref()
         .context("No fluentci.toml found; run fluentci init first")?;
+    anyhow::ensure!(
+        !config_path
+            .file_name()
+            .is_some_and(|name| name == crate::module_manifest::FILE),
+        "Use fluentci add <module> for module dependencies; use a fluentci.toml workspace for workspace modules"
+    );
     let original = tokio::fs::read_to_string(config_path).await?;
     let config = Config::parse(&original)?;
     anyhow::ensure!(
@@ -797,4 +894,22 @@ pub(crate) async fn download(url: &reqwest::Url) -> Result<PathBuf> {
     temporary.write_all(&bytes)?;
     temporary.persist(&artifact)?;
     Ok(artifact)
+}
+
+pub(crate) fn write_if_changed(path: &Path, bytes: &[u8]) -> Result<()> {
+    if std::fs::read(path).ok().as_deref() == Some(bytes) {
+        return Ok(());
+    }
+    let parent = path.parent().context("Missing artifact directory")?;
+    std::fs::create_dir_all(parent)?;
+    let mut temporary = tempfile::NamedTempFile::new_in(parent)?;
+    temporary.write_all(bytes)?;
+    if let Ok(metadata) = std::fs::metadata(path) {
+        temporary
+            .as_file()
+            .set_permissions(metadata.permissions())?;
+    }
+    temporary.as_file().sync_all()?;
+    temporary.persist(path).map_err(|error| error.error)?;
+    Ok(())
 }

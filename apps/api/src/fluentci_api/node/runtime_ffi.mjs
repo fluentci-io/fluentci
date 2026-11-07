@@ -246,3 +246,6 @@ export function downloadEvent(request) {
   return new RegistryRecordDownloadInput(eventId, handle, name, version);
 }
 export const currentDay = () => new Date().toISOString().slice(0, 10);
+
+export const flag = (request, key) =>
+  request.params[key] === true || request.params[key] === 'true';

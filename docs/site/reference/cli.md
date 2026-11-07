@@ -172,3 +172,23 @@ fluentci modules embed dist/plugin.wasm --manifest fluentci.metadata.json
 fluentci run ./dist/plugin.wasm build --src demo --jobs 4 --verbose
 fluentci run ./dist/plugin.wasm build --help
 ```
+
+## Add and install module dependencies
+
+From a module root containing `fluentci-module.toml`:
+
+```sh
+fluentci add sccache@v0.1.0
+fluentci add @publisher.example/cache@latest --alias cache
+fluentci add math --path ../math
+fluentci add math --url https://example.com/math.wasm
+fluentci add math --git https://github.com/example/modules --rev main --subdir modules/math
+fluentci install
+fluentci install --frozen-lockfile
+fluentci run math --help
+```
+
+`add` edits the module's `[dependencies]`, downloads/builds the Wasm into a
+Git-ignored `fluentci_modules/`, and updates `fluentci.lock`. `--alias` changes the
+local import name. `--path`, `--url`, and `--git` are mutually exclusive; `--rev`
+and `--subdir` apply to Git sources. See [module dependencies](/guides/module-dependencies/).

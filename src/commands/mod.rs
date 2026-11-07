@@ -49,6 +49,9 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
     }
     // Workers run before opening SQLite or starting any services.
     match &cli.command {
+        Some(Command::Add(options)) => {
+            return crate::module_manifest::add(&std::env::current_dir()?, options).await;
+        }
         Some(Command::EngineCall { module, commands }) => {
             return engine_call::execute(module, commands).await;
         }
@@ -156,7 +159,8 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
         Some(Command::Community) => community::execute(),
         Some(Command::Upgrade) => upgrade::execute().await,
         Some(
-            Command::EngineCall { .. }
+            Command::Add(_)
+            | Command::EngineCall { .. }
             | Command::ProviderWorker { .. }
             | Command::ServiceManager { .. },
         ) => {

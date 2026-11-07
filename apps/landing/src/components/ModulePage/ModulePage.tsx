@@ -176,8 +176,9 @@ export function ModulePage() {
                 )}
               </div>
               <div className="mt-7 flex flex-wrap items-center gap-x-6 gap-y-4 border-y border-line py-5">
-                <a
-                  href={`https://bsky.app/profile/${encodeURIComponent(author)}`}
+                <Link
+                  to="/$handle"
+                  params={{ handle: author }}
                   className="nav-link"
                 >
                   <Author
@@ -185,7 +186,7 @@ export function ModulePage() {
                     profile={profile}
                     fallback={author}
                   />
-                </a>
+                </Link>
                 <span className="text-xs text-muted">
                   License{" "}
                   <span className="ml-2 text-ink">{plugin.license}</span>

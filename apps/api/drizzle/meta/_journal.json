@@ -85,6 +85,13 @@
       "when": 1793923200010,
       "tag": "0011_immutable_artifacts",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1793923200011,
+      "tag": "0012_actor_latest",
+      "breakpoints": true
     }
   ]
 }

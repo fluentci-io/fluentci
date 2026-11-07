@@ -45,6 +45,7 @@ export async function buildPlugin({
     platform: "neutral",
     write: false,
     metafile: true,
+    external: runtime === "component" ? ["fluentci:dependency/*"] : [],
     outfile: join(directory, "surface.js"),
   });
   const names = Object.values(exports.metafile.outputs)

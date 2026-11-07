@@ -223,6 +223,22 @@ and available weekly download history.
 - [Registry API](https://docs.fluentci.io/reference/registry-api/): XRPC queries, filters, and pagination.
 - [CLI reference](https://docs.fluentci.io/reference/cli/): Unified CLI commands; engine-only commands are not automatically top-level commands.
 
+## Module-owned dependencies and publisher profiles
+
+A module root can contain fluentci-module.toml with publishing metadata, SDK/runtime,
+and a dependencies table. Run fluentci add <reference> there to update declarations,
+install verified Wasm into the Git-ignored fluentci_modules directory, and update
+fluentci.lock. Paths, registry references, Wasm URLs, and Git monorepo subdirectories
+are supported. Run fluentci install --frozen-lockfile in CI. Dependency aliases work
+with fluentci run <alias> <function>. Native component dependencies use generated WIT
+imports and type-checked composition; Extism dependencies use scoped SDK module calls.
+The FluentCI WIT host package remains at 0.1.0.
+
+Publisher pages at /:handle or /:did display avatar, display name, handle, exact module
+count, filtering, and infinite loading. Author links go to these FluentCI profiles.
+
+- [Module dependencies](https://docs.fluentci.io/guides/module-dependencies/): Manifests, add/install, locking, SDK imports and dependency calls.
+
 ## Optional
 
 - [Source README](https://raw.githubusercontent.com/fluentci-io/fluentci/main/README.md): Installation, Turborepo development, and contributions.

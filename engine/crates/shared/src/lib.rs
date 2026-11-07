@@ -26,3 +26,5 @@ pub mod state;
 pub mod host;
 
 pub mod module_call;
+
+pub use fluentci_common::module_dependencies;

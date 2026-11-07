@@ -12,6 +12,7 @@ pub(crate) mod git_source;
 pub mod lockfile;
 pub mod models;
 pub mod module_help;
+pub mod module_manifest;
 pub mod modules;
 pub mod pipeline;
 pub mod plugin_metadata;

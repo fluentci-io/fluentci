@@ -40,3 +40,9 @@ __pycache__/
 # Standalone component SDK and model inspection build outputs
 /tools/component-model/target/
 /templates/inspection/component-rust/target/
+
+# Generated typed dependency interfaces
+**/.fluentci/dependencies/
+
+**/fluentci_modules/
+**/.fluentci/dependencies.add.guard

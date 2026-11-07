@@ -325,3 +325,35 @@ fn conflict_update_columns(
   assignments: List(Assignment),
   condition: Condition,
 ) -> Raw
+
+pub fn alias(table: Table(a), name: String) -> Table(a) {
+  Table(alias_ffi(table.raw, name), table.decoder)
+}
+
+@external(javascript, "./orm_ffi.mjs", "alias")
+fn alias_ffi(table: Raw, name: String) -> Raw
+
+pub fn gt_columns(left: Expression(a), right: Expression(a)) -> Condition {
+  compare_columns_ffi(left.raw, right.raw, "gt")
+}
+
+pub fn lt_columns(left: Expression(a), right: Expression(a)) -> Condition {
+  compare_columns_ffi(left.raw, right.raw, "lt")
+}
+
+@external(javascript, "./orm_ffi.mjs", "compareColumns")
+fn compare_columns_ffi(left: Raw, right: Raw, operator: String) -> Condition
+
+pub fn not_exists(query: Query(a)) -> Condition {
+  not_exists_ffi(query.raw)
+}
+
+@external(javascript, "./orm_ffi.mjs", "notExists")
+fn not_exists_ffi(query: Raw) -> Condition
+
+pub fn count_rows(db: Db, query: Query(a)) -> Promise(Int) {
+  count_rows_ffi(db, query.raw)
+}
+
+@external(javascript, "./orm_ffi.mjs", "countRows")
+fn count_rows_ffi(db: Db, query: Raw) -> Promise(Int)

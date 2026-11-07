@@ -325,6 +325,31 @@ pub fn generate_component(manifest: &Path, output: &Path, host_wit: &str) -> Res
         .push_str("}\n\nworld plugin {\nimport fluentci:runtime/host@0.1.0;\nimport fluentci:runtime/api@0.1.0;\nexport api;\n}\n");
     let wit = output.join("wit");
     std::fs::create_dir_all(wit.join("deps/fluentci-runtime"))?;
+    let dependency_file = manifest.join(".fluentci/dependencies/interfaces.json");
+    println!("cargo:rerun-if-changed={}", dependency_file.display());
+    if dependency_file.is_file() {
+        let dependencies: Vec<serde_json::Value> =
+            serde_json::from_slice(&std::fs::read(dependency_file)?)?;
+        let mut imports = String::new();
+        for dependency in dependencies {
+            let alias = dependency["alias"]
+                .as_str()
+                .context("Missing dependency alias")?;
+            let package = dependency["import"]
+                .as_str()
+                .context("Missing dependency import")?;
+            let directory = wit.join("deps").join(format!("dependency-{alias}"));
+            std::fs::create_dir_all(&directory)?;
+            std::fs::write(
+                directory.join("dependency.wit"),
+                dependency["wit"]
+                    .as_str()
+                    .context("Missing dependency WIT")?,
+            )?;
+            imports.push_str(&format!("import {package};\n"));
+        }
+        interface = interface.replace("world plugin {", &format!("world plugin {{\n{imports}"));
+    }
     std::fs::write(wit.join("module.wit"), interface)?;
     std::fs::write(wit.join("deps/fluentci-runtime/runtime.wit"), host_wit)?;
     let bindings=format!("wit_bindgen::generate!({{ path: {}, world: \"plugin\", generate_all }});\nstruct Component;\nimpl exports::fluentci::module::api::Guest for Component {{\n{implementations}\n}}\nexport!(Component);\n",serde_json::to_string(&wit.to_string_lossy())?);

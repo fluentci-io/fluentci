@@ -18,3 +18,5 @@ pub mod proto;
 pub mod util;
 
 pub mod host;
+
+pub mod module_dependencies;

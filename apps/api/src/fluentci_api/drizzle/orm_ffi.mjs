@@ -1,6 +1,14 @@
 // Generic Drizzle bridge. Tables and application queries are defined in Gleam.
 import * as d from 'drizzle-orm';
-import { sqliteTable, text, integer, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
+import {
+  sqliteTable,
+  text,
+  integer,
+  index,
+  uniqueIndex,
+  alias,
+  QueryBuilder,
+} from 'drizzle-orm/sqlite-core';
 import { toList } from '../../gleam.mjs';
 export const identity = (value) => value;
 export const nullValue = () => null;
@@ -83,15 +91,28 @@ export const conflictUpdate = (query, target, assignments, setWhere) => ({
   ...query,
   conflict: { target, set: values(assignments), setWhere },
 });
+function selection(connection, q) {
+  let query = connection.select(d.getTableColumns(q.table)).from(q.table).$dynamic();
+  for (const join of q.joins)
+    query = query[join.inner ? 'innerJoin' : 'leftJoin'](join.table, join.on);
+  if (q.where) query = query.where(q.where);
+  if (q.orders) query = query.orderBy(...q.orders);
+  if (q.limit !== undefined) query = query.limit(q.limit);
+  return query;
+}
+export { alias };
+export const compareColumns = (left, right, operator) => d[operator](left, right);
+export const notExists = (query) => d.notExists(selection(new QueryBuilder(), query));
+export async function countRows(connection, query) {
+  const [row] = await connection.db
+    .select({ count: d.count() })
+    .from(selection(connection.db, query).as('counted_rows'));
+  return row.count;
+}
 export async function execute(connection, q) {
   let query;
   if (q.kind === 'select') {
-    query = connection.db.select(d.getTableColumns(q.table)).from(q.table).$dynamic();
-    for (const join of q.joins)
-      query = query[join.inner ? 'innerJoin' : 'leftJoin'](join.table, join.on);
-    if (q.where) query = query.where(q.where);
-    if (q.orders) query = query.orderBy(...q.orders);
-    if (q.limit !== undefined) query = query.limit(q.limit);
+    query = selection(connection.db, q);
   } else if (q.kind === 'update') {
     query = connection.db.update(q.table).set(q.values).where(q.where).returning();
   } else {

@@ -5,7 +5,16 @@ use fluentci_common::host::Context;
 use fluentci_types::Module;
 
 pub fn invoke(context: &Context, module: Module) -> Result<String> {
-    let bytes = if module.url.starts_with("https://") || module.url.starts_with("http://") {
+    let declared = context
+        .lock()
+        .unwrap()
+        .dependency_scopes
+        .last()
+        .and_then(|scope| scope.get(&module.url))
+        .cloned();
+    let bytes = if let Some(bytes) = declared {
+        bytes
+    } else if module.url.starts_with("https://") || module.url.starts_with("http://") {
         let file = tempfile::NamedTempFile::new()?;
         fluentci_ext::bootstrap::download(&module.url, file.path())?;
         std::fs::read(file.path())?
@@ -13,9 +22,9 @@ pub fn invoke(context: &Context, module: Module) -> Result<String> {
         std::fs::read(&module.url)
             .with_context(|| format!("Reading nested module {}", module.url))?
     };
+    let _scope = fluentci_common::module_dependencies::Scope::enter(context, &bytes)?;
     if fluentci_components::is_component(&bytes) {
-        let words =
-            shlex::split(&module.args).context("Unclosed quote in nested component arguments")?;
+        let words = fluentci_components::dependency_arguments(&module.args)?;
         let cancellation = context
             .lock()
             .unwrap()

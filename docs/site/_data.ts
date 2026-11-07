@@ -13,6 +13,7 @@ const navigation = [
     items: [
       { title: "Pipeline configuration", url: "/guides/pipelines/" },
       { title: "Workspace modules", url: "/guides/modules/" },
+      { title: "Module dependencies", url: "/guides/module-dependencies/" },
       { title: "Typed module arguments", url: "/guides/module-arguments/" },
       { title: "WebAssembly components", url: "/guides/components/" },
       { title: "Environment and providers", url: "/guides/environment/" },

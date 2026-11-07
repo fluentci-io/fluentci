@@ -6,6 +6,13 @@ url: "/guides/modules/"
 source: "guides/modules.md"
 ---
 
+## Module-owned metadata and dependencies
+
+Each source module can contain a `fluentci-module.toml` with its own name, version,
+license, description, SDK, runtime, and dependencies. New starters include it.
+See [module dependencies](/guides/module-dependencies/) for installation and calls.
+Workspace `[[modules]]` declarations retain the local alias and source path.
+
 ## Declare modules
 
 ```toml

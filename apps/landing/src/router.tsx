@@ -6,6 +6,7 @@ import {
 } from "@tanstack/react-router";
 import { LandingPage } from "./components/LandingPage";
 import { NotFound } from "./components/NotFound";
+import { PublisherPage } from "./components/PublisherPage";
 import { ModulePage } from "./components/ModulePage";
 
 const rootRoute = createRootRoute({
@@ -22,8 +23,13 @@ const moduleRoute = createRoute({
   path: "/$handle/plugin/$rkey",
   component: ModulePage,
 });
+const publisherRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/$handle",
+  component: PublisherPage,
+});
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute, moduleRoute]),
+  routeTree: rootRoute.addChildren([indexRoute, moduleRoute, publisherRoute]),
   scrollRestoration: true,
 });
 
