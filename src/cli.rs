@@ -96,6 +96,8 @@ pub struct RunArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Execute a native DAG plan with content caching and optional Git-affected selection
+    Execute(ExecuteArgs),
     /// Add a dependency to fluentci-module.toml and install it
     Add(AddArgs),
     /// Resolve registry modules, download Wasm, and generate fluentci.lock
@@ -307,6 +309,36 @@ pub enum Command {
     },
     #[command(name = "provider-worker", hide = true)]
     ProviderWorker { request: PathBuf },
+}
+
+#[derive(Debug, Args)]
+pub struct ExecuteArgs {
+    /// Native host plan JSON produced by any FluentCI SDK
+    pub plan: String,
+    /// Fresh directory for execution logs, events, and results
+    #[arg(long, required_unless_present = "dry_run")]
+    pub run_dir: Option<String>,
+    /// Progress display format
+    #[arg(long, default_value = "auto", value_parser = ["auto", "plain", "tui", "json"])]
+    pub progress: String,
+    /// Select Git-affected tasks and their prerequisites
+    #[arg(long, requires = "base")]
+    pub affected: bool,
+    /// Compare from the merge base of this revision and head
+    #[arg(long, requires = "affected")]
+    pub base: Option<String>,
+    /// Git comparison head revision (defaults to HEAD)
+    #[arg(long, requires = "affected")]
+    pub head: Option<String>,
+    /// Exclude staged, unstaged, and untracked changes
+    #[arg(long, requires = "affected")]
+    pub committed_only: bool,
+    /// Repository-relative file/directory whose changes affect all tasks (repeatable)
+    #[arg(long, requires = "affected")]
+    pub global_input: Vec<PathBuf>,
+    /// Print task selection and reasons as JSON without executing tasks
+    #[arg(long)]
+    pub dry_run: bool,
 }
 
 #[derive(Debug, Subcommand)]

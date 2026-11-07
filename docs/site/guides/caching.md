@@ -28,6 +28,10 @@ paths portable. Do not put credentials into a key or into cached output files.
 
 ## Remote cache configuration
 
+The native DAG action cache currently uses local action records and a local
+content-addressed blob store. The following remote variables belong to the legacy
+pipeline cache; they do not enable remote transport for native action records.
+
 | Variable                      | Purpose                      |
 | ----------------------------- | ---------------------------- |
 | `FLUENTCI_CACHE_GCS_BUCKET`   | GCS cache bucket             |

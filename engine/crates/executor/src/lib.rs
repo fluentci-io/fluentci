@@ -1,5 +1,6 @@
 //! Isolated, bounded host execution. Plans contain data, never a mutable "current" pipeline.
 //! Filesystem access is not sandboxed: callers must declare shared writable resources.
+pub mod affected;
 pub mod cache;
 pub mod diagnostics;
 pub mod events;
@@ -669,16 +670,14 @@ impl Plan {
         let mut retry_actions: Vec<Option<cache::Prepared>> =
             (0..self.tasks.len()).map(|_| None).collect();
         let mut first_started: Vec<Option<Instant>> = vec![None; self.tasks.len()];
-        let incremental = self.tasks.iter().all(|task| {
-            task.service.is_none()
-                && task.cache.is_none()
-                && task.resources.is_empty()
-                && task.shared_resources.is_empty()
-                && task.resource_wait_timeout_ms.is_none()
-                && task.policy.when == workflow::Condition::Success
-                && task.policy.retry.is_none()
-        });
+        let incremental = self
+            .tasks
+            .iter()
+            .all(|task| task.service.is_none() && task.policy.when == workflow::Condition::Success);
         let mut frontier = incremental.then(|| graph::Frontier::new(graph));
+        // Only admitted nodes can wait for resources, action locks or retries.
+        // Keep that set separate from dependency-blocked nodes in the DAG.
+        let mut deferred = Vec::new();
         let mut pending_aborted = false;
         let mut failed = false;
         let mut stalled = false;
@@ -688,6 +687,8 @@ impl Plan {
                     .iter()
                     .map(|running| running.index)
                     .chain(saving.iter().map(|saving| saving.index))
+                    .chain(preparing.iter().map(|preparing| preparing.index))
+                    .chain(deferred.iter().copied())
                     .collect()
             } else {
                 vec![]
@@ -1244,10 +1245,13 @@ impl Plan {
                     n += 1;
                 }
             }
+            let mut waiters = Vec::new();
             if let Some(frontier) = &mut frontier {
                 for &index in &touched {
                     if results[index].status.terminal() {
                         frontier.complete(index, graph);
+                    } else if results[index].status == Status::Pending {
+                        waiters.push(index);
                     }
                 }
                 if !pending_aborted && (cancel.is_cancelled() || (self.fail_fast && failed)) {
@@ -1281,17 +1285,25 @@ impl Plan {
                     }
                     pending_aborted = true;
                 }
+                waiters.sort_unstable_by_key(|&index| frontier.rank(index));
+                waiters.dedup();
+                deferred.clear();
             }
             // Complex lifecycle policies retain their established topological sweep.
             // Ordinary command DAGs admit only ready nodes, visiting each edge once.
             let mut position = 0;
+            let mut waiters = waiters.into_iter();
             loop {
                 let next = if let Some(frontier) = &mut frontier {
-                    if running.len() + saving.len() >= self.jobs {
-                        None
-                    } else {
-                        frontier.next()
-                    }
+                    // Check admitted waiters even when every job slot is busy:
+                    // their wait/preparation deadlines must still be enforced.
+                    waiters.next().or_else(|| {
+                        if running.len() + saving.len() + preparing.len() >= self.jobs {
+                            None
+                        } else {
+                            frontier.next()
+                        }
+                    })
                 } else {
                     let next = graph.order.get(position).copied();
                     position += 1;
@@ -1544,8 +1556,12 @@ impl Plan {
                 for &index in &touched {
                     if results[index].status.terminal() {
                         frontier.complete(index, graph);
+                    } else if results[index].status == Status::Pending {
+                        deferred.push(index);
                     }
                 }
+                deferred.sort_unstable();
+                deferred.dedup();
             }
             // A set of ready daemons can occupy all capacity/resources required by
             // their pending consumers. Fail with cleanup instead of waiting forever.

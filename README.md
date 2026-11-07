@@ -19,6 +19,9 @@ Read the [documentation](./docs/site/index.md) for guides covering every SDK,
 Studio, publishing, CLI options, and the registry API. The
 [documentation workspace](./docs/README.md) runs a Lume 4 site using Bun.
 
+See [ARCHITECTURE.md](ARCHITECTURE.md) for native DAG scheduling, content-addressed
+task caching, affected selection, dry runs, and measured performance results.
+
 ## Contents
 
 - [Features](#features)

@@ -7,6 +7,55 @@ fn clap_definition_is_valid() {
 }
 
 #[test]
+fn native_plan_execution_supports_affected_selection_and_effect_free_preview() {
+    let cli = Cli::try_parse_from([
+        "fluentci",
+        "execute",
+        "plan.json",
+        "--affected",
+        "--base",
+        "origin/main",
+        "--dry-run",
+        "--global-input",
+        "Cargo.lock",
+    ])
+    .unwrap();
+    assert!(
+        matches!(cli.command, Some(Command::Execute(args)) if args.dry_run && args.affected && args.run_dir.is_none() && args.global_input.len() == 1)
+    );
+    assert!(Cli::try_parse_from(["fluentci", "execute", "plan.json", "--run-dir", "run"]).is_ok());
+    assert!(Cli::try_parse_from(["fluentci", "execute", "plan.json", "--dry-run"]).is_ok());
+    for args in [
+        vec!["fluentci", "execute", "plan.json"],
+        vec![
+            "fluentci",
+            "execute",
+            "plan.json",
+            "--affected",
+            "--dry-run",
+        ],
+        vec![
+            "fluentci",
+            "execute",
+            "plan.json",
+            "--base",
+            "main",
+            "--dry-run",
+        ],
+        vec![
+            "fluentci",
+            "execute",
+            "plan.json",
+            "--head",
+            "HEAD",
+            "--dry-run",
+        ],
+    ] {
+        assert!(Cli::try_parse_from(args).is_err());
+    }
+}
+
+#[test]
 fn module_help_accepts_both_flags_before_and_after_function_names() {
     for flag in ["--help", "-h"] {
         for explicit in [false, true] {

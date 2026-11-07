@@ -28,6 +28,8 @@ def main():
     mappings.append((root / "engine/crates/cli/src", sibling / "crates/cli/src"))
     mappings.append((root / "engine/AGENTS.md", sibling / "AGENTS.md"))
     mappings.append((root / "engine/README.md", sibling / "README.md"))
+    mappings.append((root / "ARCHITECTURE.md", sibling / "ARCHITECTURE.md"))
+    mappings.append((root / "engine/vendor/wasmtime-wasi-openbsd", sibling / "vendor/wasmtime-wasi-openbsd"))
     mappings.append((root / "engine/docs/module-cli.md", sibling / "docs/module-cli.md"))
     mappings.append((root / "engine/docs/components.md", sibling / "docs/components.md"))
     mappings.append((root / "templates/components", sibling / "sdk/components"))

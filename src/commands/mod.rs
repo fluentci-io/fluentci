@@ -49,6 +49,26 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
     }
     // Workers run before opening SQLite or starting any services.
     match &cli.command {
+        Some(Command::Execute(args)) => {
+            return fluentci_engine::cmd::execute::execute_with_options(
+                &args.plan,
+                args.run_dir.as_deref(),
+                &args.progress,
+                fluentci_engine::cmd::execute::Options {
+                    git: args
+                        .base
+                        .as_ref()
+                        .map(|base| fluentci_engine::cmd::execute::GitOptions {
+                            base: base.clone(),
+                            head: args.head.clone().unwrap_or_else(|| "HEAD".into()),
+                            include_worktree: !args.committed_only,
+                        }),
+                    global_inputs: args.global_input.clone(),
+                    dry_run: args.dry_run,
+                },
+            )
+            .await;
+        }
         Some(Command::Add(options)) => {
             return crate::module_manifest::add(&std::env::current_dir()?, options).await;
         }
@@ -159,7 +179,8 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
         Some(Command::Community) => community::execute(),
         Some(Command::Upgrade) => upgrade::execute().await,
         Some(
-            Command::Add(_)
+            Command::Execute(_)
+            | Command::Add(_)
             | Command::EngineCall { .. }
             | Command::ProviderWorker { .. }
             | Command::ServiceManager { .. },

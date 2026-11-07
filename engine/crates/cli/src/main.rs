@@ -71,6 +71,45 @@ fn cli() -> Command<'static> {
         .subcommand(
             Command::new("execute")
                 .arg(
+                    Arg::new("affected")
+                        .long("affected")
+                        .requires("base")
+                        .help("Select Git-affected tasks and their prerequisites"),
+                )
+                .arg(
+                    Arg::new("base")
+                        .long("base")
+                        .takes_value(true)
+                        .requires("affected")
+                        .help("Compare from the merge base of this revision and head"),
+                )
+                .arg(
+                    Arg::new("head")
+                        .long("head")
+                        .takes_value(true)
+                        .requires("affected")
+                        .help("Git comparison head revision (defaults to HEAD)"),
+                )
+                .arg(
+                    Arg::new("committed-only")
+                        .long("committed-only")
+                        .requires("affected")
+                        .help("Exclude staged, unstaged and untracked changes"),
+                )
+                .arg(
+                    Arg::new("global-input")
+                        .long("global-input")
+                        .takes_value(true)
+                        .multiple_occurrences(true)
+                        .requires("affected")
+                        .help("Repository-relative file/directory whose changes affect all tasks"),
+                )
+                .arg(
+                    Arg::new("dry-run")
+                        .long("dry-run")
+                        .help("Print task selection and reasons as JSON without executing tasks"),
+                )
+                .arg(
                     Arg::new("progress")
                         .long("progress")
                         .takes_value(true)
@@ -82,7 +121,7 @@ fn cli() -> Command<'static> {
                     Arg::new("run-dir")
                         .long("run-dir")
                         .takes_value(true)
-                        .required(true),
+                        .required_unless_present("dry-run"),
                 )
                 .about("Executes an explicit host task plan with bounded parallelism"),
         )
@@ -195,10 +234,24 @@ async fn dispatch() -> Result<(), Error> {
             fluentci_ext::worker::run(std::path::Path::new(args.value_of("request").unwrap()))?;
         }
         Some(("execute", args)) => {
-            cmd::execute::execute(
+            cmd::execute::execute_with_options(
                 args.value_of("plan").unwrap(),
-                args.value_of("run-dir").unwrap(),
+                args.value_of("run-dir"),
                 args.value_of("progress").unwrap(),
+                cmd::execute::Options {
+                    git: args.value_of("base").map(|base| cmd::execute::GitOptions {
+                        base: base.into(),
+                        head: args.value_of("head").unwrap_or("HEAD").into(),
+                        include_worktree: !args.is_present("committed-only"),
+                    }),
+                    global_inputs: args
+                        .values_of("global-input")
+                        .into_iter()
+                        .flatten()
+                        .map(Into::into)
+                        .collect(),
+                    dry_run: args.is_present("dry-run"),
+                },
             )
             .await?;
         }

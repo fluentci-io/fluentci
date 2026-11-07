@@ -1,7 +1,7 @@
-
 ![Cover](https://github.com/fluentci-io/fluentci-engine/raw/HEAD/.github/assets/ui.png)
 
 # FluentCI Engine
+
 ![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/fluentci-io/fluentci-engine/total?label=gh%20downloads)
 [![FlakeHub](https://img.shields.io/endpoint?url=https://flakehub.com/f/fluentci-io/fluentci-engine/badge)](https://flakehub.com/flake/fluentci-io/fluentci-engine)
 [![built with nix](https://img.shields.io/badge/Built_With-Nix-5277C3.svg?logo=nixos&labelColor=73C3D5)](https://builtwithnix.org)
@@ -497,3 +497,10 @@ invoked as portable Wasm on the native Linux/macOS release runners.
 Core Extism modules and native WIT components run side by side. The engine detects
 the binary encoding and routes components directly to Wasmtime with WASI Preview 2.
 All eight SDKs support code-first WIT generation; see [the component guide](docs/components.md).
+
+### Native execution architecture
+
+See [ARCHITECTURE.md](ARCHITECTURE.md) for the native DAG, content-addressed action
+cache, input/output validation, Git-aware affected selection, dry runs, and measured
+optimization results. Native plans support `fluentci-engine execute plan.json
+--affected --base origin/main --dry-run` before executing selected tasks.

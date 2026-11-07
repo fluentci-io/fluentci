@@ -163,6 +163,38 @@ with module/function arguments. Manage workflow files in
 `.fluentci/workflows/*.toml` or use Studio's workflow controls. See
 [workflow configuration](/reference/configuration/#multiple-workflows).
 
+## Native DAG execution and dry runs
+
+```sh
+fluentci execute plan.json --run-dir .fluentci/runs/full
+fluentci execute plan.json --dry-run
+fluentci execute plan.json --affected --base origin/main --dry-run
+fluentci execute plan.json --affected --base origin/main --head HEAD \
+  --committed-only --global-input Cargo.lock --run-dir .fluentci/runs/affected
+```
+
+`execute` accepts the SDK-neutral native host plan schema. Relative paths are
+resolved against the plan file's directory. `--dry-run` prints selected/omitted
+task IDs, selection reasons, and counts as JSON; it requires no run directory.
+It does not execute tasks or restore outputs, and it does not predict verified
+cache hits. Native execution bypasses the Studio database and update checks.
+
+`--affected` requires `--base`. Git compares the merge base of base/head with
+head (default `HEAD`). Staged, unstaged, and non-ignored untracked paths are also
+included unless `--committed-only` is set. Invalid/missing revisions fail rather
+than silently selecting nothing; fetch enough Git history in CI.
+
+Declared input owners and downstream consumers are selected along with all
+prerequisites. Unknown or external inputs remain conservatively selected.
+Repeat `--global-input` for repository-relative configuration/lockfile roots
+whose changes affect every task. The plan file itself is automatically global.
+Input paths are literal files/directories, not glob patterns. Selected tasks
+still use the normal content-based cache. Ignored files, external environment,
+or network changes may require a full run; Git filtering cannot detect them.
+
+This does not provide a general `fluentci run --dry-run` for arbitrary module
+code. Use native plans when execution must be inspectable before starting work.
+
 ## Typed named arguments
 
 See [typed module arguments](/guides/module-arguments/) for the shared SDK contract.
