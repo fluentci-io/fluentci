@@ -2,7 +2,7 @@
 
 Configure Cachix for Nix builds and automatically upload build outputs when
 `CACHIX_AUTH_TOKEN` is set. Written in PureScript and compiled to a reusable Wasm
-module.
+component. Requires FluentCI 0.17.2 or newer.
 
 ## Quick start
 
@@ -12,9 +12,9 @@ Run from your Nix flake workspace:
 # Supply this through your shell or CI secret store.
 export CACHIX_AUTH_TOKEN="<your-cachix-token>"
 
-fluentci run cachix setup fluentci
+fluentci run cachix setup --cache fluentci
 nix build
-fluentci run cachix push fluentci
+fluentci run cachix push --cache fluentci
 ```
 
 Replace `fluentci` with your Cachix cache name. `cachix` resolves to the official
@@ -27,18 +27,15 @@ Nix inputs; a separate Cachix installation is unnecessary.
 
 ## Exported functions
 
-| Function | Usage                                  | Behavior                                                                  |
-| -------- | -------------------------------------- | ------------------------------------------------------------------------- |
-| `setup`  | `fluentci run cachix setup CACHE_NAME` | Runs `cachix use CACHE_NAME` to configure the binary cache.               |
-| `push`   | `fluentci run cachix push CACHE_NAME`  | Uploads the `./result` output closure, including an already-built result. |
+| Function | Usage                                          | Behavior                                                                  |
+| -------- | ---------------------------------------------- | ------------------------------------------------------------------------- |
+| `setup`  | `fluentci run cachix setup --cache CACHE_NAME` | Runs `cachix use CACHE_NAME` to configure the binary cache.               |
+| `push`   | `fluentci run cachix push --cache CACHE_NAME`  | Uploads the `./result` output closure, including an already-built result. |
 
-Both functions accept `CACHIX_CACHE` when no cache name is passed:
+Both functions expose a typed `cache: string` argument with generated help:
 
 ```sh
-export CACHIX_CACHE=fluentci
-fluentci run cachix setup
-nix build
-fluentci run cachix push
+fluentci run cachix setup --help
 ```
 
 A cache name must be a lowercase DNS label: 1–63 letters, digits, or hyphens,
@@ -94,9 +91,9 @@ After installing Nix and FluentCI and checking out the repository:
     CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
     CACHIX_CACHE: fluentci
   run: |
-    fluentci run cachix setup "$CACHIX_CACHE"
+    fluentci run cachix setup --cache "$CACHIX_CACHE"
     nix build
-    fluentci run cachix push "$CACHIX_CACHE"
+    fluentci run cachix push --cache "$CACHIX_CACHE"
 ```
 
 Without the secret, the Nix build still runs and Cachix steps skip. In this

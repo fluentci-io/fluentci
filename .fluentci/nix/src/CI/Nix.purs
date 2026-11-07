@@ -1,22 +1,26 @@
 module CI.Nix (check, metadata, flakehub, flakestry) where
 
 import Prelude
-import CI.Support (requiredEnv, run, unwrap)
+import CI.Support (requiredArgument, requiredEnv, run, unwrap)
 import Effect (Effect)
 import FluentCI.Plugin as P
 
+-- | Check the Nix flake without changing its lockfile.
 check :: Effect Unit
 check = run "nix-check" [ [ "nix", "flake", "check", "--no-write-lock-file" ] ]
 
+-- | Inspect flake metadata and outputs for all systems.
 metadata :: Effect Unit
 metadata = run "nix-metadata"
   [ [ "nix", "flake", "metadata", "--json", "--no-write-lock-file" ]
   , [ "nix", "flake", "show", "--json", "--all-systems", "--no-write-lock-file" ]
   ]
 
-flakehub :: Effect Unit
-flakehub = do
-  version <- requiredEnv "RELEASE_VERSION"
+-- | Publish the selected release tag to FlakeHub using GitHub OIDC.
+-- | @param version Release tag, for example v0.17.2.
+flakehub :: { version :: String } -> Effect Unit
+flakehub args = do
+  version <- requiredArgument "RELEASE_VERSION" args.version
   -- The publisher's CLI reads this explicit variable, not GITHUB_TOKEN.
   -- Keep credentials in the inherited environment, never in exec arguments.
   _ <- requiredEnv "FLAKEHUB_PUSH_GITHUB_TOKEN"
@@ -25,15 +29,21 @@ flakehub = do
   run "flakehub-publish"
     [ [ "flakehub-push", "--visibility", "public", "--name", "fluentci-io/fluentci", "--tag", version ] ]
 
-flakestry :: Effect Unit
-flakestry = do
-  _ <- requiredEnv "VERSION"
-  _ <- requiredEnv "REF"
+-- | Publish the selected release and revision to Flakestry using GitHub OIDC.
+-- | @param version Release tag, for example v0.17.2.
+-- | @param ref Git revision to publish.
+flakestry :: { version :: String, ref :: String } -> Effect Unit
+flakestry args = do
+  _ <- requiredArgument "VERSION" args.version
+  _ <- requiredArgument "REF" args.ref
   _ <- requiredEnv "GH_TOKEN"
   _ <- requiredEnv "ACTIONS_ID_TOKEN_REQUEST_TOKEN"
   _ <- requiredEnv "ACTIONS_ID_TOKEN_REQUEST_URL"
   P.pipeline "flakestry-publish"
-    # P.shell """
+    # P.withEnv "VERSION" args.version
+    # P.withEnv "REF" args.ref
+    # P.shell
+        """
 set -eu
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
@@ -52,4 +62,7 @@ curl --fail-with-body --silent --show-error \
   https://flakestry.dev/api/publish
 """
     # P.exec [ "printf", "%s\n", "Job completed" ]
-    # P.stdout >>= unwrap >>= P.output >>= unwrap
+    # P.stdout
+    >>= unwrap
+    >>= P.output
+    >>= unwrap

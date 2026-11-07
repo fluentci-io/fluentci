@@ -46,3 +46,6 @@ __pycache__/
 
 **/fluentci_modules/
 **/.fluentci/dependencies.add.guard
+
+# Generated host WIT copied during CI component builds
+/.fluentci/*/.sdk/

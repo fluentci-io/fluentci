@@ -19,7 +19,7 @@ concurrency:
 
 env:
   RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.tag || format('manual-{0}', github.run_number) }}
-  FLUENTCI_VERSION: 'v0.17.0'
+  FLUENTCI_VERSION: 'v0.17.2'
   DESKTOP_MODULE: .fluentci/desktop/dist/plugin.wasm
 
 jobs:
@@ -99,11 +99,11 @@ jobs:
           workspaces: desktop/src-tauri
           key: desktop-release-${{ matrix.target }}
       - name: Build the desktop app with FluentCI
-        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" build
+        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" build --target "$TARGET"
       - name: Clean intermediate desktop builds with FluentCI
-        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" clean
+        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" clean --target "$TARGET"
       - name: Ad hoc sign, verify, and package the desktop app
-        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" package
+        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" package --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Preserve desktop installers
         uses: actions/upload-artifact@v4
         with:
@@ -115,4 +115,4 @@ jobs:
         if: github.event_name == 'release' || inputs.tag != ''
         env:
           GH_TOKEN: ${{ github.token }}
-        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" upload
+        run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" upload --target "$TARGET" --version "$RELEASE_VERSION"

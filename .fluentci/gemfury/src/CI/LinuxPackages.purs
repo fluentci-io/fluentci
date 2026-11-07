@@ -1,7 +1,7 @@
-module CI.LinuxPackages (Config, configuration, configurationFor, package, files) where
+module CI.LinuxPackages (Config, configurationFor, packageWith, files) where
 
 import Prelude
-import CI.Support (requiredEnv, run, unwrap)
+import CI.Support (run, unwrap)
 import Data.Either (Either(..), either)
 import Data.Foldable (all)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -48,12 +48,6 @@ configurationFor target tag = do
     , deb: "target/release-assets/fluentci_" <> version <> "_" <> arch.deb <> ".deb"
     , rpm: "target/release-assets/fluentci-" <> version <> "-1." <> arch.rpm <> ".rpm"
     }
-
-configuration :: Effect Config
-configuration = do
-  target <- requiredEnv "TARGET"
-  tag <- requiredEnv "RELEASE_VERSION"
-  either throw pure (configurationFor target tag)
 
 files :: Config -> Array String
 files config = [ config.deb, config.rpm, config.deb <> ".sha256", config.rpm <> ".sha256" ]
@@ -131,12 +125,24 @@ checksum root taskId path filename = do
 
 build :: Config -> String -> String -> Effect Unit
 build config root stage = do
-  let deb = root <> "/" <> config.deb
-      rpm = root <> "/" <> config.rpm
-      rpmTop = stage <> "/rpm"
+  let
+    deb = root <> "/" <> config.deb
+    rpm = root <> "/" <> config.rpm
+    rpmTop = stage <> "/rpm"
   run "linux-package-stage"
-    [ [ "mkdir", "-p", root <> "/target/release-assets", stage <> "/root/usr/bin", stage <> "/root/usr/share/licenses/fluentci", stage <> "/root/DEBIAN"
-      , rpmTop <> "/BUILD", rpmTop <> "/BUILDROOT", rpmTop <> "/RPMS", rpmTop <> "/SOURCES", rpmTop <> "/SPECS", rpmTop <> "/SRPMS" ]
+    [ [ "mkdir"
+      , "-p"
+      , root <> "/target/release-assets"
+      , stage <> "/root/usr/bin"
+      , stage <> "/root/usr/share/licenses/fluentci"
+      , stage <> "/root/DEBIAN"
+      , rpmTop <> "/BUILD"
+      , rpmTop <> "/BUILDROOT"
+      , rpmTop <> "/RPMS"
+      , rpmTop <> "/SOURCES"
+      , rpmTop <> "/SPECS"
+      , rpmTop <> "/SRPMS"
+      ]
     , [ "install", "-m", "755", root <> "/" <> config.binary, stage <> "/root/usr/bin/fluentci" ]
     , [ "install", "-m", "644", root <> "/LICENSE", stage <> "/root/usr/share/licenses/fluentci/LICENSE" ]
     ]
@@ -146,7 +152,8 @@ build config root stage = do
     ]
   run "linux-package-deb"
     [ [ "chmod", "644", stage <> "/root/DEBIAN/control", rpmTop <> "/SPECS/fluentci.spec" ]
-    , [ "dpkg-deb", "--build", "--root-owner-group", stage <> "/root", deb ] ]
+    , [ "dpkg-deb", "--build", "--root-owner-group", stage <> "/root", deb ]
+    ]
   verify "Debian architecture" [ "dpkg-deb", "--field", deb, "Architecture" ] config.debArch
   verify "Debian version" [ "dpkg-deb", "--field", deb, "Version" ] config.packageVersion
   run "linux-package-rpm"
@@ -161,9 +168,8 @@ build config root stage = do
   rpmChecksum <- checksum root "rpm-checksum" config.rpm ("fluentci-" <> config.version <> "-1." <> config.rpmArch <> ".rpm")
   writeFiles (stage <> "/checksum-run") [ debChecksum, rpmChecksum ]
 
-package :: Effect Unit
-package = do
-  config <- configuration
+packageWith :: Config -> Effect Unit
+packageWith config = do
   run "linux-package-preflight" [ [ "test", "-x", config.binary ] ]
   root <- capture "linux-package-root" [ "pwd", "-P" ]
   stage <- capture "linux-package-temp" [ "mktemp", "-d" ]

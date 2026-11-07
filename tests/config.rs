@@ -1,21 +1,12 @@
 use fluentci::config::Config;
+use fluentci_engine::cmd::metadata::{InputFormat, inspect};
 
 #[test]
-fn repository_ci_modules_remain_compatible_with_the_bootstrap_cli() {
-    // The published 2026.11.04 bootstrap rejects unknown module fields. The
-    // private CI modules must remain readable before the new CLI is built.
-    let manifest = include_str!("../fluentci.toml");
-    let config = Config::parse(manifest).unwrap();
+fn repository_ci_modules_use_native_components() {
+    let config = Config::parse(include_str!("../fluentci.toml")).unwrap();
     assert!(!config.modules.is_empty());
-    let document: toml::Value = toml::from_str(manifest).unwrap();
-    let supported = ["name", "path", "url", "sdk", "entry", "artifact", "build"];
-    for module in document["modules"].as_array().unwrap() {
-        for key in module.as_table().unwrap().keys() {
-            assert!(
-                supported.contains(&key.as_str()),
-                "CI module field {key:?} is unsupported by the pinned bootstrap CLI"
-            );
-        }
+    for module in config.modules {
+        assert_eq!(module.runtime, fluentci::config::ModuleRuntime::Component);
     }
 }
 
@@ -221,6 +212,41 @@ fn official_registry_names_can_omit_the_handle() -> anyhow::Result<()> {
         "name='invalid'\npackage='owner/cache'",
     ] {
         assert!(Config::parse(&format!("[[modules]]\n{invalid}")).is_err());
+    }
+    Ok(())
+}
+
+#[test]
+#[ignore = "requires precompiled repository CI components"]
+fn compiled_ci_components_have_typed_documented_signatures() -> anyhow::Result<()> {
+    let config = Config::parse(include_str!("../fluentci.toml"))?;
+    for module in config.modules {
+        let path = std::path::Path::new(module.path.as_deref().unwrap()).join("dist/plugin.wasm");
+        let bytes = std::fs::read(path)?;
+        assert!(fluentci_engine::components::is_component(&bytes));
+        // inspect verifies embedded docs/types against the component's real WIT ABI.
+        let functions = inspect(&bytes, None)?;
+        assert!(!functions.is_empty());
+        for function in functions {
+            assert_eq!(function.input_format, InputFormat::Wit);
+            assert_eq!(function.return_type.as_deref(), Some("unit"));
+            assert!(
+                function
+                    .description
+                    .as_deref()
+                    .is_some_and(|text| !text.is_empty())
+            );
+            for argument in function.args.unwrap() {
+                assert_eq!(argument.type_name, "string");
+                assert!(argument.required);
+                assert!(
+                    argument
+                        .description
+                        .as_deref()
+                        .is_some_and(|text| !text.is_empty())
+                );
+            }
+        }
     }
     Ok(())
 }

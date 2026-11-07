@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
     env:
-      FLUENTCI_VERSION: 'v0.17.0'
+      FLUENTCI_VERSION: 'v0.17.2'
       CARGO_BUILD_JOBS: '2'
       CARGO_TERM_COLOR: always
       # Keep release optimization while avoiding LTO for every test executable.
@@ -45,6 +45,8 @@ jobs:
         run: sh .fluentci/scripts/install-sdk-tools.sh
       - name: Verify the Wasm compiler toolchain by building modules
         run: fluentci --check-update=false modules --json
+      - name: Verify compiled CI component interfaces
+        run: node --test .fluentci/tests/components.test.mjs
       - name: Test shared SDK metadata inspection
         working-directory: templates/inspection
         run: |
@@ -61,6 +63,8 @@ jobs:
       - name: Run tests with FluentCI
         run: |
           FLUENTCI_BIN="$(command -v fluentci)" fluentci --check-update=false run main check
+      - name: Validate CI component metadata against native WIT inspection
+        run: cargo test --release --locked --test config compiled_ci_components_have_typed_documented_signatures -- --ignored --exact
       - name: Test native component starter and generated WIT
         run: cargo test --release --locked --test components rust_component_starter_generates_wit_and_runs_without_extism -- --ignored --exact
 

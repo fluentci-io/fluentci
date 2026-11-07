@@ -19,7 +19,7 @@ test("missing, empty and whitespace tokens skip before reading cache input or in
     { CACHIX_AUTH_TOKEN: "  \n" },
   ]) {
     const f = fixture(env);
-    setup();
+    setup({ cache: "fluentci" })();
     assert.match(f.output.join("\n"), /Skipping Cachix/);
     assert.ok(f.calls.every(([name]) => ["has_env", "get_env"].includes(name)));
   }
@@ -28,7 +28,7 @@ test("missing, empty and whitespace tokens skip before reading cache input or in
 test("configures a cache from input without exposing the token", () => {
   const token = "test-only-secret";
   const f = fixture({ CACHIX_AUTH_TOKEN: token }, "fluentci");
-  setup();
+  setup({ cache: "fluentci" })();
   const commands = f.calls
     .filter(([name]) => name === "with_exec")
     .map(([, value]) => JSON.parse(value));
@@ -46,9 +46,9 @@ test("configures a cache from input without exposing the token", () => {
   assert.ok(!JSON.stringify([f.calls, f.output]).includes(token));
 });
 
-test("supports an environment fallback and composable setupWith", () => {
+test("supports explicit typed cache names and composable setupWith", () => {
   let f = fixture({ CACHIX_AUTH_TOKEN: "secret", CACHIX_CACHE: "cache-123" });
-  setup();
+  setup({ cache: "cache-123" })();
   assert.ok(JSON.stringify(f.calls).includes("cache-123"));
   f = fixture({ CACHIX_AUTH_TOKEN: "secret" });
   setupWith("another-cache")();
@@ -66,7 +66,7 @@ test("rejects missing or invalid cache names before creating a pipeline", () => 
     "a".repeat(64),
   ]) {
     const f = fixture({ CACHIX_AUTH_TOKEN: "secret" }, input);
-    assert.throws(() => setup());
+    assert.throws(() => setup({ cache: input })());
     assert.ok(!f.calls.some(([name]) => name === "pipeline"));
   }
 });
@@ -80,7 +80,7 @@ test("setup errors propagate instead of silently continuing with a configured to
       throw new Error("Nix setup failed");
     },
   });
-  assert.throws(() => setup(), /Nix setup failed/);
+  assert.throws(() => setup({ cache: "fluentci" })(), /Nix setup failed/);
   assert.deepEqual(f.output, []);
 });
 
@@ -128,7 +128,7 @@ test("without a token the build runs normally and upload is skipped", () => {
 
 test("explicit upload reads cache input and propagates upload failures", () => {
   let f = fixture({ CACHIX_AUTH_TOKEN: "secret" }, "fluentci");
-  push();
+  push({ cache: "fluentci" })();
   assert.ok(JSON.stringify(f.calls).includes("'push'"));
   f = fixture({ CACHIX_AUTH_TOKEN: "secret" }, "fluentci");
   globalThis.Host.getFunctions = () => ({
@@ -138,6 +138,6 @@ test("explicit upload reads cache input and propagates upload failures", () => {
       throw new Error("Cachix upload denied");
     },
   });
-  assert.throws(() => push(), /Cachix upload denied/);
+  assert.throws(() => push({ cache: "fluentci" })(), /Cachix upload denied/);
   assert.deepEqual(f.output, []);
 });

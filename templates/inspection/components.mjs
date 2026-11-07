@@ -24,6 +24,57 @@ export function jsName(name) {
   );
 }
 
+// WIT keywords are valid source-language identifiers when escaped with `%`.
+// Keep their unescaped names in metadata and JavaScript bindings.
+function witIdentifier(name) {
+  const keywords = new Set([
+    "use",
+    "type",
+    "func",
+    "u8",
+    "u16",
+    "u32",
+    "u64",
+    "s8",
+    "s16",
+    "s32",
+    "s64",
+    "f32",
+    "f64",
+    "char",
+    "resource",
+    "own",
+    "borrow",
+    "record",
+    "flags",
+    "variant",
+    "enum",
+    "bool",
+    "string",
+    "option",
+    "result",
+    "future",
+    "stream",
+    "error-context",
+    "list",
+    "map",
+    "as",
+    "from",
+    "static",
+    "interface",
+    "tuple",
+    "world",
+    "import",
+    "export",
+    "package",
+    "constructor",
+    "include",
+    "with",
+    "async",
+  ]);
+  return keywords.has(name) ? `%${name}` : name;
+}
+
 export function wireType(type) {
   if (type.endsWith("[]")) return `list<${wireType(type.slice(0, -2))}>`;
   const value = {
@@ -113,7 +164,7 @@ export function componentContract(functions, sdk) {
             if (fields.has(field)) throw Error(`Duplicate WIT field ${field}`);
             fields.add(field);
             const type = wireType(arg.type);
-            return `${docs(arg.description)}    ${field}: ${arg.required === false ? `option<${type}>` : type},`;
+            return `${docs(arg.description)}    ${witIdentifier(field)}: ${arg.required === false ? `option<${type}>` : type},`;
           })
           .join("\n")}\n  }\n`
       : "";
@@ -121,7 +172,7 @@ export function componentContract(functions, sdk) {
       ...fn,
       witName: name,
       result,
-      declaration: `${record}${docs(fn.description)}  ${name}: func(${args.length ? `args: ${name}-args` : ""})${result ? ` -> ${result}` : ""};`,
+      declaration: `${record}${docs(fn.description)}  ${witIdentifier(name)}: func(${args.length ? `args: ${name}-args` : ""})${result ? ` -> ${result}` : ""};`,
     };
   });
   return {

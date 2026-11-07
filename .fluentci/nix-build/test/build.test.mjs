@@ -10,7 +10,7 @@ const commands = (f) =>
 
 test("Nix build uploads build paths and the final closure when authenticated", () => {
   const f = fixture({ CACHIX_AUTH_TOKEN: "fake-token" });
-  build();
+  build({ cache: "fluentci" })();
   const invocations = commands(f).filter((args) => args[0] === "'nix'");
   const prefix = [
     "'nix'",
@@ -39,7 +39,7 @@ test("Nix build uploads build paths and the final closure when authenticated", (
 
 test("Nix build still runs and makes no upload call without authentication", () => {
   const f = fixture();
-  build();
+  build({ cache: "fluentci" })();
   assert.deepEqual(
     commands(f).filter((args) => args[0] === "'nix'"),
     [["'nix'", "'build'", "'--no-write-lock-file'", "'.#fluentci'"]],
@@ -58,6 +58,6 @@ test("failed watched build never attempts to push the final result", () => {
             }
           : target[name],
     });
-  assert.throws(() => build(), /Watched build failed/);
+  assert.throws(() => build({ cache: "fluentci" })(), /Watched build failed/);
   assert.ok(!commands(f).some((args) => args.includes("'push'")));
 });

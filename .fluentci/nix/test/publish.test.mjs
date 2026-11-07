@@ -4,7 +4,6 @@ import { fixture } from "../../cachix/test/host-fixture.mjs";
 import { flakehub, flakestry } from "../output/CI.Nix/index.js";
 
 const flakehubEnvironment = {
-  RELEASE_VERSION: "v0.17.0",
   FLAKEHUB_PUSH_GITHUB_TOKEN: "flakehub-test-token",
   ACTIONS_ID_TOKEN_REQUEST_TOKEN: "oidc-test-token",
   ACTIONS_ID_TOKEN_REQUEST_URL: "https://example.invalid/token?x=1",
@@ -14,7 +13,7 @@ const flakehubEnvironment = {
 // or Nix, reading credentials, or making publication requests.
 test("FlakeHub passes the selected tag as a literal command argument", () => {
   const f = fixture(flakehubEnvironment);
-  flakehub();
+  flakehub({ version: "v0.17.0" })();
   const commands = f.calls
     .filter(([name]) => name === "with_exec")
     .map(([, value]) => JSON.parse(value));
@@ -27,7 +26,11 @@ test("FlakeHub passes the selected tag as a literal command argument", () => {
     "'--tag'",
     "'v0.17.0'",
   ]);
-  assert.ok(!JSON.stringify([f.calls, f.output]).includes(flakehubEnvironment.FLAKEHUB_PUSH_GITHUB_TOKEN));
+  assert.ok(
+    !JSON.stringify([f.calls, f.output]).includes(
+      flakehubEnvironment.FLAKEHUB_PUSH_GITHUB_TOKEN,
+    ),
+  );
 });
 
 test("FlakeHub requires its explicit token and OIDC environment before creating a pipeline", () => {
@@ -37,21 +40,31 @@ test("FlakeHub requires its explicit token and OIDC environment before creating 
       if (value === undefined) delete env[key];
       else env[key] = value;
       const f = fixture(env);
-      assert.throws(flakehub, new RegExp(key));
+      assert.throws(() => flakehub({ version: "v0.17.0" })(), new RegExp(key));
       assert.ok(!f.calls.some(([name]) => name === "pipeline"));
     }
   }
-  const env = { ...flakehubEnvironment, GH_TOKEN: "generic-token", GITHUB_TOKEN: "generic-token" };
+  const env = {
+    ...flakehubEnvironment,
+    GH_TOKEN: "generic-token",
+    GITHUB_TOKEN: "generic-token",
+  };
   delete env.FLAKEHUB_PUSH_GITHUB_TOKEN;
   const f = fixture(env);
-  assert.throws(flakehub, /FLAKEHUB_PUSH_GITHUB_TOKEN/);
+  assert.throws(
+    () => flakehub({ version: "v0.17.0" })(),
+    /FLAKEHUB_PUSH_GITHUB_TOKEN/,
+  );
   assert.ok(!f.calls.some(([name]) => name === "pipeline"));
 });
 
 test("missing publisher configuration fails before creating a pipeline", () => {
   for (const value of [undefined, ""]) {
     const f = fixture(value === undefined ? {} : { RELEASE_VERSION: value });
-    assert.throws(() => flakehub(), /RELEASE_VERSION/);
+    assert.throws(
+      () => flakehub({ version: value ?? "" })(),
+      /RELEASE_VERSION/,
+    );
     assert.ok(!f.calls.some(([name]) => name === "pipeline"));
   }
   const env = {
@@ -67,7 +80,14 @@ test("missing publisher configuration fails before creating a pipeline", () => {
       if (value === undefined) delete candidate[key];
       else candidate[key] = value;
       const f = fixture(candidate);
-      assert.throws(() => flakestry(), new RegExp(key));
+      assert.throws(
+        () =>
+          flakestry({
+            version: candidate.VERSION ?? "",
+            ref: candidate.REF ?? "",
+          })(),
+        new RegExp(key),
+      );
       assert.ok(!f.calls.some(([name]) => name === "pipeline"));
     }
   }
@@ -82,7 +102,7 @@ test("Flakestry uses the registry payload keys and audience without embedding se
     ACTIONS_ID_TOKEN_REQUEST_URL: "https://example.invalid/token?x=1",
   };
   const f = fixture(env);
-  flakestry();
+  flakestry({ version: env.VERSION, ref: env.REF })();
   const serialized = JSON.stringify(f.calls);
   assert.ok(serialized.includes("metadata_errors="));
   assert.ok(serialized.includes("outputs_errors="));

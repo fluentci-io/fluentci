@@ -74,8 +74,8 @@ jobs:
         env:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
           CACHIX_CACHE: fluentci
-        run: fluentci --check-update=false run --wasm .fluentci/cachix/dist/plugin.wasm setup "$CACHIX_CACHE"
+        run: fluentci --check-update=false run --wasm .fluentci/cachix/dist/plugin.wasm setup --cache "$CACHIX_CACHE"
       - name: Build Nix package and upload cache through FluentCI
         env:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
-        run: fluentci --check-update=false run --wasm .fluentci/nix-build/dist/plugin.wasm build
+        run: fluentci --check-update=false run --wasm .fluentci/nix-build/dist/plugin.wasm build --cache fluentci

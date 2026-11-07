@@ -1,4 +1,4 @@
-module CI.Support (run, runIn, unwrap, requiredEnv) where
+module CI.Support (run, runIn, unwrap, requiredEnv, requiredArgument) where
 
 import Prelude
 import Data.Foldable (foldl)
@@ -23,6 +23,11 @@ run name = runIn name "."
 requiredEnv :: String -> Effect String
 requiredEnv name = do
   present <- P.hasEnv name >>= unwrap
-  if not present then throw ("Set " <> name <> " before running this job") else do
+  if not present then throw ("Set " <> name <> " before running this job")
+  else do
     value <- P.getEnv name >>= unwrap
     if value == "" then throw ("Set " <> name <> " before running this job") else pure value
+
+requiredArgument :: String -> String -> Effect String
+requiredArgument name value =
+  if value == "" then throw ("Set " <> name <> " using its named CLI argument") else pure value

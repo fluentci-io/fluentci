@@ -17,6 +17,17 @@ const fn = {
   invoke: { style: "record", module: "./source.mjs", export: "build_project" },
 };
 
+test("WIT escapes keyword function and argument names without changing the public names", () => {
+  const contract = componentContract(
+    [{ ...fn, name: "package", args: [{ name: "type", type: "string" }] }],
+    "typescript",
+  );
+  assert.match(contract.wit, /%package: func/);
+  assert.match(contract.wit, /%type: string/);
+  assert.equal(contract.functions[0].witName, "package");
+  assert.match(componentSource(contract.functions), /"package"\(args\)/);
+});
+
 test("WIT follows typed inputs, optional fields, return types and source docs", () => {
   const contract = componentContract([fn], "typescript");
   assert.match(contract.wit, /source-dir: string/);

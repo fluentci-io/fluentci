@@ -97,4 +97,9 @@ jobs:
           FLAKEHUB_PUSH_GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
-        run: fluentci --check-update=false run --wasm "$RUNNER_TEMP/nix-publish/plugin.wasm" "$REGISTRY"
+        run: |
+          if [ "$REGISTRY" = flakestry ]; then
+            fluentci --check-update=false run --wasm "$RUNNER_TEMP/nix-publish/plugin.wasm" flakestry --version "$VERSION" --ref "$REF"
+          else
+            fluentci --check-update=false run --wasm "$RUNNER_TEMP/nix-publish/plugin.wasm" flakehub --version "$RELEASE_VERSION"
+          fi

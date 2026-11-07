@@ -20,6 +20,43 @@ const binary = resolve(
   process.env.FLUENTCI_BIN ?? join(root, "target/release/fluentci"),
 );
 
+function namedArguments(module, fn, values) {
+  const name = module.includes("/dist/") ? module.split("/").at(-3) : module;
+  const fields =
+    {
+      release: {
+        prepare: ["version"],
+        build: ["target"],
+        buildPrepared: ["target"],
+        check: ["target"],
+        package: ["target", "version"],
+        upload: ["target", "version"],
+        bsdBuild: ["target", "version"],
+        bsdVerify: ["target", "version"],
+        bsdUpload: ["target", "version"],
+      },
+      desktop: {
+        build: ["target"],
+        clean: ["target"],
+        sign: ["target"],
+        package: ["target", "version"],
+        upload: ["target", "version"],
+      },
+      nix: { flakehub: ["version"], flakestry: ["version", "ref"] },
+      "nix-build": { build: ["cache"] },
+    }[name]?.[fn] ?? [];
+  const variables = {
+    target: "TARGET",
+    version: "RELEASE_VERSION",
+    ref: "REF",
+    cache: "CACHIX_CACHE",
+  };
+  return fields.flatMap((field) => [
+    "--" + field,
+    values[variables[field]] ?? (field === "cache" ? "fluentci" : ""),
+  ]);
+}
+
 function fixture(t) {
   mkdirSync(join(root, "target"), { recursive: true });
   const directory = mkdtempSync(join(root, "target/ci-modules-test-"));
@@ -62,7 +99,12 @@ if (command === "bun" && process.argv[2] === "run") {
     chmodSync(path, 0o755);
   }
   symlinkSync(process.execPath, join(bin, "node"));
-  function run(module, fn, extra = {}) {
+  function run(
+    module,
+    fn,
+    extra = {},
+    arguments_ = namedArguments(module, fn, extra),
+  ) {
     const env = {
       ...process.env,
       PATH: bin + delimiter + process.env.PATH,
@@ -83,7 +125,8 @@ if (command === "bun" && process.argv[2] === "run") {
         directory,
         ...(module.endsWith(".wasm") ? ["--wasm"] : []),
         module,
-        fn,
+        fn.replace(/([a-z0-9])([A-Z])/g, "$1-$2").toLowerCase(),
+        ...arguments_,
       ],
       { cwd: directory, env, encoding: "utf8", timeout: 120_000 },
     );
@@ -209,12 +252,14 @@ test("Nix checks and FlakeHub publishing use the configured commands", (t) => {
   const f = fixture(t);
   success(f.run("nix", "check"));
   success(f.run("nix", "metadata"));
-  success(f.run("nix", "flakehub", {
-    RELEASE_VERSION: "v0.0.0-ci-test",
-    FLAKEHUB_PUSH_GITHUB_TOKEN: "fixture-github-token",
-    ACTIONS_ID_TOKEN_REQUEST_TOKEN: "fixture-oidc-token",
-    ACTIONS_ID_TOKEN_REQUEST_URL: "https://example.invalid/token?fixture=1",
-  }));
+  success(
+    f.run("nix", "flakehub", {
+      RELEASE_VERSION: "v0.0.0-ci-test",
+      FLAKEHUB_PUSH_GITHUB_TOKEN: "fixture-github-token",
+      ACTIONS_ID_TOKEN_REQUEST_TOKEN: "fixture-oidc-token",
+      ACTIONS_ID_TOKEN_REQUEST_URL: "https://example.invalid/token?fixture=1",
+    }),
+  );
   assert.deepEqual(
     f.commands().map(({ command, args }) => [command, ...args]),
     [
@@ -255,10 +300,7 @@ test("release and publishing jobs reject missing configuration before commands r
   ]) {
     const result = f.run(module, fn, env);
     assert.notEqual(result.status, 0);
-    assert.match(
-      result.stderr,
-      new RegExp(`Set ${variable} before running this job`),
-    );
+    assert.match(result.stderr, new RegExp(`Set ${variable}`));
   }
 });
 
@@ -388,7 +430,12 @@ test("compiled BSD functions invoke the native helper and copied-back verifier",
     "#!/bin/sh\nprintf bsd-build > bsd-built\n",
   );
   const module = join(root, ".fluentci/release/dist/plugin.wasm");
-  success(f.run(module, "bsdBuild"));
+  success(
+    f.run(module, "bsdBuild", {
+      TARGET: "x86_64-unknown-openbsd",
+      RELEASE_VERSION: "v0.17.2",
+    }),
+  );
   assert.equal(
     readFileSync(join(f.directory, "bsd-built"), "utf8"),
     "bsd-build",
@@ -568,4 +615,38 @@ test("failed watched Nix builds stop before the final cache push", (t) => {
     0,
   );
   assert.equal(f.commands().length, 1);
+});
+
+test("component help exposes documented named arguments and validates them before effects", (t) => {
+  const f = fixture(t);
+  const module = join(root, ".fluentci/cachix/dist/plugin.wasm");
+  const help = f.run(module, "setup", {}, ["--help"]);
+  success(help);
+  assert.match(help.stdout, /--cache/);
+  assert.match(help.stdout, /Cachix cache name/);
+  assert.match(help.stdout, /Returns: unit/);
+  for (const args of [[], ["--unknown", "value"]]) {
+    assert.notEqual(f.run(module, "setup", {}, args).status, 0);
+  }
+  assert.deepEqual(f.commands(), []);
+  success(
+    f.run(
+      module,
+      "setup",
+      {
+        CACHIX_AUTH_TOKEN: "test-only-token",
+        CACHIX_CACHE: "ignored-env-cache",
+      },
+      ["--cache", "explicit-cache"],
+    ),
+  );
+  assert.ok(
+    f
+      .commands()
+      .some(
+        ({ command, args }) =>
+          command === "nix" && args.includes("explicit-cache"),
+      ),
+  );
+  assert.ok(!JSON.stringify(f.commands()).includes("ignored-env-cache"));
 });

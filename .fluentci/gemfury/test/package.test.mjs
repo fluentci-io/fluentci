@@ -24,7 +24,9 @@ test(
   "real Debian and RPM packages contain the executable, license, metadata and valid checksums",
   { skip: !available },
   () => {
-    const { package: buildPackage } = createRequire(import.meta.url)("../dist/plugin.cjs");
+    const { package: buildPackage } = createRequire(import.meta.url)(
+      "../dist/plugin.cjs",
+    );
     const target =
       process.arch === "arm64"
         ? "aarch64-unknown-linux-gnu"
@@ -57,11 +59,14 @@ test(
         join(root, "target", target, "release/fluentci"),
       );
       for (const version of ["0.17.0", "0.17.1-rc.1"]) {
-        fixture({
-          TARGET: target,
-          RELEASE_VERSION: `v${version}`,
-        }, { root, native: true });
-        buildPackage();
+        fixture(
+          {
+            TARGET: target,
+            RELEASE_VERSION: `v${version}`,
+          },
+          { root, native: true },
+        );
+        buildPackage({ target, version: "v0.17.0" })();
         const dir = join(root, "target/release-assets");
         const deb = join(dir, `fluentci_${version}_${debArch}.deb`);
         const rpm = join(dir, `fluentci-${version}-1.${rpmArch}.rpm`);

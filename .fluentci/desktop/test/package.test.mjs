@@ -16,21 +16,6 @@ import {
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { clean, package as packageApp } from "../output/CI.Desktop/index.js";
-import * as entry from "../entry.mjs";
-import { validateExports } from "../validate-exports.mjs";
-
-test("Wasm declarations include every desktop entry point", () => {
-  validateExports(entry);
-  assert.throws(
-    () =>
-      validateExports(
-        entry,
-        'declare module "main" { export function build(): I32; }',
-      ),
-    /Desktop Wasm declarations must match JavaScript exports/,
-  );
-});
-
 // Run compiled PureScript through a host bridge in a disposable fixture. No
 // FluentCI CLI is launched. Native DMG creation is an explicit macOS opt-in.
 function fixture(t, options = {}) {
@@ -145,7 +130,7 @@ if (program==='hdiutil') {
 
 test("packaging uses logical bytes plus headroom, signs first, verifies the image, and hashes both assets", (t) => {
   const f = fixture(t);
-  packageApp();
+  packageApp({ target: "aarch64-apple-darwin", version: "v0.17.2" })();
   const commands = f.commands();
   assert.deepEqual(
     commands.slice(0, 2).map(({ program, args }) => [program, args[0]]),
@@ -201,7 +186,7 @@ test("CI cleanup preserves the app, bundle resources, and dependency artifacts",
   writeFileSync(dependency, "cached dependency");
   const resource = join(f.root, f.app, "Contents/Resources/incremental");
   mkdirSync(resource, { recursive: true });
-  clean();
+  clean({ target: "aarch64-apple-darwin" })();
   assert.ok(existsSync(f.executable));
   assert.ok(existsSync(resource));
   assert.ok(existsSync(dependency));
@@ -229,14 +214,20 @@ test("CI cleanup preserves the app, bundle resources, and dependency artifacts",
 
 test("cleanup leaves local builds alone and packaging stops on signing or image verification failure", (t) => {
   let f = fixture(t);
-  clean();
+  clean({ target: "aarch64-apple-darwin" })();
   assert.ok(existsSync(f.executable));
   assert.equal(f.commands().length, 0);
   f = fixture(t, { env: { CI_TEST_FAIL: "codesign:--verify" } });
-  assert.throws(() => packageApp(), /codesign/);
+  assert.throws(
+    () => packageApp({ target: "aarch64-apple-darwin", version: "v0.17.2" })(),
+    /codesign/,
+  );
   assert.ok(!existsSync(join(f.root, "desktop/release-assets")));
   f = fixture(t, { env: { CI_TEST_FAIL: "hdiutil:verify" } });
-  assert.throws(() => packageApp(), /hdiutil/);
+  assert.throws(
+    () => packageApp({ target: "aarch64-apple-darwin", version: "v0.17.2" })(),
+    /hdiutil/,
+  );
   assert.ok(
     !f
       .commands()
@@ -256,7 +247,7 @@ test(
     const fd = openSync(f.executable, "w");
     ftruncateSync(fd, 64 * 1024 * 1024);
     closeSync(fd);
-    packageApp();
+    packageApp({ target: "aarch64-apple-darwin", version: "v0.17.2" })();
     const create = f
       .commands()
       .find(

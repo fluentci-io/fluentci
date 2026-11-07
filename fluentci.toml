@@ -1,5 +1,5 @@
 # Run the standard CI checks with `fluentci run` from any repository directory.
-# Keep these private CI modules compatible with the pinned bootstrap CLI.
+# CI modules require FluentCI 0.17.2 or newer (native Wasm components).
 [[steps]]
 name = "check"
 command = "fluentci run main check"
@@ -8,43 +8,52 @@ command = "fluentci run main check"
 name = "main"
 path = ".fluentci/main"
 sdk = "purescript"
+runtime = "component"
 
 [[modules]]
 name = "rust"
 path = ".fluentci/rust"
 sdk = "purescript"
+runtime = "component"
 
 [[modules]]
 name = "studio"
 path = ".fluentci/studio"
 sdk = "purescript"
+runtime = "component"
 
 [[modules]]
 name = "release"
 path = ".fluentci/release"
 sdk = "purescript"
+runtime = "component"
 
 [[modules]]
 name = "nix"
 path = ".fluentci/nix"
 sdk = "purescript"
+runtime = "component"
 
 [[modules]]
 name = "desktop"
 path = ".fluentci/desktop"
 sdk = "purescript"
+runtime = "component"
 
 [[modules]]
 name = "nix-build"
 path = ".fluentci/nix-build"
 sdk = "purescript"
+runtime = "component"
 
 [[modules]]
 name = "cachix"
 path = ".fluentci/cachix"
 sdk = "purescript"
+runtime = "component"
 
 [[modules]]
 name = "gemfury"
 path = ".fluentci/gemfury"
 sdk = "purescript"
+runtime = "component"

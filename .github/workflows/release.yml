@@ -24,7 +24,7 @@ concurrency:
 env:
   RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.tag }}
   BSD_RUST_VERSION: '1.99.1'
-  FLUENTCI_VERSION: 'v0.17.0'
+  FLUENTCI_VERSION: 'v0.17.2'
   RELEASE_MODULE: .fluentci/release/dist/plugin.wasm
 
 jobs:
@@ -49,7 +49,7 @@ jobs:
       - name: Prepare release inputs with FluentCI
         env:
           GH_TOKEN: ${{ github.token }}
-        run: fluentci --check-update=false run release prepare
+        run: fluentci --check-update=false run release prepare --version "$RELEASE_VERSION"
       - name: Compile and test Gemfury PureScript Wasm module
         working-directory: .fluentci/gemfury
         run: |
@@ -114,38 +114,38 @@ jobs:
           key: release-${{ matrix.target }}
       - name: Install Linux build dependencies with FluentCI
         if: runner.os == 'Linux'
-        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" linuxDependencies
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" linux-dependencies
       - name: Build release binary with FluentCI
-        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" buildPrepared
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" build-prepared --target "$TARGET"
       - name: Check release binary with FluentCI
-        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" check
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" check --target "$TARGET"
       - name: Package release assets with FluentCI
-        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" package
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" package --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Install Linux packaging tools through PureScript Wasm
         if: runner.os == 'Linux'
-        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm dependencies
+        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm dependencies --target "$TARGET"
       - name: Verify native Debian and RPM package formats
         if: runner.os == 'Linux'
         run: node --test .fluentci/gemfury/test/package.test.mjs
       - name: Build Debian and RPM packages through PureScript Wasm
         if: runner.os == 'Linux'
-        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm package
+        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm package --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Upload GitHub release assets with FluentCI
         env:
           GH_TOKEN: ${{ github.token }}
-        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" upload
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" upload --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Upload Linux package assets to GitHub release
         if: runner.os == 'Linux'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm github
+        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm github --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Upload Debian and RPM packages to Gemfury through PureScript Wasm
         if: runner.os == 'Linux'
         env:
           FURY_TOKEN: ${{ secrets.FURY_TOKEN }}
           FURY_USER: ${{ secrets.FURY_USER || vars.FURY_USER }}
           FURY_ACCOUNT: ${{ secrets.FURY_ACCOUNT || vars.FURY_ACCOUNT }}
-        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm upload
+        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm upload --target "$TARGET" --version "$RELEASE_VERSION" --account "$FURY_ACCOUNT"
 
   bsd:
     name: Release ${{ matrix.target }}
@@ -182,8 +182,8 @@ jobs:
           name: release-inputs
           path: .
       - name: Reserve BSD runner disk space with FluentCI
-        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" reserveBsdDisk
-      - name: Download OpenBSD bootstrap directly from fork release assets
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" reserve-bsd-disk
+      - name: Download component-capable OpenBSD bootstrap
         if: matrix.os == 'openbsd'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -192,33 +192,23 @@ jobs:
           set -euo pipefail
           bootstrap=.release-bootstrap/openbsd
           mkdir -p "$bootstrap"
-          # The latest repository release may contain only other platforms.
-          # Select the newest published release with the OpenBSD archive AND checksum.
-          gh api repos/tsirysndr/fluentci/releases --paginate --jq '
-            .[] | select(.draft == false and .prerelease == false)
-            | . as $release | .assets[]
-            | select(.name | endswith("_x86_64-unknown-openbsd.tar.gz"))
-            | select(.name as $name | any($release.assets[]; .name == ($name + ".sha256")))
-            | [$release.tag_name, .name] | @tsv
-          ' > "$bootstrap/candidates.tsv"
-          if ! IFS=$'\t' read -r tag archive < "$bootstrap/candidates.tsv"; then
-            echo 'No fork release contains an OpenBSD archive and checksum' >&2
-            exit 1
-          fi
+          # Use the same component-capable release on every platform.
+          tag="$FLUENTCI_VERSION"
+          archive="fluentci_${tag}_x86_64-unknown-openbsd.tar.gz"
           test -n "$tag" && test -n "$archive"
           case "$archive" in
             fluentci_*_x86_64-unknown-openbsd.tar.gz) ;;
             *) echo 'Unexpected OpenBSD release asset name' >&2; exit 1 ;;
           esac
           case "$archive" in */*) echo 'Invalid archive path' >&2; exit 1 ;; esac
-          gh release download "$tag" --repo tsirysndr/fluentci \
+          gh release download "$tag" --repo fluentci-io/fluentci \
             --pattern "$archive" --pattern "$archive.sha256" --dir "$bootstrap"
           expected=$(awk 'NR == 1 { print $1 }' "$bootstrap/$archive.sha256")
           actual=$(sha256sum "$bootstrap/$archive" | awk '{ print $1 }')
           test "$expected" = "$actual"
           tar -xzf "$bootstrap/$archive" -C "$bootstrap" fluentci
           (cd "$bootstrap" && sha256sum fluentci > fluentci.sha256)
-          printf 'OpenBSD bootstrap: tsirysndr/fluentci release %s (%s)\n' "$tag" "$archive"
+          printf 'OpenBSD bootstrap: fluentci-io/fluentci release %s (%s)\n' "$tag" "$archive"
       - name: Cache native BSD toolchains and Cargo artifacts
         uses: actions/cache@v4
         with:
@@ -245,7 +235,7 @@ jobs:
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
-            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsdBuild
+            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Build and smoke-test NetBSD release
         if: matrix.os == 'netbsd'
         uses: vmactions/netbsd-vm@c8a0d7ddb84619a7a8cc4e652efa7950b3fd9f92
@@ -264,7 +254,7 @@ jobs:
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
-            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsdBuild
+            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Build and smoke-test OpenBSD release
         if: matrix.os == 'openbsd'
         uses: vmactions/openbsd-vm@f1ca8bc8ecc5b6ef7218e5b914836e067e1546d3
@@ -279,7 +269,7 @@ jobs:
             set -eu
             export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
             sh .github/scripts/prepare-bsd-release.sh
-            # The runner downloaded and verified the fork's newest OpenBSD asset.
+            # The runner downloaded and verified the component-capable OpenBSD asset.
             # Verify the synchronized binary again, then install without install.sh.
             bootstrap=.release-bootstrap/openbsd
             expected=$(awk 'NR == 1 { print $1 }' "$bootstrap/fluentci.sha256")
@@ -289,11 +279,9 @@ jobs:
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
-            # The released bootstrap cannot resolve current_exe on OpenBSD.
-            # Enter its Wasm worker directly; the release module still drives the build.
-            WASM_ENABLED=1 "$HOME/.local/bin/fluentci" __engine-call --module "$RELEASE_MODULE" -- bsdBuild
+            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Verify copied-back BSD assets with FluentCI
-        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsdVerify
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-verify --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Preserve BSD failure diagnostics
         if: failure()
         uses: actions/upload-artifact@v4
@@ -307,4 +295,4 @@ jobs:
       - name: Upload BSD GitHub release assets with FluentCI
         env:
           GH_TOKEN: ${{ github.token }}
-        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsdUpload
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-upload --target "$TARGET" --version "$RELEASE_VERSION"

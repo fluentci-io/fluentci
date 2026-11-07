@@ -1,28 +1,33 @@
 module CI.Desktop (build, clean, sign, package, upload) where
 
 import Prelude
-import CI.Support (requiredEnv, run, runIn, unwrap)
+import CI.Support (run, runIn, unwrap)
 import Effect (Effect)
 import Effect.Exception (throw)
 import FluentCI.Plugin as P
 
-macosTarget :: Effect String
-macosTarget = do
-  target <- requiredEnv "TARGET"
+macosTarget :: String -> Effect String
+macosTarget target = do
   case target of
     "aarch64-apple-darwin" -> pure target
     "x86_64-apple-darwin" -> pure target
     _ -> throw "Desktop releases require TARGET=aarch64-apple-darwin or x86_64-apple-darwin"
 
-releaseVersion :: Effect String
-releaseVersion = do
-  version <- requiredEnv "RELEASE_VERSION"
+releaseVersion :: String -> Effect String
+releaseVersion version = do
   run "desktop-release-inputs"
-    [ [ "sh", "-eu", "-c", """
+    [ [ "env"
+      , "RELEASE_VERSION=" <> version
+      , "sh"
+      , "-eu"
+      , "-c"
+      , """
 case "$RELEASE_VERSION" in
   ''|*[!A-Za-z0-9._+-]*) echo 'Unsupported desktop release tag' >&2; exit 1 ;;
 esac
-""" ] ]
+"""
+      ]
+    ]
   pure version
 
 appPath :: String -> String
@@ -32,9 +37,11 @@ assetPath :: String -> String -> String
 assetPath version target = "desktop/release-assets/FluentCI-Studio_" <> version <> "_" <> target
 
 -- The Tauri wrapper uses release mode and --locked; its hook builds Studio first.
-build :: Effect Unit
-build = do
-  target <- macosTarget
+-- | Build the native Studio app.
+-- | @param target Rust target triple for the build or release.
+build :: { target :: String } -> Effect Unit
+build args = do
+  target <- macosTarget args.target
   runIn "desktop-build" "desktop"
     [ [ "bun", "install", "--frozen-lockfile", "--ignore-scripts" ]
     , [ "bun", "run", "build", "--target", target, "--bundles", "app", "--no-sign" ]
@@ -42,13 +49,16 @@ build = do
 
 -- Discard workspace build products after bundling, keeping dependency caches and
 -- the finished .app. This is intentionally restricted to disposable CI runners.
-clean :: Effect Unit
-clean = do
-  target <- macosTarget
+-- | Remove disposable CI build products while preserving the app.
+-- | @param target Rust target triple for the build or release.
+clean :: { target :: String } -> Effect Unit
+clean args = do
+  target <- macosTarget args.target
   P.pipeline "desktop-clean"
     # P.withEnv "APP" (appPath target)
     # P.withEnv "TARGET" target
-    # P.shell """
+    # P.shell
+        """
 set -eu
 if [ "${GITHUB_ACTIONS:-}" != true ]; then
   printf '%s\n' 'Skipping desktop build cleanup outside GitHub Actions'
@@ -65,12 +75,17 @@ rm -rf node_modules webui/node_modules desktop/node_modules apps/api/node_module
 test -s "$APP/Contents/MacOS/fluentci-desktop"
 df -h .
 """
-    # P.stdout >>= unwrap >>= P.output >>= unwrap
+    # P.stdout
+    >>= unwrap
+    >>= P.output
+    >>= unwrap
 
 -- Match Rocksky Desktop: an ad hoc signature, with no Apple identity required.
-sign :: Effect Unit
-sign = do
-  target <- macosTarget
+-- | Ad hoc sign and verify the Studio app.
+-- | @param target Rust target triple for the build or release.
+sign :: { target :: String } -> Effect Unit
+sign args = do
+  target <- macosTarget args.target
   let app = appPath target
   run "desktop-sign"
     [ [ "test", "-d", app ]
@@ -79,15 +94,19 @@ sign = do
     ]
 
 -- Signing and verification must succeed before producing distributable archives.
-package :: Effect Unit
-package = do
-  target <- macosTarget
-  version <- releaseVersion
-  sign
+-- | Sign and create verified Studio DMG and ZIP installers.
+-- | @param target Rust target triple for the build or release.
+-- | @param version Release tag, for example v0.17.2.
+package :: { target :: String, version :: String } -> Effect Unit
+package args = do
+  target <- macosTarget args.target
+  version <- releaseVersion args.version
+  sign { target }
   P.pipeline "desktop-package"
     # P.withEnv "APP" (appPath target)
     # P.withEnv "ASSET" (assetPath version target)
-    # P.shell """
+    # P.shell
+        """
 set -eu
 mkdir -p desktop/release-assets
 stage=$(mktemp -d)
@@ -112,12 +131,18 @@ for file in "${ASSET##*/}.dmg" "${ASSET##*/}.app.zip"; do
 done
 """
     # P.exec [ "printf", "%s\n", "Desktop package completed" ]
-    # P.stdout >>= unwrap >>= P.output >>= unwrap
+    # P.stdout
+    >>= unwrap
+    >>= P.output
+    >>= unwrap
 
-upload :: Effect Unit
-upload = do
-  target <- macosTarget
-  version <- releaseVersion
+-- | Upload Studio installers and checksums to GitHub.
+-- | @param target Rust target triple for the build or release.
+-- | @param version Release tag, for example v0.17.2.
+upload :: { target :: String, version :: String } -> Effect Unit
+upload args = do
+  target <- macosTarget args.target
+  version <- releaseVersion args.version
   let asset = assetPath version target
   run "desktop-upload"
     [ [ "gh", "release", "upload", version, asset <> ".dmg", asset <> ".dmg.sha256", asset <> ".app.zip", asset <> ".app.zip.sha256", "--clobber" ] ]

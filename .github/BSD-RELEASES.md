@@ -15,22 +15,17 @@ smoke fixtures. GitHub runners install the CLI with
 the curl installer without installing a Node runtime for the JavaScript action.
 `FLUENTCI_VERSION` pins that bootstrap CLI;
 `RELEASE_VERSION` identifies the new release being built. BSD guests invoke the
-compiled module's `bsdBuild` function and never install Bun, Node, Vite, React
-build tools, or PureScript. Ubuntu invokes `bsdVerify` and `bsdUpload` after VM
+compiled module's `bsd-build` function and never install Bun, Node, Vite, React
+build tools, or PureScript. Ubuntu invokes `bsd-verify` and `bsd-upload` after VM
 copyback.
 
-OpenBSD bootstraps directly from release assets in `tsirysndr/fluentci`, without
-running `install.sh`. The Ubuntu runner selects the newest published stable
-release containing both an OpenBSD archive and its checksum, downloads them
-with GitHub CLI, and verifies the archive before extracting the binary. This
-handles releases such as `2026.11.05` that have no OpenBSD asset; currently the
-newest matching release is `2026.11.04`. The verified binary is synchronized into
-the guest, checked again with OpenBSD's `sha256`, and installed in `~/.local/bin`.
-This overrides the global bootstrap version pin. Its bootstrap calls
-`__engine-call` directly to avoid the old CLI's failing executable lookup, while
-still running the PureScript Wasm release module. Newly built binaries resolve
-their executable from startup arguments and `PATH` if OpenBSD's argv sysctl
-fails; native smoke tests exercise the public `run --wasm` command.
+All CI modules are native Wasm components and require FluentCI 0.17.2 or newer.
+OpenBSD bootstraps directly from the matching `fluentci-io/fluentci` release,
+without running `install.sh`. Ubuntu verifies the archive checksum before
+synchronizing the executable into the VM; OpenBSD verifies the binary again.
+The bootstrap worker receives `bsd-build --target "$TARGET" --version "$RELEASE_VERSION"`.
+Target and version are typed component arguments; credentials remain in the host
+environment. Other BSD guests install the same `FLUENTCI_VERSION` through curl.
 
 For a manual backport build, set `tag` to the existing release and `source-ref`
 to the fixed source commit or branch. All jobs check out the same source ref,
