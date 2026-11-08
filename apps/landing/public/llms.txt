@@ -42,15 +42,16 @@ and ReScript. Wasm contains orchestration logic; host commands run through the
 engine. Elixir compiles a CI DSL subset, not arbitrary BEAM programs.
 ClojureScript checks shared .cljc source with Typed Clojure before compilation.
 
-Extism core Wasm remains supported and is the default. Native WebAssembly
-components run directly in Wasmtime with WASI Preview 2 and versioned WIT host
-imports. Create a component in an existing workspace with:
+New modules default to native WebAssembly components, running directly in
+Wasmtime with WASI Preview 2 and versioned WIT host imports. Extism core Wasm
+remains supported through --runtime extism; existing manifests without runtime
+retain Extism behavior. Create a component in an existing workspace with:
 
 ```sh
-fluentci modules add deploy --sdk purescript --runtime component
+fluentci modules add deploy --sdk purescript
 ```
 
-For a new workspace, use `fluentci init --sdk rust --runtime component`.
+For a new workspace, use `fluentci init --sdk rust`.
 The corresponding [[modules]] field is runtime = "component". Artifact execution
 detects the binary encoding; explicit component declarations reject core Wasm.
 Component starters do not require an Extism guest compiler.

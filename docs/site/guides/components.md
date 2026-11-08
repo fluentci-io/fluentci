@@ -10,22 +10,24 @@ source: "guides/components.md"
 
 FluentCI supports two Wasm execution paths: existing Extism core modules and native
 WebAssembly components. Components execute directly in Wasmtime with WASI Preview 2
-and versioned WIT host imports. Extism remains the default for existing SDK starters.
+and versioned WIT host imports. New SDK starters use components by default;
+pass `--runtime extism` to create an Extism module. Existing manifests that omit
+`runtime` retain their Extism behavior.
 The runtime detects compiled artifacts by their binary encoding.
 
 ## Create a component module
 
 ```sh
-fluentci init --runtime component
+fluentci init
 # Or add another module to an existing project:
-fluentci modules add deploy --runtime component
+fluentci modules add deploy
 ```
 
 All eight SDKs support component starters. Select a language explicitly:
 
 ```sh
-fluentci modules add deploy --sdk purescript --runtime component
-fluentci modules add tools --sdk python --runtime component
+fluentci modules add deploy --sdk purescript
+fluentci modules add tools --sdk python
 ```
 
 Component builds do not require Extism guest compilers. Rust and Elixir target

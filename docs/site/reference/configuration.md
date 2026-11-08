@@ -378,9 +378,10 @@ array types, manifest embedding, publishing, and SDK decoding.
 
 ## Module runtime
 
-Modules default to `runtime = "extism"`. Set `runtime = "component"` to build a
-native WIT component with any SDK, or create one using
-`fluentci modules add tools --sdk python --runtime component`.
+New modules created with `fluentci init` or `fluentci modules add` default to
+`runtime = "component"` for every SDK. Use `--runtime extism` to create an Extism
+module. For compatibility, an existing manifest that omits `runtime` is still read
+as `runtime = "extism"`. Set the field explicitly when migrating existing source.
 
 ```toml
 [[modules]]

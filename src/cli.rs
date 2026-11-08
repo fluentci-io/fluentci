@@ -142,7 +142,7 @@ pub enum Command {
         #[arg(long, value_enum, default_value = "rust")]
         sdk: Sdk,
         /// Wasm ABI used by the generated module
-        #[arg(long, value_enum, default_value = "extism")]
+        #[arg(long, value_enum, default_value = "component")]
         runtime: ModuleRuntime,
     },
     /// Search for reusable pipelines in the registry
@@ -390,7 +390,7 @@ pub enum ModuleCommand {
         #[arg(long, value_enum, default_value = "rust")]
         sdk: Sdk,
         /// Wasm ABI used by the module (supported by every SDK)
-        #[arg(long, value_enum, default_value = "extism")]
+        #[arg(long, value_enum, default_value = "component")]
         runtime: ModuleRuntime,
         /// Register an existing module instead of generating one
         #[arg(long, conflicts_with = "url")]

@@ -227,13 +227,14 @@ fluentci run
 ```
 
 Initialization creates a root `fluentci.toml` and a default Rust module under
-`.fluentci/main`. The config declares the module and a `hello` step. Run the
+`.fluentci/main`, using the component runtime. The config declares the module and a
+`hello` step with its named argument already supplied. Run the
 module directly, run the step, or choose a different working directory:
 
 ```sh
-fluentci run main hello
-fluentci run . hello
-fluentci run --work-dir ./my-project main hello
+fluentci run main hello --name FluentCI
+fluentci run . hello --name FluentCI
+fluentci run --work-dir ./my-project main hello --name FluentCI
 ```
 
 Search for a reusable pipeline and run a Wasm plugin:
@@ -360,7 +361,7 @@ Lerna, Nx, Turborepo, Deno workspaces, and Go workspaces.
 
 ```sh
 cd apps/backend/src
-fluentci run main hello
+fluentci run main hello --name FluentCI
 fluentci modules add frontend --sdk typescript
 ```
 
@@ -424,21 +425,25 @@ fluentci init hello-plugin --sdk rust
 ```
 
 This creates `.fluentci/hello-plugin` and declares it in the root `fluentci.toml`,
-with an Extism export:
+with a typed component export in `src/jobs.rs`:
 
 ```rust
-use extism_pdk::*;
+/// Greeting arguments.
+pub struct HelloArgs {
+    /// Name to greet.
+    pub name: String,
+}
 
-#[plugin_fn]
-pub fn hello() -> FnResult<String> {
-    Ok("Hello from FluentCI".into())
+/// Greet someone from a native Wasm component.
+pub fn hello(args: HelloArgs) -> String {
+    format!("Hello, {}!", args.name)
 }
 ```
 
 Run its `hello` export:
 
 ```sh
-fluentci run hello-plugin hello
+fluentci run hello-plugin hello --name FluentCI
 ```
 
 The CLI installs the Wasm target, builds the local plugin, and invokes the linked
@@ -817,7 +822,8 @@ aliases retain precedence; other publishers require `@handle/name`.
 
 ### Native WebAssembly components
 
-Create modules with `fluentci modules add tools --sdk purescript --runtime component`.
+Create modules with `fluentci modules add tools --sdk purescript`.
 All eight SDKs generate WIT and native guest adapters from their source contracts
-on every build. Extism remains available and is the default for existing modules.
+on every build. New modules default to components. Use `--runtime extism` to create
+an Extism module; existing manifests without a runtime field retain Extism behavior.
 See [the component guide](https://docs.fluentci.io/guides/components/).

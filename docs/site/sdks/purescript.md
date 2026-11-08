@@ -6,12 +6,27 @@ url: "/sdks/purescript/"
 source: "sdks/purescript.md"
 ---
 
-## Create a module
+## Default component starter
 
 ```sh
 fluentci init --sdk purescript
+fluentci run main hello --name FluentCI
+```
+
+New modules use native Wasm components. Source signatures generate WIT, typed
+arguments, return types, and help during the build. See [WebAssembly components](/guides/components/)
+for the component toolchain and host API. Use `fluentci run main hello --help`
+to inspect the generated signature.
+
+The examples below use the Extism runtime explicitly in a fresh workspace.
+Both runtimes remain supported.
+
+## Create a module
+
+```sh
+fluentci init --sdk purescript --runtime extism
 # Or add to an existing workspace:
-fluentci modules add ci --sdk purescript
+fluentci modules add ci --sdk purescript --runtime extism
 ```
 
 The SDK starter creates its own source and build configuration. The following

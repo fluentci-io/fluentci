@@ -33,7 +33,7 @@ struct ComponentWit;
 struct ComponentTemplates;
 
 pub async fn write(directory: &Path, name: &str, sdk: Sdk) -> Result<()> {
-    write_with_runtime(directory, name, sdk, ModuleRuntime::default()).await
+    write_with_runtime(directory, name, sdk, ModuleRuntime::Component).await
 }
 
 pub async fn write_with_runtime(
@@ -185,7 +185,13 @@ mod tests {
     #[tokio::test]
     async fn rust_starter_resolves_its_nested_inspection_workspace() -> Result<()> {
         let directory = tempfile::tempdir()?;
-        write(directory.path(), "inspection-starter", Sdk::Rust).await?;
+        write_with_runtime(
+            directory.path(),
+            "inspection-starter",
+            Sdk::Rust,
+            ModuleRuntime::Extism,
+        )
+        .await?;
         let output = Command::new("cargo")
             .args(["metadata", "--no-deps", "--format-version", "1"])
             .current_dir(directory.path())
@@ -203,7 +209,8 @@ mod tests {
         Ok(())
     }
     #[tokio::test]
-    async fn component_starters_exist_for_every_sdk_without_extism_build_tools() -> Result<()> {
+    async fn default_starters_use_components_for_every_sdk_without_extism_build_tools() -> Result<()>
+    {
         for sdk in [
             Sdk::Rust,
             Sdk::Purescript,
@@ -215,13 +222,7 @@ mod tests {
             Sdk::Rescript,
         ] {
             let root = tempfile::tempdir()?;
-            write_with_runtime(
-                root.path(),
-                "component-starter",
-                sdk,
-                ModuleRuntime::Component,
-            )
-            .await?;
+            write(root.path(), "component-starter", sdk).await?;
             assert!(root.path().join(".sdk/wit/runtime.wit").is_file());
             match sdk {
                 Sdk::Rust => assert!(

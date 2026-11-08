@@ -18,7 +18,7 @@ git init
 fluentci init --sdk clojurescript
 ```
 
-The starter's `hello` job runs `git status`, so initialize Git before invoking it.
+The starter's typed `hello` function returns a greeting from a native Wasm component.
 Initialization creates `fluentci.toml` and a module under `.fluentci/main`.
 The SDK source is bundled into that module; a sibling engine checkout is not
 required.
@@ -34,16 +34,17 @@ A minimal equivalent is:
 name = "main"
 path = ".fluentci/main"
 sdk = "clojurescript"
+runtime = "component"
 
 [[steps]]
 name = "hello"
-command = "fluentci run main hello"
+command = "fluentci run main hello --name FluentCI"
 ```
 
 ## Run and discover jobs
 
 ```sh
-fluentci run main hello
+fluentci run main hello --name FluentCI
 fluentci modules main --json
 fluentci run
 ```
@@ -60,7 +61,7 @@ useful while iterating on one part of a pipeline.
 
 ```sh
 fluentci modules add checks --sdk purescript
-fluentci run checks hello
+fluentci run checks hello --name FluentCI
 ```
 
 The new module gets its own source directory and declaration. Existing config

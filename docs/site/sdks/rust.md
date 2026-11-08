@@ -6,12 +6,27 @@ url: "/sdks/rust/"
 source: "sdks/rust.md"
 ---
 
+## Default component starter
+
+```sh
+fluentci init --sdk rust
+fluentci run main hello --name FluentCI
+```
+
+New modules use native Wasm components. Source signatures generate WIT, typed
+arguments, return types, and help during the build. See [WebAssembly components](/guides/components/)
+for the component toolchain and host API. Use `fluentci run main hello --help`
+to inspect the generated signature.
+
+The examples below use the Extism runtime explicitly in a fresh workspace.
+Both runtimes remain supported.
+
 ## Scaffold
 
 ```sh
-fluentci init
+fluentci init --runtime extism
 # Or select explicitly:
-fluentci modules add ci --sdk rust
+fluentci modules add ci --sdk rust --runtime extism
 ```
 
 Rust is the default SDK. The generated `Cargo.toml` creates a `cdylib` and pins

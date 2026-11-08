@@ -37,7 +37,7 @@ package in the current directory instead. Existing files are preserved.
 ## Build and run
 
 ```sh
-fluentci run main hello
+fluentci run main hello --name FluentCI
 fluentci modules main --json
 ```
 
@@ -72,6 +72,7 @@ self-describing for direct file/URL calls and `--help`.
 
 ## Native Wasm components
 
-Create a component module with `fluentci modules add tools --sdk typescript --runtime component`.
+Create a component module with `fluentci modules add tools --sdk typescript`.
 All eight SDKs generate WIT and adapters from source signatures during the build.
-Extism remains the default. See [WebAssembly components](/guides/components/).
+Components are the default for newly created modules. Use `--runtime extism`
+to create an Extism module; existing manifests without `runtime` remain compatible. See [WebAssembly components](/guides/components/).

@@ -1,5 +1,46 @@
 use clap::{CommandFactory, Parser};
-use fluentci::cli::{Cli, Command};
+use fluentci::cli::{Cli, Command, ModuleCommand};
+use fluentci::config::ModuleRuntime;
+use std::process::Command as Process;
+
+#[test]
+fn new_modules_default_to_components_and_allow_explicit_extism() {
+    for sdk in [
+        "rust",
+        "purescript",
+        "clojurescript",
+        "typescript",
+        "python",
+        "gleam",
+        "elixir",
+        "rescript",
+    ] {
+        for (options, expected) in [
+            (vec![], ModuleRuntime::Component),
+            (vec!["--runtime", "extism"], ModuleRuntime::Extism),
+        ] {
+            for command in [vec!["init"], vec!["modules", "add", "example"]] {
+                let args = [
+                    vec!["fluentci"],
+                    command,
+                    vec!["--sdk", sdk],
+                    options.clone(),
+                ]
+                .concat();
+                let parsed = Cli::try_parse_from(args).unwrap();
+                let runtime = match parsed.command.unwrap() {
+                    Command::Init { runtime, .. }
+                    | Command::Modules {
+                        command: Some(ModuleCommand::Add { runtime, .. }),
+                        ..
+                    } => runtime,
+                    _ => panic!("Expected a module creation command"),
+                };
+                assert_eq!(runtime, expected);
+            }
+        }
+    }
+}
 
 #[test]
 fn clap_definition_is_valid() {
@@ -246,8 +287,6 @@ fn rejects_invalid_ports_and_conflicting_providers() {
 
 #[test]
 fn initializes_and_runs_the_default_rust_module() -> anyhow::Result<()> {
-    use std::process::Command as Process;
-
     let temp = tempfile::tempdir()?;
     let binary = env!("CARGO_BIN_EXE_fluentci");
     let database = temp.path().join("db");
@@ -266,6 +305,10 @@ fn initializes_and_runs_the_default_rust_module() -> anyhow::Result<()> {
     let listing = String::from_utf8_lossy(&list.stdout);
     assert!(listing.contains("main [rust]"));
     assert!(listing.lines().any(|line| line == "hello"));
+    let config = fluentci::config::Config::parse(&std::fs::read_to_string(
+        temp.path().join("fluentci.toml"),
+    )?)?;
+    assert_eq!(config.modules[0].runtime, ModuleRuntime::Component);
     assert!(temp.path().join("fluentci.toml").is_file());
     assert!(temp.path().join(".fluentci/main/Cargo.toml").is_file());
     let run = cli("run").output()?;
@@ -274,7 +317,7 @@ fn initializes_and_runs_the_default_rust_module() -> anyhow::Result<()> {
         "{}",
         String::from_utf8_lossy(&run.stderr)
     );
-    assert!(String::from_utf8_lossy(&run.stdout).contains("Hello from FluentCI"));
+    assert!(String::from_utf8_lossy(&run.stdout).contains("Hello, FluentCI!"));
     assert!(!cli("init").output()?.status.success());
     let mut unknown = cli("run");
     unknown.args([".", "missing"]);

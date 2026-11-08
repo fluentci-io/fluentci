@@ -1,5 +1,17 @@
-use fluentci::config::Config;
+use fluentci::config::{Config, ModuleRuntime};
 use fluentci_engine::cmd::metadata::{InputFormat, inspect};
+
+#[test]
+fn omitted_runtime_preserves_existing_extism_modules() -> anyhow::Result<()> {
+    let config = Config::parse("[[modules]]\nname='legacy'\npath='.'\nsdk='rust'\n")?;
+    assert_eq!(config.modules[0].runtime, ModuleRuntime::Extism);
+    let saved = toml::to_string(&config)?;
+    assert_eq!(
+        Config::parse(&saved)?.modules[0].runtime,
+        ModuleRuntime::Extism
+    );
+    Ok(())
+}
 
 #[test]
 fn repository_ci_modules_use_native_components() {

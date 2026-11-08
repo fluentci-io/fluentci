@@ -113,7 +113,13 @@ pub(super) async fn execute(
         }],
         steps: vec![Step {
             name: "hello".into(),
-            command: Commands::One(format!("fluentci run {name} hello")),
+            command: Commands::One(
+                if template.is_none() && runtime == ModuleRuntime::Component && sdk != Sdk::Elixir {
+                    format!("fluentci run {name} hello --name FluentCI")
+                } else {
+                    format!("fluentci run {name} hello")
+                },
+            ),
             env: None,
             working_directory: None,
             module: None,

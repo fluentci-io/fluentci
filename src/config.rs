@@ -72,6 +72,7 @@ pub struct Module {
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Deserialize, Serialize, ValueEnum)]
 #[serde(rename_all = "lowercase")]
 pub enum ModuleRuntime {
+    // Preserve compatibility when reading manifests written before components.
     #[default]
     Extism,
     Component,

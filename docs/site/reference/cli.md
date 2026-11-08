@@ -48,26 +48,26 @@ help falls back to the cached artifact's exports and embedded metadata.
 
 ## Pipelines and modules
 
-| Command                                  | Purpose                                                                                           |
-| ---------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `run [PIPELINE] [JOBS...]`               | Run a declared module, local pipeline, module path, or registry package; selector defaults to `.` |
-| `run --wasm PIPELINE JOB`                | Explicit Wasm invocation                                                                          |
-| `run --work-dir PATH ...`                | Select the execution working directory                                                            |
-| `install [--frozen-lockfile]`            | Resolve declared registry/Git dependencies and prepare caches; generate or verify `fluentci.lock` |
-| `update [MODULE]`                        | Refresh all locked dependencies or a module alias/package reference                               |
-| `run --frozen-lockfile ...`              | Run using existing locks; reject missing or changed dependencies                                  |
-| `run --reload ...`                       | Reload legacy TypeScript pipeline sources                                                         |
-| `init [NAME] --sdk SDK`                  | Create workspace config and a starter module; SDK defaults to Rust                                |
-| `init --standalone --sdk SDK`            | Generate a reusable package in the current directory                                              |
-| `init --template PACKAGE`                | Initialize from a registry template where supported                                               |
-| `modules [NAME] --json`                  | Discover module paths, SDKs, and job exports; may build source                                    |
-| `modules add NAME --sdk SDK`             | Scaffold and declare a module                                                                     |
-| `modules add NAME --path PATH --sdk SDK` | Register existing source or artifact                                                              |
-| `modules add NAME --url URL`             | Register an HTTP(S) Wasm artifact                                                                 |
-| `inspect`                                | Alias for `modules`                                                                               |
-| `ls [PIPELINE]`                          | List jobs; alias `list`                                                                           |
-| `docs [PIPELINE]`                        | Render pipeline documentation using Glow; alias `man`                                             |
-| `repl [PIPELINE] --debug`                | Interactive pipeline/module session                                                               |
+| Command                                  | Purpose                                                                                              |
+| ---------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `run [PIPELINE] [JOBS...]`               | Run a declared module, local pipeline, module path, or registry package; selector defaults to `.`    |
+| `run --wasm PIPELINE JOB`                | Explicit Wasm invocation                                                                             |
+| `run --work-dir PATH ...`                | Select the execution working directory                                                               |
+| `install [--frozen-lockfile]`            | Resolve declared registry/Git dependencies and prepare caches; generate or verify `fluentci.lock`    |
+| `update [MODULE]`                        | Refresh all locked dependencies or a module alias/package reference                                  |
+| `run --frozen-lockfile ...`              | Run using existing locks; reject missing or changed dependencies                                     |
+| `run --reload ...`                       | Reload legacy TypeScript pipeline sources                                                            |
+| `init [NAME] --sdk SDK`                  | Create workspace config and a starter component; defaults to Rust, with `--runtime extism` available |
+| `init --standalone --sdk SDK`            | Generate a reusable package in the current directory                                                 |
+| `init --template PACKAGE`                | Initialize from a registry template where supported                                                  |
+| `modules [NAME] --json`                  | Discover module paths, SDKs, and job exports; may build source                                       |
+| `modules add NAME --sdk SDK`             | Scaffold and declare a module                                                                        |
+| `modules add NAME --path PATH --sdk SDK` | Register existing source or artifact                                                                 |
+| `modules add NAME --url URL`             | Register an HTTP(S) Wasm artifact                                                                    |
+| `inspect`                                | Alias for `modules`                                                                                  |
+| `ls [PIPELINE]`                          | List jobs; alias `list`                                                                              |
+| `docs [PIPELINE]`                        | Render pipeline documentation using Glow; alias `man`                                                |
+| `repl [PIPELINE] --debug`                | Interactive pipeline/module session                                                                  |
 
 SDK selectors: `rust`, `clojurescript`, `purescript`, `typescript`, `python`,
 `gleam`, `elixir`, `rescript`. Existing Elixir registration can use
