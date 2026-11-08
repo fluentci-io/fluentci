@@ -388,7 +388,7 @@ export const schemas = [
     lexicon: 1,
     id: 'io.fluentci.registry.getActorPackages',
     description:
-      "List an actor's indexed published plugin versions, newest first, using cursor pagination.",
+      "List an actor's indexed plugins with selectable ordering and cursor pagination; most downloaded first by default.",
     defs: {
       main: {
         type: 'query',
@@ -396,6 +396,12 @@ export const schemas = [
           type: 'params',
           required: ['actor'],
           properties: {
+            sort: {
+              type: 'string',
+              description:
+                'Sort by downloads (default), newest publication, oldest publication, or module name A-Z.',
+              enum: ['downloads', 'newest', 'oldest', 'name'],
+            },
             actor: {
               type: 'string',
               format: 'at-identifier',
@@ -515,6 +521,12 @@ export const schemas = [
           type: 'params',
           required: [],
           properties: {
+            sort: {
+              type: 'string',
+              description:
+                'Sort by downloads (default), newest publication, oldest publication, or module name A-Z.',
+              enum: ['downloads', 'newest', 'oldest', 'name'],
+            },
             limit: {
               type: 'integer',
               minimum: 1,
@@ -715,6 +727,12 @@ export const schemas = [
           type: 'params',
           required: [],
           properties: {
+            sort: {
+              type: 'string',
+              description:
+                'Sort by downloads (default), newest publication, oldest publication, or module name A-Z.',
+              enum: ['downloads', 'newest', 'oldest', 'name'],
+            },
             limit: {
               type: 'integer',
               minimum: 1,

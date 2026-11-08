@@ -156,7 +156,7 @@ export function initialResults(): Promise<Plugin[]> {
     try {
       const data = await query<{ packages: Plugin[] }>(
         "listPackages",
-        new URLSearchParams({ limit: "20" }),
+        new URLSearchParams({ limit: "20", sort: "downloads" }),
         abort.signal,
       );
       const packages = uniquePlugins(data.packages);

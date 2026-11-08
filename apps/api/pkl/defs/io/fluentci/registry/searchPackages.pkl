@@ -8,6 +8,10 @@ defs = new Mapping {
     parameters = new Parameters {
       required = List()
       properties = new Mapping {
+        ["sort"] = new StringField {
+          `enum` = List("downloads", "newest", "oldest", "name")
+          description = "Sort by downloads (default), newest publication, oldest publication, or module name A-Z."
+        }
         ["limit"] = new IntegerField {
           minimum = 1
           maximum = 100

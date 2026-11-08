@@ -1361,3 +1361,48 @@ test('live events update metadata immediately while historical replay retains it
   assert.equal((await db.get_package(connection, 'live-module', '', did)).readme_url[0], newUrl);
   assert.equal(await db.cursor({ ...connection, source: liveSource }), now);
 });
+
+test('download sorting, alternative orders, and sort-bound cursors apply before pagination', async (t) => {
+  const connection = await fixture(t);
+  await add(
+    connection,
+    event('zeta', '1.0.0', 100, did, { publishedAt: '2026-11-05T00:00:00.000Z' }),
+    event('alpha', '1.0.0', 200, did, { publishedAt: '2026-11-06T00:00:00.000Z' }),
+    event('beta', '1.0.0', 300, did, { publishedAt: '2026-11-07T00:00:00.000Z' }),
+  );
+  await connection.client.execute(
+    "UPDATE plugin_records SET downloads = CASE name WHEN 'beta' THEN 5 ELSE 15 END",
+  );
+  const { url } = await server(t, connection);
+  const expected = {
+    downloads: ['alpha', 'zeta', 'beta'],
+    newest: ['beta', 'alpha', 'zeta'],
+    oldest: ['zeta', 'alpha', 'beta'],
+    name: ['alpha', 'beta', 'zeta'],
+  };
+  for (const endpoint of ['listPackages', 'searchPackages', 'getActorPackages']) {
+    for (const [sort, names] of Object.entries(expected)) {
+      let cursor;
+      const seen = [];
+      do {
+        const params = new URLSearchParams({ actor: did, sort, limit: '1', latest: 'true' });
+        if (cursor) params.set('cursor', cursor);
+        const response = await fetch(`${url}/xrpc/io.fluentci.registry.${endpoint}?${params}`);
+        assert.equal(response.status, 200);
+        const page = await response.json();
+        seen.push(...page.packages.map((pkg) => pkg.name));
+        cursor = page.cursor;
+      } while (cursor);
+      assert.deepEqual(seen, names, `${endpoint}: ${sort}`);
+    }
+    const base = `${url}/xrpc/io.fluentci.registry.${endpoint}`;
+    const first = await (await fetch(`${base}?actor=${did}&limit=1`)).json();
+    assert.equal(first.packages[0].name, 'alpha');
+    const changed = await fetch(
+      `${base}?actor=${did}&sort=name&cursor=${encodeURIComponent(first.cursor)}`,
+    );
+    assert.equal(changed.status, 400);
+    assert.equal((await changed.json()).error, 'InvalidCursor');
+    assert.equal((await fetch(`${base}?actor=${did}&sort=invalid`)).status, 400);
+  }
+});

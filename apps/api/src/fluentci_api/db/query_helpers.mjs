@@ -7,8 +7,8 @@ export const queryHash = (query, author) =>
   createHash('sha256')
     .update(JSON.stringify([query, author]))
     .digest('hex');
-export const encodeCursor = (time, uri, filter) =>
-  Buffer.from(JSON.stringify({ time, uri, filter })).toString('base64url');
+export const encodeCursor = (time, uri, filter, downloads, name) =>
+  Buffer.from(JSON.stringify({ time, uri, filter, downloads, name })).toString('base64url');
 export function decodeCursor(value, filter) {
   let parsed;
   try {
@@ -20,10 +20,13 @@ export function decodeCursor(value, filter) {
     parsed?.filter !== filter ||
     typeof parsed.time !== 'string' ||
     typeof parsed.uri !== 'string' ||
+    !Number.isSafeInteger(parsed.downloads) ||
+    parsed.downloads < 0 ||
+    typeof parsed.name !== 'string' ||
     !parsed.uri.startsWith('at://')
   )
     fail('InvalidCursor', 'Cursor does not match this query');
-  return [parsed.time, parsed.uri];
+  return [parsed.time, parsed.uri, parsed.downloads, parsed.name];
 }
 export function latest(packages) {
   const values = packages.toArray();

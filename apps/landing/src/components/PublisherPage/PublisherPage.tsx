@@ -12,7 +12,7 @@ import {
   recordKey,
   type Profile,
 } from "../../registry/client";
-import { usePublisherModules } from "./usePublisherModules";
+import { usePublisherModules, type ModuleSort } from "./usePublisherModules";
 
 export function PublisherPage() {
   const { handle = "" } = useParams({ strict: false });
@@ -20,10 +20,11 @@ export function PublisherPage() {
   const [profile, setProfile] = useState<Profile>();
   const [failedAvatar, setFailedAvatar] = useState(false);
   const [search, setSearch] = useState("");
+  const [sort, setSort] = useState<ModuleSort>("downloads");
   const [showPinnedIdentity, setShowPinnedIdentity] = useState(false);
   const profileHeader = useRef<HTMLDivElement>(null);
   const { items, total, loading, error, hasMore, loadMore, retry } =
-    usePublisherModules(actor, search);
+    usePublisherModules(actor, search, sort);
   const sentinel = useRef<HTMLDivElement>(null);
   const filterInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -183,31 +184,48 @@ export function PublisherPage() {
                 )}
               </h2>
             </div>
-            <label className="publisher-filter">
-              <SearchIcon />
-              <span className="sr-only">Filter published modules</span>
-              <input
-                ref={filterInput}
-                type="search"
-                aria-keyshortcuts="f"
-                placeholder="Filter modules…"
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                onKeyDown={(event) => {
-                  if (event.key === "Escape") {
-                    setSearch("");
-                    event.currentTarget.blur();
+            <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
+              <label className="publisher-filter">
+                <SearchIcon />
+                <span className="sr-only">Filter published modules</span>
+                <input
+                  ref={filterInput}
+                  type="search"
+                  aria-keyshortcuts="f"
+                  placeholder="Filter modules…"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  onKeyDown={(event) => {
+                    if (event.key === "Escape") {
+                      setSearch("");
+                      event.currentTarget.blur();
+                    }
+                  }}
+                  autoComplete="off"
+                />
+                <kbd
+                  className="rounded border border-line px-1.5 font-mono text-[10px]"
+                  aria-hidden="true"
+                >
+                  F
+                </kbd>
+              </label>
+              <label className="w-full sm:w-auto">
+                <span className="sr-only">Sort modules</span>
+                <select
+                  value={sort}
+                  onChange={(event) =>
+                    setSort(event.target.value as ModuleSort)
                   }
-                }}
-                autoComplete="off"
-              />
-              <kbd
-                className="rounded border border-line px-1.5 font-mono text-[10px]"
-                aria-hidden="true"
-              >
-                F
-              </kbd>
-            </label>
+                  className="h-10 w-full rounded-lg border border-line bg-panel px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto"
+                >
+                  <option value="downloads">Most downloaded</option>
+                  <option value="newest">Recently published</option>
+                  <option value="oldest">Oldest first</option>
+                  <option value="name">Name (A–Z)</option>
+                </select>
+              </label>
+            </div>
           </div>
           <div className="publisher-modules" aria-busy={loading}>
             {items.map((plugin) => (

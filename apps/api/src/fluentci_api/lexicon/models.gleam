@@ -308,6 +308,7 @@ pub fn encode_registry_package_view(value: RegistryPackageView) -> json.Json {
 
 pub type RegistryGetActorPackagesParameters {
   RegistryGetActorPackagesParameters(
+    sort: Option(String),
     actor: String,
     q: Option(String),
     latest: Option(Bool),
@@ -320,6 +321,11 @@ pub fn encode_registry_get_actor_packages_parameters(
   value: RegistryGetActorPackagesParameters,
 ) -> json.Json {
   let fields = [#("actor", json.string(value.actor))]
+  let fields =
+    list.append(fields, case value.sort {
+      None -> []
+      Some(item) -> [#("sort", json.string(item))]
+    })
   let fields =
     list.append(fields, case value.q {
       None -> []
@@ -412,6 +418,7 @@ pub fn encode_registry_get_package_output(
 
 pub type RegistryListPackagesParameters {
   RegistryListPackagesParameters(
+    sort: Option(String),
     limit: Option(Int),
     cursor: Option(String),
     author: Option(String),
@@ -422,6 +429,11 @@ pub fn encode_registry_list_packages_parameters(
   value: RegistryListPackagesParameters,
 ) -> json.Json {
   let fields = []
+  let fields =
+    list.append(fields, case value.sort {
+      None -> []
+      Some(item) -> [#("sort", json.string(item))]
+    })
   let fields =
     list.append(fields, case value.limit {
       None -> []
@@ -540,6 +552,7 @@ pub fn encode_registry_record_download_output(
 
 pub type RegistrySearchPackagesParameters {
   RegistrySearchPackagesParameters(
+    sort: Option(String),
     limit: Option(Int),
     cursor: Option(String),
     author: Option(String),
@@ -552,6 +565,11 @@ pub fn encode_registry_search_packages_parameters(
   value: RegistrySearchPackagesParameters,
 ) -> json.Json {
   let fields = []
+  let fields =
+    list.append(fields, case value.sort {
+      None -> []
+      Some(item) -> [#("sort", json.string(item))]
+    })
   let fields =
     list.append(fields, case value.limit {
       None -> []

@@ -58,7 +58,7 @@ export function SearchDialog({ close }: { close: () => void }) {
                 (
                   await query<{ packages: Plugin[] }>(
                     "searchPackages",
-                    new URLSearchParams({ limit: "20", q }),
+                    new URLSearchParams({ limit: "20", q, sort: "downloads" }),
                     abort.signal,
                   )
                 ).packages,

@@ -1,7 +1,7 @@
 {
   "lexicon": 1,
   "id": "io.fluentci.registry.getActorPackages",
-  "description": "List an actor's indexed published plugin versions, newest first, using cursor pagination.",
+  "description": "List an actor's indexed plugins with selectable ordering and cursor pagination; most downloaded first by default.",
   "defs": {
     "main": {
       "type": "query",
@@ -11,6 +11,16 @@
           "actor"
         ],
         "properties": {
+          "sort": {
+            "type": "string",
+            "description": "Sort by downloads (default), newest publication, oldest publication, or module name A-Z.",
+            "enum": [
+              "downloads",
+              "newest",
+              "oldest",
+              "name"
+            ]
+          },
           "actor": {
             "type": "string",
             "format": "at-identifier"

@@ -10,12 +10,13 @@ pub fn register(server: Server, database: Db) -> Nil {
     use author <- promise.await(
       runtime.resolve_author(runtime.param(request, "author")),
     )
-    use page <- promise.map(db.list_packages(
+    use page <- promise.map(db.list_packages_sorted(
       database,
       "",
       author,
       runtime.limit(request),
       runtime.param(request, "cursor"),
+      runtime.param(request, "sort"),
     ))
     page |> model.encode_page |> json.to_string |> runtime.json
   })

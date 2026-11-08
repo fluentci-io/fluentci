@@ -68,6 +68,8 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
     "src",
     "http://127.0.0.1:4173/fluentci-logo.png",
   );
+  const sort = page.getByRole("combobox", { name: "Sort modules" });
+  await expect(sort).toHaveValue("downloads");
   const pinnedIdentity = page.getByLabel("Pinned publisher");
   await expect(pinnedIdentity).toHaveCount(0);
   await page.getByRole("link", { name: /module-19 / }).scrollIntoViewIfNeeded();
@@ -89,7 +91,11 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
   });
   await expect
     .poll(async () =>
-      Math.abs((await filter.locator("..").locator("..").boundingBox())!.y),
+      Math.abs(
+        (await page
+          .locator("section[aria-label='Published modules'] .sticky")
+          .boundingBox())!.y,
+      ),
     )
     .toBeLessThan(1);
   expect(
@@ -104,6 +110,18 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
   await expect(page.getByLabel("22 published modules")).toBeVisible();
   expect(requests.at(-1)?.searchParams.get("q")).toBe("module-21");
   expect(requests.at(-1)?.searchParams.get("latest")).toBe("true");
+  expect(requests.at(-1)?.searchParams.get("sort")).toBe("downloads");
+  await sort.selectOption("newest");
+  await expect
+    .poll(() => requests.at(-1)?.searchParams.get("sort"))
+    .toBe("newest");
+  expect(requests.at(-1)?.searchParams.get("q")).toBe("module-21");
+  expect(requests.at(-1)?.searchParams.has("cursor")).toBeFalsy();
+  await sort.selectOption("name");
+  await expect
+    .poll(() => requests.at(-1)?.searchParams.get("sort"))
+    .toBe("name");
+  await filter.focus();
   await page.keyboard.press("f");
   await expect(filter).toHaveValue("module-21f");
   await page.keyboard.press("Escape");

@@ -11,8 +11,11 @@ remains available for existing probes.
 
 `GET /xrpc/io.fluentci.registry.getActorPackages?actor=alice.example&limit=20`
 returns an actor's indexed published versions. `actor` accepts a handle or DID;
-`limit` is 1–100 (default 20), and `cursor` continues the stable publication-time
-feed. Deleted records and inactive publishers are excluded. Optional `logo` URLs
+`limit` is 1–100 (default 20), and `cursor` continues the selected ordering.
+`getActorPackages`, `listPackages`, and `searchPackages` accept `sort=downloads`
+(default), `sort=newest`, `sort=oldest`, or `sort=name` (A–Z). Sort order is applied
+before pagination; cursors are bound to the query and sort option. Changing sort
+requires starting a new page sequence. Deleted records and inactive publishers are excluded. Optional `logo` URLs
 are included in plugin records and every package response.
 
 Uploads can provide `name` and a bare SemVer `version` as query parameters. The

@@ -9,6 +9,16 @@
         "type": "params",
         "required": [],
         "properties": {
+          "sort": {
+            "type": "string",
+            "description": "Sort by downloads (default), newest publication, oldest publication, or module name A-Z.",
+            "enum": [
+              "downloads",
+              "newest",
+              "oldest",
+              "name"
+            ]
+          },
           "limit": {
             "type": "integer",
             "minimum": 1,

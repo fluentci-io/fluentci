@@ -47,6 +47,7 @@ pub fn generated_pagination_encoder_handles_arrays_and_cursor_test() {
 pub fn generated_actor_parameters_require_actor_test() {
   models.RegistryGetActorPackagesParameters(
     actor: "alice.example",
+    sort: None,
     q: None,
     latest: None,
     limit: Some(10),

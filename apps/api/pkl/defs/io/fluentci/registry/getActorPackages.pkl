@@ -2,12 +2,16 @@ amends "../../../../schema/lexicon.pkl"
 
 lexicon = 1
 id = "io.fluentci.registry.getActorPackages"
-description = "List an actor's indexed published plugin versions, newest first, using cursor pagination."
+description = "List an actor's indexed plugins with selectable ordering and cursor pagination; most downloaded first by default."
 defs = new Mapping {
   ["main"] = new Query {
     parameters = new Parameters {
       required = List("actor")
       properties = new Mapping {
+        ["sort"] = new StringField {
+          `enum` = List("downloads", "newest", "oldest", "name")
+          description = "Sort by downloads (default), newest publication, oldest publication, or module name A-Z."
+        }
         ["actor"] = new StringField {
           format = "at-identifier"
         }

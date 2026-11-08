@@ -42,10 +42,19 @@ pub fn close(db: Db) -> Promise(Nil) {
 fn query_hash(query: String, author: String) -> String
 
 @external(javascript, "./query_helpers.mjs", "decodeCursor")
-fn decode_cursor(value: String, filter: String) -> #(String, String)
+fn decode_cursor(
+  value: String,
+  filter: String,
+) -> #(String, String, Int, String)
 
 @external(javascript, "./query_helpers.mjs", "encodeCursor")
-fn encode_cursor(time: String, uri: String, filter: String) -> String
+fn encode_cursor(
+  time: String,
+  uri: String,
+  filter: String,
+  downloads: Int,
+  name: String,
+) -> String
 
 @external(javascript, "./query_helpers.mjs", "latest")
 fn latest(packages: List(Package)) -> Package
@@ -112,7 +121,7 @@ pub fn list_packages(
   count: Int,
   cursor_value: String,
 ) -> Promise(Page) {
-  list_filtered(db, query, author, count, cursor_value, "", False)
+  list_filtered(db, query, author, count, cursor_value, "", False, "downloads")
 }
 
 pub fn search_packages(
@@ -123,7 +132,39 @@ pub fn search_packages(
   cursor_value: String,
   rsql: String,
 ) -> Promise(Page) {
-  list_filtered(db, query, author, count, cursor_value, rsql, False)
+  list_filtered(
+    db,
+    query,
+    author,
+    count,
+    cursor_value,
+    rsql,
+    False,
+    "downloads",
+  )
+}
+
+pub fn list_packages_sorted(
+  db: Db,
+  query: String,
+  author: String,
+  count: Int,
+  cursor_value: String,
+  sort: String,
+) -> Promise(Page) {
+  list_filtered(db, query, author, count, cursor_value, "", False, sort)
+}
+
+pub fn search_packages_sorted(
+  db: Db,
+  query: String,
+  author: String,
+  count: Int,
+  cursor_value: String,
+  rsql: String,
+  sort: String,
+) -> Promise(Page) {
+  list_filtered(db, query, author, count, cursor_value, rsql, False, sort)
 }
 
 fn list_filtered(
@@ -134,14 +175,26 @@ fn list_filtered(
   cursor_value: String,
   rsql: String,
   newest_only: Bool,
+  sort: String,
 ) -> Promise(Page) {
   let plugins = p.table()
+  let sort = case sort {
+    "" | "downloads" -> "downloads"
+    "newest" | "oldest" | "name" -> sort
+    _ ->
+      fail(
+        "InvalidRequest",
+        "Unknown sort; use downloads, newest, oldest, or name",
+      )
+  }
   let filter =
     query_hash(
       query,
       author
         <> "\n"
         <> rsql
+        <> "\nsort:"
+        <> sort
         <> case newest_only {
         True -> "\nlatest"
         False -> ""
@@ -159,14 +212,34 @@ fn list_filtered(
   let conditions = case cursor_value {
     "" -> conditions
     value -> {
-      let #(time, uri) = decode_cursor(value, filter)
-      [
+      let #(time, uri, downloads, name) = decode_cursor(value, filter)
+      let after_time =
         or([
           lt(p.published_at(plugins), Some(time)),
           and([eq(p.published_at(plugins), Some(time)), gt(p.uri(plugins), uri)]),
-        ]),
-        ..conditions
-      ]
+        ])
+      let after = case sort {
+        "downloads" ->
+          or([
+            lt(p.downloads(plugins), downloads),
+            and([eq(p.downloads(plugins), downloads), after_time]),
+          ])
+        "name" ->
+          or([
+            gt(p.name(plugins), Some(name)),
+            and([eq(p.name(plugins), Some(name)), after_time]),
+          ])
+        "oldest" ->
+          or([
+            gt(p.published_at(plugins), Some(time)),
+            and([
+              eq(p.published_at(plugins), Some(time)),
+              gt(p.uri(plugins), uri),
+            ]),
+          ])
+        _ -> after_time
+      }
+      [after, ..conditions]
     }
   }
   let #(selection, conditions) = case query {
@@ -188,15 +261,36 @@ fn list_filtered(
       )
     }
   }
+  let orders = case sort {
+    "downloads" -> [
+      desc(p.downloads(plugins)),
+      desc(p.published_at(plugins)),
+      asc(p.uri(plugins)),
+    ]
+    "name" -> [
+      asc(p.name(plugins)),
+      desc(p.published_at(plugins)),
+      asc(p.uri(plugins)),
+    ]
+    "oldest" -> [asc(p.published_at(plugins)), asc(p.uri(plugins))]
+    _ -> [desc(p.published_at(plugins)), asc(p.uri(plugins))]
+  }
   let selection =
     selection
     |> where(and(conditions))
-    |> order_by([desc(p.published_at(plugins)), asc(p.uri(plugins))])
+    |> order_by(orders)
     |> limit(count + 1)
   use rows <- promise.map(all(db, selection))
   let packages = rows |> list.take(count) |> list.map(package)
   let cursor = case list.length(rows) > count, list.last(packages) {
-    True, Ok(last) -> Some(encode_cursor(last.published_at, last.uri, filter))
+    True, Ok(last) ->
+      Some(encode_cursor(
+        last.published_at,
+        last.uri,
+        filter,
+        option.unwrap(last.downloads, 0),
+        last.name,
+      ))
     _, _ -> None
   }
   RegistryListPackagesOutput(packages, cursor)
@@ -466,6 +560,26 @@ pub fn actor_profile_packages(
   count: Int,
   cursor: String,
 ) -> Promise(models.RegistryGetActorPackagesOutput) {
+  actor_profile_packages_sorted(
+    db,
+    actor,
+    query,
+    newest_only,
+    count,
+    cursor,
+    "downloads",
+  )
+}
+
+pub fn actor_profile_packages_sorted(
+  db: Db,
+  actor: String,
+  query: String,
+  newest_only: Bool,
+  count: Int,
+  cursor: String,
+  sort: String,
+) -> Promise(models.RegistryGetActorPackagesOutput) {
   case actor {
     "" -> fail("InvalidRequest", "Actor is required")
     _ -> Nil
@@ -484,6 +598,7 @@ pub fn actor_profile_packages(
     cursor,
     "",
     newest_only,
+    sort,
   ))
   models.RegistryGetActorPackagesOutput(
     packages: page.packages,

@@ -10,13 +10,14 @@ pub fn register(server: Server, database: Db) -> Nil {
       server,
       runtime.param(request, "actor"),
     ))
-    use page <- promise.map(db.actor_profile_packages(
+    use page <- promise.map(db.actor_profile_packages_sorted(
       database,
       actor,
       runtime.param(request, "q"),
       runtime.flag(request, "latest"),
       runtime.limit(request),
       runtime.param(request, "cursor"),
+      runtime.param(request, "sort"),
     ))
     page
     |> models.encode_registry_get_actor_packages_output

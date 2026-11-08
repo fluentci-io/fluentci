@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { query, uniquePlugins, type Plugin } from "../../registry/client";
 
-export function usePublisherModules(actor: string, search: string) {
+export type ModuleSort = "downloads" | "newest" | "oldest" | "name";
+
+export function usePublisherModules(
+  actor: string,
+  search: string,
+  sort: ModuleSort,
+) {
   const [items, setItems] = useState<Plugin[]>([]);
   const [cursor, setCursor] = useState<string>();
   const [total, setTotal] = useState<number>();
@@ -33,6 +39,7 @@ export function usePublisherModules(actor: string, search: string) {
           q: debounced,
           latest: "true",
           limit: "20",
+          sort,
         });
         if (after) params.set("cursor", after);
         const page = await query<{
@@ -66,7 +73,7 @@ export function usePublisherModules(actor: string, search: string) {
         }
       }
     },
-    [actor, debounced],
+    [actor, debounced, sort],
   );
   useEffect(() => {
     generation.current += 1;
