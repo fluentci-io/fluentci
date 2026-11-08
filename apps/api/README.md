@@ -213,3 +213,22 @@ roll back all three. Writes sharing a SQLite connection are serialized across
 HTTP handlers and Jetstream. Publisher metadata updates cannot change counters.
 See [Worker deployment instructions](../modules/README.md) for origin routing and
 how to publish download URLs through the proxy.
+
+## Indexer recovery
+
+Local SQLite uses one persistent Node SQLite connection behind the Drizzle bridge.
+Reads and transactions share a queue, so HTTP queries cannot interfere with an
+index transaction. Jetstream pauses its sockets while replay queues drain, sends
+heartbeats, and exits if ingestion hangs for 60 seconds. The systemd service's
+`Restart=on-failure` policy then reopens SQLite and resumes durable checkpoints.
+
+To reconcile a publisher directly from their PDS after an extended outage:
+
+```sh
+DATABASE_URL=file:/var/lib/fluentci/registry.sqlite node scripts/reindex-actor.mjs did:plc:ACCOUNT
+```
+
+The script resolves the DID's PDS, reads its public records, validates ownership
+and lexicon metadata, and uses the normal Gleam indexer. Its checkpoint is separate
+from live Jetstream cursors. Existing immutable artifact identities and download
+counts remain protected.

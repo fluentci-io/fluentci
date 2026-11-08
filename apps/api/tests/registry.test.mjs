@@ -1221,3 +1221,18 @@ test('Jetstream drains a large replay with backpressure rather than dropping its
     await new Promise((resolve) => setTimeout(resolve, 25));
   assert.equal(await db.cursor({ ...connection, source }), 1500);
 });
+
+test('SQLite connection settings survive repeated index transactions', async (t) => {
+  const connection = await fixture(t);
+  for (let time = 1; time <= 50; time++)
+    await ingest(connection, JSON.stringify({ did, kind: 'identity', time_us: time }));
+  assert.equal(
+    Number((await connection.client.execute('PRAGMA busy_timeout')).rows[0].timeout),
+    10000,
+  );
+  assert.equal(
+    Number((await connection.client.execute('PRAGMA foreign_keys')).rows[0].foreign_keys),
+    1,
+  );
+  assert.equal(await db.cursor(connection), 50);
+});
