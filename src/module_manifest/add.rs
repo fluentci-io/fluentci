@@ -1,7 +1,7 @@
 use super::{Dependency, Manifest};
 use crate::{cli::AddArgs, config, modules, registry};
 use anyhow::{Context, Result, ensure};
-use std::{fs::OpenOptions, path::Path};
+use std::path::Path;
 
 pub async fn add(root: &Path, options: &AddArgs) -> Result<()> {
     let root = root.canonicalize()?;
@@ -15,17 +15,7 @@ pub async fn add(root: &Path, options: &AddArgs) -> Result<()> {
     let directory = root.join(".fluentci");
     std::fs::create_dir_all(&directory)?;
     let guard_path = directory.join("dependencies.add.guard");
-    let _guard = tokio::task::spawn_blocking(move || -> Result<_> {
-        let guard = OpenOptions::new()
-            .create(true)
-            .truncate(false)
-            .read(true)
-            .write(true)
-            .open(guard_path)?;
-        guard.lock()?;
-        Ok(guard)
-    })
-    .await??;
+    let _guard = crate::file_guard::FileGuard::acquire(guard_path).await?;
     let path = root.join(super::FILE);
     let original = std::fs::read_to_string(&path)?;
     let mut document: toml_edit::DocumentMut = original.parse()?;

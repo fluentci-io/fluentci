@@ -71,8 +71,25 @@ Changing `FLUENTCI_REGISTRY_URL` requires refreshing registry entries with
 The lockfile is versioned JSON with deterministic key ordering. Updates use an
 advisory lock and atomic replacement so concurrent CLI processes cannot overwrite
 one another's dependency additions. `fluentci.lock.guard` is a disposable local
-coordination file; ignore it in Git, but commit `fluentci.lock`.
+coordination file, removed when its lock is released (including errors and cancellation).
+Ignore it in Git, but commit `fluentci.lock`. A file left after a crash is safely
+reclaimed by the next invocation.
 
 Cache locations can be overridden with `FLUENTCI_PACKAGE_CACHE` for registry
 artifacts and `FLUENTCI_GIT_CACHE` for Git checkouts. Removing a cache does not
 change locked versions or commits.
+
+## Parallel resolution and downloads
+
+Independent registry, URL, and Git dependencies are fetched concurrently, with up
+to eight operations per batch. Set `FLUENTCI_DEPENDENCY_JOBS` to an integer from
+1 to 64 to change that limit. Local source builds retain dependency order.
+
+Registry lookups are cached for 30 seconds. Locked packages use their saved
+metadata without querying the registry; `fluentci update` bypasses the lookup
+cache. Artifacts are cached by SHA-256 and verified before reuse. Per-package
+locks deduplicate concurrent requests, while the workspace lock is held only
+while reading or merging lockfile changes, rather than during network transfers.
+
+Publishing uploads and module downloads display byte progress bars on a terminal.
+Redirected output and dumb terminals receive plain status lines instead.

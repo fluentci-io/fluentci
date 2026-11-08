@@ -1,4 +1,5 @@
 use anyhow::Result;
+use axum::{Router, routing::get};
 use fluentci::{
     cli::AddArgs,
     config::{self, ModuleRuntime},
@@ -7,7 +8,13 @@ use fluentci::{
     workspace::Workspace,
 };
 use fluentci_engine::components;
-use std::fs;
+use std::{
+    fs,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
 
 fn math() -> Result<Vec<u8>> {
     Ok(wat::parse_str(
@@ -130,6 +137,13 @@ async fn add_installs_portable_artifacts_and_preserves_manifest_comments() -> Re
     };
     assert!(module_manifest::add(root.path(), &invalid).await.is_err());
     assert_eq!(fs::read(root.path().join("fluentci-module.toml"))?, before);
+    assert!(!root.path().join("fluentci.lock.guard").exists());
+    assert!(
+        !root
+            .path()
+            .join(".fluentci/dependencies.add.guard")
+            .exists()
+    );
     Ok(())
 }
 
@@ -164,5 +178,62 @@ async fn component_dependencies_link_typecheck_and_keep_frozen_locks() -> Result
         root.path().join(".fluentci/dependencies/interfaces.json"),
     )?)?;
     assert_eq!(bindings[0]["alias"], "math");
+    Ok(())
+}
+
+#[tokio::test]
+async fn remote_dependencies_overlap_deduplicate_and_reuse_frozen_cache() -> Result<()> {
+    let requests = Arc::new(AtomicUsize::new(0));
+    let active = Arc::new(AtomicUsize::new(0));
+    let peak = Arc::new(AtomicUsize::new(0));
+    let bytes = math()?;
+    let handler = {
+        let requests = requests.clone();
+        let active = active.clone();
+        let peak = peak.clone();
+        move || {
+            let requests = requests.clone();
+            let active = active.clone();
+            let peak = peak.clone();
+            let bytes = bytes.clone();
+            async move {
+                requests.fetch_add(1, Ordering::SeqCst);
+                let count = active.fetch_add(1, Ordering::SeqCst) + 1;
+                peak.fetch_max(count, Ordering::SeqCst);
+                tokio::time::sleep(std::time::Duration::from_millis(50)).await;
+                active.fetch_sub(1, Ordering::SeqCst);
+                bytes
+            }
+        }
+    };
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+    let address = listener.local_addr()?;
+    let app = Router::new().route("/{name}", get(handler));
+    let server = tokio::spawn(async move { axum::serve(listener, app).await });
+    let root = tempfile::tempdir()?;
+    fs::write(
+        root.path().join("fluentci-module.toml"),
+        format!(
+            "name='remote-test'\nruntime='component'\n[dependencies]\na={{url='http://{address}/a.wasm'}}\nb={{url='http://{address}/b.wasm'}}\nc={{url='http://{address}/a.wasm'}}\n"
+        ),
+    )?;
+    fluentci::lockfile::install_at(root.path(), false, false, None).await?;
+    assert_eq!(requests.load(Ordering::SeqCst), 2);
+    assert_eq!(peak.load(Ordering::SeqCst), 2);
+    assert!(!root.path().join("fluentci.lock.guard").exists());
+    let lock = fs::read(root.path().join("fluentci.lock"))?;
+    server.abort();
+    fluentci::lockfile::install_at(root.path(), true, false, None).await?;
+    assert_eq!(fs::read(root.path().join("fluentci.lock"))?, lock);
+    for alias in ["a", "b", "c"] {
+        assert!(
+            root.path()
+                .join("fluentci_modules")
+                .join(alias)
+                .join("module.json")
+                .is_file()
+        );
+    }
+    assert!(!root.path().join("fluentci.lock.guard").exists());
     Ok(())
 }

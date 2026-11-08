@@ -5,7 +5,6 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::BTreeMap,
-    fs::{File, OpenOptions},
     io::Write,
     path::{Path, PathBuf},
 };
@@ -126,19 +125,8 @@ fn declarations(root: &Path) -> Result<BTreeMap<String, String>> {
     Ok(declared)
 }
 
-async fn guard(root: &Path) -> Result<File> {
-    let path = root.join("fluentci.lock.guard");
-    tokio::task::spawn_blocking(move || {
-        let file = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(path)?;
-        file.lock()?;
-        Ok(file)
-    })
-    .await?
+async fn guard(root: &Path) -> Result<crate::file_guard::FileGuard> {
+    crate::file_guard::FileGuard::acquire(root.join("fluentci.lock.guard")).await
 }
 
 fn read(root: &Path) -> Result<Lockfile> {
@@ -247,33 +235,58 @@ impl LockedPackage {
 }
 
 pub async fn resolve(root: &Path, reference: &str, frozen: bool) -> Result<registry::Resolved> {
-    let _guard = guard(root).await?;
-    let mut lock = read(root)?;
-    let modules = declarations(root)?;
-    if frozen {
-        anyhow::ensure!(
-            root.join("fluentci.lock").is_file() && modules == lock.modules,
-            "fluentci.lock is missing or out of date; run fluentci install"
-        );
-    }
+    resolve_install(root, reference, frozen, false).await
+}
+
+async fn resolve_install(
+    root: &Path,
+    reference: &str,
+    frozen: bool,
+    update: bool,
+) -> Result<registry::Resolved> {
     let key = key(reference)?;
-    if let Some(package) = lock.packages.get(&key) {
-        let resolved = package.resolved(reference)?;
-        if !frozen {
-            lock.modules = modules;
-            write(root, &lock)?;
+    let _request = crate::dependency_cache::guard(
+        "package",
+        &format!("{}:{key}", root.canonicalize()?.display()),
+    )
+    .await?;
+    let modules = declarations(root)?;
+    {
+        let _guard = guard(root).await?;
+        let mut lock = read(root)?;
+        if frozen {
+            anyhow::ensure!(
+                root.join("fluentci.lock").is_file() && modules == lock.modules,
+                "fluentci.lock is missing or out of date; run fluentci install"
+            );
         }
-        return Ok(resolved);
+        if !update && let Some(package) = lock.packages.get(&key) {
+            let resolved = package.resolved(reference)?;
+            if !frozen {
+                lock.modules = modules;
+                write(root, &lock)?;
+            }
+            return Ok(resolved);
+        }
     }
     anyhow::ensure!(
         !frozen,
         "{reference} is missing from fluentci.lock; run fluentci install"
     );
-    let package = registry::resolve(reference).await?;
-    // Preserve legacy TypeScript registry behavior; only Wasm packages are locked.
+    let package = if update {
+        registry::resolve_fresh(reference).await?
+    } else {
+        registry::resolve(reference).await?
+    };
     if package.metadata.url.is_some() {
         let entry = LockedPackage::from_resolved(&package)?;
         entry.resolved(reference)?;
+        let _guard = guard(root).await?;
+        anyhow::ensure!(
+            declarations(root)? == modules,
+            "Module declarations changed during resolution; retry install"
+        );
+        let mut lock = read(root)?;
         lock.packages.insert(key, entry);
         lock.modules = modules;
         write(root, &lock)?;
@@ -297,11 +310,15 @@ pub async fn install_at(
         .map(|path| config::Config::read(&path))
         .transpose()?;
     let dependencies = crate::module_manifest::declarations(root)?;
-    for (_, module) in &dependencies {
-        if let Some(url) = &module.url {
-            url_source_inner(root, url, frozen, update).await?;
-        }
-    }
+    let urls: std::collections::BTreeSet<_> = dependencies
+        .iter()
+        .filter_map(|(_, module)| module.url.as_deref())
+        .collect();
+    crate::dependency_cache::parallel(
+        urls.into_iter()
+            .map(|url| url_source_inner(root, url, frozen, update)),
+    )
+    .await?;
     let mut git_modules = config
         .as_ref()
         .map(|config| {
@@ -324,9 +341,12 @@ pub async fn install_at(
             .map(|(_, module)| module),
     );
     let selected_git = !git_modules.is_empty();
-    for module in git_modules {
-        git_source(root, module, frozen, update).await?;
-    }
+    crate::dependency_cache::parallel(
+        git_modules
+            .into_iter()
+            .map(|module| git_source(root, module, frozen, update)),
+    )
+    .await?;
     let mut references: Vec<String> = modules
         .iter()
         .filter(|(name, _)| selected.is_none_or(|selected| name.as_str() == selected))
@@ -343,47 +363,33 @@ pub async fn install_at(
     {
         references.push(key(selected)?);
     }
-    let _guard = guard(root).await?;
-    let mut lock = read(root)?;
-    if frozen {
-        anyhow::ensure!(
-            root.join("fluentci.lock").is_file() && modules == lock.modules,
-            "fluentci.lock is missing or out of date; run fluentci install"
-        );
+    {
+        let _guard = guard(root).await?;
+        let lock = read(root)?;
+        if frozen {
+            anyhow::ensure!(
+                root.join("fluentci.lock").is_file() && modules == lock.modules,
+                "fluentci.lock is missing or out of date; run fluentci install"
+            );
+        }
+        if update && selected.is_none() {
+            references.extend(lock.packages.keys().cloned());
+        }
     }
     references.sort();
     references.dedup();
-    if update && selected.is_none() {
-        references.extend(
-            lock.packages
-                .keys()
-                .filter(|reference| !references.contains(reference))
-                .cloned()
-                .collect::<Vec<_>>(),
-        );
+    let mut installed =
+        crate::dependency_cache::parallel(references.iter().map(|reference| async move {
+            let package = resolve_install(root, reference, frozen, update).await?;
+            registry::wasm_artifact(&package).await?;
+            Ok((package.name, package.version))
+        }))
+        .await?;
+    installed.sort();
+    for (name, version) in installed {
+        println!("{name}@{version}");
     }
-    for reference in references {
-        let package = if !update && let Some(entry) = lock.packages.get(&reference) {
-            entry.resolved(&reference)?
-        } else {
-            anyhow::ensure!(
-                !frozen,
-                "{reference} is missing from fluentci.lock; run fluentci install"
-            );
-            let package = registry::resolve(&reference).await?;
-            let entry = LockedPackage::from_resolved(&package)?;
-            entry.resolved(&reference)?;
-            lock.packages.insert(reference.clone(), entry);
-            package
-        };
-        registry::wasm_artifact(&package).await?;
-        println!("{}@{}", package.name, package.version);
-    }
-    if !frozen {
-        lock.modules = modules;
-        write(root, &lock)?;
-    }
-    drop(_guard);
+    ensure_declarations(root, frozen).await?;
     let mut sources = vec![root.to_owned()];
     if let Some(configuration) = config {
         for module in configuration.modules {
@@ -410,7 +416,12 @@ pub async fn git_source(
 ) -> Result<PathBuf> {
     let url = module.git.as_deref().context("Missing Git source URL")?;
     config::validate_repository(url)?;
-    let _guard = guard(root).await?;
+    let _request = crate::dependency_cache::guard(
+        "git-pin",
+        &format!("{}:{}", root.canonicalize()?.display(), git_key(module)),
+    )
+    .await?;
+    let root_guard = guard(root).await?;
     let mut lock = read(root)?;
     let modules = declarations(root)?;
     if frozen {
@@ -420,9 +431,9 @@ pub async fn git_source(
         );
     }
     let key = git_key(module);
-    let entry = lock.git.get(&key).filter(|_| !update);
+    let entry = lock.git.get(&key).filter(|_| !update).cloned();
     let revision = module.rev.as_deref().unwrap_or("HEAD");
-    let revision = if let Some(entry) = entry {
+    let revision = if let Some(entry) = &entry {
         anyhow::ensure!(
             entry.url == url
                 && entry.revision == revision
@@ -438,9 +449,16 @@ pub async fn git_source(
         );
         revision
     };
+    drop(root_guard);
     let (commit, checkout) = crate::git_source::checkout(url, revision).await?;
     let source = crate::git_source::subdirectory(&checkout, module.subdir.as_deref())?;
     if !frozen {
+        let _guard = guard(root).await?;
+        anyhow::ensure!(
+            declarations(root)? == modules,
+            "Module declarations changed during Git resolution; retry install"
+        );
+        lock = read(root)?;
         lock.git.insert(
             key,
             LockedGit {
@@ -462,7 +480,12 @@ pub async fn url_source(root: &Path, url: &str, frozen: bool) -> Result<PathBuf>
 
 async fn url_source_inner(root: &Path, url: &str, frozen: bool, update: bool) -> Result<PathBuf> {
     crate::publishing::wasm_url(url)?;
-    let _guard = guard(root).await?;
+    let _request = crate::dependency_cache::guard(
+        "url-pin",
+        &format!("{}:{url}", root.canonicalize()?.display()),
+    )
+    .await?;
+    let root_guard = guard(root).await?;
     let mut lock = read(root)?;
     let modules = declarations(root)?;
     if frozen {
@@ -471,11 +494,11 @@ async fn url_source_inner(root: &Path, url: &str, frozen: bool, update: bool) ->
             "fluentci.lock is missing or out of date; run fluentci install"
         );
     }
-    let entry = lock.urls.get(url);
+    let entry = lock.urls.get(url).cloned();
     let directory = dirs::cache_dir()
         .context("No cache directory")?
         .join("fluentci/url-dependencies");
-    if let Some(entry) = entry {
+    if let Some(entry) = &entry {
         anyhow::ensure!(
             entry.sha256.len() == 64 && entry.sha256.bytes().all(|byte| byte.is_ascii_hexdigit()),
             "Invalid URL dependency checksum"
@@ -497,9 +520,10 @@ async fn url_source_inner(root: &Path, url: &str, frozen: bool, update: bool) ->
         !frozen || entry.is_some(),
         "URL dependency is missing from fluentci.lock; run fluentci install"
     );
+    drop(root_guard);
     let bytes = crate::publishing::download(url).await?;
     let digest = sha256::digest(&bytes);
-    if let Some(entry) = entry {
+    if let Some(entry) = &entry {
         anyhow::ensure!(
             update || entry.sha256 == digest,
             "URL dependency checksum changed; run fluentci update to accept a new artifact"
@@ -507,8 +531,14 @@ async fn url_source_inner(root: &Path, url: &str, frozen: bool, update: bool) ->
     }
     tokio::fs::create_dir_all(&directory).await?;
     let artifact = directory.join(format!("{digest}.wasm"));
-    crate::modules::write_if_changed(&artifact, &bytes)?;
+    crate::dependency_cache::atomic_write(&artifact, &bytes)?;
     if !frozen {
+        let _guard = guard(root).await?;
+        anyhow::ensure!(
+            declarations(root)? == modules,
+            "Module declarations changed during URL resolution; retry install"
+        );
+        lock = read(root)?;
         lock.urls.insert(url.into(), LockedUrl { sha256: digest });
         lock.modules = modules;
         write(root, &lock)?;

@@ -1,5 +1,6 @@
 //! Publish verified Wasm artifacts and AT Protocol package records.
 
+use crate::progress::{Transfer, with_progress, with_transfer};
 use crate::{auth, config, db::Db, modules, registry, workspace::Workspace};
 use anyhow::{Context, Result};
 use jacquard::{
@@ -193,31 +194,48 @@ pub async fn validate_logo_url(value: &str) -> Result<()> {
 
 pub async fn download(value: &str) -> Result<Vec<u8>> {
     let url = wasm_url(value)?;
-    let mut response = registry::client()
-        .get(url)
-        .timeout(Duration::from_secs(60))
-        .send()
-        .await?;
-    anyhow::ensure!(
-        response.status() == reqwest::StatusCode::OK,
-        "Wasm URL must return HTTP 200 (received {})",
-        response.status()
-    );
-    wasm_url(response.url().as_str())?;
-    anyhow::ensure!(
-        response.content_length().unwrap_or(0) <= MAX_WASM_BYTES as u64,
-        "Wasm exceeds the 64 MiB size limit"
-    );
-    let mut bytes = Vec::new();
-    while let Some(chunk) = response.chunk().await? {
-        anyhow::ensure!(
-            bytes.len() + chunk.len() <= MAX_WASM_BYTES,
-            "Wasm exceeds the 64 MiB size limit"
-        );
-        bytes.extend_from_slice(&chunk);
-    }
-    validate_wasm(&bytes)?;
-    Ok(bytes)
+    let name = url
+        .path()
+        .rsplit('/')
+        .next()
+        .unwrap_or("module.wasm")
+        .to_owned();
+    let transfer = Transfer::new(None);
+    with_transfer(
+        &format!("Downloading {name}"),
+        &format!("Verifying {name}"),
+        &transfer,
+        async {
+            let mut response = registry::client()
+                .get(url)
+                .timeout(Duration::from_secs(60))
+                .send()
+                .await?;
+            anyhow::ensure!(
+                response.status() == reqwest::StatusCode::OK,
+                "Wasm URL must return HTTP 200 (received {})",
+                response.status()
+            );
+            wasm_url(response.url().as_str())?;
+            transfer.set_total(response.content_length());
+            anyhow::ensure!(
+                response.content_length().unwrap_or(0) <= MAX_WASM_BYTES as u64,
+                "Wasm exceeds the 64 MiB size limit"
+            );
+            let mut bytes = Vec::new();
+            while let Some(chunk) = response.chunk().await? {
+                anyhow::ensure!(
+                    bytes.len() + chunk.len() <= MAX_WASM_BYTES,
+                    "Wasm exceeds the 64 MiB size limit"
+                );
+                bytes.extend_from_slice(&chunk);
+                transfer.advance(chunk.len());
+            }
+            validate_wasm(&bytes)?;
+            Ok(bytes)
+        },
+    )
+    .await
 }
 
 fn publishing_config(root: &Path, selected: Option<&str>) -> Option<PathBuf> {
@@ -772,26 +790,36 @@ pub async fn publish(
     let url = if let Some(url) = external {
         url.to_owned()
     } else {
-        let token = publisher.upload_token().await?;
-        let response = registry::client()
-            .post(format!(
-                "{}/xrpc/io.fluentci.registry.publish",
-                registry::base_url()
-            ))
-            .bearer_auth(token)
-            .query(&[("name", name.as_str()), ("version", version.as_str())])
-            .header("Content-Type", "application/wasm")
-            .body(bytes)
-            .timeout(Duration::from_secs(120))
-            .send()
-            .await?;
-        let upload: Upload = response.error_for_status()?.json().await?;
-        wasm_url(&upload.url)?;
-        anyhow::ensure!(
-            upload.sha256 == digest && upload.size == size,
-            "Registry upload checksum or size did not match the Wasm artifact"
-        );
-        upload.url
+        let transfer = Transfer::new(Some(size as u64));
+        with_transfer(
+            &format!("Uploading {name}@{version}"),
+            &format!("Finalizing upload {name}@{version}"),
+            &transfer,
+            async {
+                let token = publisher.upload_token().await?;
+                let response = registry::client()
+                    .post(format!(
+                        "{}/xrpc/io.fluentci.registry.publish",
+                        registry::base_url()
+                    ))
+                    .bearer_auth(token)
+                    .query(&[("name", name.as_str()), ("version", version.as_str())])
+                    .header("Content-Type", "application/wasm")
+                    .header(reqwest::header::CONTENT_LENGTH, size)
+                    .body(transfer.upload_body(bytes))
+                    .timeout(Duration::from_secs(120))
+                    .send()
+                    .await?;
+                let upload: Upload = response.error_for_status()?.json().await?;
+                wasm_url(&upload.url)?;
+                anyhow::ensure!(
+                    upload.sha256 == digest && upload.size == size,
+                    "Registry upload checksum or size did not match the Wasm artifact"
+                );
+                Ok(upload.url)
+            },
+        )
+        .await?
     };
     let record = PluginRecord {
         record_type: COLLECTION.into(),
@@ -823,7 +851,9 @@ pub async fn publish(
         validate: Some(false),
         extra_data: None,
     };
-    let output = publisher.session.send(request).await.context("Could not publish the plugin record to the PDS; existing name-version records are not overwritten")?.into_output()?;
+    let output = with_progress(&format!("Publishing {}@{}", record.name, record.version), async {
+        Ok(publisher.session.send(request).await.context("Could not publish the plugin record to the PDS; existing name-version records are not overwritten")?.into_output()?)
+    }).await?;
     println!(
         "Published {}@{}\nRecord: {}\nWasm: {}",
         record.name, record.version, output.uri, record.url

@@ -55,6 +55,7 @@ pub struct Package {
     pub arch: Option<Vec<String>>,
 }
 
+#[derive(Debug, Clone, serde::Serialize, Deserialize)]
 pub struct Resolved {
     pub name: String,
     pub version: String,
@@ -135,6 +136,31 @@ pub(crate) fn package_reference(value: &str) -> Result<PackageReference<'_>> {
 }
 
 pub async fn resolve(pipeline: &str) -> Result<Resolved> {
+    let parsed = package_reference(pipeline)?;
+    let key = format!(
+        "{}:@{}/{}@{}",
+        base_url(),
+        parsed.author,
+        parsed.name,
+        parsed.version
+    );
+    let _guard = crate::dependency_cache::guard("resolve", &key).await?;
+    let path = crate::dependency_cache::directory()?
+        .join("metadata")
+        .join(format!("{}.json", sha256::digest(&key)));
+    if let Ok(metadata) = tokio::fs::metadata(&path).await
+        && metadata.modified()?.elapsed().unwrap_or_default() < Duration::from_secs(30)
+        && let Ok(bytes) = tokio::fs::read(&path).await
+        && let Ok(resolved) = serde_json::from_slice(&bytes)
+    {
+        return Ok(resolved);
+    }
+    let resolved = resolve_fresh(pipeline).await?;
+    crate::dependency_cache::atomic_write(&path, &serde_json::to_vec(&resolved)?)?;
+    Ok(resolved)
+}
+
+pub(crate) async fn resolve_fresh(pipeline: &str) -> Result<Resolved> {
     resolve_at(pipeline, &base_url()).await
 }
 
@@ -321,6 +347,7 @@ pub async fn wasm_artifact(package: &Resolved) -> Result<std::path::PathBuf> {
         .or_else(|| dirs::cache_dir().map(|p| p.join("fluentci/packages")))
         .context("Cache directory unavailable")?;
     let artifact = directory.join(format!("{expected}.wasm"));
+    let _guard = crate::dependency_cache::guard("artifact", &artifact.to_string_lossy()).await?;
     if let Ok(bytes) = tokio::fs::read(&artifact).await
         && sha256::digest(bytes.as_slice()) == expected
         && crate::publishing::validate_wasm(&bytes).is_ok()

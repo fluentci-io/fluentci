@@ -53,6 +53,39 @@ async fn prepare_inner(
         runtime: Some(manifest.module.runtime),
         ..Default::default()
     };
+    // Fetch independent remote dependencies concurrently. Local source builds
+    // remain in dependency order, preserving cycle detection and compiler safety.
+    let tasks = manifest
+        .dependencies
+        .iter()
+        .map(
+            |(alias, dependency)| -> futures_util::future::BoxFuture<'_, Result<_>> {
+                Box::pin(async move {
+                    let definition = dependency.definition(alias)?;
+                    let local = LocalModule::resolve(&source.join(super::FILE), &definition)?;
+                    let path = match &local.source {
+                        ModuleSource::Registry(reference) => {
+                            let package =
+                                crate::plugin_metadata::resolve(root, reference, frozen).await?;
+                            Some(crate::plugin_metadata::prepare_package(&package).await?)
+                        }
+                        ModuleSource::Url(url) => {
+                            Some(crate::lockfile::url_source(root, url.as_str(), frozen).await?)
+                        }
+                        ModuleSource::Git(_) => Some(
+                            crate::lockfile::git_source(root, &definition, frozen, false).await?,
+                        ),
+                        ModuleSource::Path(_) => None,
+                    };
+                    Ok((alias.clone(), path))
+                })
+            },
+        )
+        .collect::<Vec<_>>();
+    let remote = crate::dependency_cache::parallel(tasks)
+        .await?
+        .into_iter()
+        .collect::<BTreeMap<_, _>>();
     let mut typescript = String::new();
     for (alias, dependency) in &manifest.dependencies {
         let definition = dependency.definition(alias)?;
@@ -60,8 +93,9 @@ async fn prepare_inner(
         let artifact = match &local.source {
             ModuleSource::Path(_) => Box::pin(local.prepare_local(root, frozen, stack)).await?,
             ModuleSource::Git(_) => {
-                let directory =
-                    crate::lockfile::git_source(root, &definition, frozen, false).await?;
+                let directory = remote[alias]
+                    .as_ref()
+                    .context("Git dependency was not prepared")?;
                 let local = LocalModule::resolve(
                     &directory.join(super::FILE),
                     &crate::config::Module {
@@ -74,10 +108,9 @@ async fn prepare_inner(
                 )?;
                 Box::pin(local.prepare_local(root, frozen, stack)).await?
             }
-            ModuleSource::Registry(_) => Box::pin(local.prepare_with_lock(root, frozen)).await?,
-            ModuleSource::Url(url) => {
-                crate::lockfile::url_source(root, url.as_str(), frozen).await?
-            }
+            ModuleSource::Registry(_) | ModuleSource::Url(_) => remote[alias]
+                .clone()
+                .context("Remote dependency was not prepared")?,
         };
         let artifact = install_artifact(source, alias, dependency, &artifact)?;
         if manifest.module.runtime == ModuleRuntime::Component {

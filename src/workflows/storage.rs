@@ -1,10 +1,8 @@
 use super::{Definition, Update, Workflow};
 use anyhow::{Context, Result, ensure};
-#[cfg(unix)]
-use std::os::unix::fs::OpenOptionsExt;
 use std::{
     collections::HashSet,
-    fs::{self, File, OpenOptions},
+    fs,
     io::Write,
     path::{Path, PathBuf},
 };
@@ -111,19 +109,10 @@ pub(super) fn read(root: &Path, id: &str) -> Result<Option<Definition>> {
         .map(|entry| entry.definition))
 }
 
-fn lock(root: &Path) -> Result<(PathBuf, File)> {
+fn lock(root: &Path) -> Result<(PathBuf, crate::file_guard::FileGuard)> {
     let directory = directory(root, true)?.context("Missing workflow directory")?;
-    let mut options = OpenOptions::new();
-    options.read(true).write(true).create(true).truncate(false);
-    #[cfg(unix)]
-    options.mode(0o600).custom_flags(libc::O_NOFOLLOW);
-    let file = options.open(directory.join(".lock"))?;
-    ensure!(
-        file.metadata()?.is_file(),
-        "Workflow writer guard must be a regular file"
-    );
-    file.lock()?;
-    Ok((directory, file))
+    let guard = crate::file_guard::FileGuard::lock(&directory.join(".lock"))?;
+    Ok((directory, guard))
 }
 
 fn check_revision(current: Option<&Stored>, expected: Option<&str>) -> Result<()> {

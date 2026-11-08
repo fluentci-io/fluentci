@@ -37,6 +37,8 @@ pub async fn checkout(url: &str, revision: &str) -> Result<(String, PathBuf)> {
 async fn checkout_at(url: &str, revision: &str, cache_root: &Path) -> Result<(String, PathBuf)> {
     let cache = cache_root.join(sha256::digest(url));
     tokio::fs::create_dir_all(&cache).await?;
+    let _guard =
+        crate::dependency_cache::guard("git", &format!("{}#{revision}", cache.display())).await?;
     if commit(revision) {
         let directory = cache.join(revision);
         if directory.is_dir() {
