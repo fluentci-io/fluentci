@@ -127,7 +127,12 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
   await page.keyboard.press("Escape");
   await expect(filter).toHaveValue("");
   await expect(filter).not.toBeFocused();
-  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect.poll(() => requests.at(-1)?.searchParams.get("q")).toBe("");
+  await expect(page.locator(".publisher-modules")).toHaveAttribute(
+    "aria-busy",
+    "false",
+  );
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
   await expect(pinnedIdentity).toHaveCount(0);
   await page.goto(`/${author.did}`);
   await expect(
