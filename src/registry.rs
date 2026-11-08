@@ -86,7 +86,11 @@ pub(crate) fn package_reference(value: &str) -> Result<PackageReference<'_>> {
     let explicitly_scoped = value.starts_with('@');
     let body = value.strip_prefix('@').unwrap_or(value);
     let (qualified, version) = body.rsplit_once('@').unwrap_or((body, "latest"));
-    let scoped = explicitly_scoped || !qualified.contains('/');
+    let scoped = explicitly_scoped
+        || !qualified.contains('/')
+        || qualified.split_once('/').is_some_and(|(author, _)| {
+            author.contains('.') && !author.starts_with('.') && !author.ends_with('.')
+        });
     let (author, name) = qualified.rsplit_once('/').unwrap_or((
         if explicitly_scoped {
             ""
@@ -103,6 +107,10 @@ pub(crate) fn package_reference(value: &str) -> Result<PackageReference<'_>> {
         anyhow::ensure!(
             !author.is_empty() && !author.contains('/') && !author.chars().any(char::is_whitespace),
             "Expected @handle/module[@version]"
+        );
+        anyhow::ensure!(
+            author.contains('.') || author.starts_with("did:"),
+            "Registry publishers use AT Protocol handles, e.g. fluentci.io, rather than GitHub organization names. Use fluentci.io/{name} or {name} for official modules"
         );
         anyhow::ensure!(
             name.len() <= 64
@@ -411,6 +419,8 @@ mod tests {
             ("@tsiry-sandratraina.com/sccache@0.1.0", "0.1.0"),
             ("@tsiry-sandratraina.com/sccache@latest", "latest"),
             ("@tsiry-sandratraina.com/sccache", "latest"),
+            ("tsiry-sandratraina.com/sccache", "latest"),
+            ("tsiry-sandratraina.com/sccache@v0.1.0", "0.1.0"),
         ] {
             let reference = package_reference(input)?;
             assert_eq!(reference.name, "sccache");
@@ -418,6 +428,7 @@ mod tests {
             assert_eq!(reference.version, version);
         }
         for invalid in [
+            "@fluentci-io/setup-node",
             "@handle",
             "@/module",
             "@handle/",
@@ -464,7 +475,12 @@ mod tests {
         let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
         let address = listener.local_addr()?;
         let server = tokio::spawn(async move { axum::serve(listener, router).await });
-        for input in ["sccache", "sccache@v0.1.0", "@fluentci.io/sccache@0.1.0"] {
+        for input in [
+            "sccache",
+            "sccache@v0.1.0",
+            "@fluentci.io/sccache@0.1.0",
+            "fluentci.io/sccache@0.1.0",
+        ] {
             let package = resolve_at(input, &format!("http://{address}")).await?;
             assert_eq!(package.name, "@fluentci.io/sccache");
         }

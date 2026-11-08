@@ -77,8 +77,9 @@ async fn inspect(args: &RunArgs) -> Result<ModuleHelp> {
     if name.ends_with(".wasm") {
         return artifact_help(name, &start.join(name), None, None, None).await;
     }
+    let reference = registry::package_reference(name)?;
     anyhow::ensure!(
-        (!name.contains("://") && !name.contains('/')) || name.starts_with('@'),
+        reference.scoped,
         "Module help requires a local Wasm module, HTTP(S) Wasm URL, or registry package"
     );
     registry_help(&workspace.root, name, args.frozen_lockfile).await

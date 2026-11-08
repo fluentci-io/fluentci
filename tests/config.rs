@@ -262,3 +262,20 @@ fn compiled_ci_components_have_typed_documented_signatures() -> anyhow::Result<(
     }
     Ok(())
 }
+
+#[test]
+fn registry_handles_can_omit_the_at_prefix() -> anyhow::Result<()> {
+    for definition in [
+        "[[modules]]\nname='fluentci.io/setup-gh'\n",
+        "[[modules]]\nname='gh'\npackage='fluentci.io/setup-gh@v0.2.0'\n",
+    ] {
+        let config = Config::parse(definition)?;
+        assert!(
+            config.modules[0]
+                .registry_package()
+                .unwrap()
+                .contains("fluentci.io/setup-gh")
+        );
+    }
+    Ok(())
+}

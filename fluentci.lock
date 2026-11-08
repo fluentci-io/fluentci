@@ -2,6 +2,67 @@
   "lockfileVersion": 1,
   "modules": {},
   "packages": {
+    "@fluentci.io/setup-gh@latest": {
+      "registry": "https://api.fluentci.io",
+      "name": "setup-gh",
+      "version": "0.2.0",
+      "author": "did:plc:cukdxxemtwuxspaiurk2xsfz",
+      "url": "https://modules.fluentci.io/fluentci.io/setup-gh/v0.2.0/setup-gh.wasm",
+      "sha256": "06bf034b4d12110c54db7d205b2dda903819222fbaf2da82b0c7e79661c9763d",
+      "uri": "at://did:plc:cukdxxemtwuxspaiurk2xsfz/io.fluentci.plugin/setup-gh-0.2.0",
+      "cid": "bafyreic5kkapfog3ra5sfesb74fhyx23oab5zxpz7tcagrtanrdmpujyce",
+      "repository": "https://tangled.org/fluentci.io/modules",
+      "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/setup/gh/README.md",
+      "topics": [
+        "github",
+        "gh",
+        "cli",
+        "setup",
+        "ci",
+        "toolchain"
+      ],
+      "os": [
+        "linux",
+        "macos",
+        "freebsd",
+        "netbsd",
+        "openbsd"
+      ],
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ]
+    },
+    "@fluentci.io/setup-node@latest": {
+      "registry": "https://api.fluentci.io",
+      "name": "setup-node",
+      "version": "0.2.0",
+      "author": "did:plc:cukdxxemtwuxspaiurk2xsfz",
+      "url": "https://modules.fluentci.io/fluentci.io/setup-node/v0.2.0/setup-node.wasm",
+      "sha256": "223a3dfde1c216ad12e1ea05eecb8c49ebf35be2a1a78e0679912227dbf6afb9",
+      "uri": "at://did:plc:cukdxxemtwuxspaiurk2xsfz/io.fluentci.plugin/setup-node-0.2.0",
+      "cid": "bafyreifelntxvkaxxrorlbpt7e3hphep7nt6vgxajqkfq2lr6buv5rntxe",
+      "repository": "https://tangled.org/fluentci.io/modules",
+      "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/setup/node/README.md",
+      "topics": [
+        "nodejs",
+        "npm",
+        "setup",
+        "ci",
+        "toolchain"
+      ],
+      "os": [
+        "linux",
+        "macos",
+        "freebsd",
+        "netbsd",
+        "openbsd"
+      ],
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ]
+    },
     "@tsiry-sandratraina.com/cachix@latest": {
       "registry": "https://api.fluentci.io",
       "name": "cachix",

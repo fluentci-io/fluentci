@@ -473,6 +473,12 @@ can also be entered at a prompt with `--file` or `--url`. Missing metadata is
 prompted interactively; only name, version, and license are required. Use
 `--name`, `--version`, `--description`, and `--license` for non-interactive runs.
 
+Publishing a new module version reuses descriptive metadata from the authenticated
+publisher’s previous PDS record. CLI flags and local module metadata take precedence;
+missing required fields still prompt. Release versions and Wasm artifacts are never
+copied from an earlier release. Registry references accept `fluentci.io/setup-gh`
+as well as `@fluentci.io/setup-gh`; official modules also accept `setup-gh`.
+
 Modules can also publish optional topics, platform compatibility, and an explicit
 README URL:
 

@@ -255,12 +255,12 @@ fn publishing_workspace(start: &Path, selected: Option<&str>) -> Result<Workspac
     Ok(workspace)
 }
 
-fn metadata(
+fn metadata_fields(
     root: &Path,
     selected: Option<&str>,
     overrides: &MetadataOptions,
     artifact: bool,
-) -> Result<(String, String, String, String)> {
+) -> Result<MetadataOptions> {
     let config_path = publishing_config(root, selected);
     let config = config_path
         .as_ref()
@@ -396,11 +396,120 @@ fn metadata(
             .or_else(|| package.and_then(|package| package.license.clone()))
             .or_else(|| cargo_field("license")),
     };
+    Ok(fields)
+}
+
+#[cfg(test)]
+fn metadata(
+    root: &Path,
+    selected: Option<&str>,
+    overrides: &MetadataOptions,
+    artifact: bool,
+) -> Result<(String, String, String, String)> {
     complete_metadata(
-        fields,
-        io::stdin().is_terminal() && io::stderr().is_terminal(),
+        metadata_fields(root, selected, overrides, artifact)?,
+        false,
         prompt_metadata,
     )
+}
+
+/// Reuse only descriptive metadata from this publisher; never reuse a release version or artifact.
+fn inherit_metadata(fields: &mut MetadataOptions, previous: &serde_json::Value) {
+    for (key, field) in [
+        ("description", &mut fields.description),
+        ("license", &mut fields.license),
+        ("repository", &mut fields.repository),
+        ("readmeUrl", &mut fields.readme_url),
+        ("logo", &mut fields.logo),
+    ] {
+        if field.is_none() {
+            *field = previous
+                .get(key)
+                .and_then(|value| value.as_str())
+                .map(str::to_owned);
+        }
+    }
+    // An omitted optional description on the previous release was already skipped.
+    if fields.description.is_none() {
+        fields.description = Some(String::new());
+    }
+    for (key, field) in [
+        ("topics", &mut fields.topics),
+        ("os", &mut fields.os),
+        ("arch", &mut fields.arch),
+    ] {
+        if field.is_empty() {
+            *field = previous
+                .get(key)
+                .and_then(|value| value.as_array())
+                .map(|values| {
+                    values
+                        .iter()
+                        .filter_map(|value| value.as_str().map(str::to_owned))
+                        .collect()
+                })
+                .unwrap_or_default();
+        }
+    }
+}
+
+async fn previous_metadata(
+    endpoint: &str,
+    did: &str,
+    name: &str,
+) -> Result<Option<serde_json::Value>> {
+    let mut cursor = None::<String>;
+    let mut newest = None::<(semver::Version, serde_json::Value)>;
+    loop {
+        let mut query = vec![("repo", did), ("collection", COLLECTION), ("limit", "100")];
+        if let Some(cursor) = cursor.as_deref() {
+            query.push(("cursor", cursor));
+        }
+        let page: serde_json::Value = registry::client()
+            .get(format!(
+                "{}/xrpc/com.atproto.repo.listRecords",
+                endpoint.trim_end_matches('/')
+            ))
+            .query(&query)
+            .send()
+            .await?
+            .error_for_status()?
+            .json()
+            .await?;
+        for entry in page
+            .get("records")
+            .and_then(|value| value.as_array())
+            .into_iter()
+            .flatten()
+        {
+            let Some(record) = entry.get("value") else {
+                continue;
+            };
+            if record.get("name").and_then(|value| value.as_str()) != Some(name)
+                || record.get("author").and_then(|value| value.as_str()) != Some(did)
+            {
+                continue;
+            }
+            if let Some(version) = record
+                .get("version")
+                .and_then(|value| value.as_str())
+                .and_then(|value| semver::Version::parse(value).ok())
+                && newest.as_ref().is_none_or(|(saved, _)| version > *saved)
+            {
+                newest = Some((version, record.clone()));
+            }
+        }
+        let next = page
+            .get("cursor")
+            .and_then(|value| value.as_str())
+            .filter(|value| !value.is_empty())
+            .map(str::to_owned);
+        if next.is_none() || next == cursor {
+            break;
+        }
+        cursor = next;
+    }
+    Ok(newest.map(|(_, record)| record))
 }
 
 fn split_labels(value: &str) -> Vec<String> {
@@ -643,12 +752,55 @@ pub async fn publish(
     metadata_options: &MetadataOptions,
 ) -> Result<()> {
     let workspace = publishing_workspace(&std::env::current_dir()?, module)?;
-    let (name, version, description, license) = metadata(
+    let mut fields = metadata_fields(
         &workspace.root,
         module,
         metadata_options,
         external.is_some() || file.is_some(),
     )?;
+    let interactive = io::stdin().is_terminal() && io::stderr().is_terminal();
+    if fields
+        .name
+        .as_ref()
+        .is_none_or(|name| name.trim().is_empty())
+        && interactive
+    {
+        fields.name = Some(prompt_metadata("Package name", true)?);
+    }
+    let publisher = auth::authenticate(db).await?;
+    let previous = if let Some(name) = &fields.name {
+        let endpoint = publisher.session.endpoint().await.to_string();
+        let did = publisher.identity.did.to_string();
+        match tokio::time::timeout(
+            Duration::from_secs(15),
+            previous_metadata(&endpoint, &did, name),
+        )
+        .await
+        {
+            Ok(Ok(previous)) => previous,
+            _ => {
+                eprintln!(
+                    "Could not load previous publishing metadata; using local metadata and flags."
+                );
+                None
+            }
+        }
+    } else {
+        None
+    };
+    if let Some(previous) = &previous {
+        inherit_metadata(&mut fields, previous);
+    }
+    let inherited_optional = OptionalMetadata {
+        repository: fields.repository.clone(),
+        topics: fields.topics.clone(),
+        os: fields.os.clone(),
+        arch: fields.arch.clone(),
+        readme_url: fields.readme_url.clone(),
+        logo: fields.logo.clone(),
+    };
+    let (name, version, description, license) =
+        complete_metadata(fields, interactive, prompt_metadata)?;
     let bytes = if let Some(url) = external {
         download(url).await?
     } else {
@@ -723,6 +875,32 @@ pub async fn publish(
     let repository = metadata_options.repository.clone().or_else(|| {
         definition.and_then(|module| module.repository.clone().or_else(|| module.git.clone()))
     });
+    let mut optional = OptionalMetadata {
+        repository,
+        topics,
+        os,
+        arch,
+        readme_url,
+        logo,
+    };
+    if optional.repository.is_none() {
+        optional.repository = inherited_optional.repository;
+    }
+    if optional.topics.is_empty() {
+        optional.topics = inherited_optional.topics;
+    }
+    if optional.os.is_empty() {
+        optional.os = inherited_optional.os;
+    }
+    if optional.arch.is_empty() {
+        optional.arch = inherited_optional.arch;
+    }
+    if optional.readme_url.is_none() {
+        optional.readme_url = inherited_optional.readme_url;
+    }
+    if optional.logo.is_none() {
+        optional.logo = inherited_optional.logo;
+    }
     let OptionalMetadata {
         repository,
         topics,
@@ -730,18 +908,7 @@ pub async fn publish(
         arch,
         readme_url,
         logo,
-    } = complete_optional_metadata(
-        OptionalMetadata {
-            repository,
-            topics,
-            os,
-            arch,
-            readme_url,
-            logo,
-        },
-        io::stdin().is_terminal() && io::stderr().is_terminal(),
-        prompt_metadata,
-    )?;
+    } = complete_optional_metadata(optional, interactive && previous.is_none(), prompt_metadata)?;
     if let Some(logo) = &logo {
         validate_logo_url(logo).await?;
     }
@@ -751,7 +918,14 @@ pub async fn publish(
     let subdir = metadata_options
         .subdir
         .as_deref()
-        .or_else(|| definition.and_then(|module| module.subdir.as_deref()));
+        .or_else(|| definition.and_then(|module| module.subdir.as_deref()))
+        .or_else(|| {
+            previous
+                .as_ref()
+                .and_then(|record| record.get("subdir"))
+                .and_then(|value| value.as_str())
+                .map(Path::new)
+        });
     let subdir = subdir
         .map(|subdir| -> Result<String> {
             config::validate_subdir(subdir)?;
@@ -786,7 +960,6 @@ pub async fn publish(
         bytes
     };
     validate_wasm(&bytes)?;
-    let publisher = auth::authenticate(db).await?;
     let digest = sha256::digest(bytes.as_slice());
     let size = bytes.len();
     let url = if let Some(url) = external {
@@ -840,6 +1013,70 @@ mod tests {
         MetadataOptions, OptionalMetadata, complete_metadata, complete_optional_metadata,
         license_suggestions, metadata_suggestions,
     };
+
+    #[test]
+    fn previous_metadata_fills_gaps_without_reusing_version_or_overrides() -> anyhow::Result<()> {
+        let mut fields = MetadataOptions {
+            name: Some("demo".into()),
+            version: Some("0.2.1".into()),
+            description: Some("Local description".into()),
+            topics: vec!["local".into()],
+            ..Default::default()
+        };
+        super::inherit_metadata(
+            &mut fields,
+            &serde_json::json!({
+                "name":"demo", "version":"0.2.0", "license":"MIT", "description":"Old description",
+                "topics":["old"], "os":["linux"], "arch":["aarch64"],
+                "readmeUrl":"https://example.com/README.md", "logo":"https://example.com/logo.png"
+            }),
+        );
+        assert_eq!(fields.topics, ["local"]);
+        assert_eq!(fields.os, ["linux"]);
+        assert_eq!(fields.arch, ["aarch64"]);
+        assert_eq!(fields.version.as_deref(), Some("0.2.1"));
+        let completed = complete_metadata(fields, true, |_, _| {
+            panic!("Complete metadata must not prompt")
+        })?;
+        assert_eq!(
+            completed,
+            (
+                "demo".into(),
+                "0.2.1".into(),
+                "Local description".into(),
+                "MIT".into()
+            )
+        );
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn previous_metadata_reads_pds_pages_and_ignores_other_publishers() -> anyhow::Result<()>
+    {
+        use axum::{Json, Router, extract::Query, routing::get};
+        use std::collections::HashMap;
+        let app = Router::new().route("/xrpc/com.atproto.repo.listRecords", get(|Query(query): Query<HashMap<String, String>>| async move {
+            assert_eq!(query["repo"], "did:plc:publisher");
+            if query.contains_key("cursor") {
+                Json(serde_json::json!({"records":[{"value":{"name":"demo","version":"0.2.0","author":"did:plc:publisher","license":"MIT"}}]}))
+            } else {
+                Json(serde_json::json!({"cursor":"next", "records":[
+                    {"value":{"name":"demo","version":"9.0.0","author":"did:plc:other","license":"Wrong"}},
+                    {"value":{"name":"demo","version":"0.1.0","author":"did:plc:publisher","license":"Old"}}
+                ]}))
+            }
+        }));
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await?;
+        let address = listener.local_addr()?;
+        let server = tokio::spawn(async move { axum::serve(listener, app).await });
+        let previous =
+            super::previous_metadata(&format!("http://{address}"), "did:plc:publisher", "demo")
+                .await?
+                .unwrap();
+        server.abort();
+        assert_eq!(previous["license"], "MIT");
+        Ok(())
+    }
 
     #[test]
     fn publishing_accepts_core_modules_and_components() -> anyhow::Result<()> {

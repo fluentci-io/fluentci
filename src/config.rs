@@ -330,7 +330,8 @@ impl Config {
             }
             if let Some(package) = module.registry_package() {
                 anyhow::ensure!(
-                    package.starts_with('@') || !package.contains('/'),
+                    crate::registry::package_reference(package)
+                        .is_ok_and(|reference| reference.scoped),
                     "Use module[@version] for official modules or @handle/module[@version] for other publishers"
                 );
                 crate::registry::package_reference(package)?;
