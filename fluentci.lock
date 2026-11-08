@@ -62,31 +62,6 @@
         "x86_64",
         "aarch64"
       ]
-    },
-    "@tsiry-sandratraina.com/cachix@latest": {
-      "registry": "https://api.fluentci.io",
-      "name": "cachix",
-      "version": "0.1.0",
-      "author": "did:plc:7vdlgi2bflelz7mmuxoqjfcr",
-      "url": "https://modules.fluentci.io/@tsiry-sandratraina.com/cachix/v0.1.0/cachix.wasm",
-      "sha256": "624f45e076159702e6d3d62b6bb6593e57701be9dba754f6dca93f48c6e840d0",
-      "uri": "at://did:plc:7vdlgi2bflelz7mmuxoqjfcr/io.fluentci.plugin/cachix-0.1.0",
-      "cid": "bafyreiaffj7exnnt72gdq7f7lit3qozzlofnszjybzz5l4drhxrlgecr54",
-      "repository": "https://github.com/fluentci-io/fluentci",
-      "readme_url": "https://raw.githubusercontent.com/fluentci-io/fluentci/refs/heads/main/.fluentci/cachix/README.md",
-      "topics": [
-        "nix",
-        "cache",
-        "cachix"
-      ],
-      "os": [
-        "linux",
-        "macos"
-      ],
-      "arch": [
-        "x86_64",
-        "aarch64"
-      ]
     }
   },
   "git": {}

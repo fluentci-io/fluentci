@@ -47,12 +47,6 @@ sdk = "purescript"
 runtime = "component"
 
 [[modules]]
-name = "cachix"
-path = ".fluentci/cachix"
-sdk = "purescript"
-runtime = "component"
-
-[[modules]]
 name = "gemfury"
 path = ".fluentci/gemfury"
 sdk = "purescript"

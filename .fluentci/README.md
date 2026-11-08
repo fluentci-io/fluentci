@@ -32,7 +32,7 @@ fluentci run desktop build --target aarch64-apple-darwin
 fluentci run desktop package --target aarch64-apple-darwin --version v0.17.2
 fluentci run release build-prepared --target x86_64-unknown-linux-gnu
 fluentci run release package --target x86_64-unknown-linux-gnu --version v0.17.2
-fluentci run cachix setup --cache fluentci
+fluentci run setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci
 fluentci run nix-build build --cache fluentci
 ```
 
@@ -52,7 +52,6 @@ such as target, version, and cache is explicit; tokens stay in the environment.
 | `desktop`   | `build`, `clean`, `sign`, `package`, `upload`                                                                                                         | macOS Studio releases                      |
 | `nix`       | `check`, `metadata`, `flakehub`, `flakestry`                                                                                                          | Nix checks and publication                 |
 | `nix-build` | `build`                                                                                                                                               | Nix build with Cachix uploads              |
-| `cachix`    | `setup`, `push`                                                                                                                                       | Cache configuration and result uploads     |
 | `gemfury`   | `dependencies`, `package`, `upload`, `github`                                                                                                         | Debian/RPM packages and publication        |
 
 ## Build and test
@@ -127,13 +126,14 @@ lookup expects a GitHub Release. Its typed environment result is exported
 to subsequent workflow steps. `CACHIX_AUTH_TOKEN` enables uploads; missing or
 blank tokens skip uploads while Nix builds still run.
 `nix-build build --cache fluentci` uses Cachix `watch-exec`
-to upload new build paths, then pushes the final `./result` closure. Failures
+to upload new build paths using the installed `cachix` executable, then pushes the
+final `./result` closure. No local Cachix plugin is compiled or downloaded. Failures
 propagate. The cache name is a named argument; the token is never a CLI argument.
 
 ```sh
 fluentci run setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci
 fluentci run nix-build build --cache fluentci
-fluentci run cachix push --cache fluentci
+cachix push fluentci ./result
 fluentci run nix flakehub --version v0.17.2
 fluentci run nix flakestry --version v0.17.2 --ref COMMIT_SHA
 ```
