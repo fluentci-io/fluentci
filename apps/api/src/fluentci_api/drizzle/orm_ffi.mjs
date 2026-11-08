@@ -123,7 +123,7 @@ async function executeInner(connection, q) {
   }
   return toList(await query);
 }
-// A native libsql connection must not execute unrelated reads while a write
+// A native SQLite connection must not execute unrelated reads while a write
 // transaction is open. This queue covers reads, counts, and writes; statements
 // already inside the transaction bypass it to avoid nested queue deadlocks.
 const transactionTails = new WeakMap();
@@ -148,7 +148,9 @@ export function countRows(connection, query) {
 }
 export function transaction(connection, run) {
   return serialized(connection, () =>
-    connection.db.transaction((tx) => run({ ...connection, db: tx, inTransaction: true })),
+    (connection.transaction ?? connection.db.transaction.bind(connection.db))((tx) =>
+      run({ ...connection, db: tx, inTransaction: true }),
+    ),
   );
 }
 

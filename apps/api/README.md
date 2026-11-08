@@ -216,7 +216,12 @@ how to publish download URLs through the proxy.
 
 ## Indexer recovery
 
-Local SQLite uses one persistent Node SQLite connection behind the Drizzle bridge.
+Local SQLite uses the official `drizzle-orm/node-sqlite` driver and one persistent
+`node:sqlite` connection. Drizzle is pinned to `1.0.0-rc.5`, which provides this
+driver. The native transaction callback is synchronous; the generic Gleam bridge
+keeps transactions open until its promise-based queries finish, and serializes
+unrelated reads and writes. Migrations use Drizzle 1 folder layout and preserve
+existing migration hashes; the driver upgrades legacy migration history in place.
 Reads and transactions share a queue, so HTTP queries cannot interfere with an
 index transaction. Jetstream pauses its sockets while replay queues drain, sends
 heartbeats, and exits if ingestion hangs for 60 seconds. The systemd service's

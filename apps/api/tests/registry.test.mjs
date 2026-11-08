@@ -2,10 +2,11 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
-import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, mkdirSync, writeFileSync, readFileSync, readdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
+import { DatabaseSync } from 'node:sqlite';
 import { Secp256k1Keypair } from '@atproto/crypto';
 import { createServiceJwt } from '@atproto/xrpc-server';
 import { WebSocketServer } from 'ws';
@@ -550,15 +551,13 @@ test('publisher-scoped identity permits other publishers and new versions but re
 test('upgrading an existing registry backfills the FTS5 index', async (t) => {
   const directory = mkdtempSync(join(tmpdir(), 'fluentci-upgrade-'));
   const migrations = join(directory, 'old-migrations');
-  mkdirSync(join(migrations, 'meta'), { recursive: true });
+  const firstMigration = '20261105000000_0000_registry';
+  mkdirSync(join(migrations, firstMigration), { recursive: true });
   const apiRoot = fileURLToPath(new URL('..', import.meta.url));
   writeFileSync(
-    join(migrations, '0000_registry.sql'),
-    readFileSync(join(apiRoot, 'drizzle/0000_registry.sql')),
+    join(migrations, firstMigration, 'migration.sql'),
+    readFileSync(join(apiRoot, 'drizzle', firstMigration, 'migration.sql')),
   );
-  const journal = JSON.parse(readFileSync(join(apiRoot, 'drizzle/meta/_journal.json'), 'utf8'));
-  journal.entries = journal.entries.slice(0, 1);
-  writeFileSync(join(migrations, 'meta/_journal.json'), JSON.stringify(journal));
   const url = `file:${join(directory, 'registry.sqlite')}`;
   let connection = await nativeDb.open({ url, migrationsFolder: migrations });
   t.after(async () => {
@@ -1235,4 +1234,49 @@ test('SQLite connection settings survive repeated index transactions', async (t)
     1,
   );
   assert.equal(await db.cursor(connection), 50);
+});
+
+test('official Node SQLite driver upgrades legacy migration history without replaying applied SQL', async (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'fluentci-legacy-history-'));
+  const path = join(directory, 'registry.sqlite');
+  const legacy = new DatabaseSync(path);
+  legacy.exec(
+    'CREATE TABLE __drizzle_migrations(id INTEGER PRIMARY KEY, hash TEXT NOT NULL, created_at NUMERIC)',
+  );
+  const migrations = fileURLToPath(new URL('../drizzle/', import.meta.url));
+  const names = readdirSync(migrations).sort();
+  for (const [index, name] of names.entries()) {
+    const sql = readFileSync(join(migrations, name, 'migration.sql'), 'utf8');
+    legacy.exec(sql);
+    legacy
+      .prepare('INSERT INTO __drizzle_migrations(hash,created_at) VALUES (?,?)')
+      .run(
+        createHash('sha256').update(sql).digest('hex'),
+        index === 0 ? 1793836800000 : 1793923200000 + index - 1,
+      );
+  }
+  legacy
+    .prepare('INSERT INTO checkpoints(source,time_us) VALUES (?,?)')
+    .run('legacy-source', 123456);
+  legacy.close();
+  let connection;
+  t.after(async () => {
+    if (connection) await db.close(connection);
+    rmSync(directory, { recursive: true, force: true });
+  });
+  connection = await nativeDb.open({ url: `file:${path}`, source: 'legacy-source' });
+  assert.equal(await db.cursor(connection), 123456);
+  const rows = (await connection.client.execute('SELECT name FROM __drizzle_migrations')).rows;
+  assert.deepEqual(rows.map((row) => row.name).sort(), names);
+  await add(connection, event('after-migration'));
+  await db.close(connection);
+  connection = await nativeDb.open({ url: `file:${path}`, source: 'legacy-source' });
+  assert.equal(
+    (await db.get_package(connection, 'after-migration', '', did)).name,
+    'after-migration',
+  );
+  assert.equal(
+    (await connection.client.execute('SELECT name FROM __drizzle_migrations')).rows.length,
+    names.length,
+  );
 });
