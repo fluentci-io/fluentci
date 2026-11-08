@@ -2,6 +2,7 @@
 """Test the Actions environment bridge without running FluentCI or installing tools."""
 
 import importlib.util
+import io
 import json
 from pathlib import Path
 import tempfile
@@ -23,6 +24,36 @@ class SetupEnvironment(unittest.TestCase):
         for invalid in ['failed setup', '{}', '{"environment": []}\ntrailing logs']:
             with self.assertRaises(ValueError):
                 bridge.setup_result(invalid)
+
+    def test_streams_logs_before_setup_finishes_and_hides_environment_json(self):
+        logs = io.StringIO()
+        result = self.result([{'name': 'TOOL_SETTING', 'value': 'not a log'}])
+
+        def source():
+            yield "copying path '/nix/store/fixture' from cache...\n"
+            self.assertIn("copying path", logs.getvalue())
+            yield '{"diagnostic": "Nix progress"}\n'
+            self.assertIn('Nix progress', logs.getvalue())
+            yield "building Cachix...\n"
+            self.assertIn("building Cachix", logs.getvalue())
+            yield json.dumps(result) + '\n'
+
+        self.assertEqual(bridge.stream_result(source(), logs), result)
+        self.assertNotIn('TOOL_SETTING', logs.getvalue())
+        self.assertNotIn('not a log', logs.getvalue())
+
+    def test_streams_failures_without_a_typed_result(self):
+        logs = io.StringIO()
+        with self.assertRaises(ValueError):
+            bridge.stream_result(iter(["building...\n", "error: build failed\n"]), logs)
+        self.assertEqual(logs.getvalue(), "building...\nerror: build failed\n")
+
+    def test_streams_pretty_json_and_recovers_from_json_like_logs(self):
+        logs = io.StringIO()
+        result = self.result()
+        lines = ['{not JSON}\n', *json.dumps(result, indent=2).splitlines(keepends=True)]
+        self.assertEqual(bridge.stream_result(iter(lines), logs), result)
+        self.assertEqual(logs.getvalue(), '{not JSON}\n')
 
     def test_persists_paths_and_tool_environment_without_replacing_runner_path(self):
         with tempfile.TemporaryDirectory() as directory:

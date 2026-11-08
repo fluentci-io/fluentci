@@ -125,6 +125,9 @@ The registry module `setup-cachix@0.2.1` installs Cachix and enables the public
 lookup expects a GitHub Release. Its typed environment result is exported
 to subsequent workflow steps. `CACHIX_AUTH_TOKEN` enables uploads; missing or
 blank tokens skip uploads while Nix builds still run.
+The environment bridge streams host-command logs immediately to the workflow
+console, including Nix downloads and build output, while keeping the final typed
+environment JSON separate. Installing Cachix can take longer on a cold Nix store.
 `nix-build build --cache fluentci` uses Cachix `watch-exec`
 to upload new build paths using the installed `cachix` executable, then pushes the
 final `./result` closure. No local Cachix plugin is compiled or downloaded. Failures

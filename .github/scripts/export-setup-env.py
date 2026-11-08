@@ -22,6 +22,51 @@ def setup_result(text):
     raise ValueError("Setup module did not return a typed environment result")
 
 
+def stream_result(source, logs):
+    """Forward host logs as they arrive; retain only the final typed result."""
+    decoder = json.JSONDecoder()
+    pending = ""
+    result = None
+
+    def emit(text):
+        logs.write(text)
+        logs.flush()
+
+    for line in source:
+        if result is not None:
+            if line.strip():
+                emit(line)
+                raise ValueError("Setup environment result must be the final output")
+            continue
+        if not pending and not line.lstrip().startswith("{"):
+            emit(line)
+            continue
+        # A new top-level JSON record can follow a malformed JSON-like log.
+        if pending and line.startswith("{"):
+            emit(pending)
+            pending = ""
+        pending += line
+        try:
+            value, end = decoder.raw_decode(pending.lstrip())
+        except json.JSONDecodeError:
+            # Bound memory if a command prints a long JSON-like diagnostic.
+            if len(pending) > 1024 * 1024:
+                emit(pending)
+                pending = ""
+            continue
+        if (not pending.lstrip()[end:].strip()
+                and isinstance(value, dict) and "environment" in value):
+            result = value
+        else:
+            emit(pending)
+        pending = ""
+    if pending:
+        emit(pending)
+    if result is None:
+        raise ValueError("Setup module did not return a typed environment result")
+    return result
+
+
 def export(result, environ):
     bin_dir = result.get("bin-dir", result.get("binDir"))
     if not isinstance(bin_dir, str) or not os.path.isabs(bin_dir) or any(c in bin_dir for c in "\r\n\0"):
@@ -63,7 +108,7 @@ def export(result, environ):
 
 def main():
     try:
-        result = setup_result(sys.stdin.read())
+        result = stream_result(sys.stdin, sys.stderr)
         export(result, os.environ)
         print(f"Configured {result.get('tool', 'tool')} {result.get('version', '')}", file=sys.stderr)
     except (ValueError, KeyError, TypeError, AttributeError, OSError) as error:
