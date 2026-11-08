@@ -103,13 +103,13 @@ function selection(connection, q) {
 export { alias };
 export const compareColumns = (left, right, operator) => d[operator](left, right);
 export const notExists = (query) => d.notExists(selection(new QueryBuilder(), query));
-export async function countRows(connection, query) {
+async function countRowsInner(connection, query) {
   const [row] = await connection.db
     .select({ count: d.count() })
     .from(selection(connection.db, query).as('counted_rows'));
   return row.count;
 }
-export async function execute(connection, q) {
+async function executeInner(connection, q) {
   let query;
   if (q.kind === 'select') {
     query = selection(connection.db, q);
@@ -123,15 +123,14 @@ export async function execute(connection, q) {
   }
   return toList(await query);
 }
-// Serialize writers sharing a native connection, including HTTP and Jetstream writes.
-// Separate connections remain coordinated by SQLite's write transaction/timeout.
+// A native libsql connection must not execute unrelated reads while a write
+// transaction is open. This queue covers reads, counts, and writes; statements
+// already inside the transaction bypass it to avoid nested queue deadlocks.
 const transactionTails = new WeakMap();
-export function transaction(connection, run) {
-  const execute = () =>
-    connection.db.transaction((tx) => run({ ...connection, db: tx, inTransaction: true }));
-  if (connection.inTransaction) return execute();
+function serialized(connection, run) {
+  if (connection.inTransaction) return run();
   const key = connection.client;
-  const result = (transactionTails.get(key) ?? Promise.resolve()).then(execute);
+  const result = (transactionTails.get(key) ?? Promise.resolve()).then(run);
   transactionTails.set(
     key,
     result.then(
@@ -140,6 +139,17 @@ export function transaction(connection, run) {
     ),
   );
   return result;
+}
+export function execute(connection, query) {
+  return serialized(connection, () => executeInner(connection, query));
+}
+export function countRows(connection, query) {
+  return serialized(connection, () => countRowsInner(connection, query));
+}
+export function transaction(connection, run) {
+  return serialized(connection, () =>
+    connection.db.transaction((tx) => run({ ...connection, db: tx, inTransaction: true })),
+  );
 }
 
 export const notCondition = d.not;

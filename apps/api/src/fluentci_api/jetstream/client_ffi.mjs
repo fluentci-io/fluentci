@@ -207,23 +207,48 @@ export function start(connection, ingest, options = {}) {
     worker.failed = false;
     const socket = new WebSocket(url, { maxPayload: 2 * 1024 * 1024 });
     worker.socket = socket;
+    let alive = true;
+    const heartbeat = setInterval(() => {
+      if (socket.readyState !== WebSocket.OPEN || socket.isPaused) return;
+      if (!alive) {
+        socket.terminate();
+        return;
+      }
+      alive = false;
+      socket.ping();
+    }, options.heartbeatMs ?? 30_000);
+    heartbeat.unref();
+    socket.on('pong', () => {
+      alive = true;
+    });
     socket.on('open', () => {
       worker.attempt = 0;
       console.info(`Jetstream connected: ${url.host}`);
     });
     socket.on('message', (bytes) => {
       if (stopped || worker.failed) return;
-      if (worker.queued >= 1000) {
-        worker.failed = true;
-        socket.terminate();
-        return;
-      }
+      alive = true;
       worker.queued++;
+      if (worker.queued >= (options.highWaterMark ?? 128)) socket.pause();
       processing = processing
         .then(async () => {
           if (worker.failed) return;
           try {
-            await ingest(scoped, bytes.toString());
+            // A hung native SQLite operation cannot safely be abandoned while
+            // continuing on the same connection. Fail fast so systemd restarts
+            // with a fresh connection and resumes from the durable checkpoint.
+            const watchdog = setTimeout(() => {
+              console.error(
+                `Jetstream ingestion stalled for ${url.host}; restarting for checkpoint recovery`,
+              );
+              if (options.onStall) options.onStall();
+              else process.exit(1);
+            }, options.ingestTimeoutMs ?? 60_000);
+            try {
+              await ingest(scoped, bytes.toString());
+            } finally {
+              clearTimeout(watchdog);
+            }
           } catch (error) {
             worker.failed = true;
             console.error('Index failed; replaying source from durable checkpoint:', error.message);
@@ -232,10 +257,15 @@ export function start(connection, ingest, options = {}) {
         })
         .finally(() => {
           worker.queued--;
+          if (worker.queued < (options.lowWaterMark ?? 64) && socket.readyState === WebSocket.OPEN)
+            socket.resume();
         });
     });
     socket.on('error', (error) => console.error('Jetstream:', error.message));
-    socket.on('close', () => schedule(worker));
+    socket.on('close', () => {
+      clearInterval(heartbeat);
+      schedule(worker);
+    });
   };
   for (const worker of workers)
     connect(worker).catch((error) => {

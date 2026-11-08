@@ -1157,3 +1157,67 @@ test('publisher profiles page distinct modules with exact totals and query-bound
   assert.equal(data.total, 2);
   assert.equal(data.packages[0].version, '2.0.0');
 });
+
+test('HTTP reads wait for the shared native transaction and inner queries do not deadlock', async () => {
+  const orm = await import('../build/dev/javascript/fluentci_api/fluentci_api/drizzle/orm_ffi.mjs');
+  let release;
+  const held = new Promise((resolve) => {
+    release = resolve;
+  });
+  let statements = 0;
+  const native = {
+    transaction: async (run) => run(native),
+    update: () => {
+      statements++;
+      return { set: () => ({ where: () => ({ returning: () => Promise.resolve([]) }) }) };
+    },
+  };
+  const connection = { client: {}, db: native };
+  const query = { kind: 'update', table: {}, values: {}, where: undefined };
+  const writer = orm.transaction(connection, async (tx) => {
+    await orm.execute(tx, query);
+    await held;
+  });
+  const reader = orm.execute(connection, query);
+  await new Promise((resolve) => setTimeout(resolve, 10));
+  assert.equal(statements, 1);
+  release();
+  await Promise.all([writer, reader]);
+  assert.equal(statements, 2);
+  await assert.rejects(
+    orm.transaction(connection, async () => {
+      throw Error('rollback');
+    }),
+  );
+  await orm.execute(connection, query);
+  assert.equal(statements, 3);
+});
+
+test('Jetstream drains a large replay with backpressure rather than dropping its pending queue', async (t) => {
+  const connection = await fixture(t);
+  const ws = new WebSocketServer({ port: 0, host: '127.0.0.1' });
+  await once(ws, 'listening');
+  const source = `ws://127.0.0.1:${ws.address().port}/`;
+  ws.on('connection', (socket) => {
+    for (let time = 1; time <= 1500; time++)
+      socket.send(JSON.stringify({ did, kind: 'identity', time_us: time }));
+  });
+  const stop = wire.start(
+    connection,
+    async (db, message) => {
+      await new Promise((resolve) => setTimeout(resolve, 1));
+      await ingest(db, message);
+    },
+    { url: source, highWaterMark: 16, lowWaterMark: 8 },
+  );
+  t.after(async () => {
+    stop();
+    await stop.drain();
+    for (const client of ws.clients) client.terminate();
+    await new Promise((resolve) => ws.close(resolve));
+  });
+  const deadline = Date.now() + 20_000;
+  while (Date.now() < deadline && (await db.cursor({ ...connection, source })) !== 1500)
+    await new Promise((resolve) => setTimeout(resolve, 25));
+  assert.equal(await db.cursor({ ...connection, source }), 1500);
+});
