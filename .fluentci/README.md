@@ -120,8 +120,10 @@ reusable Cargo dependencies. It skips cleanup outside GitHub Actions.
 
 ## Cachix and Nix publishing
 
-The registry module `setup-cachix@v0.2.1` installs Cachix and enables the public
-`fluentci` cache with `--cache fluentci`. Its typed environment result is exported
+The registry module `setup-cachix@0.2.1` installs Cachix and enables the public
+`fluentci` cache with `--cache fluentci`. Pin the upstream Cachix version with
+`--version 1.14.0`: Cachix publishes Git tags, while this plugin's default `latest`
+lookup expects a GitHub Release. Its typed environment result is exported
 to subsequent workflow steps. `CACHIX_AUTH_TOKEN` enables uploads; missing or
 blank tokens skip uploads while Nix builds still run.
 `nix-build build --cache fluentci` uses Cachix `watch-exec`
@@ -129,7 +131,7 @@ to upload new build paths, then pushes the final `./result` closure. Failures
 propagate. The cache name is a named argument; the token is never a CLI argument.
 
 ```sh
-fluentci run setup-cachix@v0.2.1 setup --cache fluentci
+fluentci run setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci
 fluentci run nix-build build --cache fluentci
 fluentci run cachix push --cache fluentci
 fluentci run nix flakehub --version v0.17.2

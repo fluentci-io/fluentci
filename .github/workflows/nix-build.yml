@@ -92,7 +92,9 @@ jobs:
         shell: bash
         env:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
-        run: fluentci --check-update=false run setup-cachix@v0.2.1 setup --cache fluentci | python3 .github/scripts/export-setup-env.py
+        # Cachix publishes source tags, not GitHub Releases; pin the upstream
+        # version to bypass this plugin's releases/latest lookup.
+        run: fluentci --check-update=false run setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci | python3 .github/scripts/export-setup-env.py
       - name: Build Nix package and upload cache through FluentCI
         env:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
