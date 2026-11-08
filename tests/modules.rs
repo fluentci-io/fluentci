@@ -220,7 +220,15 @@ fn clojurescript_module_embeds_checked_sdk_and_renames_locked_package() -> anyho
     success(&cli(
         &root,
         &root,
-        &["modules", "add", "typed-ci", "--sdk", "clojurescript"],
+        &[
+            "modules",
+            "add",
+            "typed-ci",
+            "--sdk",
+            "clojurescript",
+            "--runtime",
+            "extism",
+        ],
     )?);
     let module = root.join(".fluentci/typed-ci");
     for file in [

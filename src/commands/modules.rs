@@ -1,5 +1,15 @@
-use crate::{cli::ModuleCommand, modules};
+use crate::{cli::ModuleCommand, config::ModuleRuntime, modules};
 use anyhow::Result;
+
+fn added_runtime(runtime: Option<ModuleRuntime>, existing: bool) -> ModuleRuntime {
+    runtime.unwrap_or(if existing {
+        // An unspecified legacy runtime permits binary detection of either ABI
+        // and preserves existing source build settings.
+        ModuleRuntime::Extism
+    } else {
+        ModuleRuntime::Component
+    })
+}
 
 pub(super) async fn execute(
     command: Option<ModuleCommand>,
@@ -34,6 +44,7 @@ pub(super) async fn execute(
             url,
             entry,
         }) => {
+            let runtime = added_runtime(runtime, path.is_some() || url.is_some());
             modules::add(
                 &name,
                 sdk,
@@ -45,5 +56,21 @@ pub(super) async fn execute(
             .await
         }
         None => modules::inspect(name, json).await,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn registration_keeps_detection_and_creation_defaults_to_components() {
+        assert_eq!(added_runtime(None, false), ModuleRuntime::Component);
+        assert_eq!(added_runtime(None, true), ModuleRuntime::Extism);
+        for existing in [false, true] {
+            for runtime in [ModuleRuntime::Component, ModuleRuntime::Extism] {
+                assert_eq!(added_runtime(Some(runtime), existing), runtime);
+            }
+        }
     }
 }

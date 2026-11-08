@@ -383,6 +383,10 @@ New modules created with `fluentci init` or `fluentci modules add` default to
 module. For compatibility, an existing manifest that omits `runtime` is still read
 as `runtime = "extism"`. Set the field explicitly when migrating existing source.
 
+Registering existing Wasm with `modules add --path` or `--url` preserves automatic
+binary runtime detection unless `--runtime` is explicitly provided. The component
+creation default applies when generating a new source module.
+
 ```toml
 [[modules]]
 name = "tools"

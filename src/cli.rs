@@ -389,9 +389,9 @@ pub enum ModuleCommand {
         /// SDK used by the module
         #[arg(long, value_enum, default_value = "rust")]
         sdk: Sdk,
-        /// Wasm ABI used by the module (supported by every SDK)
-        #[arg(long, value_enum, default_value = "component")]
-        runtime: ModuleRuntime,
+        /// Wasm ABI override; new modules default to component, existing Wasm auto-detects
+        #[arg(long, value_enum)]
+        runtime: Option<ModuleRuntime>,
         /// Register an existing module instead of generating one
         #[arg(long, conflicts_with = "url")]
         path: Option<PathBuf>,

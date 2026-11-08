@@ -29,16 +29,34 @@ fn new_modules_default_to_components_and_allow_explicit_extism() {
                 .concat();
                 let parsed = Cli::try_parse_from(args).unwrap();
                 let runtime = match parsed.command.unwrap() {
-                    Command::Init { runtime, .. }
-                    | Command::Modules {
+                    Command::Init { runtime, .. } => runtime,
+                    Command::Modules {
                         command: Some(ModuleCommand::Add { runtime, .. }),
                         ..
-                    } => runtime,
+                    } => runtime.unwrap_or(ModuleRuntime::Component),
                     _ => panic!("Expected a module creation command"),
                 };
                 assert_eq!(runtime, expected);
             }
         }
+    }
+}
+
+#[test]
+fn existing_module_registration_leaves_runtime_detection_enabled() {
+    for source in [
+        vec!["--path", "existing.wasm"],
+        vec!["--url", "https://example.com/existing.wasm"],
+    ] {
+        let args = [vec!["fluentci", "modules", "add", "existing"], source].concat();
+        let parsed = Cli::try_parse_from(args).unwrap();
+        assert!(matches!(
+            parsed.command,
+            Some(Command::Modules {
+                command: Some(ModuleCommand::Add { runtime: None, .. }),
+                ..
+            })
+        ));
     }
 }
 
