@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import re
 import subprocess
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 ENGINE = ROOT / 'engine' if (ROOT / 'engine/crates').is_dir() else ROOT
@@ -208,7 +209,13 @@ for crate in ['types','primitives']:
 args=argparse.ArgumentParser();args.add_argument('--check',action='store_true');options=args.parse_args()
 for path,content in outputs.items():
     if path.suffix == '.rs':
-        content = subprocess.run(['rustfmt', '--edition', '2021', '--emit', 'stdout'], input=content, text=True, capture_output=True, check=True).stdout
+        try:
+            formatted = subprocess.run(['rustfmt', '--edition', '2021', '--emit', 'stdout'], input=content, text=True, capture_output=True)
+        except FileNotFoundError:
+            sys.exit('rustfmt is required: run rustup component add rustfmt')
+        if formatted.returncode:
+            sys.exit(f'rustfmt failed for {path.relative_to(ROOT)}:\n{formatted.stderr}\nEnsure rustfmt is installed: rustup component add rustfmt')
+        content = formatted.stdout
     if options.check:
         assert path.read_text()==content, f'Regenerate {path.relative_to(ROOT)}'
     else:

@@ -81,8 +81,9 @@ jobs:
       - name: Set up determinate-nix through FluentCI
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-determinate-nix@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --sudo | python3 .github/scripts/export-setup-env.py
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-determinate-nix@v0.2.1)
+          trusted_users=$(printf '["%s"]' "$(id -un)")
+          fluentci --check-update=false run --wasm "$module_artifact" setup --sudo --trusted-users "$trusted_users" | python3 .github/scripts/export-setup-env.py
       - uses: actions/download-artifact@v4
         with:
           name: nix-ci-wasm

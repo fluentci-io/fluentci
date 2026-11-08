@@ -56,12 +56,8 @@ jobs:
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-rust@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version stable | python3 .github/scripts/export-setup-env.py
-      - name: Configure Rust components and targets
-        shell: bash
-        run: |
-          rustup target add wasm32-wasip2
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-rust@v0.2.1)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --toolchain stable --components '["rustfmt"]' --targets '["wasm32-wasip2"]' | python3 .github/scripts/export-setup-env.py
       - uses: Swatinem/rust-cache@v2
         with:
           key: components-release-no-lto
