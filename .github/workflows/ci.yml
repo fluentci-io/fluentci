@@ -32,10 +32,12 @@ jobs:
           curl -fsSL https://cli.fluentci.io | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Test setup environment handoff
-        run: python3 .github/scripts/test-setup-env.py
+        run: python3 .github/scripts/test-setup-env.py && python3 .github/scripts/test-registry-artifact.py
       - name: Set up rust through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-rust@v0.2.0 setup --version stable | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-rust@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version stable | python3 .github/scripts/export-setup-env.py
       - name: Configure Rust components and targets
         shell: bash
         run: |
@@ -43,16 +45,22 @@ jobs:
           rustup target add wasm32-unknown-unknown wasm32-wasip2
       - name: Set up bun through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-bun@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Set up node through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-node@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
       - uses: Swatinem/rust-cache@v2
         with:
           key: ci-release-tests-no-lto
       - name: Set up purescript through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-purescript@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Verify the Wasm compiler toolchain by building modules
         run: fluentci --check-update=false modules --json
       - name: Verify compiled CI component interfaces
@@ -91,10 +99,14 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Set up bun through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-bun@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Set up node through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-node@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Lint, typecheck, and build documentation
@@ -129,7 +141,9 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Set up bun through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-bun@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Lint, typecheck, and build the landing page
@@ -164,10 +178,14 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Set up bun through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-bun@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Set up node through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-node@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Lint, typecheck, test, and bundle the Worker
@@ -186,16 +204,24 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Set up bun through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-bun@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Set up node through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-node@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
       - name: Set up gleam through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-gleam@v0.2.0 setup --version 1.19.2 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-gleam@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.19.2 | python3 .github/scripts/export-setup-env.py
       - name: Set up pkl through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-pkl@v0.2.0 setup --version 0.31.1 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-pkl@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 0.31.1 | python3 .github/scripts/export-setup-env.py
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Check generated lexicons and formatting

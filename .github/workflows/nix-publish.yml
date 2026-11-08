@@ -47,7 +47,9 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: nix-setup-environment-${{ inputs.registry }}
-          path: .github/scripts/export-setup-env.py
+          path: |
+            .github/scripts/export-setup-env.py
+            .github/scripts/registry-artifact.py
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
@@ -77,15 +79,21 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Set up determinate-nix through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-determinate-nix@v0.2.0 setup --sudo | python3 "$RUNNER_TEMP/nix-setup/export-setup-env.py"
+        run: |
+          module_artifact=$(python3 "$RUNNER_TEMP/nix-setup/registry-artifact.py" setup-determinate-nix@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --sudo | python3 "$RUNNER_TEMP/nix-setup/export-setup-env.py"
       - name: Set up FlakeHub publisher through FluentCI
         if: inputs.registry == 'flakehub'
         shell: bash
-        run: fluentci --check-update=false run setup-flakehub-push@v0.2.0 setup | python3 "$RUNNER_TEMP/nix-setup/export-setup-env.py"
+        run: |
+          module_artifact=$(python3 "$RUNNER_TEMP/nix-setup/registry-artifact.py" setup-flakehub-push@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup | python3 "$RUNNER_TEMP/nix-setup/export-setup-env.py"
       - name: Set up Bun for Flakestry through FluentCI
         if: inputs.registry == 'flakestry'
         shell: bash
-        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 "$RUNNER_TEMP/nix-setup/export-setup-env.py"
+        run: |
+          module_artifact=$(python3 "$RUNNER_TEMP/nix-setup/registry-artifact.py" setup-bun@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.4.3 | python3 "$RUNNER_TEMP/nix-setup/export-setup-env.py"
       - name: Publish tagged flake through PureScript Wasm
         env:
           REGISTRY: ${{ inputs.registry }}
@@ -97,8 +105,9 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
         run: |
+          module_artifact=$(python3 "$RUNNER_TEMP/nix-setup/registry-artifact.py" nix-publish@v0.2.0)
           if [ "$REGISTRY" = flakestry ]; then
-            fluentci --check-update=false run nix-publish@v0.2.0 flakestry --run-dir "$RUNNER_TEMP/flakestry-$GITHUB_RUN_ATTEMPT" --version "$VERSION" --ref "$REF" --timeout-ms 2400000
+            fluentci --check-update=false run --wasm "$module_artifact" flakestry --run-dir "$RUNNER_TEMP/flakestry-$GITHUB_RUN_ATTEMPT" --version "$VERSION" --ref "$REF" --timeout-ms 2400000
           else
-            fluentci --check-update=false run nix-publish@v0.2.0 flakehub --run-dir "$RUNNER_TEMP/flakehub-$GITHUB_RUN_ATTEMPT" --name "$GITHUB_REPOSITORY" --version "$RELEASE_VERSION" --timeout-ms 2400000
+            fluentci --check-update=false run --wasm "$module_artifact" flakehub --run-dir "$RUNNER_TEMP/flakehub-$GITHUB_RUN_ATTEMPT" --name "$GITHUB_REPOSITORY" --version "$RELEASE_VERSION" --timeout-ms 2400000
           fi

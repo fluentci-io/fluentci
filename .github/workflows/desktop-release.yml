@@ -39,10 +39,14 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Set up node through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-node@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
       - name: Set up purescript through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-purescript@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Compile the desktop module with FluentCI
         run: fluentci --check-update=false modules desktop --json
       - name: Verify desktop packaging and cleanup safeguards
@@ -86,17 +90,23 @@ jobs:
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
       - name: Set up rust through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-rust@v0.2.0 setup --version stable | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-rust@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version stable | python3 .github/scripts/export-setup-env.py
       - name: Configure Rust components and targets
         shell: bash
         run: |
           rustup target add ${{ matrix.target }}
       - name: Set up bun through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-bun@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Set up node through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+        run: |
+          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-node@v0.2.0)
+          fluentci --check-update=false run --wasm "$module_artifact" setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
       - uses: actions/download-artifact@v4
         with:
           name: desktop-release-module
