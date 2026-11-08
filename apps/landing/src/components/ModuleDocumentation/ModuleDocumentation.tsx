@@ -41,7 +41,7 @@ export function ModuleDocumentation({
       <div
         role="tablist"
         aria-label="Module documentation"
-        className="flex gap-6 border-b border-line"
+        className="sticky top-0 z-20 flex gap-6 border-b border-line bg-paper pt-3"
       >
         {["README", "Docs"].map((label, index) => (
           <button

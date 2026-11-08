@@ -51,6 +51,18 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
     page.getByRole("heading", { name: "FluentCI", exact: true }),
   ).toBeVisible();
   await expect(page.getByText("@fluentci.io", { exact: true })).toBeVisible();
+  const bluesky = page.getByRole("link", { name: "@fluentci.io", exact: true });
+  await expect(bluesky).toHaveAttribute(
+    "href",
+    "https://bsky.app/profile/fluentci.io",
+  );
+  await expect(bluesky).toHaveAttribute("target", "_blank");
+  const pdsls = page.getByRole("link", { name: "PDSls", exact: true });
+  await expect(pdsls).toHaveAttribute(
+    "href",
+    `https://pdsls.dev/at://${author.did}`,
+  );
+  await expect(pdsls).toHaveAttribute("target", "_blank");
   await expect(page.getByLabel("22 published modules")).toBeVisible();
   await expect(page.locator(".publisher-avatar img")).toHaveAttribute(
     "src",
@@ -58,18 +70,31 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
   );
   await page.getByRole("link", { name: /module-19 / }).scrollIntoViewIfNeeded();
   await expect(page.getByRole("link", { name: /module-21 / })).toBeVisible();
+  const filter = page.getByRole("searchbox", {
+    name: "Filter published modules",
+  });
+  await expect
+    .poll(async () =>
+      Math.abs((await filter.locator("..").locator("..").boundingBox())!.y),
+    )
+    .toBeLessThan(1);
   expect(
     requests.some((url) => url.searchParams.get("cursor") === "next-page"),
   ).toBeTruthy();
-  await page
-    .getByRole("searchbox", { name: "Filter published modules" })
-    .fill("module-21");
+  await page.keyboard.press("f");
+  await expect(filter).toBeFocused();
+  await filter.fill("module-21");
   await expect(
     page.locator(".publisher-module").filter({ has: page.locator("h3") }),
   ).toHaveCount(1);
   await expect(page.getByLabel("22 published modules")).toBeVisible();
   expect(requests.at(-1)?.searchParams.get("q")).toBe("module-21");
   expect(requests.at(-1)?.searchParams.get("latest")).toBe("true");
+  await page.keyboard.press("f");
+  await expect(filter).toHaveValue("module-21f");
+  await page.keyboard.press("Escape");
+  await expect(filter).toHaveValue("");
+  await expect(filter).not.toBeFocused();
   await page.goto(`/${author.did}`);
   await expect(
     page.getByRole("heading", { name: "FluentCI", exact: true }),

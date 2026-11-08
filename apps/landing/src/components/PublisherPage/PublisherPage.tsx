@@ -23,6 +23,29 @@ export function PublisherPage() {
   const { items, total, loading, error, hasMore, loadMore, retry } =
     usePublisherModules(actor, search);
   const sentinel = useRef<HTMLDivElement>(null);
+  const filterInput = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    function focusFilter(event: KeyboardEvent) {
+      if (
+        event.key.toLowerCase() !== "f" ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        document.querySelector("dialog[open]") ||
+        (event.target instanceof HTMLElement &&
+          event.target.closest(
+            "input, textarea, select, [contenteditable]:not([contenteditable=false])",
+          ))
+      )
+        return;
+      if (filterInput.current) {
+        event.preventDefault();
+        filterInput.current.focus();
+      }
+    }
+    document.addEventListener("keydown", focusFilter);
+    return () => document.removeEventListener("keydown", focusFilter);
+  }, []);
   useEffect(() => {
     const abort = new AbortController();
     setProfile(undefined);
@@ -49,6 +72,7 @@ export function PublisherPage() {
   const identity = profile?.handle ?? actor;
   const name = profile?.displayName?.trim() || identity;
   const avatar = httpUrl(profile?.avatar);
+  const did = profile?.did ?? (actor.startsWith("did:") ? actor : undefined);
   return (
     <>
       <SiteHeader />
@@ -70,9 +94,26 @@ export function PublisherPage() {
             <h1 className="break-words text-2xl font-medium tracking-tight sm:text-3xl">
               {name}
             </h1>
-            <p className="mt-2 break-all font-mono text-sm text-muted">
-              {identity.startsWith("did:") ? identity : `@${identity}`}
-            </p>
+            <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 font-mono text-sm text-muted">
+              <a
+                className="break-all transition-colors hover:text-ink"
+                href={`https://bsky.app/profile/${encodeURIComponent(identity)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {identity.startsWith("did:") ? identity : `@${identity}`}
+              </a>
+              {did && (
+                <a
+                  className="text-link text-xs"
+                  href={`https://pdsls.dev/at://${did}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  PDSls <span aria-hidden="true">↗</span>
+                </a>
+              )}
+            </div>
             {profile?.description && (
               <p className="mt-4 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-muted">
                 {profile.description}
@@ -81,7 +122,7 @@ export function PublisherPage() {
           </div>
         </div>
         <section aria-label="Published modules" className="mt-12">
-          <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-5">
+          <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 border-b border-line bg-paper py-5">
             <h2 className="text-lg font-medium">
               Modules{" "}
               {total !== undefined && (
@@ -97,12 +138,26 @@ export function PublisherPage() {
               <SearchIcon />
               <span className="sr-only">Filter published modules</span>
               <input
+                ref={filterInput}
                 type="search"
+                aria-keyshortcuts="f"
                 placeholder="Filter modules…"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") {
+                    setSearch("");
+                    event.currentTarget.blur();
+                  }
+                }}
                 autoComplete="off"
               />
+              <kbd
+                className="rounded border border-line px-1.5 font-mono text-[10px]"
+                aria-hidden="true"
+              >
+                F
+              </kbd>
             </label>
           </div>
           <div className="publisher-modules" aria-busy={loading}>
