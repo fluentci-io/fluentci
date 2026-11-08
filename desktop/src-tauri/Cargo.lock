@@ -3898,6 +3898,7 @@ dependencies = [
  "clap 4.6.7",
  "dirs 6.0.0",
  "dotenvy",
+ "flate2",
  "fluentci-engine",
  "fluentci-ext",
  "futures-util",
