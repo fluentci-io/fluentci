@@ -1,0 +1,41 @@
+name: npm CLI package
+
+on:
+  push:
+    branches: [main]
+    paths: ["npm/**", ".github/workflows/npm.yml", ".github/scripts/export-setup-env.py"]
+  pull_request:
+    paths: ["npm/**", ".github/workflows/npm.yml", ".github/scripts/export-setup-env.py"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  FLUENTCI_VERSION: 'v0.17.3'
+
+jobs:
+  test:
+    name: npm wrapper (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, macos-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Bootstrap FluentCI
+        shell: bash
+        run: |
+          curl -fsSL https://cli.fluentci.io | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Set up Node.js through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+      - name: Test installer and executable wrapper with fixtures
+        working-directory: npm
+        run: npm test
+      - name: Inspect publishable package contents
+        working-directory: npm
+        run: npm pack --dry-run --ignore-scripts

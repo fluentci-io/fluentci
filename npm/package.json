@@ -1,0 +1,31 @@
+{
+  "name": "@fluentci/cli",
+  "version": "0.17.3",
+  "description": "FluentCI CLI: typed, composable CI/CD pipelines powered by WebAssembly.",
+  "type": "module",
+  "bin": {
+    "fluentci": "bin/fluentci.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "os": ["darwin", "linux", "freebsd", "netbsd", "openbsd"],
+  "cpu": ["x64", "arm64"],
+  "files": ["bin/", "lib/", "install.mjs", "README.md", "LICENSE"],
+  "scripts": {
+    "postinstall": "node install.mjs",
+    "test": "node --test test/*.test.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fluentci-io/fluentci.git",
+    "directory": "npm"
+  },
+  "homepage": "https://fluentci.io",
+  "bugs": "https://github.com/fluentci-io/fluentci/issues",
+  "license": "MPL-2.0",
+  "keywords": ["fluentci", "cli", "ci", "cd", "wasm", "pipelines"],
+  "publishConfig": {
+    "access": "public"
+  }
+}
