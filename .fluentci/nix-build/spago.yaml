@@ -1,6 +1,6 @@
 package:
   name: fluentci-ci-nix-build
-  dependencies: [effect, either, fluentci, prelude, foldable-traversable, fluentci-ci-common, strings]
+  dependencies: [effect, either, fluentci, prelude, foldable-traversable, fluentci-ci-common, fluentci-ci-cachix]
 workspace:
   packageSet:
     registry: 81.11.0
@@ -10,3 +10,5 @@ workspace:
       ref: 954d03568935c26f92434119a110635a41a6fa4c
     fluentci-ci-common:
       path: ../common
+    fluentci-ci-cachix:
+      path: ../cachix

@@ -86,7 +86,6 @@ if (command === "bun" && process.argv[2] === "run") {
     "bun",
     "gh",
     "nix",
-    "cachix",
     "flakehub-push",
     "sudo",
     "python3",
@@ -581,9 +580,18 @@ test("Nix builds watch and push store paths when Cachix authentication is config
     f.run("nix-build", "build", { CACHIX_AUTH_TOKEN: "test-only-token" }),
   );
   const commands = f.commands().map(({ command, args }) => [command, ...args]);
+  const prefix = [
+    "nix",
+    "run",
+    "--no-write-lock-file",
+    "--inputs-from",
+    ".",
+    "nixpkgs#cachix",
+    "--",
+  ];
   assert.deepEqual(commands, [
     [
-      "cachix",
+      ...prefix,
       "watch-exec",
       "fluentci",
       "--",
@@ -592,7 +600,7 @@ test("Nix builds watch and push store paths when Cachix authentication is config
       "--no-write-lock-file",
       ".#fluentci",
     ],
-    ["cachix", "push", "fluentci", "./result"],
+    [...prefix, "push", "fluentci", "./result"],
   ]);
   assert.ok(!JSON.stringify(commands).includes("test-only-token"));
 });
@@ -602,7 +610,7 @@ test("failed watched Nix builds stop before the final cache push", (t) => {
   assert.notEqual(
     f.run("nix-build", "build", {
       CACHIX_AUTH_TOKEN: "test-only-token",
-      CI_TEST_FAIL: "cachix:watch-exec",
+      CI_TEST_FAIL: "nix:run",
     }).status,
     0,
   );
@@ -611,20 +619,20 @@ test("failed watched Nix builds stop before the final cache push", (t) => {
 
 test("component help exposes documented named arguments and validates them before effects", (t) => {
   const f = fixture(t);
-  const module = join(root, ".fluentci/nix-build/dist/plugin.wasm");
-  const help = f.run(module, "build", {}, ["--help"]);
+  const module = join(root, ".fluentci/cachix/dist/plugin.wasm");
+  const help = f.run(module, "setup", {}, ["--help"]);
   success(help);
   assert.match(help.stdout, /--cache/);
   assert.match(help.stdout, /Cachix cache name/);
   assert.match(help.stdout, /Returns: unit/);
   for (const args of [[], ["--unknown", "value"]]) {
-    assert.notEqual(f.run(module, "build", {}, args).status, 0);
+    assert.notEqual(f.run(module, "setup", {}, args).status, 0);
   }
   assert.deepEqual(f.commands(), []);
   success(
     f.run(
       module,
-      "build",
+      "setup",
       {
         CACHIX_AUTH_TOKEN: "test-only-token",
         CACHIX_CACHE: "ignored-env-cache",
@@ -637,7 +645,7 @@ test("component help exposes documented named arguments and validates them befor
       .commands()
       .some(
         ({ command, args }) =>
-          command === "cachix" && args.includes("explicit-cache"),
+          command === "nix" && args.includes("explicit-cache"),
       ),
   );
   assert.ok(!JSON.stringify(f.commands()).includes("ignored-env-cache"));

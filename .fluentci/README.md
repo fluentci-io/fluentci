@@ -52,6 +52,7 @@ such as target, version, and cache is explicit; tokens stay in the environment.
 | `desktop`   | `build`, `clean`, `sign`, `package`, `upload`                                                                                                         | macOS Studio releases                      |
 | `nix`       | `check`, `metadata`, `flakehub`, `flakestry`                                                                                                          | Nix checks and publication                 |
 | `nix-build` | `build`                                                                                                                                               | Nix build with Cachix uploads              |
+| `cachix`    | `setup`, `push`                                                                                                                                       | Cache configuration and result uploads     |
 | `gemfury`   | `dependencies`, `package`, `upload`, `github`                                                                                                         | Debian/RPM packages and publication        |
 
 ## Build and test
@@ -129,8 +130,11 @@ The environment bridge streams host-command logs immediately to the workflow
 console, including Nix downloads and build output, while keeping the final typed
 environment JSON separate. Installing Cachix can take longer on a cold Nix store.
 `nix-build build --cache fluentci` uses Cachix `watch-exec`
-to upload new build paths using the installed `cachix` executable, then pushes the
-final `./result` closure. No local Cachix plugin is compiled or downloaded. Failures
+to upload new build paths through the local `CI.Cachix` helper, then pushes the
+final `./result` closure. The local `cachix` module is compiled alongside `nix-build`;
+the registry setup module configures the workflow environment. Both Wasm artifacts
+are staged with explicit relative paths before upload and checked after download.
+Failures
 propagate. The cache name is a named argument; the token is never a CLI argument.
 
 ```sh

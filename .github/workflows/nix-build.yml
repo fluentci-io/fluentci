@@ -17,7 +17,7 @@ env:
 
 jobs:
   prepare:
-    name: Compile Nix build Wasm module
+    name: Compile Nix and Cachix Wasm modules
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -41,11 +41,22 @@ jobs:
           npm ci --ignore-scripts
           npm run build
           npm test
+      - name: Compile and test Cachix module
+        working-directory: .fluentci/cachix
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+          npm test
+      - name: Stage CI modules with explicit relative paths
+        shell: bash
+        run: |
+          mkdir -p "$RUNNER_TEMP/nix-ci-wasm/nix-build/dist" "$RUNNER_TEMP/nix-ci-wasm/cachix/dist"
+          cp .fluentci/nix-build/dist/plugin.wasm "$RUNNER_TEMP/nix-ci-wasm/nix-build/dist/plugin.wasm"
+          cp .fluentci/cachix/dist/plugin.wasm "$RUNNER_TEMP/nix-ci-wasm/cachix/dist/plugin.wasm"
       - uses: actions/upload-artifact@v4
         with:
           name: nix-ci-wasm
-          path: |
-            .fluentci/nix-build/dist/plugin.wasm
+          path: ${{ runner.temp }}/nix-ci-wasm
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
@@ -81,6 +92,11 @@ jobs:
         with:
           name: nix-ci-wasm
           path: .fluentci
+      - name: Check downloaded CI module paths
+        shell: bash
+        run: |
+          test -s .fluentci/nix-build/dist/plugin.wasm
+          test -s .fluentci/cachix/dist/plugin.wasm
       - name: Set up Cachix through FluentCI
         shell: bash
         env:
