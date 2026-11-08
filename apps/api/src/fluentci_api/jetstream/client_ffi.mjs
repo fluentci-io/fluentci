@@ -163,7 +163,8 @@ export function decodeEvent(message) {
     return new GError(error.message);
   }
 }
-// A shared queue serializes SQLite writes; failure and replay are isolated per source.
+// Live subscriptions start at the head while independent historical subscriptions
+// resume durable cursors. Both use the same deduplication and timestamp ordering.
 export function start(connection, ingest, options = {}) {
   if (process.env.JETSTREAM_ENABLED === 'false' && !options.url && !options.urls) return () => {};
   const urls = [
@@ -175,14 +176,20 @@ export function start(connection, ingest, options = {}) {
   ];
   let stopped = false;
   let processing = Promise.resolve();
-  const workers = urls.map((source) => ({
-    source,
-    socket: null,
-    timer: null,
-    attempt: 0,
-    queued: 0,
-    failed: false,
-  }));
+  const startedAt = Date.now() * 1000 - 10_000_000;
+  const workers = urls.flatMap((url) =>
+    (options.live === false ? [false] : [true, false]).map((live) => ({
+      url,
+      source: live ? `live:${url}` : url,
+      live,
+      opened: false,
+      socket: null,
+      timer: null,
+      attempt: 0,
+      queued: 0,
+      failed: false,
+    })),
+  );
   const schedule = (worker) => {
     if (stopped || worker.timer) return;
     const delay =
@@ -199,9 +206,9 @@ export function start(connection, ingest, options = {}) {
     await processing;
     if (stopped) return;
     const scoped = { ...connection, source: worker.source };
-    const saved = await cursor(scoped);
+    const saved = worker.live && !worker.opened ? startedAt : await cursor(scoped);
     if (stopped) return;
-    const url = new URL(worker.source);
+    const url = new URL(worker.url);
     url.searchParams.set('wantedCollections', COLLECTION);
     if (saved) url.searchParams.set('cursor', String(Math.max(0, saved - 10_000_000)));
     worker.failed = false;
@@ -223,7 +230,8 @@ export function start(connection, ingest, options = {}) {
     });
     socket.on('open', () => {
       worker.attempt = 0;
-      console.info(`Jetstream connected: ${url.host}`);
+      worker.opened = true;
+      console.info(`Jetstream ${worker.live ? 'live' : 'replay'} connected: ${url.host}`);
     });
     socket.on('message', (bytes) => {
       if (stopped || worker.failed) return;

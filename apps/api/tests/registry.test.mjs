@@ -348,7 +348,10 @@ test('Jetstream subscribes to the collection and indexes a real WebSocket messag
     query = new URL(request.url, 'http://localhost');
     socket.send(JSON.stringify(event('socket-plugin', '1.0.0', 123)));
   });
-  const stop = wire.start(connection, ingest, { url: `ws://127.0.0.1:${ws.address().port}` });
+  const stop = wire.start(connection, ingest, {
+    url: `ws://127.0.0.1:${ws.address().port}`,
+    live: false,
+  });
   t.after(async () => {
     stop();
     await stop.drain();
@@ -449,6 +452,7 @@ test('multiple Jetstreams deduplicate revisions, keep independent cursors and re
     } else replayCursor = new URL(request.url, 'http://localhost').searchParams.get('cursor');
   });
   const stop = wire.start(connection, ingest, {
+    live: false,
     urls: [first.url, first.url, second.url],
     retryDelayMs: 20,
   });
@@ -1207,7 +1211,7 @@ test('Jetstream drains a large replay with backpressure rather than dropping its
       await new Promise((resolve) => setTimeout(resolve, 1));
       await ingest(db, message);
     },
-    { url: source, highWaterMark: 16, lowWaterMark: 8 },
+    { url: source, live: false, highWaterMark: 16, lowWaterMark: 8 },
   );
   t.after(async () => {
     stop();
@@ -1279,4 +1283,67 @@ test('official Node SQLite driver upgrades legacy migration history without repl
     (await connection.client.execute('SELECT name FROM __drizzle_migrations')).rows.length,
     names.length,
   );
+});
+
+test('live events update metadata immediately while historical replay retains its own cursor', async (t) => {
+  const connection = await fixture(t);
+  const ws = new WebSocketServer({ port: 0, host: '127.0.0.1' });
+  await once(ws, 'listening');
+  const source = `ws://127.0.0.1:${ws.address().port}/`;
+  const liveSource = `live:${source}`;
+  const oldUrl = 'https://example.com/old/README.md';
+  const newUrl = 'https://example.com/new/README.md';
+  await add(
+    { ...connection, source },
+    event('live-module', '1.0.0', 100, did, { readmeUrl: oldUrl }),
+  );
+  await add({ ...connection, source: liveSource }, { did, kind: 'identity', time_us: 200 });
+  let replaySocket;
+  let replayCursor;
+  let liveCursor;
+  const now = Date.now() * 1000;
+  ws.on('connection', (socket, request) => {
+    const cursor = Number(new URL(request.url, 'http://localhost').searchParams.get('cursor'));
+    if (cursor > 1_000_000) {
+      liveCursor = cursor;
+      const update = event('live-module', '1.0.0', now, did, { readmeUrl: newUrl });
+      update.commit.operation = 'update';
+      socket.send(JSON.stringify(update));
+    } else {
+      replaySocket = socket;
+      replayCursor = cursor;
+      // Keep historical replay behind: new events must arrive through the live socket.
+    }
+  });
+  const stop = wire.start(connection, ingest, { url: source });
+  t.after(async () => {
+    stop();
+    await stop.drain();
+    for (const client of ws.clients) client.terminate();
+    await new Promise((resolve) => ws.close(resolve));
+  });
+  const waitFor = async (predicate) => {
+    const deadline = Date.now() + 5000;
+    while (Date.now() < deadline) {
+      if (await predicate()) return;
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+    assert.fail('live update did not arrive');
+  };
+  await waitFor(
+    async () =>
+      (await db.get_package(connection, 'live-module', '', did)).readme_url[0] === newUrl &&
+      replaySocket,
+  );
+  assert.equal(replayCursor, 0);
+  assert.ok(
+    liveCursor >= now - 30_000_000,
+    'live subscription must ignore stale saved history on startup',
+  );
+  replaySocket.send(
+    JSON.stringify(event('live-module', '1.0.0', now - 1, did, { readmeUrl: oldUrl })),
+  );
+  await waitFor(async () => (await db.cursor({ ...connection, source })) === now - 1);
+  assert.equal((await db.get_package(connection, 'live-module', '', did)).readme_url[0], newUrl);
+  assert.equal(await db.cursor({ ...connection, source: liveSource }), now);
 });

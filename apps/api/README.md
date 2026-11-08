@@ -223,7 +223,14 @@ keeps transactions open until its promise-based queries finish, and serializes
 unrelated reads and writes. Migrations use Drizzle 1 folder layout and preserve
 existing migration hashes; the driver upgrades legacy migration history in place.
 Reads and transactions share a queue, so HTTP queries cannot interfere with an
-index transaction. Jetstream pauses its sockets while replay queues drain, sends
+index transaction. Each Jetstream endpoint has a live subscription starting at
+the current head and a separate historical subscription resuming its durable
+checkpoint. Live reconnects resume their own checkpoint; process startup starts
+a fresh live stream while historical replay fills any outage gap. Both paths
+deduplicate revisions and reject older metadata, so backlog cannot delay fresh
+PDS edits or overwrite them later.
+
+Jetstream pauses its sockets while replay queues drain, sends
 heartbeats, and exits if ingestion hangs for 60 seconds. The systemd service's
 `Restart=on-failure` policy then reopens SQLite and resumes durable checkpoints.
 
