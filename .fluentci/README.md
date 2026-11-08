@@ -180,14 +180,18 @@ python3 .github/scripts/test-setup-env.py
 
 ### Bootstrap CLI compatibility
 
-FluentCI v0.17.2 can execute native components from local files, but its registry
-artifact downloader accepts only core Wasm binaries. Until a newer CLI is released,
-workflows resolve exact registry versions with `.github/scripts/registry-artifact.py`,
-verify their published SHA-256, byte size, and module/component header, and pass
-the cached file to `fluentci run --wasm`. Function arguments remain named and typed.
-No SDK compiler is needed for these downloads. Cached artifacts are reverified
-before reuse; partial downloads are removed and never executed.
+Workflows bootstrap FluentCI v0.17.3 and invoke pinned registry modules directly:
 
 ```sh
-python3 .github/scripts/test-registry-artifact.py
+fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+fluentci --check-update=false run setup-rust@v0.2.1 setup --toolchain stable --components '["rustfmt", "clippy"]' | python3 .github/scripts/export-setup-env.py
 ```
+
+The CLI resolves and caches registry components; no SDK compiler or separate
+artifact downloader is needed. The environment bridge makes each setup result
+available to subsequent GitHub Actions steps. Repository CI modules built from
+source continue to run from their local Wasm artifacts.
+
+The legacy `.github/scripts/registry-artifact.py` helper remains available for
+older CLI releases that can execute local components but cannot download them
+from the registry directly.

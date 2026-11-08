@@ -24,7 +24,7 @@ concurrency:
 env:
   RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.tag }}
   BSD_RUST_VERSION: '1.99.1'
-  FLUENTCI_VERSION: 'v0.17.2'
+  FLUENTCI_VERSION: 'v0.17.3'
   RELEASE_MODULE: .fluentci/release/dist/plugin.wasm
 
 jobs:
@@ -41,7 +41,7 @@ jobs:
           curl -fsSL https://cli.fluentci.io | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           # A manual rebuild can check out a tag older than this workflow.
-          for bootstrap_script in export-setup-env.py registry-artifact.py; do
+          for bootstrap_script in export-setup-env.py; do
             if [ ! -f ".github/scripts/$bootstrap_script" ]; then
               mkdir -p .github/scripts
               curl -fsSL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/${{ github.workflow_sha }}/.github/scripts/$bootstrap_script" \
@@ -51,23 +51,19 @@ jobs:
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-rust@v0.2.1)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version stable | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-rust@v0.2.1 setup --version stable | python3 .github/scripts/export-setup-env.py
       - name: Set up bun through FluentCI
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-bun@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Set up node through FluentCI
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-node@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
       - name: Set up purescript through FluentCI
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-purescript@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Prepare release inputs with FluentCI
         env:
           GH_TOKEN: ${{ github.token }}
@@ -126,7 +122,7 @@ jobs:
           curl -fsSL https://cli.fluentci.io | sh
           echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           # A manual rebuild can check out a tag older than this workflow.
-          for bootstrap_script in export-setup-env.py registry-artifact.py; do
+          for bootstrap_script in export-setup-env.py; do
             if [ ! -f ".github/scripts/$bootstrap_script" ]; then
               mkdir -p .github/scripts
               curl -fsSL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/${{ github.workflow_sha }}/.github/scripts/$bootstrap_script" \
@@ -136,8 +132,7 @@ jobs:
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-rust@v0.2.1)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --toolchain stable --targets '["${{ matrix.target }}"]' | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-rust@v0.2.1 setup --toolchain stable --targets '["${{ matrix.target }}"]' | python3 .github/scripts/export-setup-env.py
       - uses: actions/download-artifact@v4
         with:
           name: release-inputs

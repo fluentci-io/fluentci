@@ -14,6 +14,9 @@ concurrency:
   group: components-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  FLUENTCI_VERSION: 'v0.17.3'
+
 jobs:
   component:
     name: ${{ matrix.sdk }} component
@@ -46,18 +49,15 @@ jobs:
       - name: Set up node through FluentCI
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-node@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
       - name: Set up bun through FluentCI
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-bun@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-rust@v0.2.1)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --toolchain stable --components '["rustfmt"]' --targets '["wasm32-wasip2"]' | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-rust@v0.2.1 setup --toolchain stable --components '["rustfmt"]' --targets '["wasm32-wasip2"]' | python3 .github/scripts/export-setup-env.py
       - uses: Swatinem/rust-cache@v2
         with:
           key: components-release-no-lto
@@ -65,44 +65,37 @@ jobs:
         if: matrix.sdk == 'gleam'
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-gleam@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.19.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-gleam@v0.2.0 setup --version 1.19.2 | python3 .github/scripts/export-setup-env.py
       - name: Set up Erlang/OTP through FluentCI
         if: matrix.sdk == 'elixir'
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-erlang@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version 28 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-erlang@v0.2.0 setup --version 28 | python3 .github/scripts/export-setup-env.py
       - name: Set up elixir through FluentCI
         if: matrix.sdk == 'elixir'
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-elixir@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.20.4 --otp-version 28 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-elixir@v0.2.0 setup --version 1.20.4 --otp-version 28 | python3 .github/scripts/export-setup-env.py
       - name: Set up uv through FluentCI
         if: matrix.sdk == 'python'
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-uv@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-uv@v0.2.0 setup | python3 .github/scripts/export-setup-env.py
       - name: Set up java through FluentCI
         if: matrix.sdk == 'clojurescript'
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-java@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version 21 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-java@v0.2.0 setup --version 21 | python3 .github/scripts/export-setup-env.py
       - name: Set up clojure through FluentCI
         if: matrix.sdk == 'clojurescript'
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-clojure@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version 1.12.5.1654 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-clojure@v0.2.0 setup --version 1.12.5.1654 | python3 .github/scripts/export-setup-env.py
       - name: Set up purescript through FluentCI
         if: matrix.sdk == 'purescript'
         shell: bash
         run: |
-          module_artifact=$(python3 .github/scripts/registry-artifact.py setup-purescript@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Check WIT host contract and generated SDKs
         run: |
           cargo run --release --locked --manifest-path tools/component-model/Cargo.toml -- . engine/schema/executor-model.json --check
