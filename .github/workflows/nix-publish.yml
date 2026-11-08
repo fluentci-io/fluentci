@@ -86,9 +86,18 @@ jobs:
       - name: Set up FlakeHub publisher through FluentCI
         if: inputs.registry == 'flakehub'
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           module_artifact=$(python3 "$RUNNER_TEMP/nix-setup/registry-artifact.py" setup-flakehub-push@v0.2.0)
-          fluentci --check-update=false run --wasm "$module_artifact" setup | python3 "$RUNNER_TEMP/nix-setup/export-setup-env.py"
+          # This plugin fetches GitHub release metadata and GitHub-hosted assets
+          # with curl. Authenticate its requests to avoid the shared runner's
+          # unauthenticated API quota; keep credentials out of command arguments.
+          umask 077
+          curl_home=$(mktemp -d "$RUNNER_TEMP/flakehub-setup-curl.XXXXXXXX")
+          trap 'rm -rf "$curl_home"' EXIT
+          printf 'header = "Authorization: Bearer %s"\n' "$GH_TOKEN" > "$curl_home/.curlrc"
+          CURL_HOME="$curl_home" fluentci --check-update=false run --wasm "$module_artifact" setup | python3 "$RUNNER_TEMP/nix-setup/export-setup-env.py"
       - name: Set up Bun for Flakestry through FluentCI
         if: inputs.registry == 'flakestry'
         shell: bash
