@@ -62,13 +62,25 @@ task caching, affected selection, dry runs, and measured performance results.
 
 ## Build and install
 
-### npm
+### Install with npm
 
-Run the CLI with `npx`, or install the `fluentci` command globally (Node.js 20+):
+Install the `fluentci` command globally with npm (requires Node.js 20+):
+
+```sh
+npm install -g @fluentci/cli
+fluentci --version
+```
+
+Or run it directly with `npx`:
 
 ```sh
 npx @fluentci/cli --help
-npm install -g @fluentci/cli
+```
+
+To update an existing global installation:
+
+```sh
+npm install -g @fluentci/cli@latest
 ```
 
 The [npm package](./npm/README.md) downloads the matching GitHub release binary
