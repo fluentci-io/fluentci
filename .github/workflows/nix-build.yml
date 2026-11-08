@@ -101,10 +101,16 @@ jobs:
         shell: bash
         env:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          NIX_CONFIG: |
+            access-tokens = github.com=${{ github.token }}
         # Cachix publishes source tags, not GitHub Releases; pin the upstream
         # version to bypass this plugin's releases/latest lookup.
         run: fluentci --check-update=false run setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci | python3 .github/scripts/export-setup-env.py
       - name: Build Nix package and upload cache through FluentCI
         env:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          NIX_CONFIG: |
+            access-tokens = github.com=${{ github.token }}
         run: fluentci --check-update=false run --wasm .fluentci/nix-build/dist/plugin.wasm build --cache fluentci

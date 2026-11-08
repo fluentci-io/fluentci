@@ -113,6 +113,8 @@ jobs:
           FLAKEHUB_PUSH_GITHUB_TOKEN: ${{ github.token }}
           GH_TOKEN: ${{ github.token }}
           GITHUB_TOKEN: ${{ github.token }}
+          NIX_CONFIG: |
+            access-tokens = github.com=${{ github.token }}
         run: |
           if [ "$REGISTRY" = flakestry ]; then
             fluentci --check-update=false run nix-publish@v0.2.0 flakestry --run-dir "$RUNNER_TEMP/flakestry-$GITHUB_RUN_ATTEMPT" --version "$VERSION" --ref "$REF" --timeout-ms 2400000

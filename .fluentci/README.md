@@ -126,6 +126,10 @@ The registry module `setup-cachix@0.2.1` installs Cachix and enables the public
 lookup expects a GitHub Release. Its typed environment result is exported
 to subsequent workflow steps. `CACHIX_AUTH_TOKEN` enables uploads; missing or
 blank tokens skip uploads while Nix builds still run.
+The Nix build and publishing workflows pass the job's GitHub token as `GH_TOKEN`
+and as `access-tokens = github.com=…` through `NIX_CONFIG`. Nix requires the latter
+to authenticate GitHub flake fetches; setting `GH_TOKEN` alone is insufficient.
+Tokens remain in the workflow environment rather than command arguments or files.
 The environment bridge streams host-command logs immediately to the workflow
 console, including Nix downloads and build output, while keeping the final typed
 environment JSON separate. Installing Cachix can take longer on a cold Nix store.
