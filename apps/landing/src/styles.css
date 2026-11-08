@@ -318,7 +318,7 @@ pre {
     @apply size-16 rounded-xl sm:size-20;
   }
   .module-logo img {
-    @apply size-full rounded-lg object-contain p-1;
+    @apply size-full rounded-lg object-contain;
   }
   .module-author {
     @apply inline-flex max-w-full items-center gap-2 text-xs text-muted;
