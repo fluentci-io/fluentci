@@ -147,12 +147,12 @@ pub fn wasm_url(value: &str) -> Result<reqwest::Url> {
 
 pub fn validate_wasm(bytes: &[u8]) -> Result<()> {
     anyhow::ensure!(
-        (8..=MAX_WASM_BYTES).contains(&bytes.len()) && bytes.starts_with(b"\0asm\x01\0\0\0"),
-        "Expected a Wasm module of at most 64 MiB"
+        bytes.len() <= MAX_WASM_BYTES,
+        "Wasm exceeds the 64 MiB size limit"
     );
     wasmparser::Validator::new()
         .validate_all(bytes)
-        .context("Invalid Wasm module")?;
+        .context("Invalid Wasm module or component")?;
     Ok(())
 }
 
@@ -837,6 +837,48 @@ mod tests {
         MetadataOptions, OptionalMetadata, complete_metadata, complete_optional_metadata,
         license_suggestions, metadata_suggestions,
     };
+
+    #[test]
+    fn publishing_accepts_core_modules_and_components() -> anyhow::Result<()> {
+        for source in [
+            "(module (func (export \"run\")))",
+            "(component (core module (func (export \"run\"))))",
+        ] {
+            super::validate_wasm(&wat::parse_str(source)?)?;
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn publishing_rejects_invalid_modules_and_component_contents() -> anyhow::Result<()> {
+        for bytes in [
+            Vec::new(),
+            b"<html>Not a Wasm artifact</html>".to_vec(),
+            wat::parse_str("(module (func (result i32)))")?,
+            wat::parse_str("(component (core module (func (result i32))))")?,
+            vec![0, 97, 115, 109, 13, 0, 1, 0, 1, 1, 255],
+        ] {
+            let error = super::validate_wasm(&bytes).unwrap_err();
+            assert!(
+                error
+                    .to_string()
+                    .contains("Invalid Wasm module or component")
+            );
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn publishing_enforces_the_size_limit_for_both_formats() {
+        for header in [b"\0asm\x01\0\0\0", b"\0asm\x0d\0\x01\0"] {
+            let mut bytes = vec![0; super::MAX_WASM_BYTES + 1];
+            bytes[..8].copy_from_slice(header);
+            assert_eq!(
+                super::validate_wasm(&bytes).unwrap_err().to_string(),
+                "Wasm exceeds the 64 MiB size limit"
+            );
+        }
+    }
 
     #[test]
     fn optional_publish_fields_can_all_be_skipped() -> anyhow::Result<()> {

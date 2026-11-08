@@ -116,7 +116,8 @@ in `.wasm`, use HTTP(S), contain no credentials/query/fragment, and return exact
 HTTP 200. Redirect destinations are validated too. The CLI downloads and
 validates the bytes even when upload is skipped.
 
-Artifacts must be valid core Wasm modules of at most 64 MiB. Checksums and sizes
+Artifacts must be valid core Wasm modules or native Wasm components of at most
+64 MiB. Checksums and sizes
 are verified. The upload response must match the artifact's SHA-256 and byte
 length before metadata is published.
 
