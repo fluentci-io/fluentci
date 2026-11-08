@@ -1,5 +1,7 @@
 //! Publish verified Wasm artifacts and AT Protocol package records.
 
+mod upload;
+
 use crate::progress::{Transfer, with_progress, with_transfer};
 use crate::{auth, config, db::Db, modules, registry, workspace::Workspace};
 use anyhow::{Context, Result};
@@ -790,36 +792,7 @@ pub async fn publish(
     let url = if let Some(url) = external {
         url.to_owned()
     } else {
-        let transfer = Transfer::new(Some(size as u64));
-        with_transfer(
-            &format!("Uploading {name}@{version}"),
-            &format!("Finalizing upload {name}@{version}"),
-            &transfer,
-            async {
-                let token = publisher.upload_token().await?;
-                let response = registry::client()
-                    .post(format!(
-                        "{}/xrpc/io.fluentci.registry.publish",
-                        registry::base_url()
-                    ))
-                    .bearer_auth(token)
-                    .query(&[("name", name.as_str()), ("version", version.as_str())])
-                    .header("Content-Type", "application/wasm")
-                    .header(reqwest::header::CONTENT_LENGTH, size)
-                    .body(transfer.upload_body(bytes))
-                    .timeout(Duration::from_secs(120))
-                    .send()
-                    .await?;
-                let upload: Upload = response.error_for_status()?.json().await?;
-                wasm_url(&upload.url)?;
-                anyhow::ensure!(
-                    upload.sha256 == digest && upload.size == size,
-                    "Registry upload checksum or size did not match the Wasm artifact"
-                );
-                Ok(upload.url)
-            },
-        )
-        .await?
+        upload::publish(&publisher, &name, &version, bytes, &digest).await?
     };
     let record = PluginRecord {
         record_type: COLLECTION.into(),

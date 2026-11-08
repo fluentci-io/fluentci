@@ -100,7 +100,8 @@ impl Publisher {
         let request = GetServiceAuth {
             aud: std::env::var("FLUENTCI_REGISTRY_DID")
                 .unwrap_or_else(|_| "did:web:api.fluentci.io".into()),
-            exp: Some(chrono::Utc::now().timestamp() + 60),
+            // Scoped to this upload method; allow slow transfers to reach the API.
+            exp: Some(chrono::Utc::now().timestamp() + 15 * 60),
             lxm: Some(Nsid::new("io.fluentci.registry.publish".to_owned())?),
         };
         Ok(self

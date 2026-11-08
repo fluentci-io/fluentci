@@ -244,3 +244,22 @@ The script resolves the DID's PDS, reads its public records, validates ownership
 and lexicon metadata, and uses the normal Gleam indexer. Its checkpoint is separate
 from live Jetstream cursors. Existing immutable artifact identities and download
 counts remain protected.
+
+## Upload reliability
+
+XRPC accepts identity or gzip-encoded Wasm request bodies. Its existing 64 MiB
+limit applies after decompression, and checksums, validation, and S3 storage use
+the original Wasm bytes. The CLI compresses large uploads when beneficial, allows
+ten minutes per attempt, and retries transient failures with fresh scoped tokens.
+
+S3 writes retain `If-None-Match: *`. When an object already exists, the API verifies
+its digest, size, and stored publisher metadata before returning the same URL for
+an identical retry. Older objects without digest metadata are streamed and hashed;
+ETags are never trusted as SHA-256. Different artifacts still return HTTP 409.
+Storage calls have a 45-second deadline, connection establishment has a ten-second
+deadline, and the SDK uses at most two attempts. HTTP receipt allows eleven minutes
+for slow clients; identity resolution has a ten-second timeout.
+
+Structured `publish_request`, `module_upload`, and failure logs record wire bytes,
+encoding, completion, and elapsed receive/validation/publisher/storage time. Tokens
+and request headers are never logged.

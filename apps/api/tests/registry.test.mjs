@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash } from 'node:crypto';
 import { DatabaseSync } from 'node:sqlite';
+import { gzipSync } from 'node:zlib';
 import { Secp256k1Keypair } from '@atproto/crypto';
 import { createServiceJwt } from '@atproto/xrpc-server';
 import { WebSocketServer } from 'ws';
@@ -331,6 +332,17 @@ test('publish requires scoped service auth, validates Wasm, and sends immutable 
     400,
   );
   assert.equal(commands.length, 2);
+  const compressed = await fetch(endpoint, {
+    method: 'POST',
+    headers: { ...headers, 'Content-Encoding': 'gzip' },
+    body: gzipSync(component),
+  });
+  assert.equal(compressed.status, 200);
+  assert.equal(
+    (await compressed.json()).sha256,
+    createHash('sha256').update(component).digest('hex'),
+  );
+  assert.deepEqual(commands[2].input.Body, component);
   instance.s3 = {
     send: async () => {
       throw Error('storage offline');
@@ -706,7 +718,9 @@ test('versioned upload paths use the verified handle, bare SemVer metadata and c
   );
   assert.equal(commands[1].input.Key, '@alice.example/hello-ci/v2.0.0/hello-ci.wasm');
   instance.s3 = {
-    send: async () => {
+    send: async (command) => {
+      if (command.constructor.name === 'HeadObjectCommand')
+        return { ContentLength: wasm.length, Metadata: { sha256: 'f'.repeat(64) } };
       const error = new Error('exists');
       error.$metadata = { httpStatusCode: 412 };
       throw error;

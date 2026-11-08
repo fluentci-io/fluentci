@@ -9,14 +9,15 @@ import {
   verifyJwt,
 } from '@atproto/xrpc-server';
 import { IdResolver } from '@atproto/identity';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { S3Client } from '@aws-sdk/client-s3';
+import { storeWasm } from '../storage/wasm.mjs';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { root, lexicons, PUBLISH, RECORD_DOWNLOAD, MAX_WASM_BYTES } from '../config_ffi.mjs';
 import { close } from '../db/client_ffi.mjs';
 import { index } from './welcome.mjs';
 import semver from 'semver';
 import { RegistryRecordDownloadInput } from '../lexicon/models.mjs';
-const identity = new IdResolver();
+const identity = new IdResolver({ timeout: 10_000 });
 export function create(database, options = {}) {
   return {
     xrpc: createServer(lexicons(), {
@@ -81,6 +82,42 @@ export async function resolveActor(server, actor) {
   return did;
 }
 export async function upload(server, request) {
+  const started = performance.now();
+  let previous = started;
+  const timings = {};
+  const mark = (stage) => {
+    const now = performance.now();
+    timings[stage] = Math.round(now - previous);
+    previous = now;
+  };
+  try {
+    const response = await uploadArtifact(server, request, mark);
+    console.info(
+      JSON.stringify({
+        event: 'module_upload',
+        name: request.params.name,
+        version: request.params.version,
+        size: response.body.size,
+        durationMs: Math.round(performance.now() - started),
+        timings,
+      }),
+    );
+    return response;
+  } catch (error) {
+    console.warn(
+      JSON.stringify({
+        event: 'module_upload_failed',
+        name: request.params.name,
+        version: request.params.version,
+        durationMs: Math.round(performance.now() - started),
+        timings,
+        error: error.customErrorName ?? error.name,
+      }),
+    );
+    throw error;
+  }
+}
+async function uploadArtifact(server, request, mark) {
   const body = request.input?.body;
   const chunks = [];
   let size = 0;
@@ -96,6 +133,7 @@ export async function upload(server, request) {
     chunks.push(Buffer.from(body));
   }
   const bytes = Buffer.concat(chunks);
+  mark('receiveMs');
   if (!bytes.length || bytes.length > MAX_WASM_BYTES)
     throw new InvalidRequestError('Upload a valid Wasm module (maximum 64 MiB)', 'InvalidWasm');
   if (bytes.subarray(0, 8).equals(Buffer.from([0, 97, 115, 109, 13, 0, 1, 0]))) {
@@ -109,6 +147,7 @@ export async function upload(server, request) {
   } else if (!WebAssembly.validate(bytes)) {
     throw new InvalidRequestError('Upload a valid Wasm module (maximum 64 MiB)', 'InvalidWasm');
   }
+  mark('validateMs');
   const author = request.auth.credentials.did;
   const digest = createHash('sha256').update(bytes).digest('hex');
   const { name, version } = request.params;
@@ -155,6 +194,7 @@ export async function upload(server, request) {
   } else {
     key = `plugins/${createHash('sha256').update(author).digest('hex')}/${digest}.wasm`;
   }
+  mark('publisherMs');
   const bucket = process.env.S3_BUCKET;
   const publicOrigin = process.env.S3_PUBLIC_URL;
   if (!bucket || !publicOrigin)
@@ -175,32 +215,40 @@ export async function upload(server, request) {
     region: process.env.S3_REGION ?? process.env.AWS_REGION ?? 'us-east-1',
     endpoint: process.env.S3_ENDPOINT || undefined,
     forcePathStyle: process.env.S3_FORCE_PATH_STYLE === 'true',
+    maxAttempts: 2,
+    requestHandler: {
+      connectionTimeout: 10_000,
+      requestTimeout: 30_000,
+      throwOnRequestTimeout: true,
+    },
   });
   try {
-    await server.s3.send(
-      new PutObjectCommand({
-        Bucket: bucket,
-        Key: key,
-        Body: bytes,
-        ContentType: 'application/wasm',
-        CacheControl: 'public, max-age=31536000, immutable',
-        ChecksumSHA256: createHash('sha256').update(bytes).digest('base64'),
-        ...(versioned ? { IfNoneMatch: '*' } : {}),
+    await storeWasm(
+      server.s3,
+      { bucket, key, bytes, digest, author, versioned },
+      server.options.storageTimeoutMs ?? 45_000,
+    );
+    mark('storageMs');
+  } catch (error) {
+    if (error.name === 'PackageVersionExists') {
+      throw new XRPCError(409, error.message, 'PackageVersionExists');
+    }
+    console.warn(
+      JSON.stringify({
+        event: 'module_storage_failed',
+        name,
+        version,
+        error: error.customErrorName ?? error.name,
+        status: error.$metadata?.httpStatusCode,
       }),
     );
-  } catch (error) {
-    if (
-      versioned &&
-      (error.$metadata?.httpStatusCode === 412 || error.$metadata?.httpStatusCode === 409)
-    ) {
-      throw new XRPCError(
-        409,
-        'This publisher/module/version already has a Wasm artifact',
-        'PackageVersionExists',
-      );
-    }
-    throw new XRPCError(503, 'Could not store the Wasm artifact', 'StorageUnavailable');
+    throw new XRPCError(
+      503,
+      'Could not store the Wasm artifact; retrying the same artifact is safe',
+      'StorageUnavailable',
+    );
   }
+
   return { encoding: 'application/json', body: { url, sha256: digest, size: bytes.length } };
 }
 export function app(server) {
@@ -211,6 +259,22 @@ export function app(server) {
   app.get('/favicon.ico', (_req, res) => res.sendFile(resolve(root(), 'public/favicon.ico')));
   app.get('/health', (_req, res) => res.json({ status: 'ok' }));
   app.get('/xrpc/_health', (_req, res) => res.json({ status: 'ok' }));
+  app.use(`/xrpc/${PUBLISH}`, (req, res, next) => {
+    const started = performance.now();
+    res.once('close', () => {
+      console.info(
+        JSON.stringify({
+          event: 'publish_request',
+          status: res.statusCode,
+          completed: res.writableFinished,
+          wireBytes: Number(req.headers['content-length']) || undefined,
+          encoding: req.headers['content-encoding'] ?? 'identity',
+          durationMs: Math.round(performance.now() - started),
+        }),
+      );
+    });
+    next();
+  });
   app.use(server.xrpc.router);
   return app;
 }
@@ -219,6 +283,7 @@ export function listen(server, database, stopIndexer) {
   const http = app(server).listen(port, process.env.HOST ?? '127.0.0.1', () =>
     console.info(`FluentCI XRPC listening on ${port}`),
   );
+  http.requestTimeout = 11 * 60_000;
   const stop = () => {
     stopIndexer();
     http.close(async () => {

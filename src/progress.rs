@@ -34,7 +34,7 @@ impl Transfer {
         self.bytes.fetch_add(bytes as u64, Ordering::Relaxed);
     }
 
-    fn chunks(&self, bytes: Vec<u8>) -> impl Stream<Item = io::Result<Vec<u8>>> + Send + 'static {
+    fn chunks(&self, bytes: Arc<[u8]>) -> impl Stream<Item = io::Result<Vec<u8>>> + Send + 'static {
         let transfer = self.clone();
         stream::unfold((bytes, 0), move |(bytes, offset)| {
             let transfer = transfer.clone();
@@ -50,9 +50,13 @@ impl Transfer {
         })
     }
 
-    pub(crate) fn upload_body(&self, bytes: Vec<u8>) -> reqwest::Body {
+    pub(crate) fn upload_body(&self, bytes: Arc<[u8]>) -> reqwest::Body {
         self.set_total(Some(bytes.len() as u64));
         reqwest::Body::wrap_stream(self.chunks(bytes))
+    }
+
+    pub(crate) fn reset(&self) {
+        self.bytes.store(0, Ordering::Relaxed);
     }
 
     fn display(&self, frame: usize) -> String {
@@ -234,7 +238,7 @@ mod tests {
     async fn streamed_upload_preserves_every_byte_and_tracks_consumption() -> Result<()> {
         let input: Vec<u8> = (0..(128 * 1024 + 17)).map(|i| (i % 251) as u8).collect();
         let progress = Transfer::new(Some(input.len() as u64));
-        let chunks = progress.chunks(input.clone());
+        let chunks = progress.chunks(input.clone().into());
         tokio::pin!(chunks);
         assert_eq!(progress.bytes.load(Ordering::Relaxed), 0);
         let mut output = vec![];

@@ -251,3 +251,21 @@ Publish a new version to distribute different Wasm bytes or a different URL.
 
 Module delete events are ignored: removing a PDS record does not remove its indexed
 publication or download counts. Event deduplication and checkpoints still advance.
+
+## Upload progress and recovery
+
+Large artifacts are gzip-compressed for transfer when compression saves at least
+10%. The registry stores the original Wasm bytes; the published SHA-256 and size
+always describe that original artifact. Terminal progress measures bytes sent
+over the network.
+
+Each upload attempt allows up to ten minutes, with up to three attempts for
+connection failures, timeouts, rate limiting, and temporary server errors.
+Each attempt obtains a fresh method-scoped publisher token. Permanent validation,
+permission, and version-conflict errors fail immediately.
+
+If storage succeeds but its response is lost, retrying identical bytes for the
+same publisher, module, and version reuses the immutable object. Different bytes
+still fail with `PackageVersionExists`; existing artifacts are never overwritten.
+If an upload completes but PDS record creation fails, fix the PDS error and retry
+with the same artifact. Publishing still requires successful record creation.
