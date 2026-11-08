@@ -63,6 +63,16 @@ pre {
     --syntax-type: #e9bd8a;
     --syntax-number: #ffa6bf;
     --syntax-variable: #c9c9d6;
+    --module-code-comment: #9399b2;
+    --module-code-keyword: #ff7ab2;
+    --module-code-string: #a5ed78;
+    --module-code-title: #6ee7ff;
+    --module-code-type: #ffd580;
+    --module-code-number: #b8a1ff;
+    --module-code-variable: #e2b2ff;
+    --module-code-property: #8cc8ff;
+    --module-code-builtin: #ffad66;
+    --module-code-meta: #f4c96b;
   }
   :root[data-theme="light"] {
     color-scheme: light;
@@ -84,6 +94,16 @@ pre {
     --syntax-type: #92521b;
     --syntax-number: #b52c60;
     --syntax-variable: #414154;
+    --module-code-comment: #677187;
+    --module-code-keyword: #b42377;
+    --module-code-string: #24752a;
+    --module-code-title: #006d9c;
+    --module-code-type: #966000;
+    --module-code-number: #6246c9;
+    --module-code-variable: #7d3ea3;
+    --module-code-property: #0a599e;
+    --module-code-builtin: #b54708;
+    --module-code-meta: #8f5914;
   }
   html {
     scroll-behavior: smooth;
@@ -449,27 +469,12 @@ pre {
   }
 }
 
-.module-type-string {
-  color: #86efac;
-}
-.module-type-number {
-  color: #fcd34d;
-}
-.module-type-boolean {
-  color: #c4b5fd;
-}
-.module-type-other {
-  color: var(--color-cyan);
-}
-:root[data-theme="light"] .module-type-string {
-  color: #15803d;
-}
-:root[data-theme="light"] .module-type-number {
-  color: #b45309;
-}
-:root[data-theme="light"] .module-type-boolean {
-  color: #7c3aed;
-}
+/* Shared accents for native function signatures and README code blocks. */
+.module-function-name { color: var(--module-code-title); }
+.module-type-string { color: var(--module-code-string); }
+.module-type-number { color: var(--module-code-number); }
+.module-type-boolean { color: var(--module-code-keyword); }
+.module-type-other { color: var(--module-code-type); }
 
 @layer components {
   .publisher-identity { @apply flex items-start gap-5 sm:gap-7; }

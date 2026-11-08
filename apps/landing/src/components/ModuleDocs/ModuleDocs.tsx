@@ -105,7 +105,7 @@ export function ModuleDocs({
             >
               <h2 className="font-mono text-xl text-ink">{fn.name}</h2>
               <div className="mt-3 break-words font-mono text-sm leading-7 text-muted">
-                <span className="text-cyan">{fn.name}</span>(
+                <span className="module-function-name">{fn.name}</span>(
                 {fn.args
                   ? fn.args.map((arg, i) => (
                       <span key={arg.name}>

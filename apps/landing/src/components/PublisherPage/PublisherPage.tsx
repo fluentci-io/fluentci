@@ -20,6 +20,8 @@ export function PublisherPage() {
   const [profile, setProfile] = useState<Profile>();
   const [failedAvatar, setFailedAvatar] = useState(false);
   const [search, setSearch] = useState("");
+  const [showPinnedIdentity, setShowPinnedIdentity] = useState(false);
+  const profileHeader = useRef<HTMLDivElement>(null);
   const { items, total, loading, error, hasMore, loadMore, retry } =
     usePublisherModules(actor, search);
   const sentinel = useRef<HTMLDivElement>(null);
@@ -59,6 +61,17 @@ export function PublisherPage() {
     return () => abort.abort();
   }, [actor]);
   useEffect(() => {
+    setShowPinnedIdentity(false);
+    if (!profileHeader.current) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setShowPinnedIdentity(
+        !entry.isIntersecting && entry.boundingClientRect.bottom <= 0,
+      );
+    });
+    observer.observe(profileHeader.current);
+    return () => observer.disconnect();
+  }, [actor]);
+  useEffect(() => {
     if (!sentinel.current || !hasMore || loading || error) return;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -77,7 +90,7 @@ export function PublisherPage() {
     <>
       <SiteHeader />
       <main className="page-width py-12 sm:py-16">
-        <div className="publisher-identity">
+        <div ref={profileHeader} className="publisher-identity">
           <div className="publisher-avatar" aria-hidden="true">
             {avatar && !failedAvatar ? (
               <img
@@ -123,17 +136,53 @@ export function PublisherPage() {
         </div>
         <section aria-label="Published modules" className="mt-12">
           <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 border-b border-line bg-paper py-5">
-            <h2 className="text-lg font-medium">
-              Modules{" "}
-              {total !== undefined && (
-                <span
-                  className="ml-2 rounded-md bg-raised px-2 py-1 font-mono text-sm tabular-nums text-muted"
-                  aria-label={`${total} published modules`}
+            <div className="flex w-full min-w-0 items-center gap-4 sm:w-auto sm:flex-1">
+              {showPinnedIdentity && (
+                <div
+                  aria-label="Pinned publisher"
+                  className="flex min-w-0 flex-1 items-center gap-2.5 sm:max-w-64"
                 >
-                  {total.toLocaleString()}
-                </span>
+                  <div
+                    className="flex size-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-line bg-raised text-sm text-accent"
+                    aria-hidden="true"
+                  >
+                    {avatar && !failedAvatar ? (
+                      <img
+                        src={avatar}
+                        alt=""
+                        referrerPolicy="no-referrer"
+                        className="size-full object-cover"
+                        onError={() => setFailedAvatar(true)}
+                      />
+                    ) : (
+                      name.slice(0, 1).toUpperCase()
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{name}</p>
+                    <a
+                      className="block truncate font-mono text-xs text-muted hover:text-ink"
+                      href={`https://bsky.app/profile/${encodeURIComponent(identity)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {identity.startsWith("did:") ? identity : `@${identity}`}
+                    </a>
+                  </div>
+                </div>
               )}
-            </h2>
+              <h2 className="shrink-0 text-lg font-medium">
+                Modules{" "}
+                {total !== undefined && (
+                  <span
+                    className="ml-2 rounded-md bg-raised px-2 py-1 font-mono text-sm tabular-nums text-muted"
+                    aria-label={`${total} published modules`}
+                  >
+                    {total.toLocaleString()}
+                  </span>
+                )}
+              </h2>
+            </div>
             <label className="publisher-filter">
               <SearchIcon />
               <span className="sr-only">Filter published modules</span>

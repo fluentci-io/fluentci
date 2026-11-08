@@ -68,7 +68,21 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
     "src",
     "http://127.0.0.1:4173/fluentci-logo.png",
   );
+  const pinnedIdentity = page.getByLabel("Pinned publisher");
+  await expect(pinnedIdentity).toHaveCount(0);
   await page.getByRole("link", { name: /module-19 / }).scrollIntoViewIfNeeded();
+  await expect(pinnedIdentity).toBeVisible();
+  await expect(pinnedIdentity).toContainText("FluentCI");
+  await expect(pinnedIdentity).toContainText("@fluentci.io");
+  await expect(pinnedIdentity.locator("img")).toHaveAttribute(
+    "src",
+    profile.avatar,
+  );
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBeTruthy();
   await expect(page.getByRole("link", { name: /module-21 / })).toBeVisible();
   const filter = page.getByRole("searchbox", {
     name: "Filter published modules",
@@ -95,6 +109,8 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
   await page.keyboard.press("Escape");
   await expect(filter).toHaveValue("");
   await expect(filter).not.toBeFocused();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await expect(pinnedIdentity).toHaveCount(0);
   await page.goto(`/${author.did}`);
   await expect(
     page.getByRole("heading", { name: "FluentCI", exact: true }),
