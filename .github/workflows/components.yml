@@ -38,42 +38,55 @@ jobs:
       CARGO_PROFILE_RELEASE_LTO: "false"
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: "1.4.3"
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: wasm32-wasip2
+      - name: Bootstrap FluentCI
+        shell: bash
+        run: |
+          curl -fsSL https://cli.fluentci.io | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Set up node through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+      - name: Set up bun through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+      - name: Set up rust through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-rust@v0.2.0 setup --version stable | python3 .github/scripts/export-setup-env.py
+      - name: Configure Rust components and targets
+        shell: bash
+        run: |
+          rustup target add wasm32-wasip2
       - uses: Swatinem/rust-cache@v2
         with:
           key: components-release-no-lto
-      - uses: erlef/setup-beam@v1
-        if: matrix.sdk == 'gleam' || matrix.sdk == 'elixir'
-        with:
-          otp-version: "28"
-          elixir-version: "1.20.4"
-          gleam-version: "1.19.2"
-      - uses: astral-sh/setup-uv@v6
+      - name: Set up gleam through FluentCI
+        if: matrix.sdk == 'gleam'
+        shell: bash
+        run: fluentci --check-update=false run setup-gleam@v0.2.0 setup --version 1.19.2 | python3 .github/scripts/export-setup-env.py
+      - name: Set up Erlang/OTP through FluentCI
+        if: matrix.sdk == 'elixir'
+        shell: bash
+        run: fluentci --check-update=false run setup-erlang@v0.2.0 setup --version 28 | python3 .github/scripts/export-setup-env.py
+      - name: Set up elixir through FluentCI
+        if: matrix.sdk == 'elixir'
+        shell: bash
+        run: fluentci --check-update=false run setup-elixir@v0.2.0 setup --version 1.20.4 --otp-version 28 | python3 .github/scripts/export-setup-env.py
+      - name: Set up uv through FluentCI
         if: matrix.sdk == 'python'
-      - name: Set up Java 21 for Typed Clojure
-        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        shell: bash
+        run: fluentci --check-update=false run setup-uv@v0.2.0 setup | python3 .github/scripts/export-setup-env.py
+      - name: Set up java through FluentCI
         if: matrix.sdk == 'clojurescript'
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: DeLaGuardo/setup-clojure@13.4
+        shell: bash
+        run: fluentci --check-update=false run setup-java@v0.2.0 setup --version 21 | python3 .github/scripts/export-setup-env.py
+      - name: Set up clojure through FluentCI
         if: matrix.sdk == 'clojurescript'
-        with:
-          cli: "1.12.5.1654"
-      - name: Install PureScript compiler
+        shell: bash
+        run: fluentci --check-update=false run setup-clojure@v0.2.0 setup --version 1.12.5.1654 | python3 .github/scripts/export-setup-env.py
+      - name: Set up purescript through FluentCI
         if: matrix.sdk == 'purescript'
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes --no-install-recommends libgmp10 libtinfo6 libstdc++6
-          npm install --global purescript@0.15.16 spago@1.0.5
+        shell: bash
+        run: fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Check WIT host contract and generated SDKs
         run: |
           cargo run --release --locked --manifest-path tools/component-model/Cargo.toml -- . engine/schema/executor-model.json --check

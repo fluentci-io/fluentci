@@ -57,8 +57,12 @@ such as target, version, and cache is explicit; tokens stay in the environment.
 
 ## Build and test
 
-Install Node 24+, PureScript 0.15.16 and Spago 1.0.5. Ubuntu CI uses
-`scripts/install-sdk-tools.sh`. ComponentizeJS, jco, esbuild and the inspection
+Install Node 24+, PureScript 0.15.16 and Spago 1.0.5. GitHub workflows use the
+official registry components (`setup-node`, `setup-bun`, `setup-purescript`,
+`setup-rust`, `setup-gleam`, `setup-elixir`, `setup-erlang`, `setup-uv`,
+`setup-java`, `setup-clojure`, and `setup-pkl`) pinned to `0.2.0`.
+The SDK toolchain script remains available for manual development.
+ComponentizeJS, jco, esbuild and the inspection
 bindings are pinned in each module's npm lockfile. Extism JS and Binaryen are
 not needed to compile these modules.
 
@@ -101,7 +105,8 @@ fluentci run release upload --target aarch64-apple-darwin --version v0.17.2
 Archives contain one executable and a SHA-256 sidecar under `target/release-assets`.
 Uploads require an existing GitHub release and `GH_TOKEN`.
 
-GitHub Actions bootstraps with FluentCI 0.17.2, compiles components once on Ubuntu,
+GitHub Actions bootstraps FluentCI with `https://cli.fluentci.io` (release jobs
+select `FLUENTCI_VERSION`), compiles repository components once on Ubuntu,
 and transfers them to native release runners. Runner jobs pass `--target` and
 `--version` explicitly. BSD guests need neither Node nor a PureScript compiler;
 see [BSD releases](../.github/BSD-RELEASES.md). Every Rust build/test/lint uses
@@ -130,8 +135,12 @@ fluentci run nix flakestry --version v0.17.2 --ref COMMIT_SHA
 
 Nix publishers require their tools and GitHub OIDC variables. FlakeHub also needs
 `FLAKEHUB_PUSH_GITHUB_TOKEN`; Flakestry uses `GH_TOKEN`. The publishing workflows
-accept an existing tag, compile current publishing components, and publish the
-resolved tag revision. Neither publishing function runs in the default check.
+accept an existing tag and call the registry `nix-publish@v0.2.0` component on the
+resolved tag revision. `setup-determinate-nix` provisions Nix;
+`setup-flakehub-push` provisions FlakeHub publishing, and `setup-bun` supplies
+Flakestry’s HTTP/JSON runtime. No publishing Wasm is compiled in these workflows.
+Each publication has an explicit fresh `--run-dir`, and FlakeHub receives
+`--name "$GITHUB_REPOSITORY"`. Neither publishing function runs in the default check.
 
 ## Gemfury
 
@@ -153,3 +162,18 @@ Pass the destination as `--account`. Actions supplies it from `FURY_ACCOUNT`.
 token skips Gemfury uploads; authentication and upload errors fail the job.
 Curl 8.3+ expands credentials from environment variables, keeping tokens out of
 command arguments and pipeline plans. `github` uploads packages through `gh`.
+
+## GitHub Actions environment handoff
+
+Setup components return their installation directory and environment as typed
+values. Workflows pipe that result to `.github/scripts/export-setup-env.py`,
+which persists PATH additions in `GITHUB_PATH` and variables such as `CARGO_HOME`,
+`RUSTUP_HOME`, and `JAVA_HOME` in `GITHUB_ENV`. This is necessary because each
+Actions step runs in a separate process. Tool installers run inside Wasm; the
+Python helper only exports the returned values and validates their shape.
+
+The setup bridge has standalone tests that do not install tools or invoke the CLI:
+
+```sh
+python3 .github/scripts/test-setup-env.py
+```

@@ -26,23 +26,33 @@ jobs:
       CARGO_PROFILE_RELEASE_LTO: 'false'
     steps:
       - uses: actions/checkout@v4
-      - name: Set up FluentCI
-        uses: fluentci-io/setup-fluentci@next
-        with:
-          version: ${{ env.FLUENTCI_VERSION }}
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          components: rustfmt, clippy
-          targets: wasm32-unknown-unknown,wasm32-wasip2
-      - uses: oven-sh/setup-bun@v2
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
+      - name: Bootstrap FluentCI
+        shell: bash
+        run: |
+          curl -fsSL https://cli.fluentci.io | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Test setup environment handoff
+        run: python3 .github/scripts/test-setup-env.py
+      - name: Set up rust through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-rust@v0.2.0 setup --version stable | python3 .github/scripts/export-setup-env.py
+      - name: Configure Rust components and targets
+        shell: bash
+        run: |
+          rustup component add rustfmt clippy
+          rustup target add wasm32-unknown-unknown wasm32-wasip2
+      - name: Set up bun through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+      - name: Set up node through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
       - uses: Swatinem/rust-cache@v2
         with:
           key: ci-release-tests-no-lto
-      - name: Install the PureScript Wasm compiler toolchain
-        run: sh .fluentci/scripts/install-sdk-tools.sh
+      - name: Set up purescript through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Verify the Wasm compiler toolchain by building modules
         run: fluentci --check-update=false modules --json
       - name: Verify compiled CI component interfaces
@@ -74,12 +84,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.3'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
+      - name: Bootstrap FluentCI
+        shell: bash
+        run: |
+          curl -fsSL https://cli.fluentci.io | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Set up bun through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+      - name: Set up node through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Lint, typecheck, and build documentation
@@ -107,9 +122,14 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.3'
+      - name: Bootstrap FluentCI
+        shell: bash
+        run: |
+          curl -fsSL https://cli.fluentci.io | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Set up bun through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Lint, typecheck, and build the landing page
@@ -137,12 +157,17 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.3'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
+      - name: Bootstrap FluentCI
+        shell: bash
+        run: |
+          curl -fsSL https://cli.fluentci.io | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Set up bun through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+      - name: Set up node through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Lint, typecheck, test, and bundle the Worker
@@ -154,19 +179,23 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: '1.4.3'
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24'
-      - uses: erlef/setup-beam@v1
-        with:
-          otp-version: '28'
-          gleam-version: '1.19.2'
-      - uses: pkl-community/setup-pkl@v0
-        with:
-          pkl-version: '0.31.1'
+      - name: Bootstrap FluentCI
+        shell: bash
+        run: |
+          curl -fsSL https://cli.fluentci.io | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Set up bun through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+      - name: Set up node through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+      - name: Set up gleam through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-gleam@v0.2.0 setup --version 1.19.2 | python3 .github/scripts/export-setup-env.py
+      - name: Set up pkl through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-pkl@v0.2.0 setup --version 0.31.1 | python3 .github/scripts/export-setup-env.py
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Check generated lexicons and formatting

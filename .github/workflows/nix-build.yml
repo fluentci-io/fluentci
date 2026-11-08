@@ -19,11 +19,17 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-      - name: Install PureScript Wasm compiler toolchain
-        run: sh .fluentci/scripts/install-sdk-tools.sh
+      - name: Bootstrap FluentCI
+        shell: bash
+        run: |
+          curl -fsSL https://cli.fluentci.io | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Set up node through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+      - name: Set up purescript through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
       - name: Compile and test Nix module
         working-directory: .fluentci/nix-build
         run: |
@@ -63,9 +69,14 @@ jobs:
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
-      - uses: cachix/install-nix-action@v31
-      - name: Set up FluentCI
-        uses: fluentci-io/setup-fluentci@next
+      - name: Bootstrap FluentCI
+        shell: bash
+        run: |
+          curl -fsSL https://cli.fluentci.io | sh
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+      - name: Set up determinate-nix through FluentCI
+        shell: bash
+        run: fluentci --check-update=false run setup-determinate-nix@v0.2.0 setup --sudo | python3 .github/scripts/export-setup-env.py
       - uses: actions/download-artifact@v4
         with:
           name: nix-ci-wasm
