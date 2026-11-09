@@ -1451,4 +1451,17 @@ test('latest listings select SemVer before download sorting, search and paginati
   const result = await response.json();
   assert.equal(result.packages.length, 2);
   assert.equal(result.packages.find((p) => p.author === did).version, '0.2.10');
+  assert.equal(result.packages.find((p) => p.author === did).downloads, 1000);
+  assert.equal(result.packages[0].author, did);
+  const actorResponse = await fetch(
+    `${url}/xrpc/io.fluentci.registry.getActorPackages?actor=${did}&latest=true&sort=downloads&limit=1`,
+  );
+  const actorPage = await actorResponse.json();
+  assert.equal(actorPage.packages[0].name, 'setup-rust');
+  assert.equal(actorPage.packages[0].downloads, 1000);
+  assert.ok(actorPage.cursor);
+  const actorNext = await fetch(
+    `${url}/xrpc/io.fluentci.registry.getActorPackages?actor=${did}&latest=true&sort=downloads&limit=1&cursor=${encodeURIComponent(actorPage.cursor)}`,
+  );
+  assert.equal((await actorNext.json()).packages[0].name, 'preview');
 });

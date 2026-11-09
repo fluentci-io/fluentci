@@ -92,7 +92,10 @@ export const conflictUpdate = (query, target, assignments, setWhere) => ({
   conflict: { target, set: values(assignments), setWhere },
 });
 function selection(connection, q) {
-  let query = connection.select(d.getTableColumns(q.table)).from(q.table).$dynamic();
+  let query = connection
+    .select({ ...d.getTableColumns(q.table), ...q.projections })
+    .from(q.table)
+    .$dynamic();
   for (const join of q.joins)
     query = query[join.inner ? 'innerJoin' : 'leftJoin'](join.table, join.on);
   if (q.where) query = query.where(q.where);
@@ -175,4 +178,16 @@ export const conflictUpdateColumns = (query, targets, assignments, setWhere) => 
 export function functionCompare(name, left, right, value) {
   if (!/^[a-z_]+$/.test(name)) throw Error('Invalid SQLite function name');
   return d.eq(d.sql`${d.sql.raw(name)}(${left}, ${right})`, value);
+}
+
+export const project = (query, property, value) => ({
+  ...query,
+  projections: { ...query.projections, [property]: value },
+});
+export function sumWhere(table, value, condition) {
+  const query = new QueryBuilder()
+    .select({ value: d.sum(value) })
+    .from(table)
+    .where(condition);
+  return d.sql`coalesce((${query}), 0)`;
 }

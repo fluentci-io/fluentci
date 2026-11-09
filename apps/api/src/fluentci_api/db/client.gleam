@@ -6,7 +6,8 @@ import fluentci_api/drizzle/orm.{
   type Assignment, type Condition, type Query, alias, all, and, asc, count_rows,
   desc, eq, eq_columns, from, function_compare, gt, inner_join, insert, is_null,
   left_join, limit, lt, lt_columns, matches, not_exists, on_conflict_do_nothing,
-  on_conflict_do_update, or, order_by, set, transaction, where,
+  on_conflict_do_update, or, order_by, project, set, sum_where, transaction,
+  where,
 }
 import fluentci_api/function_metadata
 import fluentci_api/lexicon/models.{
@@ -180,6 +181,21 @@ fn list_filtered(
   sort: String,
 ) -> Promise(Page) {
   let plugins = p.table()
+  let downloads = case newest_only {
+    False -> p.downloads(plugins)
+    True -> {
+      let releases = alias(plugins, "download_releases")
+      sum_where(
+        releases,
+        p.downloads(releases),
+        and([
+          eq(p.deleted(releases), False),
+          eq_columns(p.author(releases), p.author(plugins)),
+          eq_columns(p.name(releases), p.name(plugins)),
+        ]),
+      )
+    }
+  }
   let sort = case sort {
     "" | "downloads" -> "downloads"
     "newest" | "oldest" | "name" -> sort
@@ -214,7 +230,7 @@ fn list_filtered(
   let conditions = case cursor_value {
     "" -> conditions
     value -> {
-      let #(time, uri, downloads, name) = decode_cursor(value, filter)
+      let #(time, uri, cursor_downloads, name) = decode_cursor(value, filter)
       let after_time =
         or([
           lt(p.published_at(plugins), Some(time)),
@@ -223,8 +239,8 @@ fn list_filtered(
       let after = case sort {
         "downloads" ->
           or([
-            lt(p.downloads(plugins), downloads),
-            and([eq(p.downloads(plugins), downloads), after_time]),
+            lt(downloads, cursor_downloads),
+            and([eq(downloads, cursor_downloads), after_time]),
           ])
         "name" ->
           or([
@@ -265,7 +281,7 @@ fn list_filtered(
   }
   let orders = case sort {
     "downloads" -> [
-      desc(p.downloads(plugins)),
+      desc(downloads),
       desc(p.published_at(plugins)),
       asc(p.uri(plugins)),
     ]
@@ -279,6 +295,7 @@ fn list_filtered(
   }
   let selection =
     selection
+    |> project("downloads", downloads)
     |> where(and(conditions))
     |> order_by(orders)
     |> limit(count + 1)

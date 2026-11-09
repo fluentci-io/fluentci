@@ -129,6 +129,28 @@ pub fn from(table: Table(a)) -> Query(a) {
 @external(javascript, "./orm_ffi.mjs", "from")
 fn from_ffi(table: Raw) -> Raw
 
+pub fn sum_where(
+  table: Table(a),
+  value: Expression(Int),
+  condition: Condition,
+) -> Expression(Int) {
+  Expression(sum_where_ffi(table.raw, value.raw, condition), integer())
+}
+
+@external(javascript, "./orm_ffi.mjs", "sumWhere")
+fn sum_where_ffi(table: Raw, value: Raw, condition: Condition) -> Raw
+
+pub fn project(
+  query: Query(a),
+  property: String,
+  value: Expression(b),
+) -> Query(a) {
+  Query(project_ffi(query.raw, property, value.raw), query.decoder)
+}
+
+@external(javascript, "./orm_ffi.mjs", "project")
+fn project_ffi(query: Raw, property: String, value: Raw) -> Raw
+
 pub fn where(query: Query(a), condition: Condition) -> Query(a) {
   Query(where_ffi(query.raw, condition), query.decoder)
 }
