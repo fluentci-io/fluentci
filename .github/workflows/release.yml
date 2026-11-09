@@ -51,7 +51,7 @@ jobs:
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-rust@v0.2.1 setup --version stable | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable | python3 .github/scripts/export-setup-env.py
       - name: Set up bun through FluentCI
         shell: bash
         run: |
@@ -132,7 +132,7 @@ jobs:
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-rust@v0.2.1 setup --toolchain stable --targets '["${{ matrix.target }}"]' | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --targets "${{ matrix.target }}" | python3 .github/scripts/export-setup-env.py
       - uses: actions/download-artifact@v4
         with:
           name: release-inputs

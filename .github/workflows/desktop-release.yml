@@ -89,7 +89,7 @@ jobs:
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-rust@v0.2.1 setup --toolchain stable --targets '["${{ matrix.target }}"]' | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --targets "${{ matrix.target }}" | python3 .github/scripts/export-setup-env.py
       - name: Set up bun through FluentCI
         shell: bash
         run: |

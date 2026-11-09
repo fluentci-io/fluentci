@@ -57,7 +57,7 @@ jobs:
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-rust@v0.2.1 setup --toolchain stable --components '["rustfmt"]' --targets '["wasm32-wasip2"]' | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --components rustfmt --targets wasm32-wasip2 | python3 .github/scripts/export-setup-env.py
       - uses: Swatinem/rust-cache@v2
         with:
           key: components-release-no-lto
