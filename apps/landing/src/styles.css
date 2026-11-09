@@ -296,7 +296,7 @@ pre {
   }
   .module-logo {
     aspect-ratio: 1;
-    @apply flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-white text-violet-700;
+    @apply flex size-11 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-transparent text-violet-700;
   }
   .module-result .module-logo {
     position: relative;
