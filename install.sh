@@ -61,7 +61,7 @@ fi
 
 echo "Downloading FluentCI $fluentci_version for $fluentci_target..."
 curl --fail --show-error --location --retry 3 "$fluentci_url" -o "$fluentci_temp/$fluentci_asset"
-curl --fail --show-error --location --retry 3 "$fluentci_url.sha256" -o "$fluentci_temp/$fluentci_asset.sha256"
+curl --fail --show-error --location --retry 5 "$fluentci_url.sha256" -o "$fluentci_temp/$fluentci_asset.sha256"
 fluentci_expected=$(awk 'NR == 1 { print $1 }' "$fluentci_temp/$fluentci_asset.sha256")
 case "$fluentci_hash_tool" in
     sha256sum) fluentci_actual=$(sha256sum "$fluentci_temp/$fluentci_asset" | awk '{ print $1 }') ;;

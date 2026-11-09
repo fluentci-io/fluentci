@@ -33,9 +33,10 @@ class InstallerTests(unittest.TestCase):
 root = pathlib.Path(os.environ["MOCK_ROOT"])
 args = sys.argv[1:]
 url = next(value for value in args if value.startswith("https://"))
-with (root / "requests").open("a") as log: log.write(url + "\\n")
+retry_count = args[args.index("--retry") + 1] if "--retry" in args else "none"
+with (root / "requests").open("a") as log: log.write(url + " retry=" + retry_count + "\\n")
 if url.endswith("/latest"):
-    print("https://github.com/tsirysndr/fluentci/releases/" + ("latest" if os.environ.get("BAD_LATEST") else "tag/2099.01.01"), end="")
+    print("https://github.com/fluentci-io/fluentci/releases/" + ("latest" if os.environ.get("BAD_LATEST") else "tag/2099.01.01"), end="")
 else:
     destination = pathlib.Path(args[args.index("-o") + 1])
     shutil.copyfile(root / ("checksum" if url.endswith(".sha256") else "release.tar.gz"), destination)
@@ -56,6 +57,7 @@ else:
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("/releases/latest", requests)
         self.assertIn("/download/2099.01.01/fluentci_2099.01.01_x86_64-unknown-linux-gnu.tar.gz", requests)
+        self.assertIn(".sha256 retry=5", requests)
         self.assertIn(b"fluentci-test", binary)
 
     def test_preserves_explicit_version(self):
