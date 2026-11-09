@@ -162,7 +162,8 @@ export function Downloads({ plugin }: { plugin: Plugin }) {
       )}
       {(plugin.downloads ?? 0) > 0 && (
         <p className="mt-4 text-xs text-muted">
-          <DownloadIcon /> {plugin.downloads!.toLocaleString()} total downloads
+          <DownloadIcon /> {plugin.downloads!.toLocaleString()} downloads for v
+          {plugin.version}
         </p>
       )}
     </section>

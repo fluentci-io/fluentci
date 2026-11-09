@@ -491,3 +491,38 @@ pre {
 @layer components {
   .publisher-module h3 { overflow-wrap: anywhere; }
 }
+
+.version-selector {
+  position: relative;
+}
+.version-selector summary {
+  list-style: none;
+}
+.version-selector summary::-webkit-details-marker {
+  display: none;
+}
+.version-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 40;
+  width: min(19rem, 80vw);
+  @apply rounded-xl border border-line bg-panel p-2 shadow-xl;
+}
+.version-dropdown input {
+  @apply w-full rounded-lg border border-line bg-transparent px-3 py-2 text-sm outline-none;
+}
+.version-options {
+  max-height: 16rem;
+  overflow-y: auto;
+}
+.version-options a {
+  @apply flex justify-between gap-3 rounded-lg px-3 py-2 font-mono text-sm;
+}
+.version-options a:hover,
+.version-options a:focus-visible {
+  @apply bg-raised;
+}
+.version-options p {
+  @apply px-3 py-2 text-xs text-muted;
+}

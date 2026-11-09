@@ -5,6 +5,7 @@ import { SiteHeader } from "../SiteHeader";
 import { Author } from "../Author";
 import { ModuleLogo } from "../ModuleLogo";
 import { ModuleDocumentation } from "../ModuleDocumentation";
+import { VersionSelector } from "../VersionSelector";
 import { Downloads } from "../Downloads";
 import { DownloadIcon } from "../DownloadIcon";
 import { CopyCommand } from "../CopyCommand";
@@ -81,13 +82,24 @@ export function ModulePage() {
             if (!abort.signal.aborted) setProfile(profiles[item.author]);
           })
           .catch(() => {});
-        void query<{ package: Plugin }>(
-          "getPackage",
-          new URLSearchParams({ author: item.author, name: item.name }),
+        void query<{ packages: Plugin[] }>(
+          "searchPackages",
+          new URLSearchParams({
+            author: item.author,
+            filter: `name==${item.name}`,
+            latest: "true",
+          }),
           abort.signal,
         )
           .then((result) => {
-            if (!abort.signal.aborted) setLatest(result.package);
+            if (!abort.signal.aborted)
+              setLatest(
+                result.packages.find(
+                  (release) =>
+                    release.author === item.author &&
+                    release.name === item.name,
+                ),
+              );
           })
           .catch(() => {});
       } catch (reason) {
@@ -152,9 +164,9 @@ export function ModulePage() {
                   {plugin.description}
                 </p>
               )}
-              {(plugin.downloads ?? 0) > 0 && (
+              {(latest?.downloads ?? 0) > 0 && (
                 <p className="mt-4 font-mono text-sm text-muted">
-                  <DownloadIcon /> {plugin.downloads!.toLocaleString()}{" "}
+                  <DownloadIcon /> {latest!.downloads!.toLocaleString()} total
                   downloads
                 </p>
               )}
@@ -227,7 +239,13 @@ export function ModulePage() {
               <dl className="my-6 space-y-4 text-xs">
                 <div className="flex flex-wrap justify-between gap-2">
                   <dt className="text-muted">Version</dt>
-                  <dd className="font-mono">{plugin.version}</dd>
+                  <dd>
+                    <VersionSelector
+                      key={plugin.uri}
+                      plugin={plugin}
+                      handle={author}
+                    />
+                  </dd>
                 </div>
                 <div className="flex flex-wrap justify-between gap-2">
                   <dt className="text-muted">Published (UTC)</dt>

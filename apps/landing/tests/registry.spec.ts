@@ -462,3 +462,50 @@ test("F focuses function search and filters Docs without changing the exposed co
     page.getByRole("region", { name: "clean function", exact: true }),
   ).toBeVisible();
 });
+
+test("module version dropdown filters and navigates across paginated releases", async ({
+  page,
+}) => {
+  await registry(page);
+  const older = {
+    ...plugin,
+    version: "0.0.9",
+    uri: plugin.uri.replace("0.1.0", "0.0.9"),
+  };
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.registry.searchPackages?*",
+    async (route) => {
+      const url = new URL(route.request().url());
+      if (url.searchParams.get("latest") === "true") {
+        await route.fulfill({
+          json: { packages: [{ ...plugin, downloads: 4321 }] },
+        });
+        return;
+      }
+      expect(url.searchParams.get("author")).toBe(plugin.author);
+      expect(url.searchParams.get("filter")).toBe(`name==${plugin.name}`);
+      expect(url.searchParams.has("latest")).toBe(false);
+      await route.fulfill({
+        json: url.searchParams.has("cursor")
+          ? { packages: [older] }
+          : { packages: [plugin], cursor: "next-release" },
+      });
+    },
+  );
+  await page.goto("/fluentci.io/plugin/sccache-0.1.0");
+  const toggle = page.getByLabel("Choose module version, current 0.1.0");
+  await expect(page.getByText("4,321 total downloads")).toBeVisible();
+  await expect(page.getByText("1,284 downloads for v0.1.0")).toBeVisible();
+  await toggle.click();
+  const versions = page.getByRole("region", { name: "Module versions" });
+  await expect(versions.getByRole("link")).toHaveCount(2);
+  await expect(
+    versions.getByRole("link", { name: "0.1.0 Current" }),
+  ).toHaveAttribute("aria-current", "page");
+  await versions
+    .getByRole("textbox", { name: "Filter versions" })
+    .fill("0.0.9");
+  await expect(versions.getByRole("link")).toHaveCount(1);
+  await versions.getByRole("link", { name: "0.0.9" }).click();
+  await expect(page).toHaveURL(/sccache-0.0.9$/);
+});
