@@ -17,6 +17,7 @@ pub fn register(server: Server, database: Db) -> Nil {
       runtime.limit(request),
       runtime.param(request, "cursor"),
       runtime.param(request, "sort"),
+      runtime.flag(request, "latest"),
     ))
     page |> model.encode_page |> json.to_string |> runtime.json
   })

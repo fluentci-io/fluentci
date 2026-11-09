@@ -1406,3 +1406,49 @@ test('download sorting, alternative orders, and sort-bound cursors apply before 
     assert.equal((await fetch(`${base}?actor=${did}&sort=invalid`)).status, 400);
   }
 });
+
+test('latest listings select SemVer before download sorting, search and pagination', async (t) => {
+  const connection = await fixture(t);
+  await add(
+    connection,
+    event('setup-rust', '0.2.9', 100, did, { publishedAt: '2026-11-09T00:00:00.000Z' }),
+    event('setup-rust', '0.2.10', 101, did, { publishedAt: '2026-11-01T00:00:00.000Z' }),
+    event('setup-rust', '1.0.0-beta.1', 102, did),
+    event('setup-rust', '0.3.0', 103, other),
+    event('preview', '1.0.0-beta.2', 104),
+    event('preview', '1.0.0-beta.10', 105),
+  );
+  await connection.client.execute({
+    sql: 'UPDATE plugin_records SET downloads = 1000 WHERE version = ?',
+    args: ['0.2.9'],
+  });
+  const { url } = await server(t, connection);
+  for (const method of ['listPackages', 'searchPackages', 'getActorPackages']) {
+    const params = new URLSearchParams({
+      latest: 'true',
+      limit: '1',
+      sort: 'downloads',
+      author: did,
+      actor: did,
+    });
+    const packages = [];
+    do {
+      const response = await fetch(`${url}/xrpc/io.fluentci.registry.${method}?${params}`);
+      assert.equal(response.status, 200);
+      const page = await response.json();
+      packages.push(...page.packages);
+      if (!page.cursor) break;
+      params.set('cursor', page.cursor);
+    } while (true);
+    assert.deepEqual(packages.map((p) => [p.name, p.version]).sort(), [
+      ['preview', '1.0.0-beta.10'],
+      ['setup-rust', '0.2.10'],
+    ]);
+  }
+  const response = await fetch(
+    `${url}/xrpc/io.fluentci.registry.searchPackages?latest=true&q=setup-rust`,
+  );
+  const result = await response.json();
+  assert.equal(result.packages.length, 2);
+  assert.equal(result.packages.find((p) => p.author === did).version, '0.2.10');
+});

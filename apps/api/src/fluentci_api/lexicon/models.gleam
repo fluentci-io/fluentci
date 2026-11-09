@@ -418,6 +418,7 @@ pub fn encode_registry_get_package_output(
 
 pub type RegistryListPackagesParameters {
   RegistryListPackagesParameters(
+    latest: Option(Bool),
     sort: Option(String),
     limit: Option(Int),
     cursor: Option(String),
@@ -429,6 +430,11 @@ pub fn encode_registry_list_packages_parameters(
   value: RegistryListPackagesParameters,
 ) -> json.Json {
   let fields = []
+  let fields =
+    list.append(fields, case value.latest {
+      None -> []
+      Some(item) -> [#("latest", json.bool(item))]
+    })
   let fields =
     list.append(fields, case value.sort {
       None -> []
@@ -552,6 +558,7 @@ pub fn encode_registry_record_download_output(
 
 pub type RegistrySearchPackagesParameters {
   RegistrySearchPackagesParameters(
+    latest: Option(Bool),
     sort: Option(String),
     limit: Option(Int),
     cursor: Option(String),
@@ -565,6 +572,11 @@ pub fn encode_registry_search_packages_parameters(
   value: RegistrySearchPackagesParameters,
 ) -> json.Json {
   let fields = []
+  let fields =
+    list.append(fields, case value.latest {
+      None -> []
+      Some(item) -> [#("latest", json.bool(item))]
+    })
   let fields =
     list.append(fields, case value.sort {
       None -> []

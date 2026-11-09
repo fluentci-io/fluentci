@@ -171,3 +171,8 @@ export const conflictUpdateColumns = (query, targets, assignments, setWhere) => 
   ...query,
   conflict: { target: targets.toArray(), set: values(assignments), setWhere },
 });
+
+export function functionCompare(name, left, right, value) {
+  if (!/^[a-z_]+$/.test(name)) throw Error('Invalid SQLite function name');
+  return d.eq(d.sql`${d.sql.raw(name)}(${left}, ${right})`, value);
+}

@@ -521,6 +521,11 @@ export const schemas = [
           type: 'params',
           required: [],
           properties: {
+            latest: {
+              type: 'boolean',
+              description:
+                'Return only the highest stable SemVer release per author and name, or highest prerelease when no stable release exists. Applied before filtering, sorting and pagination.',
+            },
             sort: {
               type: 'string',
               description:
@@ -727,6 +732,11 @@ export const schemas = [
           type: 'params',
           required: [],
           properties: {
+            latest: {
+              type: 'boolean',
+              description:
+                'Return only the highest stable SemVer release per author and name, or highest prerelease when no stable release exists. Applied before filtering, sorting and pagination.',
+            },
             sort: {
               type: 'string',
               description:

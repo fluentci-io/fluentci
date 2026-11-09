@@ -4,7 +4,7 @@ import fluentci_api/db/connection
 import fluentci_api/db/filters
 import fluentci_api/drizzle/orm.{
   type Assignment, type Condition, type Query, alias, all, and, asc, count_rows,
-  desc, eq, eq_columns, from, gt, gt_columns, inner_join, insert, is_null,
+  desc, eq, eq_columns, from, function_compare, gt, inner_join, insert, is_null,
   left_join, limit, lt, lt_columns, matches, not_exists, on_conflict_do_nothing,
   on_conflict_do_update, or, order_by, set, transaction, where,
 }
@@ -151,8 +151,9 @@ pub fn list_packages_sorted(
   count: Int,
   cursor_value: String,
   sort: String,
+  newest_only: Bool,
 ) -> Promise(Page) {
-  list_filtered(db, query, author, count, cursor_value, "", False, sort)
+  list_filtered(db, query, author, count, cursor_value, "", newest_only, sort)
 }
 
 pub fn search_packages_sorted(
@@ -163,8 +164,9 @@ pub fn search_packages_sorted(
   cursor_value: String,
   rsql: String,
   sort: String,
+  newest_only: Bool,
 ) -> Promise(Page) {
-  list_filtered(db, query, author, count, cursor_value, rsql, False, sort)
+  list_filtered(db, query, author, count, cursor_value, rsql, newest_only, sort)
 }
 
 fn list_filtered(
@@ -541,9 +543,19 @@ fn newest_version() -> Condition {
         eq_columns(p.author(newer), p.author(plugins)),
         eq_columns(p.name(newer), p.name(plugins)),
         or([
-          gt_columns(p.published_at(newer), p.published_at(plugins)),
+          function_compare(
+            "semver_compare",
+            p.version(newer),
+            p.version(plugins),
+            1,
+          ),
           and([
-            eq_columns(p.published_at(newer), p.published_at(plugins)),
+            function_compare(
+              "semver_compare",
+              p.version(newer),
+              p.version(plugins),
+              0,
+            ),
             lt_columns(p.uri(newer), p.uri(plugins)),
           ]),
         ]),

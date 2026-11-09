@@ -28,10 +28,18 @@ export function decodeCursor(value, filter) {
     fail('InvalidCursor', 'Cursor does not match this query');
   return [parsed.time, parsed.uri, parsed.downloads, parsed.name];
 }
+// Stable releases take precedence over prereleases, matching getPackage.
+export function compareVersions(left, right) {
+  const leftPreview = Boolean(semver.prerelease(left));
+  const rightPreview = Boolean(semver.prerelease(right));
+  if (leftPreview !== rightPreview) return leftPreview ? -1 : 1;
+  return semver.compare(left, right);
+}
 export function latest(packages) {
   const values = packages.toArray();
-  const stable = values.filter((p) => !semver.prerelease(p.version));
-  return (stable.length ? stable : values).sort((a, b) => semver.rcompare(a.version, b.version))[0];
+  return values.sort(
+    (a, b) => compareVersions(b.version, a.version) || a.uri.localeCompare(b.uri),
+  )[0];
 }
 export const words = (value) => toList(value.match(/[\p{L}\p{N}_]+/gu) ?? []);
 export function fail(code, message) {

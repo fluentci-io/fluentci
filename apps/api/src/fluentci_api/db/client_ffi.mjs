@@ -4,6 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 import { mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
+import { compareVersions } from './query_helpers.mjs';
 import { root, source } from '../config_ffi.mjs';
 
 export async function open(options = {}) {
@@ -19,6 +20,7 @@ export async function open(options = {}) {
         : resolve(directory, url.slice(5));
   if (path !== ':memory:') mkdirSync(dirname(path), { recursive: true });
   const native = new DatabaseSync(path);
+  native.function('semver_compare', { deterministic: true }, compareVersions);
   let closed = false;
   // Keep raw execution available for operational checks and test fixtures.
   // Application schemas and queries remain in the Gleam Drizzle bindings.

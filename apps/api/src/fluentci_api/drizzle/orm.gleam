@@ -333,6 +333,24 @@ pub fn alias(table: Table(a), name: String) -> Table(a) {
 @external(javascript, "./orm_ffi.mjs", "alias")
 fn alias_ffi(table: Raw, name: String) -> Raw
 
+// Compare two expressions through a registered deterministic SQLite function.
+pub fn function_compare(
+  name: String,
+  left: Expression(a),
+  right: Expression(a),
+  value: Int,
+) -> Condition {
+  function_compare_ffi(name, left.raw, right.raw, value)
+}
+
+@external(javascript, "./orm_ffi.mjs", "functionCompare")
+fn function_compare_ffi(
+  name: String,
+  left: Raw,
+  right: Raw,
+  value: Int,
+) -> Condition
+
 pub fn gt_columns(left: Expression(a), right: Expression(a)) -> Condition {
   compare_columns_ffi(left.raw, right.raw, "gt")
 }
