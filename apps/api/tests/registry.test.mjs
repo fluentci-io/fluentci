@@ -1465,3 +1465,36 @@ test('latest listings select SemVer before download sorting, search and paginati
   );
   assert.equal((await actorNext.json()).packages[0].name, 'preview');
 });
+
+test('actor total downloads include every module version regardless of page, search and sort', async (t) => {
+  const connection = await fixture(t);
+  await add(
+    connection,
+    event('alpha', '1.0.0', 200),
+    event('alpha', '2.0.0', 201),
+    event('beta', '1.0.0', 202),
+    event('alpha', '1.0.0', 203, other),
+  );
+  await connection.client.execute({
+    sql: 'UPDATE plugin_records SET downloads = CASE WHEN author = ? THEN 7 ELSE 1000 END',
+    args: [did],
+  });
+  const { url } = await server(t, connection);
+  for (const params of [
+    { actor: did, latest: 'true', limit: '1' },
+    { actor: did, latest: 'true', q: 'missing', sort: 'name' },
+    { actor: did, latest: 'false' },
+    { actor: other },
+    { actor: 'did:plc:aaaaaaaaaaaaaaaaaaaaaaaa' },
+  ]) {
+    const response = await fetch(
+      `${url}/xrpc/io.fluentci.registry.getActorPackages?${new URLSearchParams(params)}`,
+    );
+    assert.equal(response.status, 200);
+    const result = await response.json();
+    assert.equal(
+      result.totalDownloads,
+      params.actor === did ? 21 : params.actor === other ? 1000 : 0,
+    );
+  }
+});

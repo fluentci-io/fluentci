@@ -353,6 +353,7 @@ pub type RegistryGetActorPackagesOutput {
   RegistryGetActorPackagesOutput(
     packages: List(RegistryPackageView),
     total: Option(Int),
+    total_downloads: Option(Int),
     cursor: Option(String),
   )
 }
@@ -370,6 +371,11 @@ pub fn encode_registry_get_actor_packages_output(
     list.append(fields, case value.total {
       None -> []
       Some(item) -> [#("total", json.int(item))]
+    })
+  let fields =
+    list.append(fields, case value.total_downloads {
+      None -> []
+      Some(item) -> [#("totalDownloads", json.int(item))]
     })
   let fields =
     list.append(fields, case value.cursor {

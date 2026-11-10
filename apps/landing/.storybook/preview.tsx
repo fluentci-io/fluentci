@@ -69,7 +69,12 @@ const preview: Preview = {
       handlers: [
         http.get(
           "https://api.fluentci.io/xrpc/io.fluentci.registry.getActorPackages",
-          () => HttpResponse.json({ packages: [plugin], total: 1 }),
+          () =>
+            HttpResponse.json({
+              packages: [plugin],
+              total: 1,
+              totalDownloads: plugin.downloads ?? 0,
+            }),
         ),
         http.get(
           "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile",

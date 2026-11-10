@@ -23,8 +23,16 @@ export function PublisherPage() {
   const [sort, setSort] = useState<ModuleSort>("downloads");
   const [showPinnedIdentity, setShowPinnedIdentity] = useState(false);
   const profileHeader = useRef<HTMLDivElement>(null);
-  const { items, total, loading, error, hasMore, loadMore, retry } =
-    usePublisherModules(actor, search, sort);
+  const {
+    items,
+    total,
+    totalDownloads,
+    loading,
+    error,
+    hasMore,
+    loadMore,
+    retry,
+  } = usePublisherModules(actor, search, sort);
   const sentinel = useRef<HTMLDivElement>(null);
   const filterInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -128,6 +136,15 @@ export function PublisherPage() {
                 </a>
               )}
             </div>
+            {totalDownloads !== undefined && (
+              <p
+                className="mt-4 font-mono text-sm text-muted"
+                aria-label={`${totalDownloads.toLocaleString()} total downloads`}
+              >
+                <DownloadIcon /> {totalDownloads.toLocaleString()} total
+                downloads
+              </p>
+            )}
             {profile?.description && (
               <p className="mt-4 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-muted">
                 {profile.description}

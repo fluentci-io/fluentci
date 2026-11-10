@@ -38,6 +38,10 @@ defs = new Mapping {
             }
           }
           ["total"] = new IntegerField { minimum = 0 }
+          ["totalDownloads"] = new IntegerField {
+            minimum = 0
+            description = "Downloads across all visible versions of all modules published by this actor, independent of filtering and pagination."
+          }
           ["cursor"] = new StringField {
           }
         }

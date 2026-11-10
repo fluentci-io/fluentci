@@ -618,6 +618,27 @@ pub fn actor_profile_packages_sorted(
     True -> [newest_version(), ..conditions]
     False -> conditions
   }
+  let releases = alias(p.table(), "actor_download_releases")
+  let downloads =
+    sum_where(
+      releases,
+      p.downloads(releases),
+      and([
+        eq(p.deleted(releases), False),
+        eq(p.author(releases), actor),
+      ]),
+    )
+  use download_rows <- promise.await(all(
+    db,
+    visible()
+      |> where(and([visibility(), eq(p.author(p.table()), actor)]))
+      |> project("downloads", downloads)
+      |> limit(1),
+  ))
+  let total_downloads = case download_rows {
+    [row, ..] -> row.downloads
+    [] -> 0
+  }
   use total <- promise.await(count_rows(db, visible() |> where(and(conditions))))
   use page <- promise.map(list_filtered(
     db,
@@ -633,5 +654,6 @@ pub fn actor_profile_packages_sorted(
     packages: page.packages,
     cursor: page.cursor,
     total: Some(total),
+    total_downloads: Some(total_downloads),
   )
 }

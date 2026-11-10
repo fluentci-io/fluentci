@@ -41,6 +41,7 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
               ? modules.slice(20)
               : modules.slice(0, 20),
           total: 22,
+          totalDownloads: 123456,
           ...(!filtered && !cursor ? { cursor: "next-page" } : {}),
         },
       });
@@ -64,6 +65,7 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
   );
   await expect(pdsls).toHaveAttribute("target", "_blank");
   await expect(page.getByLabel("22 published modules")).toBeVisible();
+  await expect(page.getByLabel("123,456 total downloads")).toBeVisible();
   await expect(page.locator(".publisher-avatar img")).toHaveAttribute(
     "src",
     "http://127.0.0.1:4173/fluentci-logo.png",
@@ -108,6 +110,7 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
     page.locator(".publisher-module").filter({ has: page.locator("h3") }),
   ).toHaveCount(1);
   await expect(page.getByLabel("22 published modules")).toBeVisible();
+  await expect(page.getByLabel("123,456 total downloads")).toBeVisible();
   expect(requests.at(-1)?.searchParams.get("q")).toBe("module-21");
   expect(requests.at(-1)?.searchParams.get("latest")).toBe("true");
   expect(requests.at(-1)?.searchParams.get("sort")).toBe("downloads");

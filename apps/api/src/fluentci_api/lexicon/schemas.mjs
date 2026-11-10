@@ -442,6 +442,12 @@ export const schemas = [
                 type: 'integer',
                 minimum: 0,
               },
+              totalDownloads: {
+                type: 'integer',
+                description:
+                  'Downloads across all visible versions of all modules published by this actor, independent of filtering and pagination.',
+                minimum: 0,
+              },
               cursor: {
                 type: 'string',
               },

@@ -11,6 +11,7 @@ export function usePublisherModules(
   const [items, setItems] = useState<Plugin[]>([]);
   const [cursor, setCursor] = useState<string>();
   const [total, setTotal] = useState<number>();
+  const [totalDownloads, setTotalDownloads] = useState<number>();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [debounced, setDebounced] = useState(search);
@@ -23,7 +24,10 @@ export function usePublisherModules(
     const timer = window.setTimeout(() => setDebounced(search.trim()), 200);
     return () => window.clearTimeout(timer);
   }, [search]);
-  useEffect(() => setTotal(undefined), [actor]);
+  useEffect(() => {
+    setTotal(undefined);
+    setTotalDownloads(undefined);
+  }, [actor]);
   const fetchPage = useCallback(
     async (after?: string) => {
       if (busy.current) return;
@@ -46,6 +50,7 @@ export function usePublisherModules(
           packages: Plugin[];
           cursor?: string;
           total?: number;
+          totalDownloads?: number;
         }>("getActorPackages", params, abort.signal);
         if (abort.signal.aborted || current !== generation.current) return;
         if (after && page.cursor === after)
@@ -59,6 +64,8 @@ export function usePublisherModules(
         next.current = cursor;
         setCursor(cursor);
         if (typeof page.total === "number") setTotal(page.total);
+        if (typeof page.totalDownloads === "number")
+          setTotalDownloads(page.totalDownloads);
       } catch (reason) {
         if (!abort.signal.aborted && current === generation.current)
           setError(
@@ -94,6 +101,7 @@ export function usePublisherModules(
   return {
     items,
     total,
+    totalDownloads,
     loading,
     error,
     hasMore: Boolean(cursor),

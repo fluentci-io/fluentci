@@ -12,6 +12,8 @@ remains available for existing probes.
 `GET /xrpc/io.fluentci.registry.getActorPackages?actor=alice.example&limit=20`
 returns an actor's indexed published versions. `actor` accepts a handle or DID;
 `limit` is 1–100 (default 20), and `cursor` continues the selected ordering.
+The response also includes `totalDownloads`: the actor’s downloads across all
+visible module versions, independent of search, sort order, and pagination.
 Use `latest=true` on listing, search, or actor-package queries to select one
 release per publisher and module before filtering, sorting, and pagination. This
 uses the highest stable SemVer, falling back to the highest prerelease when no
