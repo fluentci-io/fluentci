@@ -1,82 +1,117 @@
+export const runExample =
+  'fluentci run ci check \\\n  --run-dir "$(mktemp -d)/run"';
+
 export const examples = [
   {
     name: "ClojureScript",
     sdk: "clojurescript",
     file: "src/main/plugin.cljc",
     language: "clojurescript",
-    pipe: "The -> macro threads the immutable pipeline through each function. Terminal functions end in !.",
+    pipe: "The -> macro builds immutable tasks. Lint and tests share the install dependency; build waits for both.",
     code: `(ns ^:typed.clojure main.plugin
-  (:require [fluentci.plugin :as p]
+  (:require [fluentci.host :as h]
             #?(:clj [typed.clojure :as t])))
 
-#?(:clj (t/ann hello [-> nil]))
-(defn hello []
-  (-> (p/pipeline "hello")
-      (p/exec ["echo" "Hello from FluentCI"])
-      (p/exec ["git" "status" "--short"])
-      p/stdout!
-      p/output!))`,
+#?(:clj (t/ann check [(t/HMap :mandatory {:runDir t/Str}) -> t/Str]))
+(defn check [{:keys [runDir]}]
+  (let [step (fn [id args parents]
+               (-> (h/task id "/usr/bin/python3" ".")
+                   (h/with-args args)
+                   (h/with-env "PYTHONPATH" ".ci-deps")
+                   (h/after parents)))
+        install (step "install" ["-m" "pip" "install" "--target" ".ci-deps"
+                                "-r" "requirements-ci.txt"] [])
+        lint (step "lint" ["-m" "ruff" "check" "src"] [install])
+        tests (step "test" ["-m" "pytest"] [install])
+        build (step "build" ["-m" "build" "--no-isolation"] [lint tests])]
+    (-> (h/plan [install lint tests build])
+        (h/with-jobs 2)
+        (h/run! runDir)
+        :outcome)))`,
   },
   {
     name: "PureScript",
     sdk: "purescript",
     file: "src/Main.purs",
     language: "purescript",
-    pipe: "The # operator passes the pipeline into the next step.",
+    pipe: "The # operator composes typed tasks. Two worker slots let lint and tests run together after installation.",
     code: `module Main where
 
 import Prelude
 import Data.Either (Either(..))
 import Effect (Effect)
 import Effect.Exception (throw)
-import FluentCI.Plugin as P
+import FluentCI.Host.Plan as H
+import FluentCI.Plugin.Error (errorMessage)
+import FluentCI.Plugin.Plan as P
 
-hello :: Effect Unit
-hello = do
-  result <- P.pipeline "hello"
-    # P.exec ["echo", "Hello from FluentCI"]
-    # P.exec ["git", "status", "--short"]
-    # P.stdout
+check :: { runDir :: String } -> Effect String
+check args = do
+  let
+    step name command parents = H.task name "/usr/bin/python3" "."
+      # H.withArgs command
+      # H.withEnv "PYTHONPATH" ".ci-deps"
+      # H.after parents
+    install = step "install" ["-m", "pip", "install", "--target",
+      ".ci-deps", "-r", "requirements-ci.txt"] []
+    lint = step "lint" ["-m", "ruff", "check", "src"] [install]
+    tests = step "test" ["-m", "pytest"] [install]
+    build = step "build" ["-m", "build", "--no-isolation"] [lint, tests]
+  result <- P.run args.runDir (H.plan [install, lint, tests, build] # H.withJobs 2)
   case result of
-    Left error -> throw (P.errorMessage error)
-    Right output -> void (P.output output)`,
+    Left error -> throw (errorMessage error)
+    Right _ -> pure "CI finished"`,
   },
   {
     name: "Python",
     sdk: "python",
     file: "plugin.py",
     language: "python",
-    pipe: "Chain .exec() calls; .stdout() runs the pipeline and returns its output.",
-    code: `import extism
-from fluentci import pipeline
+    pipe: "Frozen task values declare dependencies. The native scheduler runs independent checks in parallel.",
+    code: `from dataclasses import dataclass
+from fluentci.plan import Plan, Task
+
+@dataclass
+class CheckArgs:
+    runDir: str
 
 
-@extism.plugin_fn
-def hello() -> None:
-    output = (
-        pipeline("hello")
-        .exec("echo", "Hello from FluentCI")
-        .exec("git", "status", "--short")
-        .stdout()
-    )
-    extism.output_str(output)`,
+def check(args: CheckArgs) -> str:
+    def step(name: str, command: tuple[str, ...], needs: tuple[str, ...] = ()) -> Task:
+        return Task(name, "/usr/bin/python3", command, needs=needs).with_env(
+            "PYTHONPATH", ".ci-deps")
+
+    install = step("install", ("-m", "pip", "install", "--target",
+                              ".ci-deps", "-r", "requirements-ci.txt"))
+    lint = step("lint", ("-m", "ruff", "check", "src"), ("install",))
+    tests = step("test", ("-m", "pytest"), ("install",))
+    build = step("build", ("-m", "build", "--no-isolation"), ("lint", "test"))
+    return Plan((install, lint, tests, build), jobs=2).run(args.runDir).outcome`,
   },
   {
     name: "TypeScript",
     sdk: "typescript",
     file: "entry.ts",
     language: "typescript",
-    pipe: "Chain .withExec() calls; .stdout() executes the steps in order.",
-    code: `import { dag } from "./.sdk/typescript/src/plugin.ts";
+    pipe: "Typed tasks form a dependency graph. after() declares ordering; run() submits the whole plan once.",
+    code: `import { task, after, parallel, run, type Task } from "./.sdk/typescript/src/matrix";
 
-export function hello() {
-  const output = dag
-    .pipeline("hello")
-    .withExec(["echo", "Hello from FluentCI"])
-    .withExec(["git", "status", "--short"])
-    .stdout();
+interface CheckArgs {
+  runDir: string;
+}
 
-  Host.outputString(output);
+export function check(args: CheckArgs): string {
+  const step = (id: string, command: string[], parents: Task[] = []): Task =>
+    after(parents, { ...task(id, "/usr/bin/python3", command),
+      env: { PYTHONPATH: ".ci-deps" } });
+
+  const install = step("install", ["-m", "pip", "install", "--target",
+    ".ci-deps", "-r", "requirements-ci.txt"]);
+  const lint = step("lint", ["-m", "ruff", "check", "src"], [install]);
+  const tests = step("test", ["-m", "pytest"], [install]);
+  const build = step("build", ["-m", "build", "--no-isolation"], [lint, tests]);
+
+  return run(parallel([install, lint, tests, build], 2), args.runDir).outcome;
 }`,
   },
   {
@@ -84,14 +119,30 @@ export function hello() {
     sdk: "gleam",
     file: "src/plugin.gleam",
     language: "gleam",
-    pipe: "The |> operator pipes each result into the next function.",
-    code: `import fluentci/plugin
+    pipe: "The |> operator composes typed task values. A Result carries plan execution errors back to the caller.",
+    code: `import fluentci/host as h
+import fluentci/matrix
+import gleam/result
 
-pub fn hello() -> Result(String, String) {
-  plugin.pipeline("hello")
-  |> plugin.exec("echo", ["Hello from FluentCI"])
-  |> plugin.exec("git", ["status", "--short"])
-  |> plugin.stdout
+pub type CheckArgs {
+  CheckArgs(run_dir: String)
+}
+
+pub fn check(args: CheckArgs) -> Result(String, String) {
+  let step = fn(name, command, parents) {
+    h.task(name, "/usr/bin/python3", ".")
+    |> h.with_args(command)
+    |> h.with_env("PYTHONPATH", ".ci-deps")
+    |> h.after_jobs(parents)
+  }
+  let install = step("install", ["-m", "pip", "install", "--target",
+    ".ci-deps", "-r", "requirements-ci.txt"], [])
+  let lint = step("lint", ["-m", "ruff", "check", "src"], [install])
+  let tests = step("test", ["-m", "pytest"], [install])
+  let build = step("build", ["-m", "build", "--no-isolation"], [lint, tests])
+  matrix.parallel([install, lint, tests, build], 2)
+  |> matrix.run(args.run_dir)
+  |> result.map(fn(_) { "CI finished" })
 }`,
   },
   {
@@ -99,15 +150,27 @@ pub fn hello() -> Result(String, String) {
     sdk: "elixir",
     file: "lib/main.ex",
     language: "elixir",
-    pipe: "The |> operator composes steps; defplugin exports the job to Wasm.",
+    pipe: "The |> operator declares task dependencies. defplugin compiles the plan into a native Wasm component.",
     code: `defmodule Main do
   use FluentCI.Plugin
+  alias FluentCI.Host, as: H
 
-  defplugin hello do
-    pipeline("hello")
-    |> exec(["echo", "Hello from FluentCI"])
-    |> exec(["git", "status", "--short"])
-    |> stdout()
+  @doc "Install dependencies, check in parallel, then build a Python package."
+  defplugin check do
+    run_dir = argument("run-dir", "string")
+    step = fn name, command, parents ->
+      H.task(name, "/usr/bin/python3", ".")
+      |> H.args(command)
+      |> H.env(%{"PYTHONPATH" => ".ci-deps"})
+      |> H.needs(parents)
+    end
+    install = step.("install", ["-m", "pip", "install", "--target",
+      ".ci-deps", "-r", "requirements-ci.txt"], [])
+    lint = step.("lint", ["-m", "ruff", "check", "src"], ["install"])
+    tests = step.("test", ["-m", "pytest"], ["install"])
+    build = step.("build", ["-m", "build", "--no-isolation"], ["lint", "test"])
+
+    H.plan([install, lint, tests, build]) |> H.jobs(2) |> run_plan(run_dir)
   end
 end`,
   },
@@ -116,16 +179,24 @@ end`,
     sdk: "rescript",
     file: "src/Greeting.res",
     language: "rescript",
-    pipe: "The -> operator pipes the pipeline into the first argument of the next function.",
-    code: `@val @scope("Host")
-external output: string => unit = "outputString"
+    pipe: "The -> operator builds immutable tasks. Pattern matching handles execution errors explicitly.",
+    code: `type checkArgs = {runDir: string}
 
-let hello = () => {
-  switch Guest.pipeline("hello")
-    ->Guest.exec(["echo", "Hello from FluentCI"])
-    ->Guest.exec(["git", "status", "--short"])
-    ->Guest.stdout {
-  | Ok(value) => output(value)
+let check = (args: checkArgs): string => {
+  let step = (name, command, parents) =>
+    Matrix.task(name, "/usr/bin/python3", command, ".")
+    ->Matrix.withEnv("PYTHONPATH", ".ci-deps")
+    ->Matrix.afterJobs(parents)
+
+  let install = step("install", ["-m", "pip", "install", "--target",
+    ".ci-deps", "-r", "requirements-ci.txt"], [])
+  let lint = step("lint", ["-m", "ruff", "check", "src"], [install])
+  let tests = step("test", ["-m", "pytest"], [install])
+  let build = step("build", ["-m", "build", "--no-isolation"], [lint, tests])
+
+  switch Matrix.parallel([install, lint, tests, build], 2)
+    ->Matrix.run(args.runDir) {
+  | Ok(report) => report.outcome
   | Error(message) => JsError.throwWithMessage(message)
   }
 }`,

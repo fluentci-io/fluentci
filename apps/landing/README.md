@@ -33,9 +33,10 @@ keyboard navigation, syntax highlighting, copy-to-clipboard, links, and assets.
 Local checks use installed Google Chrome; CI uses Playwright Chromium.
 ClojureScript is the first selected SDK tab; the hero features PureScript.
 
-The SDK examples follow this repository's generated templates. Each exports the
-starter `hello` job, prints a greeting, and runs `git status --short`. The scaffold
-and pipe explanations change with the selected language. The installer command
+The SDK examples replace the generated starter with a native task plan: install
+Python CI dependencies, run Ruff and pytest in parallel, then build the package.
+Each sample exports `check` and accepts a fresh `--run-dir` for its logs and
+report. The scaffold and pipe explanations change with the selected language. The installer command
 is shown for the user to copy; the site never executes it.
 
 ## Registry pages

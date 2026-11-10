@@ -2,32 +2,64 @@ import { expect, test } from "@playwright/test";
 
 const install = "curl -fsSL https://cli.fluentci.io | sh";
 
-test("defaults to dark and remembers a white light theme", async ({ page }, testInfo) => {
+test("defaults to dark and remembers a white light theme", async ({
+  page,
+}, testInfo) => {
   await page.emulateMedia({ colorScheme: "light" });
   await page.goto("/");
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
-  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(9, 9, 13)");
+  await expect(page.locator("body")).toHaveCSS(
+    "background-color",
+    "rgb(9, 9, 13)",
+  );
   const heading = page.getByRole("heading", { level: 1 });
   await expect(heading).toHaveText("Strongly typed.Functional CI/CD.");
-  expect(await heading.evaluate(element => element.getBoundingClientRect().height / parseFloat(getComputedStyle(element).lineHeight))).toBeLessThan(2.1);
-  const example = page.getByRole("region", { name: "PureScript pipeline example" });
+  expect(
+    await heading.evaluate(
+      (element) =>
+        element.getBoundingClientRect().height /
+        parseFloat(getComputedStyle(element).lineHeight),
+    ),
+  ).toBeLessThan(2.1);
+  const example = page.getByRole("region", {
+    name: "PureScript pipeline example",
+  });
   await expect(example).toContainText("src/Main.purs");
-  await expect(example).toContainText("hello :: Effect Unit");
+  await expect(example).toContainText(
+    "check :: { runDir :: String } -> Effect String",
+  );
   await expect(example.locator(".hljs-string").first()).toBeVisible();
   const switcher = page.getByRole("button", { name: "Switch to light theme" });
   await switcher.focus();
   await page.keyboard.press("Space");
-  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(page.locator("body")).toHaveCSS(
+    "background-color",
+    "rgb(255, 255, 255)",
+  );
   await expect(page.locator("html")).toHaveCSS("color-scheme", "light");
-  await expect(page.locator("meta[name='theme-color']")).toHaveAttribute("content", "#ffffff");
+  await expect(page.locator("meta[name='theme-color']")).toHaveAttribute(
+    "content",
+    "#ffffff",
+  );
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
-  await expect(page.locator("body")).toHaveCSS("background-color", "rgb(255, 255, 255)");
+  await expect(page.locator("body")).toHaveCSS(
+    "background-color",
+    "rgb(255, 255, 255)",
+  );
   await page.getByRole("tab", { name: "TypeScript", exact: true }).click();
-  await expect(page.getByRole("tabpanel").locator(".hljs-string").first()).toHaveCSS("color", "rgb(25, 120, 69)");
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  await expect(
+    page.getByRole("tabpanel").locator(".hljs-string").first(),
+  ).toHaveCSS("color", "rgb(25, 120, 69)");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
   await page.evaluate(() => window.scrollTo(0, 0));
-  await page.screenshot({ path: `test-results/landing-light-${testInfo.project.name}.png` });
+  await page.screenshot({
+    path: `test-results/landing-light-${testInfo.project.name}.png`,
+  });
   await page.getByRole("button", { name: "Switch to dark theme" }).click();
   await page.reload();
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
@@ -38,7 +70,9 @@ test("SDK tabs show highlighted samples, matching scaffold commands, and support
 }) => {
   await page.goto("/");
   await expect(page.getByRole("tab").first()).toHaveText("ClojureScript");
-  await expect(page.getByRole("tab", { name: "ClojureScript", exact: true })).toHaveAttribute("aria-selected", "true");
+  await expect(
+    page.getByRole("tab", { name: "ClojureScript", exact: true }),
+  ).toHaveAttribute("aria-selected", "true");
   for (const [name, sdk, source] of [
     ["ClojureScript", "clojurescript", "src/main/plugin.cljc"],
     ["PureScript", "purescript", "src/Main.purs"],
@@ -53,7 +87,12 @@ test("SDK tabs show highlighted samples, matching scaffold commands, and support
     await expect(panel).toContainText(source);
     await expect(panel).toContainText(`--sdk ${sdk}`);
     await expect(panel.locator(".sdk-code .hljs-string").first()).toBeVisible();
-    await expect(panel).toContainText("fluentci run ci hello");
+    await expect(panel).toContainText("fluentci run ci check");
+    await expect(panel).toContainText("requirements-ci.txt");
+    await expect(panel).toContainText("--no-isolation");
+    await expect(panel).toContainText("pytest");
+    await expect(panel).toContainText("ruff");
+    await expect(panel).toContainText("$(mktemp -d)/run");
     expect(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= window.innerWidth,

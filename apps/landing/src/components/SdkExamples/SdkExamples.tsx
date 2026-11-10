@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { examples } from "../../examples";
+import { examples, runExample } from "../../examples";
 import { github } from "../../constants";
 import { Copy } from "../Copy";
 import { Code } from "../Code";
@@ -69,13 +69,15 @@ export function SdkExamples() {
             <p className="text-sm font-medium">01. Scaffold a module</p>
             <Code className="mt-3 text-sm">{`fluentci modules add ci \\\n  --sdk ${sample.sdk}`}</Code>
             <p className="mt-3 text-xs leading-6 text-muted">
-              Replace the generated hello example with this sample.
+              Replace the generated source with this sample.
             </p>
             <p className="mt-7 text-sm font-medium">02. Run the exported job</p>
-            <Code className="mt-3 text-sm">fluentci run ci hello</Code>
+            <Code className="mt-3 text-sm">{runExample}</Code>
             <p className="mt-3 text-xs leading-6 text-muted">
-              FluentCI builds the module into Wasm, then runs the job. Install
-              your SDK’s compiler tools first.
+              Run from a Python package with pyproject.toml and
+              requirements-ci.txt containing Ruff, pytest, build, and the build
+              backend. The examples use /usr/bin/python3 with pip; adjust that
+              path if needed.
             </p>
             <a
               className="text-link mt-5 inline-block text-xs"

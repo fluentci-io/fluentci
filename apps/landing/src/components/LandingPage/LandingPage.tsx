@@ -1,5 +1,5 @@
 import { SiteFooter } from "../SiteFooter";
-import { examples } from "../../examples";
+import { examples, runExample } from "../../examples";
 import { github, install } from "../../constants";
 import { Code } from "../Code";
 import { Copy } from "../Copy";
@@ -72,7 +72,7 @@ export function LandingPage() {
                 {heroExample.code}
               </Code>
               <div className="border-t border-line bg-paper px-5 py-4 font-mono text-[15px] text-ink">
-                <span className="text-muted">$ </span>fluentci run ci hello
+                <Code className="text-sm">{runExample}</Code>
               </div>
             </div>
           </div>
@@ -125,8 +125,9 @@ export function LandingPage() {
               </p>
               <p>
                 Wasm carries the pipeline logic. Commands run on the host, using
-                its tools and files. These examples print a greeting, then check
-                the current Git workspace.
+                its tools and files. Each SDK below runs the same Python package
+                pipeline: install dependencies, lint and test in parallel, then
+                build a distribution.
               </p>
             </div>
           </div>
