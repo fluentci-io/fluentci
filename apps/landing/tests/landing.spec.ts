@@ -25,6 +25,9 @@ test("defaults to dark and remembers a white light theme", async ({
     name: "PureScript pipeline example",
   });
   await expect(example).toContainText("src/Main.purs");
+  await expect(example).toContainText("import FluentCI.Plugin as CI");
+  await expect(example).toContainText("import Data.Either (either)");
+  await expect(example).toContainText("import Effect.Exception (throw)");
   await expect(example).toContainText("check :: Effect String");
   await expect(example).toContainText(
     'CI.exec ["bun", "install", "--frozen-lockfile"]',
@@ -200,6 +203,58 @@ test("copies the installer, renders the preview, and links to the project and co
   await session.detach();
   await page.screenshot({
     path: `test-results/landing-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+});
+
+test("CI/CD evolution connects sourced milestones to programmable delivery in both themes", async ({
+  page,
+}, testInfo) => {
+  await page.goto("/");
+  const section = page.getByRole("region", {
+    name: "From YAML files to programmable delivery.",
+  });
+  await expect(section).toBeVisible();
+  const timeline = section.getByRole("list", { name: "CI/CD evolution" });
+  await expect(timeline.getByRole("listitem")).toHaveCount(5);
+  for (const era of ["2010–2015", "2016", "2019", "2020s", "Now"]) {
+    await expect(timeline.getByText(era, { exact: true })).toBeVisible();
+  }
+  await expect(
+    section.getByRole("heading", { name: "The agent era" }),
+  ).toBeVisible();
+  await expect(
+    section.getByRole("link", { name: "Jenkins 2.0" }),
+  ).toHaveAttribute(
+    "href",
+    "https://www.jenkins.io/blog/2016/04/26/jenkins-20-is-here/",
+  );
+  await expect(
+    section.getByRole("link", { name: "GitHub Actions" }),
+  ).toHaveAttribute("target", "_blank");
+  await expect(
+    section.getByRole("link", { name: "Build a programmable pipeline" }),
+  ).toHaveAttribute("href", "#sdks");
+  await section.scrollIntoViewIfNeeded();
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/evolution-dark-${testInfo.project.name}.png`,
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Switch to light theme" }).click();
+  await section.scrollIntoViewIfNeeded();
+  await expect(section).toHaveCSS("color", "rgb(24, 24, 34)");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `test-results/evolution-light-${testInfo.project.name}.png`,
     fullPage: true,
   });
 });

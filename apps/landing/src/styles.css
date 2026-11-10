@@ -526,3 +526,44 @@ pre {
 .version-options p {
   @apply px-3 py-2 text-xs text-muted;
 }
+
+
+@layer components {
+  .pipeline-evolution { @apply border-b border-line; }
+  .evolution-timeline { @apply relative grid gap-8 lg:grid-cols-5 lg:gap-6; }
+  .evolution-timeline::before {
+    content: "";
+    position: absolute;
+    top: 20px;
+    bottom: 24px;
+    left: 19px;
+    width: 1px;
+    background: linear-gradient(to bottom, var(--color-line), var(--color-accent));
+  }
+  .evolution-milestone { @apply relative min-w-0 pl-16 lg:pl-0; }
+  .evolution-marker {
+    @apply absolute left-0 top-0 flex size-10 items-center justify-center rounded-full border border-line bg-paper font-mono text-sm text-muted lg:relative;
+  }
+  .evolution-era { @apply pt-2 font-mono text-xs text-muted lg:pt-6; }
+  .evolution-milestone:nth-child(4) .evolution-marker { @apply border-cyan/40 text-cyan; }
+  .evolution-now .evolution-marker {
+    @apply border-accent bg-paper text-accent;
+    box-shadow: 0 0 24px color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+  .evolution-now .evolution-era { @apply text-accent; }
+  .evolution-next {
+    @apply relative overflow-hidden border-t border-line pt-10;
+    background: radial-gradient(ellipse at 100% 0%, color-mix(in srgb, var(--color-accent) 7%, transparent), transparent 65%);
+  }
+  @media (min-width: 64rem) {
+    .evolution-timeline::before {
+      top: 19px;
+      bottom: auto;
+      left: 20px;
+      right: 20px;
+      width: auto;
+      height: 1px;
+      background: linear-gradient(to right, var(--color-line), var(--color-accent));
+    }
+  }
+}

@@ -3,6 +3,7 @@ import { heroExample } from "../../examples";
 import { github, install } from "../../constants";
 import { Code } from "../Code";
 import { Copy } from "../Copy";
+import { PipelineEvolution } from "../PipelineEvolution";
 import { SdkExamples } from "../SdkExamples";
 import { SiteHeader } from "../SiteHeader";
 
@@ -60,10 +61,7 @@ export function LandingPage() {
               className="min-w-0 self-start overflow-hidden rounded-xl border border-line bg-panel lg:mt-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3.5 font-mono text-sm">
-                <span>
-                  {heroExample.file}{" "}
-                  <span className="text-muted">· excerpt</span>
-                </span>
+                <span>{heroExample.file}</span>
                 <span className="text-muted">{heroExample.name}</span>
               </div>
               <Code
@@ -108,6 +106,7 @@ export function LandingPage() {
             ))}
           </div>
         </section>
+        <PipelineEvolution />
         <section id="sdks" className="page-width section-space scroll-mt-8">
           <div className="grid gap-6 md:grid-cols-2 md:gap-16">
             <div>

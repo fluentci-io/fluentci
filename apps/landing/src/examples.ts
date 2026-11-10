@@ -3,7 +3,15 @@ export const heroExample = {
   file: "src/Main.purs",
   language: "purescript",
   command: "fluentci run ci check",
-  code: `check :: Effect String
+  code: `module Main where
+
+import Prelude
+import Data.Either (either)
+import Effect (Effect)
+import Effect.Exception (throw)
+import FluentCI.Plugin as CI
+
+check :: Effect String
 check = do
   result <- CI.pipeline "ci"
     # CI.exec ["bun", "install", "--frozen-lockfile"]

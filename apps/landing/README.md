@@ -40,6 +40,14 @@ Each sample exports `check` and accepts a fresh `--run-dir` for its logs and
 report. The scaffold and pipe explanations change with the selected language. The installer command
 is shown for the user to copy; the site never executes it.
 
+## CI/CD evolution
+
+The landing timeline follows YAML-based hosted CI, Jenkins pipelines as code,
+GitHub Actions, programmable delivery, and the agent era. Dated milestones link
+to primary sources. FluentCI's positioning focuses on typed functions, reusable
+Wasm modules, and local execution for developers and coding agents.
+`PipelineEvolution` has dark/light Storybook stories and responsive browser checks.
+
 ## Registry pages
 
 The topbar search opens with `/` and supports arrow keys, Enter, and Escape.
