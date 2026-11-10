@@ -42,6 +42,7 @@ is needed to publish plugin records to an AT Protocol account.
 
 | Goal                               | Read                                         |
 | ---------------------------------- | -------------------------------------------- |
+| Work with a coding agent           | [AI agent skills](/guides/agent-skills/)     |
 | Compose commands and reusable jobs | [Pipeline configuration](/guides/pipelines/) |
 | Work in a monorepo                 | [Workspace modules](/guides/modules/)        |
 | Run the same pipeline in CI        | [CI and exports](/guides/ci/)                |

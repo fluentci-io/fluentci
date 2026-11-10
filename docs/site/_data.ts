@@ -11,6 +11,7 @@ const navigation = [
   {
     title: "Build pipelines",
     items: [
+      { title: "AI agent skills", url: "/guides/agent-skills/" },
       { title: "Pipeline configuration", url: "/guides/pipelines/" },
       { title: "Workspace modules", url: "/guides/modules/" },
       { title: "Module dependencies", url: "/guides/module-dependencies/" },
