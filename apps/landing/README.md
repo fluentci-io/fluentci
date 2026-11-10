@@ -40,6 +40,14 @@ Each sample exports `check` and accepts a fresh `--run-dir` for its logs and
 report. The scaffold and pipe explanations change with the selected language. The installer command
 is shown for the user to copy; the site never executes it.
 
+## Popular registry modules
+
+The landing reuses the search prefetch for the top 20 modules by downloads across
+all versions, linking each logo to the latest release page. The looping strip uses
+native horizontal scrolling, fades both edges, pauses on hover/focus, includes a
+pause control, and stays manual when reduced motion is preferred. Touch interaction
+also pauses automatic scrolling. Duplicate loop content is hidden from screen readers.
+
 ## CI/CD evolution
 
 The landing timeline follows YAML-based hosted CI, Jenkins pipelines as code,

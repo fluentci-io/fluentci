@@ -1,0 +1,1 @@
+export { ModuleMarquee } from "./ModuleMarquee";

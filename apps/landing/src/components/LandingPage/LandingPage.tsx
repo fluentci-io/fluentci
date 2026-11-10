@@ -3,6 +3,7 @@ import { heroExample } from "../../examples";
 import { github, install } from "../../constants";
 import { Code } from "../Code";
 import { Copy } from "../Copy";
+import { ModuleMarquee } from "../ModuleMarquee";
 import { PipelineEvolution } from "../PipelineEvolution";
 import { SdkExamples } from "../SdkExamples";
 import { SiteHeader } from "../SiteHeader";
@@ -76,6 +77,7 @@ export function LandingPage() {
             </div>
           </div>
         </section>
+        <ModuleMarquee />
         <section
           className="page-width border-y border-line py-8"
           aria-label="How FluentCI works"
