@@ -1,3 +1,18 @@
+export const heroExample = {
+  name: "PureScript",
+  file: "src/Main.purs",
+  language: "purescript",
+  command: "fluentci run ci check",
+  code: `check :: Effect String
+check = do
+  result <- CI.pipeline "ci"
+    # CI.exec ["bun", "install", "--frozen-lockfile"]
+    # CI.exec ["bun", "test"]
+    # CI.exec ["bun", "run", "build"]
+    # CI.stdout
+  either (throw <<< CI.errorMessage) pure result`,
+} as const;
+
 export const runExample =
   'fluentci run ci check \\\n  --run-dir "$(mktemp -d)/run"';
 

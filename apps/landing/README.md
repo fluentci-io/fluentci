@@ -31,7 +31,8 @@ bun run test:browser
 Browser checks cover 320px, 390px, and desktop layouts, all seven SDK tabs,
 keyboard navigation, syntax highlighting, copy-to-clipboard, links, and assets.
 Local checks use installed Google Chrome; CI uses Playwright Chromium.
-ClojureScript is the first selected SDK tab; the hero features PureScript.
+ClojureScript is the first selected SDK tab. The hero uses a compact PureScript
+pipeline that installs Bun dependencies, runs tests, then builds.
 
 The SDK examples replace the generated starter with a native task plan: install
 Python CI dependencies, run Ruff and pytest in parallel, then build the package.

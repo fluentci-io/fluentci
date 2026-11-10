@@ -25,8 +25,15 @@ test("defaults to dark and remembers a white light theme", async ({
     name: "PureScript pipeline example",
   });
   await expect(example).toContainText("src/Main.purs");
+  await expect(example).toContainText("check :: Effect String");
   await expect(example).toContainText(
-    "check :: { runDir :: String } -> Effect String",
+    'CI.exec ["bun", "install", "--frozen-lockfile"]',
+  );
+  await expect(example).toContainText('CI.exec ["bun", "test"]');
+  await expect(example).toContainText('CI.exec ["bun", "run", "build"]');
+  await expect(example).not.toContainText("--run-dir");
+  await expect(example.locator("pre").first().locator("code")).toHaveText(
+    /check :: Effect String/,
   );
   await expect(example.locator(".hljs-string").first()).toBeVisible();
   const switcher = page.getByRole("button", { name: "Switch to light theme" });

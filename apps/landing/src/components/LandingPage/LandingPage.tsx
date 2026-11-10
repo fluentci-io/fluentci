@@ -1,12 +1,10 @@
 import { SiteFooter } from "../SiteFooter";
-import { examples, runExample } from "../../examples";
+import { heroExample } from "../../examples";
 import { github, install } from "../../constants";
 import { Code } from "../Code";
 import { Copy } from "../Copy";
 import { SdkExamples } from "../SdkExamples";
 import { SiteHeader } from "../SiteHeader";
-const heroExample =
-  examples.find((example) => example.sdk === "purescript") ?? examples[0];
 
 export function LandingPage() {
   return (
@@ -62,7 +60,10 @@ export function LandingPage() {
               className="min-w-0 self-start overflow-hidden rounded-xl border border-line bg-panel lg:mt-4"
             >
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-5 py-3.5 font-mono text-sm">
-                <span>{heroExample.file}</span>
+                <span>
+                  {heroExample.file}{" "}
+                  <span className="text-muted">· excerpt</span>
+                </span>
                 <span className="text-muted">{heroExample.name}</span>
               </div>
               <Code
@@ -72,7 +73,7 @@ export function LandingPage() {
                 {heroExample.code}
               </Code>
               <div className="border-t border-line bg-paper px-5 py-4 font-mono text-[15px] text-ink">
-                <Code className="text-sm">{runExample}</Code>
+                <Code className="text-sm">{heroExample.command}</Code>
               </div>
             </div>
           </div>
