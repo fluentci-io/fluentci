@@ -604,3 +604,8 @@ pre {
   .catalog-card .module-author { max-width: 155px; }
   .catalog-page-button { @apply rounded-lg border border-line bg-panel px-4 py-2 text-xs transition-colors hover:border-accent disabled:cursor-not-allowed disabled:opacity-40; }
 }
+
+@layer components {
+  .auth-dialog { @apply fixed inset-0 m-auto h-fit w-[min(440px,calc(100vw-2rem))] max-h-[calc(100dvh-2rem)] overflow-y-auto rounded-2xl border border-line bg-panel text-ink shadow-2xl; }
+  .auth-dialog::backdrop { background: rgb(0 0 0 / 55%); }
+}

@@ -52,23 +52,27 @@ export function decodeEvent(message) {
       c.rev ?? [event.time_us, c.cid ?? null],
     ]);
     if (c.collection === LIKE_COLLECTION) {
-      if (!/^[a-f0-9]{64}$/.test(c.rkey)) throw new Error('Invalid like key');
       if (c.operation === 'delete') return new Ok(new Unlike(uri, event.did, event.time_us, id));
       if (!['create', 'update'].includes(c.operation)) throw new Error('Unknown like operation');
       const checked = validators.validate(LIKE_COLLECTION, c.record);
       if (!checked.success) throw checked.error;
       const record = c.record;
       const subject = record.subject;
+      const match =
+        /^at:\/\/(did:[a-z0-9]+:[A-Za-z0-9._:%-]+)\/io\.fluentci\.plugin\/([a-z][a-z0-9-]{0,63})-(.+)$/.exec(
+          subject.uri,
+        );
       if (
         record.$type !== LIKE_COLLECTION ||
-        !/^did:[a-z0-9]+:[A-Za-z0-9._:%-]+$/.test(subject.author) ||
-        !/^[a-z][a-z0-9-]{0,63}$/.test(subject.name) ||
+        !match ||
+        !semver.valid(match[3]) ||
+        match[3].includes('+') ||
         !Number.isFinite(Date.parse(record.createdAt))
       )
         throw new Error('Invalid like subject');
-      const key = createHash('sha256').update(`${subject.author}/${subject.name}`).digest('hex');
-      if (key !== c.rkey) throw new Error('Like key does not match its subject');
-      return new Ok(new Like(uri, event.did, subject.author, subject.name, event.time_us, id));
+      return new Ok(
+        new Like(uri, event.did, match[1], match[2], subject.uri, subject.cid, event.time_us, id),
+      );
     }
     if (c.operation === 'delete') return new Ok(new Delete(uri, event.did, event.time_us, id));
     // An author can edit metadata directly in the PDS. Updates use the same

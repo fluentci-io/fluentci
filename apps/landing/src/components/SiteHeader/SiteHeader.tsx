@@ -1,6 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import { validateCatalogSearch } from "../ModulesPage/filters";
 import { ModuleSearch } from "../ModuleSearch";
+import { AccountMenu } from "../AccountMenu";
 import { ThemeSwitcher } from "../ThemeSwitcher";
 import { BrandIcon } from "../BrandIcon";
 import { github, docs, discord, bluesky, tangled } from "../../constants";
@@ -14,7 +15,10 @@ export function SiteHeader() {
         className="flex items-center gap-2.5"
       >
         <img src="/fluentci-logo.png" alt="" width="36" height="36" />
-        <span className="text-lg font-medium tracking-tight">fluentci</span>
+        <span className="text-lg tracking-tight">
+          <span className="font-light">fluent</span>
+          <span className="font-bold">ci</span>
+        </span>
       </Link>
       <nav
         aria-label="Main navigation"
@@ -68,6 +72,7 @@ export function SiteHeader() {
           <BrandIcon brand="tangled" />
         </a>
         <ThemeSwitcher />
+        <AccountMenu />
       </nav>
     </header>
   );

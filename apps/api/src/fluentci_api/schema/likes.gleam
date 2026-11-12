@@ -1,8 +1,8 @@
-//// Timestamp-ordered PDS likes and unlike tombstones, one deterministic record per actor/module.
+//// Timestamp-ordered PDS likes and unlike tombstones, standard strong references with PDS-generated record keys.
 
 import fluentci_api/drizzle/orm.{
-  type Expression, type Table, boolean, boolean_column, column, index, integer,
-  integer_column, optional, table as db_table, text, text_column,
+  type Expression, type Table, boolean, boolean_column, column, column_default,
+  index, integer, integer_column, optional, table as db_table, text, text_column,
 }
 import gleam/dynamic/decode.{type Decoder}
 import gleam/option.{type Option}
@@ -15,6 +15,8 @@ pub type Row {
     name: Option(String),
     active: Bool,
     event_time: Int,
+    subject_uri: String,
+    subject_cid: String,
   )
 }
 
@@ -25,7 +27,18 @@ pub fn decoder() -> Decoder(Row) {
   use name <- decode.field("name", decode.optional(decode.string))
   use active <- decode.field("active", decode.bool)
   use event_time <- decode.field("event_time", decode.int)
-  decode.success(Row(uri, actor, subject_author, name, active, event_time))
+  use subject_uri <- decode.field("subject_uri", decode.string)
+  use subject_cid <- decode.field("subject_cid", decode.string)
+  decode.success(Row(
+    uri,
+    actor,
+    subject_author,
+    name,
+    active,
+    event_time,
+    subject_uri,
+    subject_cid,
+  ))
 }
 
 pub fn table() -> Table(Row) {
@@ -38,6 +51,8 @@ pub fn table() -> Table(Row) {
       text_column("name", True, False),
       boolean_column("active"),
       integer_column("event_time", False, False),
+      text_column("subject_uri", False, False) |> column_default(""),
+      text_column("subject_cid", False, False) |> column_default(""),
     ],
     [
       index(
@@ -46,6 +61,7 @@ pub fn table() -> Table(Row) {
         False,
       ),
       index("module_likes_actor", ["actor", "active"], False),
+      index("module_likes_subject_uri", ["subject_uri", "active"], False),
     ],
     decoder(),
   )
@@ -73,4 +89,12 @@ pub fn active(table: Table(Row)) -> Expression(Bool) {
 
 pub fn event_time(table: Table(Row)) -> Expression(Int) {
   column(table, "event_time", integer())
+}
+
+pub fn subject_uri(table: Table(Row)) -> Expression(String) {
+  column(table, "subject_uri", text())
+}
+
+pub fn subject_cid(table: Table(Row)) -> Expression(String) {
+  column(table, "subject_cid", text())
 }

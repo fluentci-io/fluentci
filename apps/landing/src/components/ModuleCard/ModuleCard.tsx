@@ -7,6 +7,7 @@ import {
 } from "../../registry/client";
 import { ModuleLogo } from "../ModuleLogo";
 import { Author } from "../Author";
+import { LikeButton } from "../LikeButton";
 import { DownloadIcon } from "../DownloadIcon";
 export function ModuleCard({
   plugin,
@@ -48,15 +49,18 @@ export function ModuleCard({
         <Link className="min-w-0 text-xs" to="/$handle" params={{ handle }}>
           <Author profile={profile} fallback={plugin.author} />
         </Link>
-        {(plugin.downloads ?? 0) > 0 && (
-          <span
-            className="shrink-0 font-mono text-xs text-muted"
-            aria-label={`${plugin.downloads!.toLocaleString()} downloads`}
-          >
-            <DownloadIcon />
-            {plugin.downloads!.toLocaleString()}
-          </span>
-        )}
+        <div className="flex shrink-0 items-center gap-2">
+          {(plugin.downloads ?? 0) > 0 && (
+            <span
+              className="shrink-0 font-mono text-xs text-muted"
+              aria-label={`${plugin.downloads!.toLocaleString()} downloads`}
+            >
+              <DownloadIcon />
+              {plugin.downloads!.toLocaleString()}
+            </span>
+          )}
+          <LikeButton plugin={plugin} compact />
+        </div>
       </div>
     </article>
   );

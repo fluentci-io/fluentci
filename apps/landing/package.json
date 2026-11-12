@@ -11,9 +11,14 @@
     "lint": "eslint src --ext ts,tsx --max-warnings 0",
     "test:browser": "playwright test",
     "storybook": "storybook dev -p 6007",
-    "build:storybook": "storybook build"
+    "build:storybook": "storybook build",
+    "test:pwa": "playwright test --config playwright.pwa.config.ts"
   },
   "dependencies": {
+    "@atcute/atproto": "^4.0.4",
+    "@atcute/client": "^5.1.2",
+    "@atcute/identity-resolver": "^2.0.3",
+    "@atcute/oauth-browser-client": "5.1.0",
     "@fontsource-variable/inconsolata": "^5.2.0",
     "@fontsource-variable/lexend": "^5.2.0",
     "@tanstack/react-query": "^5.90.0",

@@ -22,6 +22,7 @@ export interface Plugin {
   license: string;
   url: string;
   uri: string;
+  cid: string;
   logo?: string;
   repository?: string;
   subdir?: string;
@@ -31,6 +32,7 @@ export interface Plugin {
   arch?: string[];
   functions?: PluginFunction[];
   downloads?: number;
+  likesCount?: number;
   dailyDownloads?: { date: string; downloads: number }[];
 }
 

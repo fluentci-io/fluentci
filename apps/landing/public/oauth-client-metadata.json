@@ -1,0 +1,20 @@
+{
+  "client_id": "https://fluentci.io/oauth-client-metadata.json",
+  "client_name": "FluentCI",
+  "client_uri": "https://fluentci.io",
+  "logo_uri": "https://fluentci.io/favicon.png",
+  "redirect_uris": [
+    "https://fluentci.io/oauth/callback"
+  ],
+  "scope": "atproto repo:io.fluentci.like repo:io.fluentci.plugin",
+  "grant_types": [
+    "authorization_code",
+    "refresh_token"
+  ],
+  "response_types": [
+    "code"
+  ],
+  "token_endpoint_auth_method": "none",
+  "application_type": "web",
+  "dpop_bound_access_tokens": true
+}

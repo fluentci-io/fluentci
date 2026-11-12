@@ -16,6 +16,8 @@ pub type Event {
     actor: String,
     subject_author: String,
     name: String,
+    subject_uri: String,
+    subject_cid: String,
     time_us: Int,
     event_id: String,
   )

@@ -31,7 +31,12 @@ for (const path of ["/modules", "/fluentci.io"]) {
     await expect(
       page.getByRole("heading", { name: "module-0", exact: true }),
     ).toBeVisible();
-    await page.evaluate(() => window.scrollTo(0, 600));
+    await page.evaluate(() => window.scrollTo(0, 900));
+    if (path === "/modules") {
+      const toolbar = page.getByRole("search", { name: "Module search and sorting" });
+      await expect.poll(async () => (await toolbar.boundingBox())?.y).toBe(0);
+      await expect(toolbar.getByRole("combobox", { name: "Sort modules" })).toBeVisible();
+    }
     const button = page.getByRole("button", { name: "Scroll to top" });
     await expect(button).toBeVisible();
     await expect(button).toHaveCSS("position", "fixed");

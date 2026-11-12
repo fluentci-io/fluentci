@@ -1,0 +1,9 @@
+/oauth-client-metadata.json
+  Access-Control-Allow-Origin: *
+  Cache-Control: public, max-age=300
+/sw.js
+  Cache-Control: no-cache
+  Service-Worker-Allowed: /
+/oauth/callback
+  Cache-Control: no-store
+  Referrer-Policy: no-referrer

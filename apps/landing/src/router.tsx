@@ -9,6 +9,7 @@ import { NotFound } from "./components/NotFound";
 import { PublisherPage } from "./components/PublisherPage";
 import { ModulesPage } from "./components/ModulesPage";
 import { validateCatalogSearch } from "./components/ModulesPage/filters";
+import { OAuthCallback } from "./components/OAuthCallback";
 import { ModulePage } from "./components/ModulePage";
 
 const rootRoute = createRootRoute({
@@ -37,8 +38,11 @@ const modulesRoute = createRoute({
   component: ModulesPage,
 });
 
+const oauthRoute = createRoute({ getParentRoute: () => rootRoute, path: "/oauth/callback", component: OAuthCallback });
+
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
+    oauthRoute,
     indexRoute,
     modulesRoute,
     moduleRoute,

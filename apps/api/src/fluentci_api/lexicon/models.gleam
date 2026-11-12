@@ -6,6 +6,8 @@ import gleam/list
 
 import gleam/option.{type Option, None, Some}
 
+pub const com_atproto_repo_strong_ref = "com.atproto.repo.strongRef"
+
 pub const like = "io.fluentci.like"
 
 pub const plugin = "io.fluentci.plugin"
@@ -24,26 +26,28 @@ pub const registry_record_download = "io.fluentci.registry.recordDownload"
 
 pub const registry_search_packages = "io.fluentci.registry.searchPackages"
 
-pub type LikeSubject {
-  LikeSubject(author: String, name: String)
+pub type ComAtprotoRepoStrongRef {
+  ComAtprotoRepoStrongRef(uri: String, cid: String)
 }
 
-pub fn encode_like_subject(value: LikeSubject) -> json.Json {
+pub fn encode_com_atproto_repo_strong_ref(
+  value: ComAtprotoRepoStrongRef,
+) -> json.Json {
   let fields = [
-    #("author", json.string(value.author)),
-    #("name", json.string(value.name)),
+    #("uri", json.string(value.uri)),
+    #("cid", json.string(value.cid)),
   ]
 
   json.object(fields)
 }
 
 pub type Like {
-  Like(subject: LikeSubject, created_at: String)
+  Like(subject: ComAtprotoRepoStrongRef, created_at: String)
 }
 
 pub fn encode_like(value: Like) -> json.Json {
   let fields = [
-    #("subject", encode_like_subject(value.subject)),
+    #("subject", encode_com_atproto_repo_strong_ref(value.subject)),
     #("createdAt", json.string(value.created_at)),
   ]
 

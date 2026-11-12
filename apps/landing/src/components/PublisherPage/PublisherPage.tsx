@@ -4,6 +4,7 @@ import { SiteHeader } from "../SiteHeader";
 import { ScrollToTop } from "../ScrollToTop";
 import { SiteFooter } from "../SiteFooter";
 import { ModuleLogo } from "../ModuleLogo";
+import { LikeButton } from "../LikeButton";
 import { DownloadIcon } from "../DownloadIcon";
 import { SearchIcon } from "../SearchIcon";
 import { Skeleton } from "../Skeleton";
@@ -247,30 +248,38 @@ export function PublisherPage() {
           </div>
           <div className="publisher-modules" aria-busy={loading}>
             {items.map((plugin) => (
-              <Link
+              <article
                 key={`${plugin.author}/${plugin.name}`}
-                to="/$handle/plugin/$rkey"
-                params={{
-                  handle: profile?.handle ?? plugin.author,
-                  rkey: recordKey(plugin),
-                }}
-                className="publisher-module"
+                className="publisher-module relative"
               >
                 <ModuleLogo plugin={plugin} />
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <h3 className="text-base font-medium text-ink">
-                      {plugin.name}
-                    </h3>
-                    {(plugin.downloads ?? 0) > 0 && (
-                      <span
-                        className="inline-flex items-center gap-1.5 font-mono text-sm text-muted"
-                        aria-label={`${plugin.downloads!.toLocaleString()} downloads`}
-                      >
-                        <DownloadIcon />
-                        {plugin.downloads!.toLocaleString()}
-                      </span>
-                    )}
+                    <Link
+                      to="/$handle/plugin/$rkey"
+                      params={{
+                        handle: profile?.handle ?? plugin.author,
+                        rkey: recordKey(plugin),
+                      }}
+                      className="after:absolute after:inset-0"
+                      aria-label={`${plugin.name} ${plugin.description ?? ""}`}
+                    >
+                      <h3 className="text-base font-medium text-ink">
+                        {plugin.name}
+                      </h3>
+                    </Link>
+                    <div className="relative z-10 flex shrink-0 items-center gap-3">
+                      {(plugin.downloads ?? 0) > 0 && (
+                        <span
+                          className="inline-flex items-center gap-1.5 font-mono text-sm text-muted"
+                          aria-label={`${plugin.downloads!.toLocaleString()} downloads`}
+                        >
+                          <DownloadIcon />
+                          {plugin.downloads!.toLocaleString()}
+                        </span>
+                      )}
+                      <LikeButton plugin={plugin} />
+                    </div>
                   </div>
                   {plugin.description && (
                     <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted">
@@ -287,7 +296,7 @@ export function PublisherPage() {
                     ))}
                   </div>
                 </div>
-              </Link>
+              </article>
             ))}
             {loading && (
               <div role="status" aria-label="Loading published modules">

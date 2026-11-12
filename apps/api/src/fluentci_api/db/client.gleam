@@ -3,11 +3,11 @@
 import fluentci_api/db/connection
 import fluentci_api/db/filters
 import fluentci_api/drizzle/orm.{
-  type Assignment, type Condition, type Query, alias, all, and, asc, count_rows,
-  count_where, desc, eq, eq_columns, from, function_compare, gt, inner_join,
-  insert, is_null, left_join, limit, lt, lt_columns, matches, not_exists,
-  on_conflict_do_nothing, on_conflict_do_update, or, order_by, project, set,
-  sum_where, transaction, where,
+  type Assignment, type Condition, type Query, alias, all, and, asc,
+  count_distinct_where, count_rows, desc, eq, eq_columns, exists, from,
+  function_compare, gt, inner_join, insert, is_null, left_join, limit, lt,
+  lt_columns, matches, not_exists, on_conflict_do_nothing, on_conflict_do_update,
+  or, order_by, project, set, sum_where, transaction, where,
 }
 import fluentci_api/function_metadata
 import fluentci_api/lexicon/models.{
@@ -109,14 +109,27 @@ fn visible() -> Query(p.Row) {
   let accounts = a.table()
   let liked = likes.table()
   let inactive = alias(accounts, "inactive_liker")
+  let subject_plugin = alias(plugins, "liked_plugin")
   from(plugins)
   |> left_join(accounts, eq_columns(p.author(plugins), a.did(accounts)))
   |> project(
     "likes_count",
-    count_where(
+    count_distinct_where(
       liked,
+      likes.actor(liked),
       and([
         eq(likes.active(liked), True),
+        // A strong reference must name an indexed plugin record. A metadata
+        // revision may change its current CID without invalidating older likes.
+        exists(
+          from(subject_plugin)
+          |> where(
+            and([
+              eq_columns(p.uri(subject_plugin), likes.subject_uri(liked)),
+              eq(p.deleted(subject_plugin), False),
+            ]),
+          ),
+        ),
         eq_columns(likes.subject_author(liked), p.author(plugins)),
         eq_columns(likes.name(liked), p.name(plugins)),
         not_exists(
@@ -543,13 +556,15 @@ fn mutate(db: Db, event: Event) -> Promise(Nil) {
       ))
       Nil
     }
-    Like(uri, actor, subject_author, name, time, _) -> {
+    Like(uri, actor, subject_author, name, subject_uri, subject_cid, time, _) -> {
       let table = likes.table()
       let values = [
         set(likes.uri(table), uri),
         set(likes.actor(table), actor),
         set(likes.subject_author(table), subject_author),
         set(likes.name(table), Some(name)),
+        set(likes.subject_uri(table), subject_uri),
+        set(likes.subject_cid(table), subject_cid),
         set(likes.active(table), True),
         set(likes.event_time(table), time),
       ]
@@ -596,7 +611,7 @@ pub fn apply_event(db: Db, event: Event) -> Promise(Nil) {
     Upsert(_, time, id)
     | Delete(_, _, time, id)
     | Account(_, _, time, id)
-    | Like(_, _, _, _, time, id)
+    | Like(_, _, _, _, _, _, time, id)
     | Unlike(_, _, time, id) -> #(time, Some(id))
     Checkpoint(time) -> #(time, None)
   }

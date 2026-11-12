@@ -12,6 +12,7 @@ import { ModuleLogo } from "../ModuleLogo";
 import { ModuleDocumentation } from "../ModuleDocumentation";
 import { VersionSelector } from "../VersionSelector";
 import { Downloads } from "../Downloads";
+import { LikeButton } from "../LikeButton";
 import { DownloadIcon } from "../DownloadIcon";
 import { CopyCommand } from "../CopyCommand";
 import { FunctionSearch } from "../FunctionSearch";
@@ -178,12 +179,15 @@ export function ModulePage() {
                   {plugin.description}
                 </p>
               )}
-              {(latest?.downloads ?? 0) > 0 && (
-                <p className="mt-4 font-mono text-sm text-muted">
-                  <DownloadIcon /> {latest!.downloads!.toLocaleString()} total
-                  downloads
-                </p>
-              )}
+              <div className="mt-4 flex flex-wrap items-center gap-4">
+                {(latest?.downloads ?? 0) > 0 && (
+                  <p className="font-mono text-sm text-muted">
+                    <DownloadIcon /> {latest!.downloads!.toLocaleString()} total
+                    downloads
+                  </p>
+                )}
+                <LikeButton plugin={plugin} />
+              </div>
               <div
                 className="mt-5 flex flex-wrap gap-2"
                 aria-label="Module topics and platforms"

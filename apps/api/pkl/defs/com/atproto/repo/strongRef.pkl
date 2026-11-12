@@ -1,0 +1,14 @@
+amends "../../../../schema/lexicon.pkl"
+
+// Standard AT Protocol strong reference, from bluesky-social/atproto lexicons.
+id = "com.atproto.repo.strongRef"
+description = "A URI with a content-hash fingerprint."
+defs = new Mapping {
+  ["main"] = new ObjectField {
+    required = List("uri", "cid")
+    properties = new Mapping {
+      ["uri"] = new StringField { format = "at-uri" }
+      ["cid"] = new StringField { format = "cid" }
+    }
+  }
+}

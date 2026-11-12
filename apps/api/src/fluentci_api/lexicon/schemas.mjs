@@ -1,5 +1,6 @@
 // Generated from pkl/defs by scripts/lexicons.mjs. DO NOT EDIT.
 export const ids = {
+  com_atproto_repo_strong_ref: 'com.atproto.repo.strongRef',
   like: 'io.fluentci.like',
   plugin: 'io.fluentci.plugin',
   registry_defs: 'io.fluentci.registry.defs',
@@ -13,25 +14,31 @@ export const ids = {
 export const schemas = [
   {
     lexicon: 1,
-    id: 'io.fluentci.like',
-    description:
-      "A user's like of a module across all published versions. Written directly to the user's PDS; delete the record to unlike. The record key is the lowercase SHA-256 hex digest of subject.author + '/' + subject.name, enforcing one like per actor per module.",
+    id: 'com.atproto.repo.strongRef',
+    description: 'A URI with a content-hash fingerprint.',
     defs: {
-      subject: {
+      main: {
         type: 'object',
-        required: ['author', 'name'],
+        required: ['uri', 'cid'],
         properties: {
-          author: {
+          uri: {
             type: 'string',
-            format: 'did',
+            format: 'at-uri',
           },
-          name: {
+          cid: {
             type: 'string',
-            minLength: 1,
-            maxLength: 64,
+            format: 'cid',
           },
         },
       },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.like',
+    description:
+      "A user's like of a published plugin record. The subject contains the plugin AT URI and CID. Clients use com.atproto.repo.createRecord without a record key, letting the PDS generate its default short key. Delete the like record to unlike.",
+    defs: {
       main: {
         type: 'record',
         key: 'any',
@@ -41,7 +48,7 @@ export const schemas = [
           properties: {
             subject: {
               type: 'ref',
-              ref: '#subject',
+              ref: 'com.atproto.repo.strongRef',
             },
             createdAt: {
               type: 'string',

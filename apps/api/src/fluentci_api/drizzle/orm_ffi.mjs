@@ -194,3 +194,8 @@ export function sumWhere(table, value, condition) {
 
 export const countWhere = (table, condition) =>
   d.sql`(select count(*) from ${table} where ${condition})`;
+
+export const countDistinctWhere = (table, value, condition) =>
+  d.sql`(select count(distinct ${value}) from ${table} where ${condition})`;
+
+export const exists = (query) => d.exists(selection(new QueryBuilder(), query));

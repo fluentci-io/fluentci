@@ -7,6 +7,7 @@ export const author: Profile = {
 };
 export const plugin: Plugin = {
   name: "sccache",
+  cid: "bafyreia".padEnd(59, "a"),
   version: "0.1.0",
   description: "Shared compilation caching for fast, reproducible builds.",
   author: author.did,

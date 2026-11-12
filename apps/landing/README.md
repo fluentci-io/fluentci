@@ -2,7 +2,7 @@
 
 A minimal React + Vite + Tailwind site with Lexend text, Inconsolata code,
 keyboard-accessible SDK tabs, syntax highlighting, and a FluentCI Studio preview.
-Fonts and the supplied logo and screenshot are served locally. The site has no account flow or analytics. Registry search uses the public
+Fonts and the supplied logo and screenshot are served locally. The site has no analytics. Registry search uses the public
 FluentCI XRPC API; author handles and avatars come from the public Bluesky AppView.
 The static home page works independently of those services.
 
@@ -94,3 +94,37 @@ keyboard focus, downloads, and responsive layouts.
 README fenced code loads the full Highlight.js language registry on demand,
 including the SDK aliases. GitHub Dark and GitHub Light syntax themes follow the
 site theme. Inline code and unknown language labels remain escaped plain text.
+
+## Browser account and module likes
+
+Sign in with an AT Protocol handle using `@atcute/oauth-browser-client`. The public
+client metadata is `/oauth-client-metadata.json`, with the production callback at
+`https://fluentci.io/oauth/callback`. Permissions are `atproto`,
+`repo:io.fluentci.like`, and `repo:io.fluentci.plugin`; no broad repository scope.
+Selfhosted.social signup starts OAuth with `prompt=create` and returns through
+the same callback to the current page. Account credentials never go to the API.
+
+The pinned atcute 5.1.0 storage module hardcodes localStorage. The small
+`build/sessionOAuth.ts` Vite adapter changes only that module to sessionStorage,
+including authorization states, session tokens, DPoP keys, and nonces. It runs in
+both development and production; review it when upgrading atcute. Closing the tab
+ends local persistence. Logout removes the local session even if token revocation
+fails. Theme preferences still use localStorage.
+
+Like/unlike writes go directly to the authenticated user's PDS using
+`com.atproto.repo.createRecord` / `deleteRecord`, collection `io.fluentci.like`.
+Each subject is the standard `com.atproto.repo.strongRef` containing the plugin
+AT URI and CID. No record key is sent; the PDS generates its default short key.
+Viewer records are fetched directly from the PDS and cached per account. Unlike
+removes all of that account’s like records for the module across versions. The
+indexer counts distinct actors, so multiple records never inflate the count. Public counts come from Jetstream,
+with optimistic UI updates rolled back on failed writes.
+
+## Progressive web app
+
+The manifest supports installation on desktop and mobile. The generated service
+worker precaches only the app shell and static build assets. It never handles
+OAuth callbacks, authorization headers, XRPC, or cross-origin requests. Offline
+navigation displays the shell; registry data and account actions need a network.
+Updates wait for existing tabs to close rather than forcing a reload. Serve
+`sw.js` with no-cache and the OAuth callback with no-store (see `public/_headers`).

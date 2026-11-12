@@ -3,8 +3,8 @@ export function DownloadIcon() {
     <svg
       aria-hidden="true"
       className="inline-block align-middle mr-1"
-      width="14"
-      height="14"
+      width="18"
+      height="18"
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"

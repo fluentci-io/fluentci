@@ -79,7 +79,7 @@ class Record extends Field {
 }
 
 lexicon: Int(this == 1) = 1
-id: String(matches(Regex("io\\.fluentci\\.[A-Za-z0-9.]+")))
+id: String(matches(Regex("(io\\.fluentci\\.[A-Za-z0-9.]+|com\\.atproto\\.repo\\.strongRef)")))
 description: String?
 defs: Mapping<String, Record | ObjectField | Query | Procedure>
 

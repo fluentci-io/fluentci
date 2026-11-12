@@ -1,26 +1,8 @@
 {
   "lexicon": 1,
   "id": "io.fluentci.like",
-  "description": "A user's like of a module across all published versions. Written directly to the user's PDS; delete the record to unlike. The record key is the lowercase SHA-256 hex digest of subject.author + '/' + subject.name, enforcing one like per actor per module.",
+  "description": "A user's like of a published plugin record. The subject contains the plugin AT URI and CID. Clients use com.atproto.repo.createRecord without a record key, letting the PDS generate its default short key. Delete the like record to unlike.",
   "defs": {
-    "subject": {
-      "type": "object",
-      "required": [
-        "author",
-        "name"
-      ],
-      "properties": {
-        "author": {
-          "type": "string",
-          "format": "did"
-        },
-        "name": {
-          "type": "string",
-          "minLength": 1,
-          "maxLength": 64
-        }
-      }
-    },
     "main": {
       "type": "record",
       "key": "any",
@@ -33,7 +15,7 @@
         "properties": {
           "subject": {
             "type": "ref",
-            "ref": "#subject"
+            "ref": "com.atproto.repo.strongRef"
           },
           "createdAt": {
             "type": "string",

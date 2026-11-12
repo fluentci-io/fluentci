@@ -405,3 +405,24 @@ pub fn count_where(table: Table(a), condition: Condition) -> Expression(Int) {
 
 @external(javascript, "./orm_ffi.mjs", "countWhere")
 fn count_where_ffi(table: Raw, condition: Condition) -> Raw
+
+pub fn count_distinct_where(
+  table: Table(a),
+  value: Expression(b),
+  condition: Condition,
+) -> Expression(Int) {
+  Expression(
+    count_distinct_where_ffi(table.raw, value.raw, condition),
+    integer(),
+  )
+}
+
+@external(javascript, "./orm_ffi.mjs", "countDistinctWhere")
+fn count_distinct_where_ffi(table: Raw, value: Raw, condition: Condition) -> Raw
+
+pub fn exists(query: Query(a)) -> Condition {
+  exists_ffi(query.raw)
+}
+
+@external(javascript, "./orm_ffi.mjs", "exists")
+fn exists_ffi(query: Raw) -> Condition

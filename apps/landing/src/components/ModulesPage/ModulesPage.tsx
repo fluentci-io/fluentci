@@ -37,7 +37,11 @@ export function ModulesPage() {
         <div className="catalog-layout mt-10">
           <ModuleFilters filters={filters} onChange={update} />
           <section className="min-w-0" aria-label="Module catalog">
-            <div className="mb-6 flex flex-col gap-3 sm:flex-row">
+            <div
+              className="sticky top-0 z-20 mb-6 flex flex-col gap-3 bg-paper py-4 sm:flex-row"
+              role="search"
+              aria-label="Module search and sorting"
+            >
               <label className="flex min-w-0 flex-1 items-center gap-3 rounded-lg border border-line bg-panel px-3 py-2.5 text-muted">
                 <SearchIcon />
                 <span className="sr-only">Search modules</span>
