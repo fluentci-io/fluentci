@@ -1655,3 +1655,28 @@ test('actor likes list latest modules once, paginate, filter and remove unliked 
   assert.equal((await read()).total, 1);
   assert.equal((await read({ actor: did })).total, 0);
 });
+
+test('catalog totals count filtered latest modules before cursor pagination', async (t) => {
+  const connection = await fixture(t);
+  await add(
+    connection,
+    event('cache', '1.0.0', 100, did, { topics: ['caching'] }),
+    event('cache', '2.0.0', 101, did, { topics: ['caching'] }),
+    event('build', '1.0.0', 102),
+  );
+  const { url } = await server(t, connection);
+  const read = async (params = {}) => {
+    const response = await fetch(
+      `${url}/xrpc/io.fluentci.registry.searchPackages?${new URLSearchParams({ latest: 'true', limit: '1', sort: 'name', ...params })}`,
+    );
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  const first = await read();
+  assert.equal(first.total, 2);
+  assert.equal((await read({ cursor: first.cursor })).total, 2);
+  assert.equal((await read({ latest: 'false' })).total, 3);
+  assert.equal((await read({ q: 'cache' })).total, 1);
+  assert.equal((await read({ filter: 'topics==caching' })).total, 1);
+  assert.equal((await read({ q: 'missing' })).total, 0);
+});

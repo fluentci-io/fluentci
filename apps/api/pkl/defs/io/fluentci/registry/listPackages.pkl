@@ -38,6 +38,10 @@ defs = new Mapping {
               ref = "io.fluentci.registry.defs#packageView"
             }
           }
+          ["total"] = new IntegerField {
+            minimum = 0
+            description = "Number of matching visible modules before cursor pagination; counts latest releases only when latest is true."
+          }
           ["cursor"] = new StringField {
           }
         }

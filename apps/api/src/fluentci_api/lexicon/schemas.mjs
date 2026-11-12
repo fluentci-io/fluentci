@@ -702,6 +702,12 @@ export const schemas = [
                   ref: 'io.fluentci.registry.defs#packageView',
                 },
               },
+              total: {
+                type: 'integer',
+                description:
+                  'Number of matching visible modules before cursor pagination; counts latest releases only when latest is true.',
+                minimum: 0,
+              },
               cursor: {
                 type: 'string',
               },
@@ -922,6 +928,12 @@ export const schemas = [
                   type: 'ref',
                   ref: 'io.fluentci.registry.defs#packageView',
                 },
+              },
+              total: {
+                type: 'integer',
+                description:
+                  'Number of matching visible modules before cursor pagination; counts latest releases only when latest is true.',
+                minimum: 0,
               },
               cursor: {
                 type: 'string',

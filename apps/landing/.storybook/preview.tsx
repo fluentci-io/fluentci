@@ -105,11 +105,11 @@ const preview: Preview = {
         ),
         http.get(
           "https://api.fluentci.io/xrpc/io.fluentci.registry.listPackages",
-          () => HttpResponse.json({ packages: [plugin] }),
+          () => HttpResponse.json({ packages: [plugin], total: 1 }),
         ),
         http.get(
           "https://api.fluentci.io/xrpc/io.fluentci.registry.searchPackages",
-          () => HttpResponse.json({ packages: [plugin] }),
+          () => HttpResponse.json({ packages: [plugin], total: 1 }),
         ),
         http.get(
           "https://api.fluentci.io/xrpc/io.fluentci.registry.getPackage",

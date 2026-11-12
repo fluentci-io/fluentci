@@ -586,6 +586,7 @@ pub fn encode_registry_list_packages_parameters(
 pub type RegistryListPackagesOutput {
   RegistryListPackagesOutput(
     packages: List(RegistryPackageView),
+    total: Option(Int),
     cursor: Option(String),
   )
 }
@@ -599,6 +600,11 @@ pub fn encode_registry_list_packages_output(
       json.array(value.packages, fn(item) { encode_registry_package_view(item) }),
     ),
   ]
+  let fields =
+    list.append(fields, case value.total {
+      None -> []
+      Some(item) -> [#("total", json.int(item))]
+    })
   let fields =
     list.append(fields, case value.cursor {
       None -> []
@@ -738,6 +744,7 @@ pub fn encode_registry_search_packages_parameters(
 pub type RegistrySearchPackagesOutput {
   RegistrySearchPackagesOutput(
     packages: List(RegistryPackageView),
+    total: Option(Int),
     cursor: Option(String),
   )
 }
@@ -751,6 +758,11 @@ pub fn encode_registry_search_packages_output(
       json.array(value.packages, fn(item) { encode_registry_package_view(item) }),
     ),
   ]
+  let fields =
+    list.append(fields, case value.total {
+      None -> []
+      Some(item) -> [#("total", json.int(item))]
+    })
   let fields =
     list.append(fields, case value.cursor {
       None -> []

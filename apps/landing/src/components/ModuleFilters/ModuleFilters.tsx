@@ -34,6 +34,21 @@ export function ModuleFilters({
         </h2>
         <button
           type="button"
+          className="ml-auto text-xs text-accent underline underline-offset-4 hover:opacity-80 focus-visible:outline-accent"
+          onClick={() =>
+            onChange({
+              ...filters,
+              categories: [],
+              os: [],
+              arch: [],
+              official: false,
+            })
+          }
+        >
+          Clear all
+        </button>
+        <button
+          type="button"
           className="text-xs text-accent lg:hidden"
           aria-expanded={open}
           aria-controls="catalog-filter-options"
@@ -94,23 +109,6 @@ export function ModuleFilters({
           />
           Official modules only
         </label>
-        {count > 0 && (
-          <button
-            type="button"
-            className="text-link text-xs"
-            onClick={() =>
-              onChange({
-                ...filters,
-                categories: [],
-                os: [],
-                arch: [],
-                official: false,
-              })
-            }
-          >
-            Clear filters
-          </button>
-        )}
       </div>
     </aside>
   );

@@ -39,11 +39,11 @@ export function useModulesCatalog(filters: CatalogSearch) {
       if (filter) params.set("filter", filter);
       if (selected.official) params.set("author", "fluentci.io");
       if (cursor) params.set("cursor", cursor);
-      const page = await query<{ packages: Plugin[]; cursor?: string }>(
-        "searchPackages",
-        params,
-        signal,
-      );
+      const page = await query<{
+        packages: Plugin[];
+        cursor?: string;
+        total?: number;
+      }>("searchPackages", params, signal);
       if (page.cursor && page.cursor === cursor)
         throw Error("The registry returned a repeated pagination cursor.");
       return page;
@@ -69,6 +69,9 @@ export function useModulesCatalog(filters: CatalogSearch) {
   return {
     items: result.data?.packages ?? [],
     profiles,
+    total: result.data?.total,
+    rangeStart: result.data?.packages.length ? index * 24 + 1 : 0,
+    rangeEnd: index * 24 + (result.data?.packages.length ?? 0),
     loading: result.isPending,
     error: result.data ? undefined : result.error?.message,
     page: index + 1,

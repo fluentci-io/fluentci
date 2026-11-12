@@ -73,6 +73,23 @@ export function ModulesPage() {
                 </select>
               </label>
             </div>
+            {!catalog.loading &&
+              !catalog.error &&
+              typeof catalog.total === "number" && (
+                <p
+                  className="mb-5 text-sm tabular-nums text-muted"
+                  aria-live="polite"
+                  aria-atomic="true"
+                  aria-label="Module result count"
+                >
+                  {catalog.rangeStart.toLocaleString()} -{" "}
+                  {(catalog.items.length
+                    ? catalog.rangeEnd
+                    : 0
+                  ).toLocaleString()}{" "}
+                  of {catalog.total.toLocaleString()} available modules
+                </p>
+              )}
             <div aria-busy={catalog.loading}>
               {catalog.loading ? (
                 <ModuleGridSkeleton />

@@ -154,7 +154,7 @@ test("category and platform filters combine on the server and reset pagination",
   await expect(
     page.getByRole("searchbox", { name: "Search modules", exact: true }),
   ).toHaveValue("cache");
-  await filters.getByRole("button", { name: "Clear filters" }).click();
+  await filters.getByRole("button", { name: "Clear all" }).click();
   await expect.poll(() => requests.at(-1)?.get("filter")).toBe(null);
   expect(requests.at(-1)?.get("q")).toBe("cache");
 });
@@ -258,4 +258,38 @@ test("a directly opened module falls back to home", async ({ page }) => {
     .getByRole("button", { name: "← Back to FluentCI", exact: true })
     .click();
   await expect(page).toHaveURL("/");
+});
+
+test("catalog result count follows pages and filtered totals", async ({
+  page,
+}) => {
+  await mockCommon(page);
+  await page.route(endpoint, (route) => {
+    const params = new URL(route.request().url()).searchParams;
+    const filtered = params.get("q") === "missing";
+    const second = params.has("cursor");
+    const count = filtered ? 0 : second ? 3 : 24;
+    return route.fulfill({
+      json: {
+        packages: Array.from({ length: count }, (_, i) => ({
+          ...plugin,
+          name: `result-${second ? 24 + i : i}`,
+          uri: `at://${author.did}/io.fluentci.plugin/result-${second ? 24 + i : i}-0.1.0`,
+        })),
+        total: filtered ? 0 : 27,
+        cursor: !filtered && !second ? "next-page" : undefined,
+      },
+    });
+  });
+  await page.goto("/modules");
+  const count = page.getByLabel("Module result count");
+  await expect(count).toHaveText("1 - 24 of 27 available modules");
+  await page.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(count).toHaveText("25 - 27 of 27 available modules");
+  await page.getByRole("button", { name: "Previous", exact: true }).click();
+  await expect(count).toHaveText("1 - 24 of 27 available modules");
+  await page
+    .getByRole("searchbox", { name: "Search modules", exact: true })
+    .fill("missing");
+  await expect(count).toHaveText("0 - 0 of 0 available modules");
 });

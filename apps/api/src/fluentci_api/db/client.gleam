@@ -319,6 +319,26 @@ fn list_filtered_for_actor(
     "" -> conditions
     _ -> [eq(p.author(plugins), author), ..conditions]
   }
+  let #(selection, conditions) = case query {
+    "" -> #(visible(), conditions)
+    _ -> {
+      let search = fts.table()
+      let expression =
+        words(query)
+        |> list.map(fn(word) { "\"" <> word <> "\"*" })
+        |> string.join(" AND ")
+      let condition = case expression {
+        "" -> or([])
+        _ -> matches(search, expression)
+      }
+      #(
+        visible()
+          |> inner_join(search, eq_columns(p.uri(plugins), fts.uri(search))),
+        [condition, ..conditions],
+      )
+    }
+  }
+  let total_selection = selection |> where(and(conditions))
   let conditions = case cursor_value {
     "" -> conditions
     value -> {
@@ -357,25 +377,7 @@ fn list_filtered_for_actor(
       [after, ..conditions]
     }
   }
-  let #(selection, conditions) = case query {
-    "" -> #(visible(), conditions)
-    _ -> {
-      let search = fts.table()
-      let expression =
-        words(query)
-        |> list.map(fn(word) { "\"" <> word <> "\"*" })
-        |> string.join(" AND ")
-      let condition = case expression {
-        "" -> or([])
-        _ -> matches(search, expression)
-      }
-      #(
-        visible()
-          |> inner_join(search, eq_columns(p.uri(plugins), fts.uri(search))),
-        [condition, ..conditions],
-      )
-    }
-  }
+  use total <- promise.await(count_rows(db, total_selection))
   let orders = case sort {
     "recently-liked" -> [desc(liked_time), asc(p.uri(plugins))]
     "downloads" -> [
@@ -419,7 +421,11 @@ fn list_filtered_for_actor(
     }
     _, _ -> None
   }
-  RegistryListPackagesOutput(packages, cursor)
+  RegistryListPackagesOutput(
+    packages: packages,
+    cursor: cursor,
+    total: Some(total),
+  )
 }
 
 pub fn actor_packages(

@@ -38,7 +38,11 @@ pub fn generated_encoder_preserves_json_field_names_test() {
 }
 
 pub fn generated_pagination_encoder_handles_arrays_and_cursor_test() {
-  models.RegistryListPackagesOutput([], Some("next-page"))
+  models.RegistryListPackagesOutput(
+    packages: [],
+    cursor: Some("next-page"),
+    total: None,
+  )
   |> models.encode_registry_list_packages_output
   |> json.to_string
   |> should.equal("{\"packages\":[],\"cursor\":\"next-page\"}")
