@@ -482,7 +482,7 @@ pre {
   .publisher-avatar img { @apply size-full object-cover; }
   .publisher-filter { @apply flex w-full items-center gap-2.5 rounded-lg border border-line bg-panel px-3 py-2.5 text-muted focus-within:border-accent sm:w-72; }
   .publisher-filter input { @apply min-w-0 flex-1 bg-transparent text-sm text-ink outline-none; }
-  .publisher-module { @apply flex items-start gap-4 border-b border-line py-7 transition-colors hover:bg-panel; }
+  .publisher-module { @apply flex items-start gap-4 py-7 transition-colors hover:bg-panel; }
   .publisher-module .module-logo { @apply size-16 shrink-0; }
 }
 @layer components {

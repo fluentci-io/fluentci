@@ -176,3 +176,23 @@ test("publisher empty and failure states remain retryable", async ({
   await expect(page.getByText("No published modules yet.")).toBeVisible();
   await expect(page.getByLabel("0 published modules")).toBeVisible();
 });
+
+
+test("profile Likes tab lists liked modules without dividers and uses an outline avatar", async ({ page }) => {
+  await page.route("https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?*", route => route.fulfill({ json: { ...author, avatar: undefined } }));
+  await page.route("https://api.fluentci.io/xrpc/io.fluentci.registry.*", route => {
+    const liked = new URL(route.request().url()).pathname.endsWith("getActorLikes");
+    return route.fulfill({ json: { packages: liked ? [{ ...plugin, name: "liked-tool" }] : [plugin], total: 1, totalDownloads: liked ? undefined : 1284 } });
+  });
+  await page.goto("/fluentci.io");
+  await expect(page.locator(".publisher-avatar svg")).toBeVisible();
+  const likes = page.getByRole("tab", { name: "Likes" });
+  await likes.click();
+  await expect(likes).toHaveAttribute("aria-selected", "true");
+  await expect(page.getByRole("heading", { name: "liked-tool" })).toBeVisible();
+  await expect(page.getByLabel("1,284 total downloads")).toBeVisible();
+  expect(await page.locator(".publisher-module").first().evaluate(el => getComputedStyle(el).borderBottomWidth)).toBe("0px");
+  expect(await page.getByRole("tablist").evaluate(el => getComputedStyle(el.closest(".sticky")!).borderBottomWidth)).toBe("0px");
+  await page.getByRole("tab", { name: /Modules/ }).click();
+  await expect(page.getByRole("heading", { name: plugin.name, exact: true })).toBeVisible();
+});

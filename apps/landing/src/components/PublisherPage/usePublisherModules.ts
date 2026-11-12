@@ -7,6 +7,8 @@ export function usePublisherModules(
   actor: string,
   search: string,
   sort: ModuleSort,
+  feed: "modules" | "likes" = "modules",
+  enabled = true,
 ) {
   const [items, setItems] = useState<Plugin[]>([]);
   const [cursor, setCursor] = useState<string>();
@@ -51,7 +53,11 @@ export function usePublisherModules(
           cursor?: string;
           total?: number;
           totalDownloads?: number;
-        }>("getActorPackages", params, abort.signal);
+        }>(
+          feed === "likes" ? "getActorLikes" : "getActorPackages",
+          params,
+          abort.signal,
+        );
         if (abort.signal.aborted || current !== generation.current) return;
         if (after && page.cursor === after)
           throw Error("The registry returned a repeated pagination cursor.");
@@ -80,7 +86,7 @@ export function usePublisherModules(
         }
       }
     },
-    [actor, debounced, sort],
+    [actor, debounced, sort, feed],
   );
   useEffect(() => {
     generation.current += 1;
@@ -89,12 +95,13 @@ export function usePublisherModules(
     next.current = undefined;
     setCursor(undefined);
     setItems([]);
-    void fetchPage();
+    if (enabled) void fetchPage();
+    else setLoading(false);
     return () => {
       generation.current += 1;
       request.current?.abort();
     };
-  }, [fetchPage, retry]);
+  }, [fetchPage, retry, enabled]);
   const loadMore = useCallback(() => {
     if (next.current) void fetchPage(next.current);
   }, [fetchPage]);

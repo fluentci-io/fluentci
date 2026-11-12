@@ -1,0 +1,55 @@
+amends "../../../../schema/lexicon.pkl"
+
+lexicon = 1
+id = "io.fluentci.registry.getActorLikes"
+description = "List an actor's liked modules with selectable ordering and cursor pagination; most downloaded first by default."
+defs = new Mapping {
+  ["main"] = new Query {
+    parameters = new Parameters {
+      required = List("actor")
+      properties = new Mapping {
+        ["sort"] = new StringField {
+          `enum` = List("downloads", "newest", "oldest", "name")
+          description = "Sort by downloads (default), newest publication, oldest publication, or module name A-Z."
+        }
+        ["actor"] = new StringField {
+          format = "at-identifier"
+        }
+        ["q"] = new StringField { maxLength = 1000 }
+        ["latest"] = new BooleanField {}
+        ["limit"] = new IntegerField {
+          minimum = 1
+          maximum = 100
+          default = 20
+        }
+        ["cursor"] = new StringField {
+          maxLength = 4096
+        }
+      }
+    }
+    output = new Body {
+      encoding = "application/json"
+      schema = new ObjectField {
+        required = List("packages")
+        properties = new Mapping {
+          ["packages"] = new ArrayField {
+            items = new RefField {
+              ref = "io.fluentci.registry.defs#packageView"
+            }
+          }
+          ["total"] = new IntegerField { minimum = 0 }
+          ["totalDownloads"] = new IntegerField {
+            minimum = 0
+            description = "Downloads across all visible versions of all modules published by this actor, independent of filtering and pagination."
+          }
+          ["cursor"] = new StringField {
+          }
+        }
+      }
+    }
+    errors = List(new Error {
+      name = "InvalidCursor"
+      description = "The cursor is invalid or belongs to a different query."
+    })
+  }
+}

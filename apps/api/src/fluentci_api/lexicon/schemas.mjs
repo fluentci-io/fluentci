@@ -4,6 +4,7 @@ export const ids = {
   like: 'io.fluentci.like',
   plugin: 'io.fluentci.plugin',
   registry_defs: 'io.fluentci.registry.defs',
+  registry_get_actor_likes: 'io.fluentci.registry.getActorLikes',
   registry_get_actor_packages: 'io.fluentci.registry.getActorPackages',
   registry_get_package: 'io.fluentci.registry.getPackage',
   registry_list_packages: 'io.fluentci.registry.listPackages',
@@ -436,6 +437,85 @@ export const schemas = [
             minimum: 0,
           },
         },
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.registry.getActorLikes',
+    description:
+      "List an actor's liked modules with selectable ordering and cursor pagination; most downloaded first by default.",
+    defs: {
+      main: {
+        type: 'query',
+        parameters: {
+          type: 'params',
+          required: ['actor'],
+          properties: {
+            sort: {
+              type: 'string',
+              description:
+                'Sort by downloads (default), newest publication, oldest publication, or module name A-Z.',
+              enum: ['downloads', 'newest', 'oldest', 'name'],
+            },
+            actor: {
+              type: 'string',
+              format: 'at-identifier',
+            },
+            q: {
+              type: 'string',
+              maxLength: 1000,
+            },
+            latest: {
+              type: 'boolean',
+            },
+            limit: {
+              type: 'integer',
+              minimum: 1,
+              maximum: 100,
+              default: 20,
+            },
+            cursor: {
+              type: 'string',
+              maxLength: 4096,
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['packages'],
+            properties: {
+              packages: {
+                type: 'array',
+                items: {
+                  type: 'ref',
+                  ref: 'io.fluentci.registry.defs#packageView',
+                },
+              },
+              total: {
+                type: 'integer',
+                minimum: 0,
+              },
+              totalDownloads: {
+                type: 'integer',
+                description:
+                  'Downloads across all visible versions of all modules published by this actor, independent of filtering and pagination.',
+                minimum: 0,
+              },
+              cursor: {
+                type: 'string',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'InvalidCursor',
+            description: 'The cursor is invalid or belongs to a different query.',
+          },
+        ],
       },
     },
   },

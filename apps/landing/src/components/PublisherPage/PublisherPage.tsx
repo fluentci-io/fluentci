@@ -1,3 +1,4 @@
+import { UserIcon } from "../UserIcon";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { SiteHeader } from "../SiteHeader";
@@ -25,16 +26,18 @@ export function PublisherPage() {
   const [sort, setSort] = useState<ModuleSort>("downloads");
   const [showPinnedIdentity, setShowPinnedIdentity] = useState(false);
   const profileHeader = useRef<HTMLDivElement>(null);
-  const {
-    items,
-    total,
-    totalDownloads,
-    loading,
-    error,
-    hasMore,
-    loadMore,
-    retry,
-  } = usePublisherModules(actor, search, sort);
+  const [tab, setTab] = useState<"modules" | "likes">("modules");
+  const published = usePublisherModules(actor, search, sort);
+  const liked = usePublisherModules(
+    actor,
+    search,
+    sort,
+    "likes",
+    tab === "likes",
+  );
+  const { items, loading, error, hasMore, loadMore, retry } =
+    tab === "likes" ? liked : published;
+  const { total, totalDownloads } = published;
   const sentinel = useRef<HTMLDivElement>(null);
   const filterInput = useRef<HTMLInputElement>(null);
   useEffect(() => {
@@ -111,7 +114,7 @@ export function PublisherPage() {
                 onError={() => setFailedAvatar(true)}
               />
             ) : (
-              name.slice(0, 1).toUpperCase()
+              <UserIcon />
             )}
           </div>
           <div className="min-w-0">
@@ -155,7 +158,7 @@ export function PublisherPage() {
           </div>
         </div>
         <section aria-label="Published modules" className="mt-12">
-          <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 border-b border-line bg-paper py-5">
+          <div className="sticky top-0 z-20 flex flex-wrap items-center justify-between gap-4 bg-paper py-5">
             <div className="flex w-full min-w-0 items-center gap-4 sm:w-auto sm:flex-1">
               {showPinnedIdentity && (
                 <div
@@ -175,7 +178,7 @@ export function PublisherPage() {
                         onError={() => setFailedAvatar(true)}
                       />
                     ) : (
-                      name.slice(0, 1).toUpperCase()
+                      <UserIcon />
                     )}
                   </div>
                   <div className="min-w-0">
@@ -191,17 +194,39 @@ export function PublisherPage() {
                   </div>
                 </div>
               )}
-              <h2 className="shrink-0 text-lg font-medium">
-                Modules{" "}
-                {total !== undefined && (
-                  <span
-                    className="ml-2 rounded-md bg-raised px-2 py-1 font-mono text-sm tabular-nums text-muted"
-                    aria-label={`${total} published modules`}
+              <div
+                role="tablist"
+                aria-label="Profile modules"
+                className="flex items-center gap-5"
+              >
+                {(["modules", "likes"] as const).map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === value}
+                    onClick={() => {
+                      setTab(value);
+                      setSearch("");
+                    }}
+                    className={`text-lg font-medium transition-colors ${tab === value ? "text-ink" : "text-muted hover:text-ink"}`}
                   >
-                    {total.toLocaleString()}
-                  </span>
-                )}
-              </h2>
+                    {value === "modules" ? "Modules" : "Likes"}
+                    {(value === "modules" ? total : liked.total) !==
+                      undefined && (
+                      <span
+                        className="ml-2 rounded-md bg-raised px-2 py-1 font-mono text-sm tabular-nums text-muted"
+                        aria-label={`${value === "modules" ? total : liked.total} ${value === "modules" ? "published modules" : "liked modules"}`}
+                      >
+                        {(value === "modules"
+                          ? total
+                          : liked.total
+                        )?.toLocaleString()}
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
             </div>
             <div className="flex w-full flex-wrap items-center gap-3 sm:w-auto">
               <label className="publisher-filter">

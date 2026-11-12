@@ -1,3 +1,4 @@
+import { UserIcon } from "../UserIcon";
 import { useState } from "react";
 import { httpUrl, type Profile } from "../../registry/client";
 
@@ -22,7 +23,7 @@ export function Author({
             onError={() => setFailed(true)}
           />
         ) : (
-          handle.slice(0, 1).toUpperCase()
+          <UserIcon />
         )}
       </span>
       <span className="truncate">

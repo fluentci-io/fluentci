@@ -218,6 +218,30 @@ fn list_filtered(
   newest_only: Bool,
   sort: String,
 ) -> Promise(Page) {
+  list_filtered_for_actor(
+    db,
+    query,
+    author,
+    count,
+    cursor_value,
+    rsql,
+    newest_only,
+    sort,
+    "",
+  )
+}
+
+fn list_filtered_for_actor(
+  db: Db,
+  query: String,
+  author: String,
+  count: Int,
+  cursor_value: String,
+  rsql: String,
+  newest_only: Bool,
+  sort: String,
+  liked_actor: String,
+) -> Promise(Page) {
   let plugins = p.table()
   let downloads = case newest_only {
     False -> p.downloads(plugins)
@@ -249,6 +273,8 @@ fn list_filtered(
       author
         <> "\n"
         <> rsql
+        <> "\nliked:"
+        <> liked_actor
         <> "\nsort:"
         <> sort
         <> case newest_only {
@@ -257,6 +283,10 @@ fn list_filtered(
       },
     )
   let conditions = [visibility(), filters.parse(rsql)]
+  let conditions = case liked_actor {
+    "" -> conditions
+    actor -> [actor_like(actor), ..conditions]
+  }
   let conditions = case newest_only {
     True -> [newest_version(), ..conditions]
     False -> conditions
@@ -740,5 +770,71 @@ pub fn actor_profile_packages_sorted(
     cursor: page.cursor,
     total: Some(total),
     total_downloads: Some(total_downloads),
+  )
+}
+
+fn actor_like(actor: String) -> Condition {
+  let liked = likes.table()
+  let subject = alias(p.table(), "actor_liked_subject")
+  let account = alias(a.table(), "actor_liker_account")
+  exists(
+    from(liked)
+    |> where(
+      and([
+        eq(likes.actor(liked), actor),
+        eq(likes.active(liked), True),
+        eq_columns(likes.subject_author(liked), p.author(p.table())),
+        eq_columns(likes.name(liked), p.name(p.table())),
+        exists(
+          from(subject)
+          |> where(
+            and([
+              eq_columns(p.uri(subject), likes.subject_uri(liked)),
+              eq(p.deleted(subject), False),
+            ]),
+          ),
+        ),
+        not_exists(
+          from(account)
+          |> where(
+            and([
+              eq(a.did(account), actor),
+              eq(a.active(account), False),
+            ]),
+          ),
+        ),
+      ]),
+    ),
+  )
+}
+
+pub fn actor_liked_packages(
+  db: Db,
+  actor: String,
+  query: String,
+  count: Int,
+  cursor: String,
+  sort: String,
+) -> Promise(models.RegistryGetActorPackagesOutput) {
+  use total <- promise.await(count_rows(
+    db,
+    visible() |> where(and([visibility(), newest_version(), actor_like(actor)])),
+  ))
+  use page <- promise.map(list_filtered_for_actor(
+    db,
+    query,
+    "",
+    count,
+    cursor,
+    "",
+    True,
+    sort,
+    actor,
+  ))
+  models.RegistryGetActorPackagesOutput(
+    packages: page.packages,
+    cursor: page.cursor,
+    total: Some(total),
+    total_downloads: None,
   )
 }

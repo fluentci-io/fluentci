@@ -14,6 +14,8 @@ pub const plugin = "io.fluentci.plugin"
 
 pub const registry_defs = "io.fluentci.registry.defs"
 
+pub const registry_get_actor_likes = "io.fluentci.registry.getActorLikes"
+
 pub const registry_get_actor_packages = "io.fluentci.registry.getActorPackages"
 
 pub const registry_get_package = "io.fluentci.registry.getPackage"
@@ -340,6 +342,85 @@ pub fn encode_registry_package_view(value: RegistryPackageView) -> json.Json {
     list.append(fields, case value.likes_count {
       None -> []
       Some(item) -> [#("likesCount", json.int(item))]
+    })
+  json.object(fields)
+}
+
+pub type RegistryGetActorLikesParameters {
+  RegistryGetActorLikesParameters(
+    sort: Option(String),
+    actor: String,
+    q: Option(String),
+    latest: Option(Bool),
+    limit: Option(Int),
+    cursor: Option(String),
+  )
+}
+
+pub fn encode_registry_get_actor_likes_parameters(
+  value: RegistryGetActorLikesParameters,
+) -> json.Json {
+  let fields = [#("actor", json.string(value.actor))]
+  let fields =
+    list.append(fields, case value.sort {
+      None -> []
+      Some(item) -> [#("sort", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.q {
+      None -> []
+      Some(item) -> [#("q", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.latest {
+      None -> []
+      Some(item) -> [#("latest", json.bool(item))]
+    })
+  let fields =
+    list.append(fields, case value.limit {
+      None -> []
+      Some(item) -> [#("limit", json.int(item))]
+    })
+  let fields =
+    list.append(fields, case value.cursor {
+      None -> []
+      Some(item) -> [#("cursor", json.string(item))]
+    })
+  json.object(fields)
+}
+
+pub type RegistryGetActorLikesOutput {
+  RegistryGetActorLikesOutput(
+    packages: List(RegistryPackageView),
+    total: Option(Int),
+    total_downloads: Option(Int),
+    cursor: Option(String),
+  )
+}
+
+pub fn encode_registry_get_actor_likes_output(
+  value: RegistryGetActorLikesOutput,
+) -> json.Json {
+  let fields = [
+    #(
+      "packages",
+      json.array(value.packages, fn(item) { encode_registry_package_view(item) }),
+    ),
+  ]
+  let fields =
+    list.append(fields, case value.total {
+      None -> []
+      Some(item) -> [#("total", json.int(item))]
+    })
+  let fields =
+    list.append(fields, case value.total_downloads {
+      None -> []
+      Some(item) -> [#("totalDownloads", json.int(item))]
+    })
+  let fields =
+    list.append(fields, case value.cursor {
+      None -> []
+      Some(item) -> [#("cursor", json.string(item))]
     })
   json.object(fields)
 }

@@ -1617,3 +1617,37 @@ test('like subjects require a plugin AT URI and CID; metadata revisions and unli
     { subject_uri: `at://${did}/io.fluentci.plugin/hello-1.0.0`, subject_cid: cid },
   );
 });
+
+test('actor likes list latest modules once, paginate, filter and remove unliked records', async (t) => {
+  const connection = await fixture(t);
+  await add(
+    connection,
+    event('alpha', '1.0.0', 100),
+    event('alpha', '2.0.0', 101),
+    event('beta', '1.0.0', 102),
+  );
+  await add(
+    connection,
+    likeEvent(other, did, 'alpha', 200),
+    likeEvent(other, did, 'alpha', 201, 'create', '3mmmmmmmmmmbb', '2.0.0'),
+    likeEvent(other, did, 'beta', 202, 'create', '3mmmmmmmmmmcc'),
+  );
+  const { url } = await server(t, connection);
+  const read = async (params = {}) => {
+    const response = await fetch(
+      `${url}/xrpc/io.fluentci.registry.getActorLikes?${new URLSearchParams({ actor: other, sort: 'name', limit: '1', ...params })}`,
+    );
+    assert.equal(response.status, 200);
+    return response.json();
+  };
+  const first = await read();
+  assert.equal(first.total, 2);
+  assert.equal(first.packages[0].name, 'alpha');
+  assert.equal(first.packages[0].version, '2.0.0');
+  assert.ok(first.cursor);
+  assert.equal((await read({ cursor: first.cursor })).packages[0].name, 'beta');
+  assert.equal((await read({ q: 'beta' })).packages[0].name, 'beta');
+  await add(connection, likeEvent(other, did, 'beta', 300, 'delete', '3mmmmmmmmmmcc'));
+  assert.equal((await read()).total, 1);
+  assert.equal((await read({ actor: did })).total, 0);
+});
