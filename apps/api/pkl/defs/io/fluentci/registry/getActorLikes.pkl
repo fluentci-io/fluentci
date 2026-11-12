@@ -2,15 +2,15 @@ amends "../../../../schema/lexicon.pkl"
 
 lexicon = 1
 id = "io.fluentci.registry.getActorLikes"
-description = "List an actor's liked modules with selectable ordering and cursor pagination; most downloaded first by default."
+description = "List an actor's liked modules with selectable ordering and cursor pagination; most recently liked first by default."
 defs = new Mapping {
   ["main"] = new Query {
     parameters = new Parameters {
       required = List("actor")
       properties = new Mapping {
         ["sort"] = new StringField {
-          `enum` = List("downloads", "newest", "oldest", "name")
-          description = "Sort by downloads (default), newest publication, oldest publication, or module name A-Z."
+          `enum` = List("recently-liked", "downloads", "newest", "oldest", "name")
+          description = "Sort by most recently liked (default), downloads, newest publication, oldest publication, or module name A-Z."
         }
         ["actor"] = new StringField {
           format = "at-identifier"

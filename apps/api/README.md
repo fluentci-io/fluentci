@@ -294,4 +294,4 @@ replays the preceding hour to pick up events skipped by the earlier decoder.
 
 ### Actor likes
 
-`io.fluentci.registry.getActorLikes?actor=fluentci.io` returns the latest visible version of each module liked by an actor, with aggregate downloads and likes. It supports `q`, `sort`, `limit`, and opaque `cursor` pagination. Multiple likes across versions produce one module; deleted likes and inactive accounts are excluded. Profile publication statistics remain independent of this feed.
+`io.fluentci.registry.getActorLikes?actor=fluentci.io` returns the latest visible version of each module liked by an actor, with aggregate downloads and likes. It defaults to most recently liked first (`sort=recently-liked`) and supports `q`, `sort`, `limit`, and opaque `cursor` pagination. Multiple likes across versions produce one module; deleted likes and inactive accounts are excluded. Profile publication statistics remain independent of this feed.

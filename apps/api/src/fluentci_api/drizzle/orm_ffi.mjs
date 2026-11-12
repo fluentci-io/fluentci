@@ -192,6 +192,14 @@ export function sumWhere(table, value, condition) {
   return d.sql`coalesce((${query}), 0)`;
 }
 
+export function maxWhere(table, value, condition) {
+  const query = new QueryBuilder()
+    .select({ value: d.max(value) })
+    .from(table)
+    .where(condition);
+  return d.sql`coalesce((${query}), 0)`;
+}
+
 export const countWhere = (table, condition) =>
   d.sql`(select count(*) from ${table} where ${condition})`;
 

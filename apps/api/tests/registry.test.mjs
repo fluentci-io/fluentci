@@ -1640,6 +1640,10 @@ test('actor likes list latest modules once, paginate, filter and remove unliked 
     assert.equal(response.status, 200);
     return response.json();
   };
+  const recent = await read({ sort: '' });
+  assert.equal(recent.packages[0].name, 'beta');
+  assert.equal((await read({ sort: '', cursor: recent.cursor })).packages[0].name, 'alpha');
+  assert.equal(recent.packages[0].downloads, 0);
   const first = await read();
   assert.equal(first.total, 2);
   assert.equal(first.packages[0].name, 'alpha');

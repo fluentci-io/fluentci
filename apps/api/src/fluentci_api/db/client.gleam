@@ -6,8 +6,9 @@ import fluentci_api/drizzle/orm.{
   type Assignment, type Condition, type Query, alias, all, and, asc,
   count_distinct_where, count_rows, desc, eq, eq_columns, exists, from,
   function_compare, gt, inner_join, insert, is_null, left_join, limit, lt,
-  lt_columns, matches, not_exists, on_conflict_do_nothing, on_conflict_do_update,
-  or, order_by, project, set, sum_where, transaction, where,
+  lt_columns, matches, max_where, not_exists, on_conflict_do_nothing,
+  on_conflict_do_update, or, order_by, project, set, sum_where, transaction,
+  where,
 }
 import fluentci_api/function_metadata
 import fluentci_api/lexicon/models.{
@@ -258,8 +259,31 @@ fn list_filtered_for_actor(
       )
     }
   }
+  let liked = likes.table()
+  let subject = alias(plugins, "ordered_like_subject")
+  let liked_time =
+    max_where(
+      liked,
+      likes.event_time(liked),
+      and([
+        eq(likes.actor(liked), liked_actor),
+        eq(likes.active(liked), True),
+        eq_columns(likes.subject_author(liked), p.author(plugins)),
+        eq_columns(likes.name(liked), p.name(plugins)),
+        exists(
+          from(subject)
+          |> where(
+            and([
+              eq_columns(p.uri(subject), likes.subject_uri(liked)),
+              eq(p.deleted(subject), False),
+            ]),
+          ),
+        ),
+      ]),
+    )
   let sort = case sort {
     "" | "downloads" -> "downloads"
+    "recently-liked" if liked_actor != "" -> sort
     "newest" | "oldest" | "name" -> sort
     _ ->
       fail(
@@ -305,6 +329,11 @@ fn list_filtered_for_actor(
           and([eq(p.published_at(plugins), Some(time)), gt(p.uri(plugins), uri)]),
         ])
       let after = case sort {
+        "recently-liked" ->
+          or([
+            lt(liked_time, cursor_downloads),
+            and([eq(liked_time, cursor_downloads), gt(p.uri(plugins), uri)]),
+          ])
         "downloads" ->
           or([
             lt(downloads, cursor_downloads),
@@ -348,6 +377,7 @@ fn list_filtered_for_actor(
     }
   }
   let orders = case sort {
+    "recently-liked" -> [desc(liked_time), asc(p.uri(plugins))]
     "downloads" -> [
       desc(downloads),
       desc(p.published_at(plugins)),
@@ -364,20 +394,29 @@ fn list_filtered_for_actor(
   let selection =
     selection
     |> project("downloads", downloads)
+    |> project("liked_time", liked_time)
     |> where(and(conditions))
     |> order_by(orders)
     |> limit(count + 1)
   use rows <- promise.map(all(db, selection))
   let packages = rows |> list.take(count) |> list.map(package)
-  let cursor = case list.length(rows) > count, list.last(packages) {
-    True, Ok(last) ->
+  let cursor = case
+    list.length(rows) > count,
+    list.last(list.take(rows, count))
+  {
+    True, Ok(row) -> {
+      let last = package(row)
       Some(encode_cursor(
         last.published_at,
         last.uri,
         filter,
-        option.unwrap(last.downloads, 0),
+        case sort {
+          "recently-liked" -> row.liked_time
+          _ -> option.unwrap(last.downloads, 0)
+        },
         last.name,
       ))
+    }
     _, _ -> None
   }
   RegistryListPackagesOutput(packages, cursor)
@@ -816,6 +855,10 @@ pub fn actor_liked_packages(
   cursor: String,
   sort: String,
 ) -> Promise(models.RegistryGetActorPackagesOutput) {
+  let sort = case sort {
+    "" -> "recently-liked"
+    _ -> sort
+  }
   use total <- promise.await(count_rows(
     db,
     visible() |> where(and([visibility(), newest_version(), actor_like(actor)])),

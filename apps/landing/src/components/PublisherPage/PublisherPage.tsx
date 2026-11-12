@@ -23,6 +23,7 @@ export function PublisherPage() {
   const [profile, setProfile] = useState<Profile>();
   const [failedAvatar, setFailedAvatar] = useState(false);
   const [search, setSearch] = useState("");
+  const [likeSort, setLikeSort] = useState<ModuleSort>("recently-liked");
   const [sort, setSort] = useState<ModuleSort>("downloads");
   const [showPinnedIdentity, setShowPinnedIdentity] = useState(false);
   const profileHeader = useRef<HTMLDivElement>(null);
@@ -31,7 +32,7 @@ export function PublisherPage() {
   const liked = usePublisherModules(
     actor,
     search,
-    sort,
+    likeSort,
     "likes",
     tab === "likes",
   );
@@ -257,12 +258,17 @@ export function PublisherPage() {
               <label className="w-full sm:w-auto">
                 <span className="sr-only">Sort modules</span>
                 <select
-                  value={sort}
+                  value={tab === "likes" ? likeSort : sort}
                   onChange={(event) =>
-                    setSort(event.target.value as ModuleSort)
+                    (tab === "likes" ? setLikeSort : setSort)(
+                      event.target.value as ModuleSort,
+                    )
                   }
                   className="h-10 w-full rounded-lg border border-line bg-panel px-3 text-sm text-ink outline-none focus-visible:ring-2 focus-visible:ring-accent sm:w-auto"
                 >
+                  {tab === "likes" && (
+                    <option value="recently-liked">Recently liked</option>
+                  )}
                   <option value="downloads">Most downloaded</option>
                   <option value="newest">Recently published</option>
                   <option value="oldest">Oldest first</option>
@@ -283,7 +289,10 @@ export function PublisherPage() {
                     <Link
                       to="/$handle/plugin/$rkey"
                       params={{
-                        handle: profile?.handle ?? plugin.author,
+                        handle:
+                          tab === "modules"
+                            ? (profile?.handle ?? plugin.author)
+                            : plugin.author,
                         rkey: recordKey(plugin),
                       }}
                       className="after:absolute after:inset-0"
@@ -341,7 +350,9 @@ export function PublisherPage() {
               <p className="py-16 text-center text-sm text-muted">
                 {search.trim()
                   ? "No modules match this filter."
-                  : "No published modules yet."}
+                  : tab === "likes"
+                    ? "No liked modules yet."
+                    : "No published modules yet."}
               </p>
             )}
             {error && (

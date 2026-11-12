@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { query, uniquePlugins, type Plugin } from "../../registry/client";
 
-export type ModuleSort = "downloads" | "newest" | "oldest" | "name";
+export type ModuleSort =
+  "downloads" | "newest" | "oldest" | "name" | "recently-liked";
 
 export function usePublisherModules(
   actor: string,

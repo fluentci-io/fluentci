@@ -444,7 +444,7 @@ export const schemas = [
     lexicon: 1,
     id: 'io.fluentci.registry.getActorLikes',
     description:
-      "List an actor's liked modules with selectable ordering and cursor pagination; most downloaded first by default.",
+      "List an actor's liked modules with selectable ordering and cursor pagination; most recently liked first by default.",
     defs: {
       main: {
         type: 'query',
@@ -455,8 +455,8 @@ export const schemas = [
             sort: {
               type: 'string',
               description:
-                'Sort by downloads (default), newest publication, oldest publication, or module name A-Z.',
-              enum: ['downloads', 'newest', 'oldest', 'name'],
+                'Sort by most recently liked (default), downloads, newest publication, oldest publication, or module name A-Z.',
+              enum: ['recently-liked', 'downloads', 'newest', 'oldest', 'name'],
             },
             actor: {
               type: 'string',

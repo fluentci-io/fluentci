@@ -140,6 +140,17 @@ pub fn sum_where(
 @external(javascript, "./orm_ffi.mjs", "sumWhere")
 fn sum_where_ffi(table: Raw, value: Raw, condition: Condition) -> Raw
 
+pub fn max_where(
+  table: Table(a),
+  value: Expression(Int),
+  condition: Condition,
+) -> Expression(Int) {
+  Expression(max_where_ffi(table.raw, value.raw, condition), integer())
+}
+
+@external(javascript, "./orm_ffi.mjs", "maxWhere")
+fn max_where_ffi(table: Raw, value: Raw, condition: Condition) -> Raw
+
 pub fn project(
   query: Query(a),
   property: String,
