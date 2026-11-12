@@ -4,9 +4,9 @@ import { decode_wire as decodeLabels } from '../module_metadata.mjs';
 import { RegistryPackageView as Package } from '../lexicon/models.mjs';
 import WebSocket from 'ws';
 import { Lexicons } from '@atproto/lexicon';
-import { Upsert, Delete, Account, Checkpoint } from '../model.mjs';
+import { Upsert, Delete, Account, Checkpoint, Like, Unlike } from '../model.mjs';
 import { Ok, Error as GError } from '../../gleam.mjs';
-import { lexicons, COLLECTION } from '../config_ffi.mjs';
+import { lexicons, COLLECTION, LIKE_COLLECTION } from '../config_ffi.mjs';
 import { cursor, close } from '../db/client.mjs';
 import semver from 'semver';
 import { createHash } from 'node:crypto';
@@ -30,7 +30,10 @@ export function decodeEvent(message) {
           eventId(['account', event.did, event.account.seq ?? event.time_us, event.account.active]),
         ),
       );
-    if (event.kind !== 'commit' || event.commit?.collection !== COLLECTION)
+    if (
+      event.kind !== 'commit' ||
+      ![COLLECTION, LIKE_COLLECTION].includes(event.commit?.collection)
+    )
       return new Ok(new Checkpoint(event.time_us));
     const c = event.commit;
     if (
@@ -39,7 +42,7 @@ export function decodeEvent(message) {
       ['.', '..'].includes(c.rkey)
     )
       throw new Error('Invalid record key');
-    const uri = `at://${event.did}/${COLLECTION}/${c.rkey}`;
+    const uri = `at://${event.did}/${c.collection}/${c.rkey}`;
     const id = eventId([
       'commit',
       event.did,
@@ -48,6 +51,25 @@ export function decodeEvent(message) {
       c.operation,
       c.rev ?? [event.time_us, c.cid ?? null],
     ]);
+    if (c.collection === LIKE_COLLECTION) {
+      if (!/^[a-f0-9]{64}$/.test(c.rkey)) throw new Error('Invalid like key');
+      if (c.operation === 'delete') return new Ok(new Unlike(uri, event.did, event.time_us, id));
+      if (!['create', 'update'].includes(c.operation)) throw new Error('Unknown like operation');
+      const checked = validators.validate(LIKE_COLLECTION, c.record);
+      if (!checked.success) throw checked.error;
+      const record = c.record;
+      const subject = record.subject;
+      if (
+        record.$type !== LIKE_COLLECTION ||
+        !/^did:[a-z0-9]+:[A-Za-z0-9._:%-]+$/.test(subject.author) ||
+        !/^[a-z][a-z0-9-]{0,63}$/.test(subject.name) ||
+        !Number.isFinite(Date.parse(record.createdAt))
+      )
+        throw new Error('Invalid like subject');
+      const key = createHash('sha256').update(`${subject.author}/${subject.name}`).digest('hex');
+      if (key !== c.rkey) throw new Error('Like key does not match its subject');
+      return new Ok(new Like(uri, event.did, subject.author, subject.name, event.time_us, id));
+    }
     if (c.operation === 'delete') return new Ok(new Delete(uri, event.did, event.time_us, id));
     // An author can edit metadata directly in the PDS. Updates use the same
     // ownership/schema validation and timestamp-ordered upsert as new records.
@@ -154,6 +176,7 @@ export function decodeEvent(message) {
           new None(),
           uri,
           c.cid,
+          new None(),
         ),
         event.time_us,
         id,
@@ -209,7 +232,8 @@ export function start(connection, ingest, options = {}) {
     const saved = worker.live && !worker.opened ? startedAt : await cursor(scoped);
     if (stopped) return;
     const url = new URL(worker.url);
-    url.searchParams.set('wantedCollections', COLLECTION);
+    url.searchParams.append('wantedCollections', COLLECTION);
+    url.searchParams.append('wantedCollections', LIKE_COLLECTION);
     if (saved) url.searchParams.set('cursor', String(Math.max(0, saved - 10_000_000)));
     worker.failed = false;
     const socket = new WebSocket(url, { maxPayload: 2 * 1024 * 1024 });

@@ -1,5 +1,6 @@
 // Generated from pkl/defs by scripts/lexicons.mjs. DO NOT EDIT.
 export const ids = {
+  like: 'io.fluentci.like',
   plugin: 'io.fluentci.plugin',
   registry_defs: 'io.fluentci.registry.defs',
   registry_get_actor_packages: 'io.fluentci.registry.getActorPackages',
@@ -10,6 +11,47 @@ export const ids = {
   registry_search_packages: 'io.fluentci.registry.searchPackages',
 };
 export const schemas = [
+  {
+    lexicon: 1,
+    id: 'io.fluentci.like',
+    description:
+      "A user's like of a module across all published versions. Written directly to the user's PDS; delete the record to unlike. The record key is the lowercase SHA-256 hex digest of subject.author + '/' + subject.name, enforcing one like per actor per module.",
+    defs: {
+      subject: {
+        type: 'object',
+        required: ['author', 'name'],
+        properties: {
+          author: {
+            type: 'string',
+            format: 'did',
+          },
+          name: {
+            type: 'string',
+            minLength: 1,
+            maxLength: 64,
+          },
+        },
+      },
+      main: {
+        type: 'record',
+        key: 'any',
+        record: {
+          type: 'object',
+          required: ['subject', 'createdAt'],
+          properties: {
+            subject: {
+              type: 'ref',
+              ref: '#subject',
+            },
+            createdAt: {
+              type: 'string',
+              format: 'datetime',
+            },
+          },
+        },
+      },
+    },
+  },
   {
     lexicon: 1,
     id: 'io.fluentci.plugin',
@@ -379,6 +421,12 @@ export const schemas = [
           cid: {
             type: 'string',
             format: 'cid',
+          },
+          likesCount: {
+            type: 'integer',
+            description:
+              'Distinct active actors liking this module across all versions; maintained from io.fluentci.like PDS records.',
+            minimum: 0,
           },
         },
       },

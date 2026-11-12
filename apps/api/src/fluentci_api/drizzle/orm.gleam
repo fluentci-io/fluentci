@@ -397,3 +397,11 @@ pub fn count_rows(db: Db, query: Query(a)) -> Promise(Int) {
 
 @external(javascript, "./orm_ffi.mjs", "countRows")
 fn count_rows_ffi(db: Db, query: Raw) -> Promise(Int)
+
+/// Correlated count expression. Application predicates remain in Gleam.
+pub fn count_where(table: Table(a), condition: Condition) -> Expression(Int) {
+  Expression(count_where_ffi(table.raw, condition), integer())
+}
+
+@external(javascript, "./orm_ffi.mjs", "countWhere")
+fn count_where_ffi(table: Raw, condition: Condition) -> Raw

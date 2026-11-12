@@ -161,6 +161,11 @@
         "cid": {
           "type": "string",
           "format": "cid"
+        },
+        "likesCount": {
+          "type": "integer",
+          "description": "Distinct active actors liking this module across all versions; maintained from io.fluentci.like PDS records.",
+          "minimum": 0
         }
       }
     }

@@ -1263,7 +1263,10 @@ test('official Node SQLite driver upgrades legacy migration history without repl
   );
   const migrations = fileURLToPath(new URL('../drizzle/', import.meta.url));
   const names = readdirSync(migrations).sort();
-  for (const [index, name] of names.entries()) {
+  const legacyNames = names.filter(
+    (name) => name.startsWith('20261105') || name.startsWith('20261106'),
+  );
+  for (const [index, name] of legacyNames.entries()) {
     const sql = readFileSync(join(migrations, name, 'migration.sql'), 'utf8');
     legacy.exec(sql);
     legacy
@@ -1497,4 +1500,95 @@ test('actor total downloads include every module version regardless of page, sea
       params.actor === did ? 21 : params.actor === other ? 1000 : 0,
     );
   }
+});
+
+function likeEvent(actor, author, name, time, operation = 'create') {
+  const rkey = createHash('sha256').update(`${author}/${name}`).digest('hex');
+  return {
+    did: actor,
+    time_us: time,
+    kind: 'commit',
+    commit: {
+      collection: 'io.fluentci.like',
+      rkey,
+      operation,
+      rev: String(time),
+      record: {
+        $type: 'io.fluentci.like',
+        subject: { author, name },
+        createdAt: '2026-11-12T12:00:00Z',
+      },
+    },
+  };
+}
+
+test('PDS module likes are deduplicated across streams and versions, unlike tombstones reject old events', async (t) => {
+  const connection = await fixture(t);
+  await add(connection, event('hello', '1.0.0'), event('hello', '2.0.0', 101));
+  const liked = likeEvent(other, did, 'hello', 200);
+  await add(connection, liked, liked);
+  const { url } = await server(t, connection);
+  const read = async () =>
+    (await (await fetch(`${url}/xrpc/io.fluentci.registry.listPackages`)).json()).packages;
+  assert.deepEqual(
+    (await read()).map((p) => p.likesCount),
+    [1, 1],
+  );
+  await add(connection, likeEvent(other, did, 'hello', 300, 'delete'), liked);
+  assert.deepEqual(
+    (await read()).map((p) => p.likesCount),
+    [0, 0],
+  );
+  await add(connection, likeEvent(other, did, 'hello', 400));
+  assert.deepEqual(
+    (await read()).map((p) => p.likesCount),
+    [1, 1],
+  );
+  await db.apply_event(connection, new model.Account(other, false, 500, 'like-actor-inactive'));
+  assert.deepEqual(
+    (await read()).map((p) => p.likesCount),
+    [0, 0],
+  );
+  await db.apply_event(connection, new model.Account(other, true, 600, 'like-actor-active'));
+  assert.deepEqual(
+    (await read()).map((p) => p.likesCount),
+    [1, 1],
+  );
+  const result = await (
+    await fetch(
+      `${url}/xrpc/io.fluentci.registry.getPackage?author=${did}&name=hello&version=1.0.0`,
+    )
+  ).json();
+  assert.equal(result.package.likesCount, 1);
+});
+
+test('like keys bind each actor to one module, metadata updates cannot forge counts, deletes can arrive first', async (t) => {
+  const connection = await fixture(t);
+  await add(connection, event('hello', '1.0.0'));
+  const bad = likeEvent(other, did, 'hello', 200);
+  bad.commit.rkey = '0'.repeat(64);
+  await add(
+    connection,
+    bad,
+    likeEvent(other, did, 'hello', 300, 'delete'),
+    likeEvent(other, did, 'hello', 250),
+  );
+  const { url } = await server(t, connection);
+  const read = async () =>
+    (
+      await (
+        await fetch(`${url}/xrpc/io.fluentci.registry.getPackage?author=${did}&name=hello`)
+      ).json()
+    ).package;
+  assert.equal((await read()).likesCount, 0);
+  await add(
+    connection,
+    likeEvent(other, did, 'hello', 400),
+    event('hello', '1.0.0', 500, did, { likesCount: 999 }),
+  );
+  assert.equal((await read()).likesCount, 1);
+  const broken = likeEvent(other, did, 'hello', 600);
+  broken.commit.record.subject.name = '../invalid';
+  await add(connection, broken);
+  assert.equal((await read()).likesCount, 1);
 });

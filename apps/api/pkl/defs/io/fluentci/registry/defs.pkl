@@ -31,6 +31,10 @@ defs = new Mapping {
       ["cid"] = new StringField {
         format = "cid"
       }
+      ["likesCount"] = new IntegerField {
+        minimum = 0
+        description = "Distinct active actors liking this module across all versions; maintained from io.fluentci.like PDS records."
+      }
     }
   }
 }

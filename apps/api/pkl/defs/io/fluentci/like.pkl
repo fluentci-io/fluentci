@@ -1,0 +1,23 @@
+amends "../../../schema/lexicon.pkl"
+
+id = "io.fluentci.like"
+description = "A user's like of a module across all published versions. Written directly to the user's PDS; delete the record to unlike. The record key is the lowercase SHA-256 hex digest of subject.author + '/' + subject.name, enforcing one like per actor per module."
+defs = new Mapping {
+  ["subject"] = new ObjectField {
+    required = List("author", "name")
+    properties = new Mapping {
+      ["author"] = new StringField { format = "did" }
+      ["name"] = new StringField { minLength = 1
+maxLength = 64 }
+    }
+  }
+  ["main"] = new Record {
+    `record` = new ObjectField {
+      required = List("subject", "createdAt")
+      properties = new Mapping {
+        ["subject"] = new RefField { ref = "#subject" }
+        ["createdAt"] = new StringField { format = "datetime" }
+      }
+    }
+  }
+}

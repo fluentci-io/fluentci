@@ -275,3 +275,13 @@ for slow clients; identity resolution has a ten-second timeout.
 Structured `publish_request`, `module_upload`, and failure logs record wire bytes,
 encoding, completion, and elapsed receive/validation/publisher/storage time. Tokens
 and request headers are never logged.
+
+## Module likes
+
+`io.fluentci.like` is defined in Pkl and generated with the other lexicons. Browser
+OAuth clients write and delete these records directly on their own PDS. The API
+accepts no like mutation endpoint or browser OAuth tokens. Jetstream subscribes
+to both plugin and like collections, deduplicates events transactionally, and
+retains timestamp-ordered unlike tombstones. Module views include `likesCount`
+across versions; inactive likers are excluded. Plugin deletion retention does
+not apply to likes: deleting a like removes it from the active count.

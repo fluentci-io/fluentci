@@ -6,6 +6,8 @@ import gleam/list
 
 import gleam/option.{type Option, None, Some}
 
+pub const like = "io.fluentci.like"
+
 pub const plugin = "io.fluentci.plugin"
 
 pub const registry_defs = "io.fluentci.registry.defs"
@@ -21,6 +23,32 @@ pub const registry_publish = "io.fluentci.registry.publish"
 pub const registry_record_download = "io.fluentci.registry.recordDownload"
 
 pub const registry_search_packages = "io.fluentci.registry.searchPackages"
+
+pub type LikeSubject {
+  LikeSubject(author: String, name: String)
+}
+
+pub fn encode_like_subject(value: LikeSubject) -> json.Json {
+  let fields = [
+    #("author", json.string(value.author)),
+    #("name", json.string(value.name)),
+  ]
+
+  json.object(fields)
+}
+
+pub type Like {
+  Like(subject: LikeSubject, created_at: String)
+}
+
+pub fn encode_like(value: Like) -> json.Json {
+  let fields = [
+    #("subject", encode_like_subject(value.subject)),
+    #("createdAt", json.string(value.created_at)),
+  ]
+
+  json.object(fields)
+}
 
 pub type Plugin {
   Plugin(
@@ -222,6 +250,7 @@ pub type RegistryPackageView {
     daily_downloads: Option(List(RegistryDailyDownload)),
     uri: String,
     cid: String,
+    likes_count: Option(Int),
   )
 }
 
@@ -302,6 +331,11 @@ pub fn encode_registry_package_view(value: RegistryPackageView) -> json.Json {
           json.array(item, fn(item) { encode_registry_daily_download(item) }),
         ),
       ]
+    })
+  let fields =
+    list.append(fields, case value.likes_count {
+      None -> []
+      Some(item) -> [#("likesCount", json.int(item))]
     })
   json.object(fields)
 }

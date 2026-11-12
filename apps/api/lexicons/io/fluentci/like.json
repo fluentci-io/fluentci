@@ -1,0 +1,46 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.like",
+  "description": "A user's like of a module across all published versions. Written directly to the user's PDS; delete the record to unlike. The record key is the lowercase SHA-256 hex digest of subject.author + '/' + subject.name, enforcing one like per actor per module.",
+  "defs": {
+    "subject": {
+      "type": "object",
+      "required": [
+        "author",
+        "name"
+      ],
+      "properties": {
+        "author": {
+          "type": "string",
+          "format": "did"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 64
+        }
+      }
+    },
+    "main": {
+      "type": "record",
+      "key": "any",
+      "record": {
+        "type": "object",
+        "required": [
+          "subject",
+          "createdAt"
+        ],
+        "properties": {
+          "subject": {
+            "type": "ref",
+            "ref": "#subject"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "datetime"
+          }
+        }
+      }
+    }
+  }
+}

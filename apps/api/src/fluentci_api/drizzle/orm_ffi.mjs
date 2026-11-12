@@ -191,3 +191,6 @@ export function sumWhere(table, value, condition) {
     .where(condition);
   return d.sql`coalesce((${query}), 0)`;
 }
+
+export const countWhere = (table, condition) =>
+  d.sql`(select count(*) from ${table} where ${condition})`;

@@ -4,23 +4,25 @@ import fluentci_api/db/connection
 import fluentci_api/db/filters
 import fluentci_api/drizzle/orm.{
   type Assignment, type Condition, type Query, alias, all, and, asc, count_rows,
-  desc, eq, eq_columns, from, function_compare, gt, inner_join, insert, is_null,
-  left_join, limit, lt, lt_columns, matches, not_exists, on_conflict_do_nothing,
-  on_conflict_do_update, or, order_by, project, set, sum_where, transaction,
-  where,
+  count_where, desc, eq, eq_columns, from, function_compare, gt, inner_join,
+  insert, is_null, left_join, limit, lt, lt_columns, matches, not_exists,
+  on_conflict_do_nothing, on_conflict_do_update, or, order_by, project, set,
+  sum_where, transaction, where,
 }
 import fluentci_api/function_metadata
 import fluentci_api/lexicon/models.{
   RegistryDailyDownload, RegistryListPackagesOutput, RegistryPackageView,
 }
 import fluentci_api/model.{
-  type Event, type Package, type Page, Account, Checkpoint, Delete, Upsert,
+  type Event, type Package, type Page, Account, Checkpoint, Delete, Like, Unlike,
+  Upsert,
 }
 import fluentci_api/module_metadata
 import fluentci_api/schema/accounts as a
 import fluentci_api/schema/checkpoints as c
 import fluentci_api/schema/download_days as d
 import fluentci_api/schema/events as e
+import fluentci_api/schema/likes
 import fluentci_api/schema/plugin_search as fts
 import fluentci_api/schema/plugins as p
 import gleam/javascript/promise.{type Promise}
@@ -98,14 +100,37 @@ fn package(row: p.Row) -> Package {
     None,
     row.uri,
     cid,
+    Some(row.likes_count),
   )
 }
 
 fn visible() -> Query(p.Row) {
   let plugins = p.table()
   let accounts = a.table()
+  let liked = likes.table()
+  let inactive = alias(accounts, "inactive_liker")
   from(plugins)
   |> left_join(accounts, eq_columns(p.author(plugins), a.did(accounts)))
+  |> project(
+    "likes_count",
+    count_where(
+      liked,
+      and([
+        eq(likes.active(liked), True),
+        eq_columns(likes.subject_author(liked), p.author(plugins)),
+        eq_columns(likes.name(liked), p.name(plugins)),
+        not_exists(
+          from(inactive)
+          |> where(
+            and([
+              eq_columns(a.did(inactive), likes.actor(liked)),
+              eq(a.active(inactive), False),
+            ]),
+          ),
+        ),
+      ]),
+    ),
+  )
 }
 
 fn visibility() -> Condition {
@@ -518,16 +543,61 @@ fn mutate(db: Db, event: Event) -> Promise(Nil) {
       ))
       Nil
     }
+    Like(uri, actor, subject_author, name, time, _) -> {
+      let table = likes.table()
+      let values = [
+        set(likes.uri(table), uri),
+        set(likes.actor(table), actor),
+        set(likes.subject_author(table), subject_author),
+        set(likes.name(table), Some(name)),
+        set(likes.active(table), True),
+        set(likes.event_time(table), time),
+      ]
+      use _ <- promise.map(all(
+        db,
+        insert(table, values)
+          |> on_conflict_do_update(
+            likes.uri(table),
+            values,
+            lt(likes.event_time(table), time),
+          ),
+      ))
+      Nil
+    }
+    Unlike(uri, actor, time, _) -> {
+      let table = likes.table()
+      let changes = [
+        set(likes.active(table), False),
+        set(likes.event_time(table), time),
+      ]
+      use _ <- promise.map(all(
+        db,
+        insert(table, [
+          set(likes.uri(table), uri),
+          set(likes.actor(table), actor),
+          set(likes.subject_author(table), ""),
+          set(likes.name(table), None),
+          ..changes
+        ])
+          |> on_conflict_do_update(
+            likes.uri(table),
+            changes,
+            lt(likes.event_time(table), time),
+          ),
+      ))
+      Nil
+    }
     Checkpoint(_) -> promise.resolve(Nil)
   }
 }
 
 pub fn apply_event(db: Db, event: Event) -> Promise(Nil) {
   let #(time, id) = case event {
-    Upsert(_, time, id) | Delete(_, _, time, id) | Account(_, _, time, id) -> #(
-      time,
-      Some(id),
-    )
+    Upsert(_, time, id)
+    | Delete(_, _, time, id)
+    | Account(_, _, time, id)
+    | Like(_, _, _, _, time, id)
+    | Unlike(_, _, time, id) -> #(time, Some(id))
     Checkpoint(time) -> #(time, None)
   }
   use tx <- transaction(db)

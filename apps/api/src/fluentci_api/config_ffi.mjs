@@ -2,6 +2,7 @@ import { ids, schemas } from './lexicon/schemas.mjs';
 export const root = () => process.env.FLUENTCI_API_ROOT ?? process.cwd();
 export const lexicons = () => structuredClone(schemas);
 export const COLLECTION = ids.plugin;
+export const LIKE_COLLECTION = ids.like;
 export const PUBLISH = ids.registry_publish;
 export const RECORD_DOWNLOAD = ids.registry_record_download;
 export const MAX_WASM_BYTES = 64 * 1024 * 1024;

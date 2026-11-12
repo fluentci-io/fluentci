@@ -31,10 +31,12 @@ pub type Row {
     downloads: Int,
     deleted: Bool,
     event_time: Int,
+    likes_count: Int,
   )
 }
 
 pub fn decoder() -> Decoder(Row) {
+  use likes_count <- decode.optional_field("likes_count", 0, decode.int)
   use uri <- decode.field("uri", decode.string)
   use cid <- decode.field("cid", decode.optional(decode.string))
   use author <- decode.field("author", decode.string)
@@ -83,6 +85,7 @@ pub fn decoder() -> Decoder(Row) {
     downloads,
     deleted,
     event_time,
+    likes_count,
   ))
 }
 

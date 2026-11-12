@@ -11,6 +11,15 @@ pub type Event {
   Upsert(package: Package, time_us: Int, event_id: String)
   Delete(uri: String, author: String, time_us: Int, event_id: String)
   Account(author: String, active: Bool, time_us: Int, event_id: String)
+  Like(
+    uri: String,
+    actor: String,
+    subject_author: String,
+    name: String,
+    time_us: Int,
+    event_id: String,
+  )
+  Unlike(uri: String, actor: String, time_us: Int, event_id: String)
   Checkpoint(time_us: Int)
 }
 
