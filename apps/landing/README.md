@@ -58,6 +58,16 @@ Wasm modules, and local execution for developers and coding agents.
 
 ## Registry pages
 
+The topbar links to `/modules`, a paginated catalog of latest module releases.
+It defaults to downloads across versions and supports search, sorting, official
+publishers, topic-based categories, OS, and CPU architecture filters. Filter state
+lives in the URL; changing it resets cursor pagination. Categories match any of
+their associated topics, with OR within each filter group and AND between groups.
+React Query caches each search/filter/sort/cursor combination for 15 minutes,
+keeps results fresh for one minute, and refreshes stale cached grids in the
+background without replacing them with skeletons. The sidebar collapses on smaller screens. Theme-aware animated skeleton cards
+match the grid while loading and respect reduced-motion preferences.
+
 The topbar search opens with `/` and supports arrow keys, Enter, and Escape.
 The first results and author profiles preload in the background. Modal opens
 share any in-flight request and reuse a one-minute in-memory cache; stale results

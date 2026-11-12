@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { validateCatalogSearch } from "../ModulesPage/filters";
 import { ModuleSearch } from "../ModuleSearch";
 import { ThemeSwitcher } from "../ThemeSwitcher";
 import { BrandIcon } from "../BrandIcon";
@@ -20,6 +21,14 @@ export function SiteHeader() {
         className="flex flex-wrap items-center gap-4 text-xs sm:gap-5 sm:text-sm"
       >
         <ModuleSearch />
+        <Link
+          className="nav-link"
+          to="/modules"
+          search={validateCatalogSearch({})}
+          activeProps={{ className: "text-accent" }}
+        >
+          Modules
+        </Link>
         <Link className="nav-link" to="/" hash="sdks">
           SDKs
         </Link>

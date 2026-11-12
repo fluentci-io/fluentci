@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
 import { SiteHeader } from "../SiteHeader";
+import { ScrollToTop } from "../ScrollToTop";
 import { SiteFooter } from "../SiteFooter";
 import { ModuleLogo } from "../ModuleLogo";
 import { DownloadIcon } from "../DownloadIcon";
@@ -335,6 +336,7 @@ export function PublisherPage() {
         </section>
       </main>
       <SiteFooter />
+      <ScrollToTop />
     </>
   );
 }

@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Link, useParams } from "@tanstack/react-router";
+import {
+  Link,
+  useParams,
+  useRouter,
+  useCanGoBack,
+} from "@tanstack/react-router";
 import { ModulePageSkeleton } from "../ModulePageSkeleton";
 import { SiteHeader } from "../SiteHeader";
 import { Author } from "../Author";
@@ -32,6 +37,8 @@ function date(value: string) {
 }
 
 export function ModulePage() {
+  const router = useRouter();
+  const canGoBack = useCanGoBack();
   const { handle = "", rkey = "" } = useParams({ strict: false });
   const [plugin, setPlugin] = useState<Plugin>();
   const [latest, setLatest] = useState<Plugin>();
@@ -127,9 +134,16 @@ export function ModulePage() {
     <>
       <SiteHeader />
       <main className="page-width py-10 sm:py-16" id="main">
-        <Link to="/" className="nav-link text-xs">
-          ← Back to FluentCI
-        </Link>
+        <button
+          type="button"
+          className="nav-link text-xs"
+          onClick={() => {
+            if (canGoBack) router.history.back();
+            else void router.navigate({ to: "/" });
+          }}
+        >
+          {canGoBack ? "← Back" : "← Back to FluentCI"}
+        </button>
         {error ? (
           <div className="py-20" role="alert">
             <h1 className="text-2xl">Unable to open module</h1>

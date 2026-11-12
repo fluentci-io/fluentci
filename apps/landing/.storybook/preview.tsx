@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useEffect, useState, type ReactNode } from "react";
 import {
   createMemoryHistory,
@@ -11,6 +12,7 @@ import type { Preview } from "@storybook/react";
 import { initialize, mswLoader } from "msw-storybook-addon";
 import { http, HttpResponse } from "msw";
 import { author, plugin } from "../src/fixtures/registry";
+import { validateCatalogSearch } from "../src/components/ModulesPage/filters";
 import "../src/styles.css";
 
 initialize({ onUnhandledRequest: "bypass" });
@@ -27,6 +29,12 @@ function StoryRouter({
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
   }, [theme]);
+  const [queryClient] = useState(
+    () =>
+      new QueryClient({
+        defaultOptions: { queries: { retry: false, staleTime: 60_000 } },
+      }),
+  );
   const [router] = useState(() => {
     const root = createRootRoute({ component: Outlet });
     const home = createRoute({
@@ -44,12 +52,22 @@ function StoryRouter({
       path: "/$handle",
       component: () => children,
     });
+    const catalog = createRoute({
+      getParentRoute: () => root,
+      path: "/modules",
+      validateSearch: validateCatalogSearch,
+      component: () => children,
+    });
     return createRouter({
-      routeTree: root.addChildren([home, module, publisher]),
+      routeTree: root.addChildren([home, catalog, module, publisher]),
       history: createMemoryHistory({ initialEntries: [path] }),
     });
   });
-  return <RouterProvider router={router} />;
+  return (
+    <QueryClientProvider client={queryClient}>
+      <RouterProvider router={router} />
+    </QueryClientProvider>
+  );
 }
 const preview: Preview = {
   decorators: [

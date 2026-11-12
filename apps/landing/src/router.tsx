@@ -7,6 +7,8 @@ import {
 import { LandingPage } from "./components/LandingPage";
 import { NotFound } from "./components/NotFound";
 import { PublisherPage } from "./components/PublisherPage";
+import { ModulesPage } from "./components/ModulesPage";
+import { validateCatalogSearch } from "./components/ModulesPage/filters";
 import { ModulePage } from "./components/ModulePage";
 
 const rootRoute = createRootRoute({
@@ -28,8 +30,20 @@ const publisherRoute = createRoute({
   path: "/$handle",
   component: PublisherPage,
 });
+const modulesRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/modules",
+  validateSearch: validateCatalogSearch,
+  component: ModulesPage,
+});
+
 export const router = createRouter({
-  routeTree: rootRoute.addChildren([indexRoute, moduleRoute, publisherRoute]),
+  routeTree: rootRoute.addChildren([
+    indexRoute,
+    modulesRoute,
+    moduleRoute,
+    publisherRoute,
+  ]),
   scrollRestoration: true,
 });
 
