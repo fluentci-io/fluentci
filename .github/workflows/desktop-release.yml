@@ -33,10 +33,9 @@ jobs:
         with:
           ref: ${{ github.sha }}
       - name: Bootstrap FluentCI
-        shell: bash
-        run: |
-          curl -fsSL https://cli.fluentci.io | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
       - name: Set up node through FluentCI
         shell: bash
         run: |
@@ -82,10 +81,9 @@ jobs:
         with:
           ref: ${{ github.sha }}
       - name: Bootstrap FluentCI
-        shell: bash
-        run: |
-          curl -fsSL https://cli.fluentci.io | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
       - name: Set up rust through FluentCI
         shell: bash
         run: |

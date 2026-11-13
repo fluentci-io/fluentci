@@ -29,10 +29,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Bootstrap FluentCI
-        shell: bash
-        run: |
-          curl -fsSL https://cli.fluentci.io | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
       - name: Test setup environment handoff
         run: python3 .github/scripts/test-setup-env.py && python3 .github/scripts/test-registry-artifact.py
       - name: Set up rust through FluentCI
@@ -86,10 +85,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Bootstrap FluentCI
-        shell: bash
-        run: |
-          curl -fsSL https://cli.fluentci.io | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
       - name: Set up bun through FluentCI
         shell: bash
         run: |
@@ -126,10 +124,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Bootstrap FluentCI
-        shell: bash
-        run: |
-          curl -fsSL https://cli.fluentci.io | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
       - name: Set up bun through FluentCI
         shell: bash
         run: |
@@ -162,10 +159,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Bootstrap FluentCI
-        shell: bash
-        run: |
-          curl -fsSL https://cli.fluentci.io | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
       - name: Set up bun through FluentCI
         shell: bash
         run: |
@@ -186,10 +182,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Bootstrap FluentCI
-        shell: bash
-        run: |
-          curl -fsSL https://cli.fluentci.io | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
       - name: Set up bun through FluentCI
         shell: bash
         run: |

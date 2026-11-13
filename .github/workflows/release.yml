@@ -36,10 +36,12 @@ jobs:
         with:
           ref: ${{ inputs.source-ref || format('refs/tags/{0}', github.event.release.tag_name || inputs.tag) }}
       - name: Bootstrap FluentCI
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore setup environment bridge for older releases
         shell: bash
         run: |
-          curl -fsSL https://cli.fluentci.io | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           # A manual rebuild can check out a tag older than this workflow.
           for bootstrap_script in export-setup-env.py; do
             if [ ! -f ".github/scripts/$bootstrap_script" ]; then
@@ -117,10 +119,12 @@ jobs:
         with:
           ref: ${{ inputs.source-ref || format('refs/tags/{0}', github.event.release.tag_name || inputs.tag) }}
       - name: Bootstrap FluentCI
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore setup environment bridge for older releases
         shell: bash
         run: |
-          curl -fsSL https://cli.fluentci.io | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
           # A manual rebuild can check out a tag older than this workflow.
           for bootstrap_script in export-setup-env.py; do
             if [ ! -f ".github/scripts/$bootstrap_script" ]; then
@@ -202,10 +206,9 @@ jobs:
         with:
           ref: ${{ inputs.source-ref || format('refs/tags/{0}', github.event.release.tag_name || inputs.tag) }}
       - name: Bootstrap FluentCI
-        shell: bash
-        run: |
-          curl -fsSL https://cli.fluentci.io | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
       - uses: actions/download-artifact@v4
         with:
           name: release-inputs

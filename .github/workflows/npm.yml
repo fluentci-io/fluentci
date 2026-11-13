@@ -26,10 +26,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Bootstrap FluentCI
-        shell: bash
-        run: |
-          curl -fsSL https://cli.fluentci.io | sh
-          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+        uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
       - name: Set up Node.js through FluentCI
         shell: bash
         run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
