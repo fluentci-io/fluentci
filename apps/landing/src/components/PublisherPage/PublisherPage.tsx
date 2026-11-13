@@ -13,16 +13,20 @@ import { SearchIcon } from "../SearchIcon";
 import { Skeleton } from "../Skeleton";
 import {
   getProfile,
+  ProfileNotFoundError,
   httpUrl,
   recordKey,
   type Profile,
 } from "../../registry/client";
 import { usePublisherModules, type ModuleSort } from "./usePublisherModules";
+import { validateCatalogSearch } from "../ModulesPage/filters";
 
 export function PublisherPage() {
   const { handle = "" } = useParams({ strict: false });
   const actor = handle.replace(/^@/, "");
   const [profile, setProfile] = useState<Profile>();
+  const [profileError, setProfileError] = useState<Error>();
+  const [profileRetry, setProfileRetry] = useState(0);
   const [failedAvatar, setFailedAvatar] = useState(false);
   const [search, setSearch] = useState("");
   const [likeSort, setLikeSort] = useState<ModuleSort>("recently-liked");
@@ -67,15 +71,23 @@ export function PublisherPage() {
   useEffect(() => {
     const abort = new AbortController();
     setProfile(undefined);
+    setProfileError(undefined);
     setFailedAvatar(false);
     setSearch("");
     void getProfile(actor, abort.signal)
       .then((value) => {
         if (!abort.signal.aborted) setProfile(value);
       })
-      .catch(() => {});
+      .catch((reason: unknown) => {
+        if (!abort.signal.aborted)
+          setProfileError(
+            reason instanceof Error
+              ? reason
+              : new Error("Unable to load this account."),
+          );
+      });
     return () => abort.abort();
-  }, [actor]);
+  }, [actor, profileRetry]);
   useEffect(() => {
     setShowPinnedIdentity(false);
     if (!profileHeader.current) return;
@@ -102,6 +114,63 @@ export function PublisherPage() {
   const name = profile?.displayName?.trim() || identity;
   const avatar = httpUrl(profile?.avatar);
   const did = profile?.did ?? (actor.startsWith("did:") ? actor : undefined);
+  if (profileError) {
+    const missing = profileError instanceof ProfileNotFoundError;
+    return (
+      <>
+        <SiteHeader />
+        <main className="page-width flex min-h-[60vh] flex-col items-center justify-center py-20 text-center">
+          <div
+            className="mb-6 flex size-20 items-center justify-center rounded-full border border-line bg-raised text-accent [&>svg]:size-9"
+            aria-hidden="true"
+          >
+            <UserIcon />
+          </div>
+          <p className="font-mono text-xs uppercase tracking-widest text-muted">
+            {missing ? "Account not found" : "Account unavailable"}
+          </p>
+          <h1 className="mt-4 text-3xl font-medium tracking-tight sm:text-4xl">
+            {missing
+              ? "We couldn’t find this account."
+              : "Unable to open this profile."}
+          </h1>
+          <p className="mt-5 max-w-lg break-all font-mono text-sm text-muted">
+            {actor}
+          </p>
+          <p
+            className="mt-3 max-w-lg text-sm leading-relaxed text-muted"
+            role="alert"
+          >
+            {missing
+              ? "This handle or DID doesn’t belong to an existing AT Protocol account. Check the address and try again."
+              : "We couldn’t reach the account service. Please try again in a moment."}
+          </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-6">
+            {!missing && (
+              <button
+                type="button"
+                className="text-link"
+                onClick={() => setProfileRetry((value) => value + 1)}
+              >
+                Try again
+              </button>
+            )}
+            <Link
+              to="/modules"
+              search={validateCatalogSearch({})}
+              className="text-link"
+            >
+              Browse modules
+            </Link>
+            <Link to="/" className="text-link">
+              Back to FluentCI
+            </Link>
+          </div>
+        </main>
+        <SiteFooter />
+      </>
+    );
+  }
   return (
     <>
       <SiteHeader />

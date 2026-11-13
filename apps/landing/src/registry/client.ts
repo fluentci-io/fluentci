@@ -1,3 +1,13 @@
+import {
+  CompositeDidDocumentResolver,
+  DidNotFoundError,
+  DocumentNotFoundError,
+  LocalActorResolver,
+  PlcDidDocumentResolver,
+  WebDidDocumentResolver,
+  XrpcHandleResolver,
+} from "@atcute/identity-resolver";
+
 export const api = "https://api.fluentci.io/xrpc/io.fluentci.registry";
 
 export interface PluginFunction {
@@ -219,6 +229,20 @@ export function readmeUrl(plugin: Plugin) {
   return `https://raw.githubusercontent.com/${parts.map(encodeURIComponent).join("/")}/HEAD/${[...subdir, "README.md"].map(encodeURIComponent).join("/")}`;
 }
 
+export class ProfileNotFoundError extends Error {}
+
+const profileIdentityResolver = new LocalActorResolver({
+  handleResolver: new XrpcHandleResolver({
+    serviceUrl: "https://public.api.bsky.app",
+  }),
+  didDocumentResolver: new CompositeDidDocumentResolver({
+    methods: {
+      plc: new PlcDidDocumentResolver(),
+      web: new WebDidDocumentResolver(),
+    },
+  }),
+});
+
 export async function getProfile(
   actor: string,
   signal: AbortSignal,
@@ -233,14 +257,41 @@ export async function getProfile(
     `https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?${new URLSearchParams({ actor })}`,
     { signal },
   );
-  if (!response.ok) return undefined;
+  if (!response.ok) {
+    if (response.status !== 400 && response.status !== 404)
+      throw new Error("Account lookup is unavailable. Please try again.");
+    // An AT Protocol account can exist without a Bluesky profile.
+    try {
+      const identity = await profileIdentityResolver.resolve(
+        actor as Parameters<LocalActorResolver["resolve"]>[0],
+        { signal },
+      );
+      return {
+        did: identity.did,
+        handle: identity.handle === "handle.invalid" ? actor : identity.handle,
+      };
+    } catch (reason) {
+      let cause: unknown = reason;
+      while (cause instanceof Error) {
+        if (
+          cause instanceof DidNotFoundError ||
+          cause instanceof DocumentNotFoundError
+        )
+          throw new ProfileNotFoundError(
+            "This AT Protocol account does not exist.",
+          );
+        cause = (cause as Error & { cause?: unknown }).cause;
+      }
+      throw new Error("Unable to verify this account. Please try again.");
+    }
+  }
   const profile = (await response.json()) as Profile;
   if (
     !profile.did?.startsWith("did:") ||
     !profile.handle ||
     profile.handle === "handle.invalid"
   )
-    return undefined;
+    throw new Error("Unable to load this account. Please try again.");
   profiles.set(profile.did, profile);
   return profile;
 }

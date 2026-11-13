@@ -1,6 +1,105 @@
 import { expect, test } from "@playwright/test";
 import { author, plugin } from "../src/fixtures/registry";
 
+for (const actor of ["missing.example", "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa"]) {
+  test(`missing account ${actor} shows the custom account error page`, async ({
+    page,
+  }) => {
+    await page.route(
+      "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?*",
+      (route) =>
+        route.fulfill({ status: 400, json: { error: "ProfileNotFound" } }),
+    );
+    await page.route(
+      "https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?*",
+      (route) =>
+        route.fulfill({ status: 400, json: { error: "HandleNotFound" } }),
+    );
+    await page.route("https://plc.directory/**", (route) =>
+      route.fulfill({ status: 404, json: { error: "NotFound" } }),
+    );
+    await page.route(
+      "https://api.fluentci.io/xrpc/io.fluentci.registry.*",
+      (route) => route.fulfill({ json: { packages: [], total: 0 } }),
+    );
+    await page.goto(`/${actor}`);
+    await expect(
+      page.getByRole("heading", { name: "We couldn’t find this account." }),
+    ).toBeVisible();
+    await expect(page.getByText(actor, { exact: true })).toBeVisible();
+    await expect(page.getByRole("tablist")).toHaveCount(0);
+    await expect(
+      page.getByRole("link", { name: "Browse modules" }),
+    ).toHaveAttribute("href", /\/modules/);
+    await page.getByRole("link", { name: "Back to FluentCI" }).click();
+    await expect(page).toHaveURL("/");
+  });
+}
+
+test("an AT Protocol account without a Bluesky profile still opens", async ({
+  page,
+}) => {
+  await page.route(
+    "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?*",
+    (route) =>
+      route.fulfill({ status: 400, json: { error: "ProfileNotFound" } }),
+  );
+  await page.route(
+    "https://public.api.bsky.app/xrpc/com.atproto.identity.resolveHandle?*",
+    (route) => route.fulfill({ json: { did: author.did } }),
+  );
+  await page.route("https://plc.directory/**", (route) =>
+    route.fulfill({
+      json: {
+        id: author.did,
+        alsoKnownAs: ["at://person.example"],
+        service: [
+          {
+            id: `${author.did}#atproto_pds`,
+            type: "AtprotoPersonalDataServer",
+            serviceEndpoint: "https://pds.example",
+          },
+        ],
+      },
+    }),
+  );
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.registry.*",
+    (route) => route.fulfill({ json: { packages: [], total: 0 } }),
+  );
+  await page.goto("/person.example");
+  await expect(
+    page.getByRole("heading", { name: "person.example", exact: true }),
+  ).toBeVisible();
+  await expect(page.getByLabel("0 published modules")).toBeVisible();
+  await expect(
+    page.getByRole("heading", { name: "We couldn’t find this account." }),
+  ).toHaveCount(0);
+});
+
+test("temporary profile lookup failures can be retried", async ({ page }) => {
+  let unavailable = true;
+  await page.route(
+    "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?*",
+    (route) =>
+      unavailable
+        ? route.fulfill({ status: 503, json: { error: "Unavailable" } })
+        : route.fulfill({ json: author }),
+  );
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.registry.*",
+    (route) => route.fulfill({ json: { packages: [], total: 0 } }),
+  );
+  await page.goto("/fluentci.io");
+  await expect(
+    page.getByRole("heading", { name: "Unable to open this profile." }),
+  ).toBeVisible();
+  unavailable = false;
+  await page.getByRole("button", { name: "Try again" }).click();
+  await expect(page.getByRole("tablist")).toBeVisible();
+  await expect(page.getByLabel("0 published modules")).toBeVisible();
+});
+
 test("publisher handles and DIDs show identity, exact totals, infinite pages and server filtering", async ({
   page,
 }) => {
@@ -166,7 +265,8 @@ test("publisher empty and failure states remain retryable", async ({
 }) => {
   await page.route(
     "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?*",
-    (route) => route.fulfill({ status: 404, json: {} }),
+    (route) =>
+      route.fulfill({ json: { ...author, handle: "someone.example" } }),
   );
   let fail = true;
   await page.route(
