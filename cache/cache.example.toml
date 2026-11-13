@@ -1,0 +1,20 @@
+# Start with: fluentci-cache serve --config cache.example.toml
+# Required for writes: export FLUENTCI_CACHE_TOKEN='<random-secret>'
+# Precedence: defaults < this file < environment < command-line flags.
+backend = "s3"                         # s3 | file | memory
+bind = "127.0.0.1:8080"
+bucket = "build-cache"                  # must already exist
+region = "us-east-1"
+# endpoint = "https://s3.example.com"    # omit for AWS S3
+allow_http = false                     # true only for an HTTP S3 endpoint
+prefix = "fluentci-cache/v1"            # separate deployments with different prefixes
+# directory = "./cache-data"           # file backend only; relative to process cwd
+public_read = true
+read_only = false
+max_upload = 10737418240                # bytes: 10 GiB, including Go's 32-byte envelope
+concurrency = 128                      # active object transfers; excess requests get 503
+# Upload deadline, backend response deadline, and download idle timeout (seconds).
+timeout = 300
+nix_priority = 40
+# Prefer the FLUENTCI_CACHE_TOKEN environment variable instead of storing a token here.
+# token = "replace-me"
