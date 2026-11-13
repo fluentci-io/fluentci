@@ -1,0 +1,54 @@
+# Requires an operator-provided Ubuntu image and a sufficient workflow timeout.
+when:
+  - event: push
+    branch: main
+  - event: manual
+
+engine: microvm
+image: ubuntu
+
+environment:
+  FLUENTCI_VERSION: "v0.17.3"
+  CARGO_BUILD_JOBS: "2"
+  CARGO_TERM_COLOR: always
+  CARGO_PROFILE_RELEASE_LTO: "false"
+
+cache:
+  - key: bun-ubuntu-v1
+    hash: [bun.lock]
+    fallback: true
+    paths: [.ci-cache/bun]
+
+steps:
+  - name: Bootstrap Ubuntu and Nix build tools
+    command: |
+      set -euo pipefail
+      bash .tangled/scripts/bootstrap.sh nix
+  - name: Compile and test Nix build component
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cd .fluentci/nix-build
+      npm ci --ignore-scripts
+      npm run build
+      npm test
+  - name: Compile and test local Cachix component
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cd .fluentci/cachix
+      npm ci --ignore-scripts
+      npm run build
+      npm test
+  - name: Install Determinate Nix and configure Cachix
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      trusted_users=$(python3 -c 'import json,os,pwd; print(json.dumps([pwd.getpwuid(os.getuid()).pw_name]))')
+      fluentci_setup setup-determinate-nix@v0.2.1 setup --sudo --trusted-users "$trusted_users"
+      fluentci_setup setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci
+  - name: Build native Linux flake and upload optional cache
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      fluentci --check-update=false run --wasm .fluentci/nix-build/dist/plugin.wasm build --cache fluentci

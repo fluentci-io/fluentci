@@ -1,0 +1,54 @@
+# Requires an operator-provided Ubuntu image and a sufficient workflow timeout.
+when:
+  - event: push
+    branch: main
+  - event: pull_request
+    branch: main
+  - event: manual
+
+engine: microvm
+image: ubuntu
+
+environment:
+  FLUENTCI_VERSION: "v0.17.3"
+  CARGO_BUILD_JOBS: "2"
+  CARGO_TERM_COLOR: always
+  CARGO_PROFILE_RELEASE_LTO: "false"
+
+cache:
+  - key: bun-ubuntu-v1
+    hash: [bun.lock]
+    fallback: true
+    paths: [.ci-cache/bun]
+  - key: browser-diagnostics
+    paths: [docs/test-results]
+    when: always
+
+steps:
+  - name: Bootstrap Ubuntu and JavaScript tools
+    command: |
+      set -euo pipefail
+      bash .tangled/scripts/bootstrap.sh web
+  - name: Install workspace dependencies
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      bun install --frozen-lockfile --ignore-scripts
+  - name: Lint typecheck and build
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      bunx turbo run lint typecheck build --filter=@fluentci/docs
+  - name: Check documentation links
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cd docs
+      bun run test
+  - name: Run browser checks
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cd docs
+      bunx playwright install --with-deps chromium
+      bun run test:browser

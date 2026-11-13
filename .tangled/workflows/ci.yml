@@ -1,0 +1,80 @@
+# Requires an operator-provided Ubuntu image and a sufficient workflow timeout.
+when:
+  - event: push
+    branch: main
+  - event: pull_request
+    branch: main
+  - event: manual
+
+engine: microvm
+image: ubuntu
+
+environment:
+  FLUENTCI_VERSION: "v0.17.3"
+  CARGO_BUILD_JOBS: "2"
+  CARGO_TERM_COLOR: always
+  CARGO_PROFILE_RELEASE_LTO: "false"
+
+cache:
+  - key: bun-ubuntu-v1
+    hash: [bun.lock]
+    fallback: true
+    paths: [.ci-cache/bun]
+  - key: rust-ubuntu-v1
+    hash: [Cargo.lock]
+    fallback: true
+    paths:
+      [
+        .ci-cache/rust-toolchain,
+        target/release,
+        tools/component-model/target/release,
+      ]
+
+steps:
+  - name: Bootstrap Ubuntu and FluentCI toolchains
+    command: |
+      set -euo pipefail
+      bash .tangled/scripts/bootstrap.sh rust
+  - name: Validate setup handoff scripts
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      python3 .github/scripts/test-setup-env.py
+      python3 .github/scripts/test-registry-artifact.py
+      python3 .tangled/tests/test-setup-env.py
+      python3 .tangled/tests/test-workflows.py
+  - name: Compile CI components and inspect interfaces
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      fluentci --check-update=false modules --json
+      node --test .fluentci/tests/components.test.mjs
+  - name: Check SDK metadata inspection
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cd templates/inspection
+      npm ci --ignore-scripts
+      npm test
+      python3 test_python.py
+      python3 test_python_component.py
+      cargo test --release --locked --manifest-path rust/Cargo.toml
+      cargo clippy --release --locked --all-targets --manifest-path rust/Cargo.toml -- -D warnings
+      cargo fmt --manifest-path rust/Cargo.toml --check
+  - name: Test Linux packaging fixtures
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cd .fluentci/gemfury
+      npm test
+  - name: Run standard FluentCI checks
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      FLUENTCI_BIN="$(command -v fluentci)" fluentci --check-update=false run main check
+  - name: Verify generated native component contracts
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cargo test --release --locked --test config compiled_ci_components_have_typed_documented_signatures -- --ignored --exact
+      cargo test --release --locked --test components rust_component_starter_generates_wit_and_runs_without_extism -- --ignored --exact

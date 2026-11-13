@@ -1,0 +1,56 @@
+# Requires an operator-provided Ubuntu image and a sufficient workflow timeout.
+when:
+  - event: push
+    branch: main
+  - event: pull_request
+    branch: main
+  - event: manual
+
+engine: microvm
+image: ubuntu
+
+environment:
+  FLUENTCI_VERSION: "v0.17.3"
+  CARGO_BUILD_JOBS: "2"
+  CARGO_TERM_COLOR: always
+  CARGO_PROFILE_RELEASE_LTO: "false"
+  FLUENTCI_COMPONENT_SDK: gleam
+
+cache:
+  - key: bun-ubuntu-v1
+    hash: [bun.lock]
+    fallback: true
+    paths: [.ci-cache/bun]
+  - key: rust-ubuntu-v1
+    hash: [Cargo.lock]
+    fallback: true
+    paths:
+      [
+        .ci-cache/rust-toolchain,
+        target/release,
+        tools/component-model/target/release,
+      ]
+
+steps:
+  - name: Bootstrap Ubuntu and SDK toolchains
+    command: |
+      set -euo pipefail
+      bash .tangled/scripts/bootstrap.sh component gleam
+  - name: Check generated host contract
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cargo run --release --locked --manifest-path tools/component-model/Cargo.toml -- . engine/schema/executor-model.json --check
+      python3 scripts/generate-component-host.py --check
+  - name: Build embedded Studio assets
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cd webui
+      bun install --frozen-lockfile --ignore-scripts
+      bun run build:web
+  - name: Check component signatures and native invocation
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cargo test --release --locked --test components language_component_starter_generates_wit_and_runs_without_extism -- --ignored --exact --nocapture

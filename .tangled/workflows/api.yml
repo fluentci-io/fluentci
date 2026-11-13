@@ -1,0 +1,46 @@
+# Requires an operator-provided Ubuntu image and a sufficient workflow timeout.
+when:
+  - event: push
+    branch: main
+  - event: pull_request
+    branch: main
+  - event: manual
+
+engine: microvm
+image: ubuntu
+
+environment:
+  FLUENTCI_VERSION: "v0.17.3"
+  CARGO_BUILD_JOBS: "2"
+  CARGO_TERM_COLOR: always
+  CARGO_PROFILE_RELEASE_LTO: "false"
+
+cache:
+  - key: bun-ubuntu-v1
+    hash: [bun.lock]
+    fallback: true
+    paths: [.ci-cache/bun]
+
+steps:
+  - name: Bootstrap Ubuntu and API toolchains
+    command: |
+      set -euo pipefail
+      bash .tangled/scripts/bootstrap.sh api
+  - name: Install workspace dependencies
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      bun install --frozen-lockfile --ignore-scripts
+  - name: Check generated lexicons and formatting
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cd apps/api
+      bun run lint
+  - name: Build and test registry API
+    command: |
+      set -euo pipefail
+      source .tangled/scripts/common.sh
+      cd apps/api
+      bun run build
+      bun run test

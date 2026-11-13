@@ -49,3 +49,6 @@ __pycache__/
 
 # Generated host WIT copied during CI component builds
 /.fluentci/*/.sdk/
+
+# Spindle setup handoff and temporary run files (never cache credentials)
+/.tangled-state/
