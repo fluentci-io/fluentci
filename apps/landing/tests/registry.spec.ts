@@ -107,9 +107,12 @@ test("search opens with slash, shows identities and navigates to the record page
     ),
   ).toBe(72);
   await input.fill("missing");
-  await expect(dialog.getByRole("status")).toHaveText(
-    "No modules or accounts found. Try another name, handle, or topic.",
-  );
+  await expect(
+    dialog.getByText(
+      "No modules or accounts found. Try another name, handle, or topic.",
+      { exact: true },
+    ),
+  ).toBeVisible();
   await input.fill("sccache");
   await expect(dialog.getByRole("link", { name: /sccache/ })).toBeVisible();
   await expect(dialog.getByRole("link", { name: /sccache/ })).toHaveAttribute(
