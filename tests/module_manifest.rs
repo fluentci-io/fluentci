@@ -148,14 +148,22 @@ async fn add_installs_portable_artifacts_and_preserves_manifest_comments() -> Re
 }
 
 #[tokio::test]
-async fn component_dependencies_link_typecheck_and_keep_frozen_locks() -> Result<()> {
+async fn component_dependencies_link_typecheck_keep_locks_and_preserve_root_metadata() -> Result<()>
+{
     let root = tempfile::tempdir()?;
     fs::write(root.path().join("math.wasm"), math()?)?;
     let consumer = r#"(component
         (import "math" (instance $math (export "add" (func (param "left" u32) (param "right" u32) (result u32)))))
         (alias export $math "add" (func $add))
         (export "sum" (func $add)))"#;
-    fs::write(root.path().join("consumer.wasm"), wat::parse_str(consumer)?)?;
+    let consumer = wat::parse_str(consumer)?;
+    let mut documented = fluentci::plugin_metadata::inspect(&consumer, None)?;
+    documented[0].description = Some("Sum the pipeline inputs.".into());
+    let arguments = documented[0].args.as_mut().unwrap();
+    arguments[0].description = Some("First input number.".into());
+    arguments[1].description = Some("Second input number.".into());
+    let consumer = fluentci::plugin_metadata::embed(&consumer, documented)?;
+    fs::write(root.path().join("consumer.wasm"), consumer)?;
     fs::write(
         root.path().join("fluentci-module.toml"),
         "name='consumer'\nruntime='component'\nartifact='consumer.wasm'\nbuild=['true']\n[dependencies]\nmath={path='math.wasm'}\n",
@@ -164,9 +172,33 @@ async fn component_dependencies_link_typecheck_and_keep_frozen_locks() -> Result
     let module = LocalModule::resolve(&root.path().join("fluentci-module.toml"), &manifest.module)?;
     assert!(module.prepare_with_lock(root.path(), true).await.is_err());
     let artifact = module.prepare_with_lock(root.path(), false).await?;
+    let bytes = fs::read(&artifact)?;
+    let functions = fluentci::plugin_metadata::inspect(&bytes, None)?;
+    assert_eq!(functions.len(), 1);
+    assert_eq!(functions[0].name, "sum");
+    assert_eq!(
+        functions[0].description.as_deref(),
+        Some("Sum the pipeline inputs.")
+    );
+    let arguments = functions[0].args.as_ref().unwrap();
+    assert_eq!(
+        arguments[0].description.as_deref(),
+        Some("First input number.")
+    );
+    assert_eq!(
+        arguments[1].description.as_deref(),
+        Some("Second input number.")
+    );
+    // Publishing re-embeds the final inspected contract; documentation must
+    // survive that round trip as well as dependency composition.
+    let published = fluentci::plugin_metadata::embed(&bytes, functions.clone())?;
+    assert_eq!(
+        serde_json::to_value(fluentci::plugin_metadata::inspect(&published, None)?)?,
+        serde_json::to_value(functions)?
+    );
     assert_eq!(
         components::call(
-            &fs::read(artifact)?,
+            &bytes,
             "sum",
             &["--left=20".into(), "--right=22".into()],
             Default::default()

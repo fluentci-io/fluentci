@@ -147,7 +147,12 @@ pub async fn finish(artifact: &Path, dependencies: &Prepared) -> Result<PathBuf>
         return Ok(artifact.to_owned());
     }
     let bytes = if dependencies.runtime == Some(ModuleRuntime::Component) {
-        composition::compose(artifact, &dependencies.interfaces)?
+        // Composition nests the original component and its custom sections.
+        // Keep only the root export metadata at the new outer boundary and
+        // validate it against the composed WIT before help or publishing uses it.
+        let functions = crate::plugin_metadata::inspect(&std::fs::read(artifact)?, None)?;
+        let composed = composition::compose(artifact, &dependencies.interfaces)?;
+        crate::plugin_metadata::embed(&composed, functions)?
     } else {
         let artifacts = dependencies
             .artifacts
