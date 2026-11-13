@@ -33,10 +33,9 @@ export function PublisherPage() {
   const published = usePublisherModules(actor, search, sort);
   const liked = usePublisherModules(
     actor,
-    search,
+    tab === "likes" ? search : "",
     likeSort,
     "likes",
-    tab === "likes",
   );
   const { items, loading, error, hasMore, loadMore, retry } =
     tab === "likes" ? liked : published;

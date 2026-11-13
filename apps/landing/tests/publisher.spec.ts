@@ -218,7 +218,9 @@ test("profile Likes tab lists liked modules without dividers and uses an outline
   );
   await page.goto("/fluentci.io");
   await expect(page.locator(".publisher-avatar svg")).toBeVisible();
-  const likes = page.getByRole("tab", { name: "Likes" });
+  const likes = page.getByRole("tab", { name: /^Likes/ });
+  await expect(likes.getByLabel("1 liked modules")).toBeVisible();
+  await expect(likes).toHaveAttribute("aria-selected", "false");
   await likes.click();
   await expect(likes).toHaveAttribute("aria-selected", "true");
   await expect(
