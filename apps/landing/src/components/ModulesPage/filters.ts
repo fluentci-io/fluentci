@@ -79,6 +79,18 @@ export const categories = [
     label: "Publishing",
     topics: ["publish", "publishing", "release", "registry"],
   },
+  {
+    value: "notifications",
+    label: "Notifications",
+    topics: [
+      "notification",
+      "notifications",
+      "notify",
+      "slack",
+      "discord",
+      "telegram",
+    ],
+  },
 ] as const;
 export const operatingSystems = [
   { value: "linux", label: "Linux" },
