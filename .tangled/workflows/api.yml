@@ -1,4 +1,4 @@
-# Requires an operator-provided Ubuntu image and a sufficient workflow timeout.
+# Requires the spindle AlmaLinux 10 image and a sufficient workflow timeout.
 when:
   - event: push
     branch: main
@@ -7,7 +7,7 @@ when:
   - event: manual
 
 engine: microvm
-image: ubuntu
+image: almalinux10
 
 environment:
   FLUENTCI_VERSION: "v0.17.3"
@@ -16,16 +16,16 @@ environment:
   CARGO_PROFILE_RELEASE_LTO: "false"
 
 cache:
-  - key: bun-ubuntu-v1
+  - key: bun-almalinux10-v1
     hash: [bun.lock]
     fallback: true
     paths: [.ci-cache/bun]
 
 steps:
-  - name: Bootstrap Ubuntu and API toolchains
+  - name: Bootstrap AlmaLinux and API toolchains
     command: |
       set -euo pipefail
-      bash .tangled/scripts/bootstrap.sh api
+      bash .tangled/scripts/bootstrap-dnf.sh api
   - name: Install workspace dependencies
     command: |
       set -euo pipefail

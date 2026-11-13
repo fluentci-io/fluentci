@@ -9,17 +9,18 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class Workflows(unittest.TestCase):
-    def test_workflows_have_real_steps_on_ubuntu_microvms(self):
+    def test_workflows_have_real_steps_on_almalinux_microvms(self):
         files = sorted((ROOT / ".tangled/workflows").glob("*.yml"))
         self.assertEqual(len(files), 14)
         for path in files:
             with self.subTest(workflow=path.name):
                 config = yaml.safe_load(path.read_text())
                 self.assertEqual(config["engine"], "microvm")
-                self.assertEqual(config["image"], "ubuntu")
+                self.assertEqual(config["image"], "almalinux10")
                 self.assertFalse(set(config) - {"when", "engine", "image", "environment", "cache", "clone", "steps", "runs_on", "audience"})
                 self.assertNotIn("release", path.name)
                 self.assertTrue(config["steps"])
+                self.assertIn("bootstrap-dnf.sh", config["steps"][0]["command"])
                 for condition in config["when"]:
                     self.assertTrue(set(condition) <= {"event", "branch", "tag", "types", "paths", "schedule"})
                     if condition["event"] == "push":
@@ -29,6 +30,7 @@ class Workflows(unittest.TestCase):
                     self.assertTrue(set(step) <= {"name", "command", "environment"})
                     self.assertIn("set -euo pipefail", step["command"])
                     self.assertNotIn("${{", step["command"])
+                    self.assertNotIn("--with-deps", step["command"])
                     subprocess.run(["bash", "-n"], input=step["command"], text=True, check=True)
                 for cache in config.get("cache", []):
                     for name in cache["paths"]:

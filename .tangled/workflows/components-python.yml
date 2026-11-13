@@ -1,4 +1,4 @@
-# Requires an operator-provided Ubuntu image and a sufficient workflow timeout.
+# Requires the spindle AlmaLinux 10 image and a sufficient workflow timeout.
 when:
   - event: push
     branch: main
@@ -7,7 +7,7 @@ when:
   - event: manual
 
 engine: microvm
-image: ubuntu
+image: almalinux10
 
 environment:
   FLUENTCI_VERSION: "v0.17.3"
@@ -17,11 +17,11 @@ environment:
   FLUENTCI_COMPONENT_SDK: python
 
 cache:
-  - key: bun-ubuntu-v1
+  - key: bun-almalinux10-v1
     hash: [bun.lock]
     fallback: true
     paths: [.ci-cache/bun]
-  - key: rust-ubuntu-v1
+  - key: rust-almalinux10-v1
     hash: [Cargo.lock]
     fallback: true
     paths:
@@ -32,10 +32,10 @@ cache:
       ]
 
 steps:
-  - name: Bootstrap Ubuntu and SDK toolchains
+  - name: Bootstrap AlmaLinux and SDK toolchains
     command: |
       set -euo pipefail
-      bash .tangled/scripts/bootstrap.sh component python
+      bash .tangled/scripts/bootstrap-dnf.sh component python
   - name: Check generated host contract
     command: |
       set -euo pipefail
