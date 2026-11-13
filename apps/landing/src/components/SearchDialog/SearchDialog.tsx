@@ -1,3 +1,6 @@
+import { useAccountSearch } from "../../registry/useAccountSearch";
+import { AccountSearchResult } from "../AccountSearchResult";
+import { Skeleton } from "../Skeleton";
 import { useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "@tanstack/react-router";
 import {
@@ -33,6 +36,9 @@ export function SearchDialog({ close }: { close: () => void }) {
   const [error, setError] = useState("");
   const [selected, setSelected] = useState(0);
   const navigate = useNavigate();
+  const accountSearch = useAccountSearch(text, true);
+  const accounts = accountSearch.items;
+  const resultCount = items.length + accounts.length;
   useEffect(() => {
     dialog.current?.showModal();
     input.current?.focus();
@@ -58,7 +64,12 @@ export function SearchDialog({ close }: { close: () => void }) {
                 (
                   await query<{ packages: Plugin[] }>(
                     "searchPackages",
-                    new URLSearchParams({ limit: "20", q, sort: "downloads", latest: "true" }),
+                    new URLSearchParams({
+                      limit: "20",
+                      q,
+                      sort: "downloads",
+                      latest: "true",
+                    }),
                     abort.signal,
                   )
                 ).packages,
@@ -96,7 +107,7 @@ export function SearchDialog({ close }: { close: () => void }) {
     dialog.current
       ?.querySelector(`[data-result="${selected}"]`)
       ?.scrollIntoView({ block: "nearest" });
-  }, [selected]);
+  }, [selected, resultCount]);
   const paramsFor = (plugin: Plugin) => ({
     handle: profiles[plugin.author]?.handle ?? plugin.author,
     rkey: recordKey(plugin),
@@ -114,14 +125,14 @@ export function SearchDialog({ close }: { close: () => void }) {
     >
       <div className="module-search-surface">
         <h2 id="module-search-title" className="sr-only">
-          Search FluentCI modules
+          Search FluentCI modules and accounts
         </h2>
         <div className="module-search-field">
           <SearchIcon />
           <input
             ref={input}
-            placeholder="Search module"
-            aria-label="Search module"
+            placeholder="Search modules or accounts"
+            aria-label="Search modules or accounts"
             value={text}
             maxLength={200}
             role="combobox"
@@ -129,27 +140,35 @@ export function SearchDialog({ close }: { close: () => void }) {
             aria-autocomplete="list"
             aria-controls="module-results"
             aria-activedescendant={
-              items[selected] ? `module-result-${selected}` : undefined
+              selected < resultCount ? `module-result-${selected}` : undefined
             }
             onChange={(event) => setText(event.target.value)}
             onKeyDown={(event) => {
               if (["ArrowDown", "ArrowUp"].includes(event.key)) {
                 event.preventDefault();
                 setSelected((index) =>
-                  items.length
+                  resultCount
                     ? (index +
                         (event.key === "ArrowDown" ? 1 : -1) +
-                        items.length) %
-                      items.length
+                        resultCount) %
+                      resultCount
                     : 0,
                 );
               }
-              if (event.key === "Enter" && items[selected]) {
+              if (event.key === "Enter" && selected < resultCount) {
                 event.preventDefault();
-                void navigate({
-                  to: "/$handle/plugin/$rkey",
-                  params: paramsFor(items[selected]),
-                });
+                if (items[selected])
+                  void navigate({
+                    to: "/$handle/plugin/$rkey",
+                    params: paramsFor(items[selected]),
+                  });
+                else
+                  void navigate({
+                    to: "/$handle",
+                    params: {
+                      handle: accounts[selected - items.length].handle,
+                    },
+                  });
                 close();
               }
             }}
@@ -162,8 +181,8 @@ export function SearchDialog({ close }: { close: () => void }) {
           className="module-results"
           id="module-results"
           role="listbox"
-          aria-label="Modules"
-          aria-busy={loading}
+          aria-label="Modules and accounts"
+          aria-busy={loading || accountSearch.loading}
         >
           {loading ? (
             <SearchResultsSkeleton />
@@ -172,9 +191,12 @@ export function SearchDialog({ close }: { close: () => void }) {
               {error}
             </p>
           ) : !items.length ? (
-            <p className="search-message" role="status">
-              No modules found. Try another name or topic.
-            </p>
+            !accounts.length && !accountSearch.loading ? (
+              <p className="search-message" role="status">
+                No modules or accounts found. Try another name, handle, or
+                topic.
+              </p>
+            ) : null
           ) : (
             items.map((plugin, index) => (
               <div
@@ -246,6 +268,34 @@ export function SearchDialog({ close }: { close: () => void }) {
                 </Link>
               </div>
             ))
+          )}
+          {accountSearch.loading && (
+            <div
+              role="status"
+              aria-label="Searching accounts"
+              className="flex items-center gap-3 p-3"
+            >
+              <Skeleton className="size-12 shrink-0 rounded-full" />
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-4 w-1/2" />
+                <Skeleton className="h-3 w-1/3" />
+              </div>
+            </div>
+          )}
+          {accounts.length > 0 && (
+            <div role="group" aria-label="Accounts">
+              <p className="px-3 pb-1 pt-3 text-xs text-muted">Accounts</p>
+              {accounts.map((profile, index) => (
+                <AccountSearchResult
+                  key={profile.did}
+                  profile={profile}
+                  index={items.length + index}
+                  selected={selected === items.length + index}
+                  select={() => setSelected(items.length + index)}
+                  close={close}
+                />
+              ))}
+            </div>
           )}
         </div>
         <footer className="module-search-footer">

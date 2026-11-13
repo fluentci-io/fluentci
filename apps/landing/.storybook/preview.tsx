@@ -116,6 +116,13 @@ const preview: Preview = {
           () => HttpResponse.json({ package: plugin }),
         ),
         http.get(
+          "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead",
+          () =>
+            HttpResponse.json({
+              actors: [{ ...author, displayName: "FluentCI" }],
+            }),
+        ),
+        http.get(
           "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfiles",
           () => HttpResponse.json({ profiles: [author] }),
         ),

@@ -1,3 +1,5 @@
+import { ProfileBio } from "../ProfileBio";
+import { BrandIcon } from "../BrandIcon";
 import { UserIcon } from "../UserIcon";
 import { useEffect, useRef, useState } from "react";
 import { Link, useParams } from "@tanstack/react-router";
@@ -131,6 +133,16 @@ export function PublisherPage() {
               >
                 {identity.startsWith("did:") ? identity : `@${identity}`}
               </a>
+              <a
+                className="text-link inline-flex items-center gap-1.5 text-xs [&>svg]:size-3.5"
+                aria-label="Tangled profile"
+                href={`https://tangled.org/${encodeURIComponent(identity)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <BrandIcon brand="tangled" /> Tangled{" "}
+                <span aria-hidden="true">↗</span>
+              </a>
               {did && (
                 <a
                   className="text-link text-xs"
@@ -151,11 +163,7 @@ export function PublisherPage() {
                 downloads
               </p>
             )}
-            {profile?.description && (
-              <p className="mt-4 max-w-2xl whitespace-pre-line text-sm leading-relaxed text-muted">
-                {profile.description}
-              </p>
-            )}
+            {profile?.description && <ProfileBio text={profile.description} />}
           </div>
         </div>
         <section aria-label="Published modules" className="mt-12">

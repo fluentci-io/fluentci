@@ -1,0 +1,1 @@
+export { ProfileBio } from "./ProfileBio";

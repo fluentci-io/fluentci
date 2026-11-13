@@ -58,6 +58,16 @@ test("publisher handles and DIDs show identity, exact totals, infinite pages and
     "https://bsky.app/profile/fluentci.io",
   );
   await expect(bluesky).toHaveAttribute("target", "_blank");
+  const tangled = page.getByRole("link", {
+    name: "Tangled profile",
+    exact: true,
+  });
+  await expect(tangled).toHaveAttribute(
+    "href",
+    "https://tangled.org/fluentci.io",
+  );
+  await expect(tangled).toHaveAttribute("target", "_blank");
+  await expect(tangled.locator("svg")).toBeVisible();
   const pdsls = page.getByRole("link", { name: "PDSls", exact: true });
   await expect(pdsls).toHaveAttribute(
     "href",
@@ -233,4 +243,40 @@ test("profile Likes tab lists liked modules without dividers and uses an outline
   await expect(
     page.getByRole("heading", { name: plugin.name, exact: true }),
   ).toBeVisible();
+});
+
+test("profile bios link handles and URLs while preserving text and punctuation", async ({
+  page,
+}) => {
+  const description =
+    "Building @rocksky.app, @atradio.fm, @fluentci.io and https://github.com/tsirysndr/rockboxd\nSupport my work → https://github.com/sponsors/tsirysndr\nEmail hello@example.com. Docs (https://example.com/docs). https://example.com/a(b) <script>alert(1)</script>";
+  await page.route(
+    "https://public.api.bsky.app/xrpc/app.bsky.actor.getProfile?*",
+    (route) => route.fulfill({ json: { ...author, description } }),
+  );
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.registry.*",
+    (route) => route.fulfill({ json: { packages: [], total: 0 } }),
+  );
+  await page.goto("/fluentci.io");
+  const bio = page.locator(".publisher-bio");
+  await expect(bio).toHaveText(description);
+  for (const handle of ["rocksky.app", "atradio.fm", "fluentci.io"])
+    await expect(
+      bio.getByRole("link", { name: `@${handle}`, exact: true }),
+    ).toHaveAttribute("href", `/${handle}`);
+  const sponsor = bio.getByRole("link", {
+    name: "https://github.com/sponsors/tsirysndr",
+    exact: true,
+  });
+  await expect(sponsor).toHaveAttribute("target", "_blank");
+  await expect(sponsor).toHaveAttribute("rel", "noopener noreferrer");
+  await expect(
+    bio.getByRole("link", { name: "https://example.com/docs", exact: true }),
+  ).toHaveAttribute("href", "https://example.com/docs");
+  await expect(
+    bio.getByRole("link", { name: "https://example.com/a(b)", exact: true }),
+  ).toBeVisible();
+  await expect(bio.getByRole("link", { name: /@example.com/ })).toHaveCount(0);
+  await expect(bio.locator("script")).toHaveCount(0);
 });

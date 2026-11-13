@@ -6,6 +6,10 @@ async function registry(
   readmeStatus = 200,
   history = true,
 ) {
+  await page.route(
+    "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?*",
+    (route) => route.fulfill({ json: { actors: [] } }),
+  );
   const community = {
     ...plugin,
     name: "cache",
@@ -68,7 +72,9 @@ test("search opens with slash, shows identities and navigates to the record page
     ).toHaveText("");
   }
   await page.keyboard.press("/");
-  const dialog = page.getByRole("dialog", { name: "Search FluentCI modules" });
+  const dialog = page.getByRole("dialog", {
+    name: "Search FluentCI modules and accounts",
+  });
   await expect(dialog).toBeVisible();
   expect(
     await dialog.evaluate(
@@ -102,7 +108,7 @@ test("search opens with slash, shows identities and navigates to the record page
   ).toBe(72);
   await input.fill("missing");
   await expect(dialog.getByRole("status")).toHaveText(
-    "No modules found. Try another name or topic.",
+    "No modules or accounts found. Try another name, handle, or topic.",
   );
   await input.fill("sccache");
   await expect(dialog.getByRole("link", { name: /sccache/ })).toBeVisible();
@@ -508,4 +514,60 @@ test("module version dropdown filters and navigates across paginated releases", 
   await expect(versions.getByRole("link")).toHaveCount(1);
   await versions.getByRole("link", { name: "0.0.9" }).click();
   await expect(page).toHaveURL(/sccache-0.0.9$/);
+});
+
+test("module search includes account identities, fallback avatars, and keyboard profile navigation", async ({
+  page,
+}) => {
+  await registry(page);
+  const actors = [
+    {
+      ...author,
+      displayName: "FluentCI Team",
+      avatar: "https://images.example/account.png",
+    },
+    { did: "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa", handle: "plain.example" },
+  ];
+  await page.route(
+    "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?*",
+    (route) => route.fulfill({ json: { actors } }),
+  );
+  await page.route("https://images.example/account.png", (route) =>
+    route.fulfill({ status: 404 }),
+  );
+  await page.goto("/");
+  await page.keyboard.press("/");
+  const dialog = page.getByRole("dialog", {
+    name: "Search FluentCI modules and accounts",
+  });
+  const input = dialog.getByRole("combobox");
+  await input.fill("fluent");
+  const accounts = dialog.getByRole("group", { name: "Accounts", exact: true });
+  const fluent = accounts.getByRole("link", {
+    name: /FluentCI Team.*@fluentci.io/,
+  });
+  await expect(fluent).toBeVisible();
+  await expect(fluent).toHaveAttribute("href", "/fluentci.io");
+  await expect(fluent.locator("svg")).toBeVisible();
+  const plain = accounts.getByRole("link", {
+    name: "@plain.example",
+    exact: true,
+  });
+  await expect(plain.locator("svg")).toBeVisible();
+  expect(
+    await plain
+      .locator(".rounded-full")
+      .evaluate(
+        (element) =>
+          parseFloat(getComputedStyle(element).borderRadius) >=
+          element.clientWidth / 2,
+      ),
+  ).toBe(true);
+  await expect(dialog.getByRole("link", { name: /sccache/ })).toBeVisible();
+  await input.press("ArrowUp");
+  const selected = dialog.getByRole("option", { selected: true });
+  await expect(selected).toContainText("@plain.example");
+  await input.press("Enter");
+  await expect(page).toHaveURL(/\/plain.example$/);
+  await expect(page.getByRole("dialog")).toHaveCount(0);
 });
