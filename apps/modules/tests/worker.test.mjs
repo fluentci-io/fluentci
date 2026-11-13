@@ -213,3 +213,59 @@ test("canonical and @handle aliases address the same storage key", async (t) => 
     { handle: "alice.example", name: "sccache", version: "0.1.0" },
   );
 });
+
+test("a cached 404 retries the identical storage URL uncached and counts the successful response", async (t) => {
+  const calls = [];
+  t.mock.method(globalThis, "fetch", async (input, init) => {
+    if (!(input instanceof Request)) return new Response(null, { status: 200 });
+    calls.push({ url: input.url, init });
+    return calls.length === 1
+      ? new Response("old not found", {
+          status: 404,
+          headers: { "CF-Cache-Status": "HIT" },
+        })
+      : new Response("wasm", {
+          headers: { "Cache-Control": "public, max-age=31536000, immutable" },
+        });
+  });
+  const ctx = context();
+  const response = await worker.fetch(new Request(url), env, ctx);
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "wasm");
+  assert.equal(calls.length, 2);
+  assert.equal(calls[0].url, calls[1].url);
+  assert.deepEqual(calls[0].init.cf.cacheTtlByStatus, { "400-599": -1 });
+  assert.equal(calls[1].init.cache, "no-store");
+  assert.match(response.headers.get("Cache-Control"), /immutable/);
+  assert.equal(ctx.pending.length, 1);
+  await Promise.all(ctx.pending);
+});
+
+test("genuinely missing and failed modules cannot be cached and never increment downloads", async (t) => {
+  for (const status of [404, 500]) {
+    let calls = 0;
+    t.mock.method(globalThis, "fetch", async () => {
+      calls++;
+      return new Response("origin error", {
+        status,
+        headers: { "Cache-Control": "max-age=14400" },
+      });
+    });
+    const ctx = context();
+    const response = await worker.fetch(
+      new Request(url, { method: "HEAD" }),
+      env,
+      ctx,
+    );
+    assert.equal(response.status, status);
+    assert.equal(response.headers.get("Cache-Control"), "no-store");
+    assert.equal(response.headers.get("CDN-Cache-Control"), "no-store");
+    assert.equal(
+      response.headers.get("Cloudflare-CDN-Cache-Control"),
+      "no-store",
+    );
+    assert.equal(ctx.pending.length, 0);
+    assert.equal(calls, status === 404 ? 2 : 1);
+    t.mock.restoreAll();
+  }
+});

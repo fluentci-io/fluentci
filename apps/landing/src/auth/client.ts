@@ -1,3 +1,10 @@
+import {
+  accountKey,
+  beginBrowserSession,
+  clearCredentials,
+  endBrowserSession,
+  prepareBrowserSession,
+} from "./storage";
 import type {} from "@atcute/atproto";
 import { Client, ok } from "@atcute/client";
 import {
@@ -19,7 +26,7 @@ import {
 import { getProfiles, type Profile, type Plugin } from "../registry/client";
 
 export const scope = "atproto repo:io.fluentci.like repo:io.fluentci.plugin";
-export const accountKey = "fluentci-account";
+export { accountKey } from "./storage";
 const returnKey = "fluentci-oauth-return";
 const redirect = `${location.origin}/oauth/callback`;
 const development = /^http:\/\/127\.0\.0\.1(:\d+)?$/.test(location.origin);
@@ -44,7 +51,7 @@ configureOAuth({
   identityResolver,
   storageName: "fluentci-oauth",
   onPersistError: () => {
-    throw Error("Allow session storage in this tab to sign in.");
+    throw Error("Allow browser storage to sign in.");
   },
 });
 
@@ -82,10 +89,10 @@ export const safeReturn = (path: string | null) =>
   !path.includes("\\")
     ? path
     : "/";
-let startup: Promise<Account | null> | undefined;
-export function restore() {
-  return (startup ??= (async () => {
-    if (location.pathname === "/oauth/callback") {
+let callback: Promise<null> | undefined;
+export async function restore(): Promise<Account | null> {
+  if (location.pathname === "/oauth/callback") {
+    return (callback ??= (async () => {
       const params = new URLSearchParams(
         location.hash.slice(1) || location.search.slice(1),
       );
@@ -95,24 +102,25 @@ export function restore() {
           "This sign-in link is missing its state. Please sign in again.",
         );
       const { session } = await finalizeAuthorization(params);
-      sessionStorage.setItem(accountKey, session.info.sub);
+      beginBrowserSession();
+      localStorage.setItem(accountKey, session.info.sub);
       const destination = safeReturn(sessionStorage.getItem(returnKey));
       sessionStorage.removeItem(returnKey);
       location.replace(destination);
       return null;
-    }
-    const did = sessionStorage.getItem(accountKey);
-    if (!did?.startsWith("did:")) return null;
-    try {
-      return await account(
-        await getSession(did as Session["info"]["sub"], { allowStale: true }),
-      );
-    } catch {
-      deleteStoredSession(did as Session["info"]["sub"]);
-      sessionStorage.removeItem(accountKey);
-      return null;
-    }
-  })());
+    })());
+  }
+  const did = prepareBrowserSession();
+  if (!did?.startsWith("did:")) return null;
+  try {
+    return await account(
+      await getSession(did as Session["info"]["sub"], { allowStale: true }),
+    );
+  } catch {
+    deleteStoredSession(did as Session["info"]["sub"]);
+    if (localStorage.getItem(accountKey) === did) endBrowserSession();
+    return null;
+  }
 }
 export async function signIn(handle: string, create = false) {
   if (!development && location.origin !== "https://fluentci.io")
@@ -133,6 +141,7 @@ export async function signIn(handle: string, create = false) {
     throw Error(
       "Enter a complete AT Protocol handle, such as name.bsky.social.",
     );
+  beginBrowserSession();
   const url = await createAuthorizationUrl({
     target: create
       ? { type: "pds", serviceUrl: "https://selfhosted.social" }
@@ -142,13 +151,13 @@ export async function signIn(handle: string, create = false) {
   });
   location.assign(url);
 }
-export async function signOut(current: Account) {
-  sessionStorage.removeItem(accountKey);
+export async function signOut(current: Account, revocation: Promise<void>) {
+  endBrowserSession();
   // Remove all local credentials immediately, even if revocation is unavailable.
   let timeout: ReturnType<typeof setTimeout> | undefined;
   try {
     await Promise.race([
-      current.agent.signOut(),
+      revocation,
       new Promise<void>((resolve) => {
         timeout = setTimeout(resolve, 5000);
       }),
@@ -158,8 +167,7 @@ export async function signOut(current: Account) {
   } finally {
     clearTimeout(timeout);
     deleteStoredSession(current.did);
-    for (const key of Object.keys(sessionStorage))
-      if (key.startsWith("fluentci-oauth:")) sessionStorage.removeItem(key);
+    clearCredentials();
   }
 }
 

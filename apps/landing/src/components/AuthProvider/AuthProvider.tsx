@@ -1,3 +1,8 @@
+import {
+  accountKey,
+  endBrowserSession,
+  prepareBrowserSession,
+} from "../../auth/storage";
 import { useEffect, useState, type ReactNode } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { AuthContext } from "../../auth/context";
@@ -11,40 +16,70 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
   const queries = useQueryClient();
   useEffect(() => {
-    try {
-      if (
-        location.pathname !== "/oauth/callback" &&
-        !sessionStorage.getItem("fluentci-account")
-      ) {
+    let mounted = true;
+    let generation = 0;
+    const clearViewer = () => {
+      queries.removeQueries({ queryKey: ["viewer-like"] });
+      queries.removeQueries({ queryKey: ["viewer-likes"] });
+    };
+    const synchronize = async () => {
+      const current = ++generation;
+      let did: string | null;
+      try {
+        did = prepareBrowserSession();
+      } catch {
+        if (mounted) setLoading(false);
+        return;
+      }
+      clearViewer();
+      setAccount(null);
+      setError("");
+      if (location.pathname !== "/oauth/callback" && !did) {
         setLoading(false);
         return;
       }
-    } catch {
-      setLoading(false);
-      return;
-    }
-    let mounted = true;
-    void import("../../auth/client")
-      .then((auth) => auth.restore())
-      .then((value) => {
-        if (mounted) setAccount(value);
-      })
-      .catch((reason: unknown) => {
-        if (mounted)
+      setLoading(true);
+      try {
+        const auth = await import("../../auth/client");
+        const value = await auth.restore();
+        if (mounted && current === generation) setAccount(value);
+      } catch (reason) {
+        if (mounted && current === generation)
           setError(
             reason instanceof Error ? reason.message : "Unable to sign in.",
           );
-      })
-      .finally(() => {
-        if (mounted) setLoading(false);
-      });
+      } finally {
+        if (mounted && current === generation) setLoading(false);
+      }
+    };
+    const storageChanged = (event: StorageEvent) => {
+      if (
+        event.storageArea === localStorage &&
+        (event.key === null ||
+          event.key === accountKey ||
+          (event.key.startsWith("fluentci-oauth:sessions:") &&
+            event.newValue === null))
+      )
+        void synchronize();
+    };
+    window.addEventListener("storage", storageChanged);
+    void synchronize();
     return () => {
       mounted = false;
+      generation++;
+      window.removeEventListener("storage", storageChanged);
     };
-  }, []);
+  }, [queries]);
   const logout = () => {
-    if (account)
-      void import("../../auth/client").then((auth) => auth.signOut(account));
+    if (account) {
+      const current = account;
+      const revocation = current.agent.signOut();
+      void revocation.catch(() => {});
+      endBrowserSession();
+      void import("../../auth/client").then((auth) =>
+        auth.signOut(current, revocation),
+      );
+    }
     setAccount(null);
     queries.removeQueries({ queryKey: ["viewer-like"] });
     queries.removeQueries({ queryKey: ["viewer-likes"] });

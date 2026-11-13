@@ -117,11 +117,32 @@ export default {
     // Canonical public URLs omit @; storage keeps its existing @handle keys.
     if (download && !decodeURIComponent(path.split("/")[1]).startsWith("@"))
       upstream = upstream.replace(`${origin}/`, `${origin}/@`);
-    const response = await fetch(new Request(upstream, request));
+    let response = await fetch(
+      new Request(upstream, request),
+      download ? { cf: { cacheTtlByStatus: { "400-599": -1 } } } : undefined,
+    );
+    // Recover old negative cache entries created before a release was uploaded.
+    // Keep the exact storage URL and retry only safe, bodyless requests once.
+    if (
+      download &&
+      response.status === 404 &&
+      (request.method === "GET" || request.method === "HEAD")
+    ) {
+      await response.body?.cancel();
+      response = await fetch(new Request(upstream, request), {
+        cache: "no-store",
+      });
+    }
+    if (download && response.status >= 400) {
+      response = new Response(response.body, response);
+      response.headers.set("Cache-Control", "no-store");
+      response.headers.set("CDN-Cache-Control", "no-store");
+      response.headers.set("Cloudflare-CDN-Cache-Control", "no-store");
+    }
     if (request.method === "GET" && response.status === 200 && download) {
       ctx.waitUntil(reportDownload(download, env));
     }
-    // Return the original response: no buffering, header edits, redirects or cache changes.
+    // Successful responses retain their original streaming body and cache policy.
     return response;
   },
 } satisfies ExportedHandler<Env>;

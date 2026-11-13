@@ -3,7 +3,7 @@
 A Cloudflare Worker in front of `https://mod.fluentci.io`. Its custom domain is
 `modules.fluentci.io`. For ordinary requests only the origin changes: the encoded path, query string,
 method, headers and request body pass through. The original upstream response is
-returned without buffering or modifying its status, headers, body, or caching.
+returned without buffering. Successful responses preserve their status, headers, body, and cache policy. Module errors use `no-store` at the browser and CDN layers; GET/HEAD 404s retry the exact upstream URL once with the cache bypassed to recover negative entries created before publication.
 
 After a successful full `GET` (HTTP 200) of a versioned module path such as
 `/alice.example/sccache/v0.1.0/sccache.wasm`, the Worker uses `ctx.waitUntil` to

@@ -130,7 +130,11 @@ test("sign in opens a handle modal, supports Escape, and advertises collection-s
   );
   expect(
     await page.evaluate(() =>
-      Object.keys(localStorage).filter((key) => /oauth|account/.test(key)),
+      Object.keys(localStorage).filter(
+        (key) =>
+          key.startsWith("fluentci-oauth:sessions:") ||
+          key === "fluentci-account",
+      ),
     ),
   ).toEqual([]);
 });
@@ -208,10 +212,11 @@ test("likes write directly to the PDS, toggle idempotently, and roll back errors
   await expect(like).toHaveAttribute("aria-pressed", "false");
   await expect(like).toContainText("3");
   expect(
-    await page.evaluate(() =>
-      Object.keys(localStorage).filter((key) => /oauth|account/.test(key)),
-    ),
-  ).toEqual([]);
+    await page.evaluate(() => localStorage.getItem("fluentci-account")),
+  ).toBe(did);
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("fluentci-account")),
+  ).toBeNull();
 });
 
 test("avatar menu links to profile and logs out of the browser session", async ({
@@ -241,18 +246,29 @@ test("avatar menu links to profile and logs out of the browser session", async (
   await common(other);
   await other.goto("/modules");
   await expect(
-    other.getByRole("button", { name: "Sign In", exact: true }),
+    other.getByRole("button", { name: "Account menu" }),
   ).toBeEnabled();
-  await other.close();
+  await other.getByRole("button", { name: "Account menu" }).click();
+  await expect(other.getByLabel("Account", { exact: true })).toContainText(
+    "@person.example",
+  );
+  await other.keyboard.press("Escape");
   await page.getByRole("button", { name: "Account menu" }).click();
   await page.getByRole("button", { name: "Log out", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Sign In", exact: true }),
   ).toBeEnabled();
+  await expect(
+    other.getByRole("button", { name: "Sign In", exact: true }),
+  ).toBeEnabled();
+  await other.reload();
+  await expect(
+    other.getByRole("button", { name: "Sign In", exact: true }),
+  ).toBeEnabled();
   await expect
     .poll(() =>
       page.evaluate(() =>
-        Object.keys(sessionStorage).filter((key) =>
+        Object.keys(localStorage).filter((key) =>
           key.startsWith("fluentci-oauth:sessions:"),
         ),
       ),
@@ -403,4 +419,34 @@ test("handle sign-in discovers the PDS and starts PKCE OAuth with both collectio
   expect(par!.get("code_challenge_method")).toBe("S256");
   expect(par!.get("code_challenge")).toBeTruthy();
   expect(par!.get("state")).toBeTruthy();
+});
+
+test("a fresh browser session cannot restore stale OAuth credentials", async ({
+  page,
+  context,
+}) => {
+  await common(page);
+  await signedIn(page);
+  await page.goto("/modules");
+  await expect(
+    page.getByRole("button", { name: "Account menu" }),
+  ).toBeEnabled();
+  expect(
+    await page.evaluate(() => sessionStorage.getItem("fluentci-account")),
+  ).toBeNull();
+  await context.clearCookies();
+  await page.reload();
+  await expect(
+    page.getByRole("button", { name: "Sign In", exact: true }),
+  ).toBeEnabled();
+  expect(
+    await page.evaluate(() => localStorage.getItem("fluentci-account")),
+  ).toBeNull();
+  expect(
+    await page.evaluate(() =>
+      Object.keys(localStorage).filter((key) =>
+        key.startsWith("fluentci-oauth:sessions:"),
+      ),
+    ),
+  ).toEqual([]);
 });

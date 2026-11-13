@@ -104,12 +104,7 @@ client metadata is `/oauth-client-metadata.json`, with the production callback a
 Selfhosted.social signup starts OAuth with `prompt=create` and returns through
 the same callback to the current page. Account credentials never go to the API.
 
-The pinned atcute 5.1.0 storage module hardcodes localStorage. The small
-`build/sessionOAuth.ts` Vite adapter changes only that module to sessionStorage,
-including authorization states, session tokens, DPoP keys, and nonces. It runs in
-both development and production; review it when upgrading atcute. Closing the tab
-ends local persistence. Logout removes the local session even if token revocation
-fails. Theme preferences still use localStorage.
+OAuth uses atcute's shared browser storage and cross-tab locking/broadcasts so newly opened tabs inherit the signed-in account and token refreshes stay coordinated. A session cookie gates restoration: a fresh browser session clears old credentials, while logout clears the account and credentials across open tabs even if revocation fails. Existing tab-local sessions migrate on reload. OAuth return paths stay tab-local in sessionStorage. Credentials never go to the registry API; likes still write directly to the user's PDS.
 
 Like/unlike writes go directly to the authenticated user's PDS using
 `com.atproto.repo.createRecord` / `deleteRecord`, collection `io.fluentci.like`.
