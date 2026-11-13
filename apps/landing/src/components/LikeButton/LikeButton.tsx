@@ -1,3 +1,4 @@
+import { formatCompactCount } from "../../registry/formatCount";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import type { LikeRecord } from "../../auth/client";
 import { useAuth } from "../../auth/context";
@@ -115,7 +116,16 @@ export function LikeButton({
         }}
       >
         <HeartIcon filled={liked} />
-        {count.data > 0 && <span>{count.data.toLocaleString()}</span>}
+        {count.data > 0 && (
+          <span
+            title={`${count.data.toLocaleString()} likes`}
+            aria-label={`${count.data.toLocaleString()} likes`}
+          >
+            {compact
+              ? formatCompactCount(count.data)
+              : count.data.toLocaleString()}
+          </span>
+        )}
       </button>
       {(mutation.isError || viewer.isError) && (
         <span role="alert" className="max-w-48 text-[11px] text-red-400">

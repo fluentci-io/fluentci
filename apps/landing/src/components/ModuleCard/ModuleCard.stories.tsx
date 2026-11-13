@@ -20,3 +20,10 @@ export const Light: Story = { parameters: { theme: "light" } };
 export const Placeholder: Story = {
   args: { plugin: { ...plugin, logo: undefined } },
 };
+
+export const TenThousandDownloads: Story = {
+  args: { plugin: { ...plugin, downloads: 10_000, likesCount: 1_000 } },
+};
+export const MillionDownloads: Story = {
+  args: { plugin: { ...plugin, downloads: 1_000_000, likesCount: 10_000 } },
+};

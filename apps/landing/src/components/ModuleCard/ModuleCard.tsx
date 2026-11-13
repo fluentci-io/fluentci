@@ -1,3 +1,4 @@
+import { formatCompactCount } from "../../registry/formatCount";
 import { Link } from "@tanstack/react-router";
 import {
   moduleTitle,
@@ -54,9 +55,10 @@ export function ModuleCard({
             <span
               className="shrink-0 font-mono text-xs text-muted"
               aria-label={`${plugin.downloads!.toLocaleString()} downloads`}
+              title={`${plugin.downloads!.toLocaleString()} downloads`}
             >
               <DownloadIcon />
-              {plugin.downloads!.toLocaleString()}
+              {formatCompactCount(plugin.downloads!)}
             </span>
           )}
           <LikeButton plugin={plugin} compact />

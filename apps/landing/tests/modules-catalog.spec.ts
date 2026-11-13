@@ -293,3 +293,52 @@ test("catalog result count follows pages and filtered totals", async ({
     .fill("missing");
   await expect(count).toHaveText("0 - 0 of 0 available modules");
 });
+
+test("grid compacts download and like counts while preserving exact totals", async ({
+  page,
+}) => {
+  await mockCommon(page);
+  const values = [999, 1000, 10000, 20500, 1000000, 10000000, 1000000000];
+  await page.route(endpoint, (route) => {
+    const name = new URL(route.request().url()).searchParams
+      .get("filter")
+      ?.replace("name==", "");
+    const packages = values.map((downloads, i) => ({
+      ...plugin,
+      name: `compact-${i}`,
+      uri: `at://${author.did}/io.fluentci.plugin/compact-${i}-0.1.0`,
+      downloads,
+      likesCount: downloads,
+    }));
+    return route.fulfill({
+      json: {
+        packages: name
+          ? packages.filter((item) => item.name === name)
+          : packages,
+        total: values.length,
+      },
+    });
+  });
+  await page.goto("/modules");
+  for (const [i, text] of [
+    "999",
+    "1K+",
+    "10K+",
+    "20K+",
+    "1M+",
+    "10M+",
+    "1B+",
+  ].entries()) {
+    const card = page
+      .locator(".catalog-card")
+      .filter({
+        has: page.getByRole("heading", { name: `compact-${i}`, exact: true }),
+      });
+    for (const kind of ["downloads", "likes"]) {
+      const label = `${values[i].toLocaleString("en")} ${kind}`;
+      const count = card.getByLabel(label, { exact: true });
+      await expect(count).toHaveText(text);
+      await expect(count).toHaveAttribute("title", label);
+    }
+  }
+});
