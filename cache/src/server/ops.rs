@@ -28,14 +28,21 @@ pub(super) struct Metrics {
 
 pub(super) async fn ready(State(app): State<Arc<App>>, headers: HeaderMap) -> Result<&'static str> {
     authorized(&app, &headers, false)?;
-    let result = tokio::time::timeout(
-        Duration::from_secs(app.config.timeout),
-        app.store.head(&Path::from(".readiness")),
-    )
-    .await
-    .map_err(|_| Failure(StatusCode::GATEWAY_TIMEOUT, "backend timeout\n"))?;
-    match result {
-        Ok(_) | Err(object_store::Error::NotFound { .. }) => Ok("ready\n"),
+    let probe = async {
+        check_storage(&app.store).await?;
+        if !Arc::ptr_eq(&app.store, &app.reader) {
+            check_storage(&app.reader).await?;
+        }
+        Ok("ready\n")
+    };
+    tokio::time::timeout(Duration::from_secs(app.config.timeout), probe)
+        .await
+        .map_err(|_| Failure(StatusCode::GATEWAY_TIMEOUT, "backend timeout\n"))?
+}
+
+async fn check_storage(store: &Arc<dyn object_store::ObjectStore>) -> Result<()> {
+    match store.head(&Path::from(".readiness")).await {
+        Ok(_) | Err(object_store::Error::NotFound { .. }) => Ok(()),
         Err(e) => Err(backend_error(e)),
     }
 }

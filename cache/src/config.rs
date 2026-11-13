@@ -1,8 +1,8 @@
 use anyhow::{Result, bail};
 use clap::{ArgMatches, Args, ValueEnum, parser::ValueSource};
 use object_store::{
-    ObjectStore, aws::AmazonS3Builder, local::LocalFileSystem, memory::InMemory,
-    prefix::PrefixStore,
+    ClientOptions, ObjectStore, aws::AmazonS3Builder, http::HttpBuilder, local::LocalFileSystem,
+    memory::InMemory, prefix::PrefixStore,
 };
 use serde::{Deserialize, Serialize};
 use std::{net::SocketAddr, path::PathBuf, sync::Arc};
@@ -31,6 +31,9 @@ pub struct Config {
     pub bucket: Option<String>,
     #[arg(long, env = "FLUENTCI_CACHE_ENDPOINT")]
     pub endpoint: Option<String>,
+    /// Public CDN base URL pointing to the S3 bucket root. The storage prefix is appended.
+    #[arg(long, env = "FLUENTCI_CACHE_CDN_URL")]
+    pub cdn_url: Option<String>,
     #[arg(long, env = "FLUENTCI_CACHE_REGION", default_value = "us-east-1")]
     pub region: String,
     #[arg(long, env = "FLUENTCI_CACHE_ALLOW_HTTP", default_value_t = false, action = clap::ArgAction::Set, num_args = 0..=1, default_missing_value = "true")]
@@ -110,7 +113,42 @@ impl Config {
         if !self.public_read && self.token.is_none() {
             bail!("a token is required for private reads");
         }
+        if matches!(self.backend, Backend::S3) && self.cdn_url.is_none() {
+            bail!("cdn_url is required for S3 reads; set FLUENTCI_CACHE_CDN_URL or --cdn-url");
+        }
+        if let Some(value) = &self.cdn_url {
+            let url = reqwest::Url::parse(value)
+                .map_err(|_| anyhow::anyhow!("cdn_url must be an absolute public HTTP(S) URL"))?;
+            if !matches!(url.scheme(), "http" | "https")
+                || url.host_str().is_none()
+                || !url.username().is_empty()
+                || url.password().is_some()
+                || url.query().is_some()
+                || url.fragment().is_some()
+            {
+                bail!(
+                    "cdn_url must be an absolute public HTTP(S) URL without credentials, query, or fragment"
+                );
+            }
+        }
         Ok(())
+    }
+
+    /// S3 reads use the public CDN. Other backends read from the supplied write store.
+    pub fn read_storage(&self, write_store: Arc<dyn ObjectStore>) -> Result<Arc<dyn ObjectStore>> {
+        self.validate()?;
+        if !matches!(self.backend, Backend::S3) {
+            return Ok(write_store);
+        }
+        let url = reqwest::Url::parse(self.cdn_url.as_deref().expect("validated S3 CDN URL"))?;
+        let store = HttpBuilder::new()
+            .with_url(url.as_str().trim_end_matches('/'))
+            .with_client_options(ClientOptions::new().with_allow_http(url.scheme() == "http"))
+            .build()?;
+        Ok(Arc::new(PrefixStore::new(
+            store,
+            object_store::path::Path::parse(&self.prefix)?,
+        )))
     }
 
     pub fn storage(&self) -> Result<Arc<dyn ObjectStore>> {

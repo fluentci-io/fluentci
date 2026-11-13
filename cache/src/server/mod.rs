@@ -23,6 +23,7 @@ mod upload;
 struct App {
     config: Config,
     store: Arc<dyn ObjectStore>,
+    reader: Arc<dyn ObjectStore>,
     permits: Arc<Semaphore>,
     metrics: Metrics,
 }
@@ -33,6 +34,7 @@ pub fn router(config: Config, store: Arc<dyn ObjectStore>) -> anyhow::Result<Rou
     config.validate()?;
     let app = Arc::new(App {
         permits: Arc::new(Semaphore::new(config.concurrency)),
+        reader: config.read_storage(store.clone())?,
         config,
         store,
         metrics: Metrics::default(),

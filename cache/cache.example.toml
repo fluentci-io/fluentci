@@ -3,6 +3,7 @@
 # Precedence: defaults < this file < environment < command-line flags.
 backend = "s3"                         # s3 | file | memory
 bind = "127.0.0.1:8080"
+cdn_url = "https://cdn.example.com"     # bucket root; prefix is appended automatically
 bucket = "build-cache"                  # must already exist
 region = "us-east-1"
 # endpoint = "https://s3.example.com"    # omit for AWS S3

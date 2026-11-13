@@ -589,6 +589,9 @@ async fn s3_backend_round_trip() {
     config.backend = fluentci_cache::config::Backend::S3;
     config.bucket = Some(std::env::var("FLUENTCI_CACHE_TEST_BUCKET").expect("set test bucket"));
     config.endpoint = std::env::var("FLUENTCI_CACHE_TEST_ENDPOINT").ok();
+    config.cdn_url = Some(
+        std::env::var("FLUENTCI_CACHE_TEST_CDN_URL").expect("set public CDN URL at bucket root"),
+    );
     config.allow_http = config
         .endpoint
         .as_ref()

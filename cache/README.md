@@ -2,7 +2,7 @@
 
 A standalone Rust build-cache server built on Tokio, Axum, and `object_store`. One service handles multiple build tools, with isolated storage namespaces and an S3-compatible backend by default.
 
-Writes require a token. Reads are public by default and can be made private. Configuration comes from TOML, environment variables, or CLI flags.
+Writes require a token. Reads are public by default and can be made private at the server. S3 deployments require a public CDN base URL for object reads. Configuration comes from TOML, environment variables, or CLI flags.
 
 ## Quick start
 
@@ -78,6 +78,7 @@ backend = "s3"
 bind = "0.0.0.0:8080"
 bucket = "build-cache"
 endpoint = "https://s3.example.com"
+cdn_url = "https://cdn.example.com"
 region = "us-east-1"
 prefix = "fluentci-cache/v1"
 public_read = true
@@ -97,6 +98,7 @@ Keep the token in the environment, a service secret, or a permission-restricted 
 | `bind` | `FLUENTCI_CACHE_BIND` | `--bind` | `127.0.0.1:8080` |
 | `bucket` | `FLUENTCI_CACHE_BUCKET` | `--bucket` | required for S3 |
 | `endpoint` | `FLUENTCI_CACHE_ENDPOINT` | `--endpoint` | AWS endpoint |
+| `cdn_url` | `FLUENTCI_CACHE_CDN_URL` | `--cdn-url` | required for S3; public bucket-root URL |
 | `region` | `FLUENTCI_CACHE_REGION` | `--region` | `us-east-1` |
 | `allow_http` | `FLUENTCI_CACHE_ALLOW_HTTP` | `--allow-http [true/false]` | `false` |
 | `prefix` | `FLUENTCI_CACHE_PREFIX` | `--prefix` | `fluentci-cache/v1` |
@@ -113,7 +115,7 @@ Boolean environment values are `true` or `false`. Use explicit `--read-only fals
 
 ### S3 and compatible services
 
-The bucket must already exist. The server uses path-style S3 requests, connection pooling, retries, and the `object_store` AWS credential provider. For static credentials:
+The bucket must already exist. Configure a public CDN URL that serves the bucket contents. Writes use path-style S3 requests and the `object_store` AWS credential provider; object GET/HEAD requests stream through the CDN with connection pooling and retries. For static credentials:
 
 ```sh
 export AWS_ACCESS_KEY_ID='...'
@@ -121,15 +123,32 @@ export AWS_SECRET_ACCESS_KEY='...'
 # export AWS_SESSION_TOKEN='...'  # temporary credentials
 export FLUENTCI_CACHE_TOKEN='...'
 export FLUENTCI_CACHE_BUCKET='build-cache'
+export FLUENTCI_CACHE_CDN_URL='https://cdn.example.com'
 export FLUENTCI_CACHE_REGION='us-east-1'
 # Set for MinIO, R2, or another compatible service:
 export FLUENTCI_CACHE_ENDPOINT='https://s3.example.com'
 ./cache/target/release/fluentci-cache serve
 ```
 
-Use the `FLUENTCI_CACHE_*` variables above for bucket, endpoint, and region. AWS credential variables control storage access; `FLUENTCI_CACHE_TOKEN` controls HTTP clients. They are independent. Ambient AWS web-identity and workload credential support is provided by the underlying [AWS builder](https://docs.rs/object_store/0.12.5/object_store/aws/struct.AmazonS3Builder.html).
+Use the `FLUENTCI_CACHE_*` variables above for bucket, endpoint, CDN URL, and region. AWS credential variables control storage access; `FLUENTCI_CACHE_TOKEN` controls HTTP clients. They are independent. Ambient AWS web-identity and workload credential support is provided by the underlying [AWS builder](https://docs.rs/object_store/0.12.5/object_store/aws/struct.AmazonS3Builder.html).
 
-For a local HTTP MinIO deployment, set `FLUENTCI_CACHE_ENDPOINT=http://127.0.0.1:9000` and `FLUENTCI_CACHE_ALLOW_HTTP=true`. `allow_http` applies to the storage endpoint; inbound TLS is handled by your reverse proxy.
+`cdn_url` is required whenever `backend = "s3"`, including read-only S3 deployments. Configure it through TOML, `FLUENTCI_CACHE_CDN_URL`, or `--cdn-url`. It must be an absolute HTTP(S) URL without credentials, query parameters, or a fragment. Use HTTPS in production. File and memory backends do not require or use it.
+
+The CDN base URL maps to the **bucket root**, before the configured storage prefix. For example:
+
+```text
+cdn_url:     https://cdn.example.com/assets
+prefix:      fluentci-cache/v1
+client GET:  /bazel/cas/<digest>
+CDN GET:     https://cdn.example.com/assets/fluentci-cache/v1/bazel/cas/<digest>
+S3 key:      fluentci-cache/v1/bazel/cas/<digest>
+```
+
+Leading bucket/origin paths belong in `cdn_url`; do not repeat `prefix` there. A trailing slash is optional. CDN requests are anonymous: neither the client's cache token nor AWS credentials are forwarded. The server proxies the bytes rather than redirecting build clients, so existing protocol URLs remain unchanged. Nix discovery is still generated locally. There is no S3 fallback if the CDN returns a miss or fails.
+
+The CDN must return 404 for missing objects and support GET, HEAD, `Content-Length`, and single byte ranges; preserve ETags when possible and serve the exact uploaded bytes without transformations. Configure its origin access separately so it can read the bucket. Disable negative caching and configure revalidation or invalidation for mutable action entries, Gradle keys, and narinfo: successful S3 writes do not invalidate CDN entries. `public_read = false` authenticates requests to this server, but the required public CDN still exposes the artifacts directly.
+
+For a local HTTP MinIO deployment, set `FLUENTCI_CACHE_ENDPOINT=http://127.0.0.1:9000` and `FLUENTCI_CACHE_ALLOW_HTTP=true`. `allow_http` applies to the S3 write endpoint; the CDN URL explicitly chooses HTTP or HTTPS. Set a public bucket-root CDN URL for MinIO as well. Inbound TLS is handled by your reverse proxy.
 
 Grant the storage identity access only to this bucket/prefix: object reads, writes, and multipart upload/abort operations. A read-only deployment needs only read access. On AWS S3, a HEAD for an absent readiness probe object requires `s3:ListBucket` to return 404 rather than 403; grant that permission for readiness, or provision an object at `<prefix>/.readiness`. Do not share this prefix with clients writing directly to S3 using their own native cache layouts: the server owns its namespace layout.
 
@@ -340,18 +359,17 @@ The server does not automatically compress, deserialize, or execute uploaded dat
 ## Architecture and performance
 
 ```text
-Build tools ── HTTP ── Axum routes ── namespace + auth + limits ── ObjectStore
-Go ── GOCACHEPROG helper ──┘                                      ├─ S3 (default)
-                                                               ├─ filesystem
-                                                               └─ memory
+Build tools ── HTTP ── Axum routes ── namespace + auth + limits
+Go ── GOCACHEPROG helper ──┘              ├─ writes ── ObjectStore (S3 / file / memory)
+                                        └─ reads ─── Public CDN (S3) / same store (file / memory)
 ```
 
-- Downloads stream directly from storage with backpressure. Ordinary GETs take one backend operation; ranged GETs also perform a HEAD for range validation.
+- Downloads stream from the public CDN for S3, or directly from the configured store for file/memory backends, with backpressure. Ordinary GETs take one backend operation; ranged GETs also perform a HEAD for range validation.
 - Small PUTs use a single object write. At 8 MiB, uploads switch to multipart storage, with two parts in flight and one accumulating buffer. Memory use scales with active transfers, not total artifact size, except for the intentionally in-memory backend.
 - Multipart objects become visible only after the entire request and CAS validation succeed. Disconnects, errors, and upload deadline cancellation trigger best-effort abort of unfinished multipart uploads. Configure S3 lifecycle cleanup for orphaned uploads after crashes.
 - Active object transfers are capped by `concurrency`; download permits remain held until the body is consumed or dropped. Saturation returns `503` immediately rather than building an unbounded request queue.
 - Uploads have an overall deadline. Backend response acquisition has the same deadline; download streams have a per-chunk idle timeout.
-- Metadata and action entries may change. Successful reads use `private, max-age=0, must-revalidate`; misses use `no-store`. There is no process-local object cache that could serve stale values after a different replica writes.
+- Metadata and action entries may change. Successful reads use `private, max-age=0, must-revalidate`; misses use `no-store`. There is no process-local object cache. CDN caching and invalidation must be configured separately for mutable keys.
 - S3 replicas can share a bucket/prefix. Separate deployments with distinct prefixes. One token grants writes to every protocol namespace; per-project tokens, quotas, and tenant isolation are not implemented.
 
 These are implementation properties, not benchmark throughput claims. Measure your actual artifact distribution, backend latency, concurrency, and network before tuning. Each active multipart upload can retain roughly 24 MiB of payload buffers, plus HTTP/storage overhead. Lower the default concurrency on small machines.
@@ -359,7 +377,7 @@ These are implementation properties, not benchmark throughput claims. Measure yo
 ## Operations
 
 - `GET /healthz`: public liveness probe; does not access storage.
-- `GET /readyz`: authenticated when a token is configured; probes storage with a HEAD and accepts a missing probe object as healthy. This checks read connectivity, not write permissions.
+- `GET /readyz`: authenticated when a token is configured; probes the write store and, for S3, the CDN with HEAD requests and accepts missing probe objects as healthy. This checks read connectivity, not write permissions.
 - `GET /metrics`: authenticated when a token is configured; Prometheus text counters for object requests, hits, misses, successful writes, bytes written, and rejections. Probe requests are excluded; hits count accepted reads, including HEAD, before body completion.
 - `RUST_LOG=info` sets logging verbosity. Logs go to stderr. The application does not log authorization headers or configuration tokens.
 - SIGINT/SIGTERM stop accepting requests and drain in-flight connections.
@@ -391,7 +409,7 @@ cargo test --release --locked
 cargo clippy --release --locked --all-targets -- -D warnings
 ```
 
-The suite covers protocol routes, misses, namespace isolation, Nix discovery, token and Basic authentication, private reads, read-only mode, malformed keys, size limits, CAS validation, ranged/conditional reads, multipart atomicity, interrupted uploads, deadlines, transfer concurrency, file persistence, configuration precedence, and Go's JSON/body/file-lifetime protocol. Go helper tests bind localhost sockets.
+The suite covers protocol routes, misses, namespace isolation, Nix discovery, token and Basic authentication, private reads, read-only mode, malformed keys, size limits, CAS validation, ranged/conditional reads, multipart atomicity, interrupted uploads, deadlines, transfer concurrency, file persistence, configuration precedence, and Go's JSON/body/file-lifetime protocol. Go helper and CDN integration tests bind localhost sockets. CDN tests verify GET/HEAD, range and conditional reads, prefix mapping, token isolation, write separation, misses, and readiness.
 
 Optional test with an installed Go 1.24+ compiler:
 
@@ -409,6 +427,7 @@ export AWS_ACCESS_KEY_ID='...'
 export AWS_SECRET_ACCESS_KEY='...'
 export FLUENTCI_CACHE_TEST_BUCKET='cache-test'
 export FLUENTCI_CACHE_TEST_ENDPOINT='http://127.0.0.1:9000'
+export FLUENTCI_CACHE_TEST_CDN_URL='https://cdn.example.com'  # public bucket root
 cargo test --release --locked --test http s3_backend_round_trip -- --ignored --nocapture
 ```
 
@@ -424,6 +443,12 @@ export AWS_ACCESS_KEY_ID=local-test
 export AWS_SECRET_ACCESS_KEY=local-test
 export FLUENTCI_CACHE_TEST_BUCKET=cache-test
 export FLUENTCI_CACHE_TEST_ENDPOINT=http://127.0.0.1:5000
+# Moto is an emulator: the bucket endpoint can stand in for the public CDN.
+export FLUENTCI_CACHE_TEST_CDN_URL=http://127.0.0.1:5000/cache-test
+# Allow anonymous GETs for the CDN-facing URL.
+curl --fail-with-body -X PUT 'http://127.0.0.1:5000/cache-test?policy' \
+  -H 'Content-Type: application/json' \
+  --data '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Principal":"*","Action":"s3:GetObject","Resource":"arn:aws:s3:::cache-test/*"}]}'
 cargo test --release --locked --test http s3_backend_round_trip -- --ignored --nocapture
 docker stop fluentci-cache-moto
 ```
@@ -434,7 +459,7 @@ The test uses a unique prefix, uploads small and multipart objects, checks HEAD 
 
 ### Add a storage backend
 
-Embed `router(config, Arc<dyn ObjectStore>)` from `fluentci_cache` and pass any implementation of `object_store::ObjectStore`. The HTTP layer is independent of S3. Apply any required storage prefix when constructing the store; `Config::storage()` applies the configured prefix for built-in backends, while `router()` accepts the supplied store unchanged. Backends must support atomic publication, multipart uploads, HEAD, GET with ranges, and PUT.
+Embed `router(config, Arc<dyn ObjectStore>)` from `fluentci_cache` and pass any implementation of `object_store::ObjectStore`. The HTTP layer is independent of S3. Apply any required storage prefix when constructing the store; `Config::storage()` applies the configured prefix for built-in backends, while `router()` uses the supplied store unchanged for writes. For S3 configurations it constructs a separate anonymous HTTP reader from `cdn_url` and applies `prefix`; for other backends the supplied store also handles reads. Backends must support atomic publication, multipart uploads, HEAD, GET with ranges, and PUT.
 
 Built-in backend selection is in [src/config.rs](src/config.rs); HTTP modules are in [src/server/](src/server/), and the Go helper is in [src/gocache/](src/gocache/).
 
@@ -467,11 +492,11 @@ src/
 | Server refuses to start without a token | Set `FLUENTCI_CACHE_TOKEN`, or explicitly choose a read-only server. |
 | `401` on writes | Match the server token; use Bearer auth or Basic password. Verify proxy header forwarding. |
 | `403` on PUT | The server is configured read-only, or the target is managed `nix-cache-info`. |
-| `404` despite an upload | Check namespace, object key case, bucket, and prefix. |
+| `404` despite an upload | Check namespace, object key case, bucket, prefix, CDN origin mapping, and negative caching. |
 | `400` on Bazel CAS | The key must equal the SHA-256 of the actual uploaded bytes. |
 | `413` | Raise `max_upload` and the reverse proxy's upload limit if appropriate. |
 | `503` | Active transfers reached the configured limit; reduce client parallelism or tune the server. |
-| `502` | Inspect backend error logs, credentials, endpoint, region, bucket permissions, and storage health. |
+| `502` | Inspect backend error logs, CDN access and headers, credentials, endpoint, region, bucket permissions, and storage health. |
 | sccache sends `PROPFIND` / `MKCOL` | Set `SCCACHE_WEBDAV_DISABLE_CREATE_DIR=true` and restart its daemon. |
 | Go fails to start its helper | Use an absolute binary path, verify Go version and temporary-disk access. |
 | Nix cannot trust a cached path | Publish signed narinfo, configure the matching trusted public key, and verify all referenced NARs were uploaded first. |

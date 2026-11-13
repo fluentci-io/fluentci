@@ -71,7 +71,7 @@ pub(super) async fn download(
     };
     // Range validation uses HEAD only for ranged reads, keeping ordinary GETs to one backend operation.
     if let Some(range) = &range {
-        let meta = app.store.head(&key.path).await.map_err(backend_error)?;
+        let meta = app.reader.head(&key.path).await.map_err(backend_error)?;
         if range.as_range(meta.size).is_err() {
             let mut response = StatusCode::RANGE_NOT_SATISFIABLE.into_response();
             response.headers_mut().insert(
@@ -82,7 +82,7 @@ pub(super) async fn download(
         }
     }
     let result = app
-        .store
+        .reader
         .get_opts(
             &key.path,
             GetOptions {
