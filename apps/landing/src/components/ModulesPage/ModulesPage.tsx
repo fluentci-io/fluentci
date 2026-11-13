@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { useNavigate, useSearch } from "@tanstack/react-router";
 import { SiteHeader } from "../SiteHeader";
 import { ScrollToTop } from "../ScrollToTop";
@@ -13,9 +13,28 @@ export function ModulesPage() {
   const filters = useSearch({ from: "/modules" });
   const navigate = useNavigate({ from: "/modules" });
   const catalog = useModulesCatalog(filters);
+  const searchInput = useRef<HTMLInputElement>(null);
   const update = (value: CatalogSearch) => {
     void navigate({ search: value, replace: true, resetScroll: false });
   };
+  useEffect(() => {
+    const focusSearch = (event: KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.isComposing ||
+        event.key.toLowerCase() !== "k" ||
+        !(event.metaKey || event.ctrlKey) ||
+        event.altKey ||
+        event.shiftKey ||
+        document.querySelector("dialog[open]")
+      )
+        return;
+      event.preventDefault();
+      searchInput.current?.focus();
+    };
+    window.addEventListener("keydown", focusSearch);
+    return () => window.removeEventListener("keydown", focusSearch);
+  }, []);
   useEffect(() => {
     document.title = "Modules · FluentCI";
     return () => {
@@ -46,7 +65,9 @@ export function ModulesPage() {
                 <SearchIcon />
                 <span className="sr-only">Search modules</span>
                 <input
+                  ref={searchInput}
                   type="search"
+                  aria-keyshortcuts="Meta+k Control+k"
                   maxLength={200}
                   placeholder="Search modules…"
                   value={filters.q}
@@ -55,6 +76,12 @@ export function ModulesPage() {
                   }
                   className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none"
                 />
+                <kbd
+                  className="shrink-0 rounded border border-line px-1.5 py-0.5 font-mono text-[10px]"
+                  aria-hidden="true"
+                >
+                  Cmd+K
+                </kbd>
               </label>
               <label>
                 <span className="sr-only">Sort modules</span>

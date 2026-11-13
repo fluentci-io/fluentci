@@ -138,6 +138,11 @@ test("category and platform filters combine on the server and reset pagination",
   await expect.poll(() => requests.at(-1)?.get("author")).toBe("fluentci.io");
   expect(requests.at(-1)?.has("cursor")).toBe(false);
   await expect(page.getByText("Page 1", { exact: true })).toBeVisible();
+  await page.keyboard.press("Meta+k");
+  await expect(
+    page.getByRole("searchbox", { name: "Search modules", exact: true }),
+  ).toBeFocused();
+  await expect(page.getByRole("dialog")).toHaveCount(0);
   await page
     .getByRole("searchbox", { name: "Search modules", exact: true })
     .fill("cache");
@@ -329,11 +334,9 @@ test("grid compacts download and like counts while preserving exact totals", asy
     "10M+",
     "1B+",
   ].entries()) {
-    const card = page
-      .locator(".catalog-card")
-      .filter({
-        has: page.getByRole("heading", { name: `compact-${i}`, exact: true }),
-      });
+    const card = page.locator(".catalog-card").filter({
+      has: page.getByRole("heading", { name: `compact-${i}`, exact: true }),
+    });
     for (const kind of ["downloads", "likes"]) {
       const label = `${values[i].toLocaleString("en")} ${kind}`;
       const count = card.getByLabel(label, { exact: true });
