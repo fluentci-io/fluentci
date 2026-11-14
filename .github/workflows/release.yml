@@ -346,8 +346,9 @@ jobs:
             install -m 755 "$bootstrap/fluentci" "$HOME/.local/bin/fluentci"
           run: |
             set -eu
-            export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
-            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup
+            # OpenBSD exposes unversioned OTP executables in this branch prefix.
+            export PATH="$HOME/.local/bin:/usr/local/lib/erlang27/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup --version 27 --package-name erlang%27
             fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup
             escript .github/scripts/fluentci_ci prepare-bsd-release
             fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION"
