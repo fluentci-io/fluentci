@@ -202,7 +202,17 @@ impl Definition {
                     anyhow::ensure!(!address.is_empty(), "Empty TCP probe address")
                 }
                 Probe::Http { url, status } => {
-                    let url = reqwest::Url::parse(url)?;
+                    // Port placeholders expand to host:port after Docker binds.
+                    // Validate their URL shape using an address stand-in first.
+                    let mut validation_url = url.clone();
+                    if self.backend == Backend::Docker {
+                        for port in &self.ports {
+                            let container_port = port.rsplit(':').next().unwrap_or(port);
+                            validation_url = validation_url
+                                .replace(&format!("${{port:{container_port}}}"), "127.0.0.1:1");
+                        }
+                    }
+                    let url = reqwest::Url::parse(&validation_url)?;
                     anyhow::ensure!(
                         matches!(url.scheme(), "http" | "https") && (100..=599).contains(status),
                         "Invalid HTTP probe"
@@ -392,6 +402,36 @@ mod tests {
         let args = definition.argv("owned-container", None);
         assert!(!args.iter().any(|arg| arg.contains("very-secret")));
         assert!(args.contains(&"POSTGRES_PASSWORD".into()));
+        Ok(())
+    }
+
+    #[test]
+    fn http_probes_validate_declared_dynamic_port_templates() -> Result<()> {
+        for port in ["8080", "9000:8080"] {
+            let definition: Definition = serde_json::from_value(json!({
+                "name": "web", "backend": "docker", "image": "httpbin:latest",
+                "ports": [port],
+                "readiness": {"type": "http", "url": "http://${port:8080}/health", "status": 200},
+                "health": {"type": "http", "url": "http://${port:8080}/health", "status": 200}
+            }))?;
+            definition.validate()?;
+        }
+        for url in [
+            "http://${port:9090}/health",
+            "http://127.0.0.1:${port:8080}/health",
+            "http://${port:8080}:invalid/health",
+            "ftp://${port:8080}/health",
+        ] {
+            let definition: Definition = serde_json::from_value(json!({
+                "name": "web", "backend": "docker", "image": "httpbin:latest",
+                "ports": ["8080"],
+                "readiness": {"type": "http", "url": url, "status": 200}
+            }))?;
+            assert!(
+                definition.validate().is_err(),
+                "accepted invalid URL: {url}"
+            );
+        }
         Ok(())
     }
 
