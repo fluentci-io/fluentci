@@ -39,7 +39,6 @@
         "@atcute/client": "^5.1.2",
         "@atcute/identity-resolver": "^2.0.3",
         "@atcute/oauth-browser-client": "5.1.0",
-        "@fontsource-variable/inconsolata": "^5.2.0",
         "@fontsource-variable/lexend": "^5.2.0",
         "@tanstack/react-query": "^5.90.0",
         "@tanstack/react-router": "^1.170.46",
@@ -479,8 +478,6 @@
     "@fontsource-variable/geist": ["@fontsource-variable/geist@5.3.0", "", {}, "sha512-j0m+vLQuG5XAYoHtGCVu0spvlGreR3EzpECUVzkFmI1mTVnAO38l/NEPDCFgZ177JxzYJCLSmTQibIiYPilGrA=="],
 
     "@fontsource-variable/geist-mono": ["@fontsource-variable/geist-mono@5.3.0", "", {}, "sha512-vBbuwDEo9AkrqADMXOrlAR3DFcJi4/JxeuU43FoiQERnNwsfXNnvxvReZG02cQKmyk4DZkZdBZX3oTDvy2zBAw=="],
-
-    "@fontsource-variable/inconsolata": ["@fontsource-variable/inconsolata@5.3.0", "", {}, "sha512-3sJ98aPp9rBWhlt+niNQaqaRd5vKo5M5unVWRm4L8g3E73pi5P8DIS4ZuPAtYi0bugDllZRSxrtfPxM17+P6gg=="],
 
     "@fontsource-variable/lexend": ["@fontsource-variable/lexend@5.3.0", "", {}, "sha512-3SXtiZ8rFbT0oaPzEboCG5RM3jtyhpNxandh1jWNLqvrJRfV/eP3R+GGw+o5e3hS1uqmAGutKxSvaWG5oyrimA=="],
 

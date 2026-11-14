@@ -10,11 +10,20 @@
 }
 
 @font-face {
-  font-family: "Inconsolata";
-  src: url("@fontsource-variable/inconsolata/files/inconsolata-latin-wght-normal.woff2")
+  font-family: "CaskaydiaMono";
+  src: url("./assets/fonts/caskaydia-mono/CaskaydiaMonoNerdFontMono-Regular.woff2")
     format("woff2");
   font-style: normal;
-  font-weight: 200 900;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "CaskaydiaMono";
+  src: url("./assets/fonts/caskaydia-mono/CaskaydiaMonoNerdFontMono-Bold.woff2")
+    format("woff2");
+  font-style: normal;
+  font-weight: 700;
   font-display: swap;
 }
 
@@ -30,13 +39,15 @@ textarea {
   font-family: inherit;
 }
 code,
-pre {
-  font-family: "Inconsolata", monospace;
+pre,
+kbd,
+samp {
+  font-family: "CaskaydiaMono", monospace;
 }
 
 @theme {
   --font-sans: "Lexend", sans-serif;
-  --font-mono: "Inconsolata", monospace;
+  --font-mono: "CaskaydiaMono", monospace;
   --color-paper: #09090d;
   --color-panel: #101017;
   --color-raised: #191922;

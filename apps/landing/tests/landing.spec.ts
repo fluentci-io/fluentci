@@ -179,7 +179,7 @@ test("copies the installer, renders the preview, and links to the project and co
   );
   await expect(page.locator(".code").first()).toHaveCSS(
     "font-family",
-    /Inconsolata/,
+    /CaskaydiaMono/,
   );
   const session = await page.context().newCDPSession(page);
   await session.send("DOM.enable");
@@ -197,6 +197,24 @@ test("copies the installer, renders the preview, and links to the project and co
       (font) =>
         font.isCustomFont &&
         /Lexend/i.test(font.familyName) &&
+        font.glyphCount > 0,
+    ),
+  ).toBe(true);
+  const { nodeId: codeNodeId } = await session.send("DOM.querySelector", {
+    nodeId: root.nodeId,
+    selector: ".code code",
+  });
+  const { fonts: codeFonts } = await session.send(
+    "CSS.getPlatformFontsForNode",
+    {
+      nodeId: codeNodeId,
+    },
+  );
+  expect(
+    codeFonts.some(
+      (font) =>
+        font.isCustomFont &&
+        /CaskaydiaMono/i.test(font.familyName) &&
         font.glyphCount > 0,
     ),
   ).toBe(true);
