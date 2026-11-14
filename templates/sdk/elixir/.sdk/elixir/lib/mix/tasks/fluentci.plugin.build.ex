@@ -108,9 +108,18 @@ defmodule Mix.Tasks.Fluentci.Plugin.Build do
     directory = Path.expand(Path.join([".fluentci", "components", Atom.to_string(module)]))
     File.mkdir_p!(Path.join(directory, "src"))
 
+    dependency_sources = Path.wildcard("fluentci_modules/*_pipeline.rs")
+    imports = Enum.map_join(dependency_sources, "\n", fn source ->
+      name = Path.basename(source, "_pipeline.rs")
+      destination = Path.join(directory, "src/#{name}_pipeline.rs")
+      File.cp!(source, destination)
+      "#[path = \"#{name}_pipeline.rs\"] mod pipeline_#{name};"
+    end)
+    File.mkdir_p!(Path.join(directory, ".fluentci/dependencies"))
+    if File.exists?(".fluentci/dependencies/interfaces.json"), do: File.cp!(".fluentci/dependencies/interfaces.json", Path.join(directory, ".fluentci/dependencies/interfaces.json"))
     File.write!(
       Path.join(directory, "src/jobs.rs"),
-      FluentCI.Plugin.Component.source(module.__fluentci_exports__(), docs)
+      imports <> "\n" <> FluentCI.Plugin.Component.source(module.__fluentci_exports__(), docs)
     )
 
     File.write!(

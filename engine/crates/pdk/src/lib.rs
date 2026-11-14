@@ -22,6 +22,7 @@ pub mod hermit;
 pub mod mise;
 pub mod nix;
 pub mod pipeline;
+pub mod flow;
 pub mod pixi;
 pub mod pkgx;
 pub mod proto;

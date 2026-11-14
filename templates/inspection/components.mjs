@@ -302,6 +302,7 @@ export async function buildComponent({ root, artifact, functions, sdk }) {
       {
         name: "fluentci-dependencies",
         setup(build) {
+          build.onResolve({filter: /^fluentci:pipeline$/}, () => ({path: fileURLToPath(new URL('./composition-runtime.mjs', import.meta.url))}));
           build.onResolve(
             { filter: /^fluentci:dependency\// },
             async ({ path }) => {

@@ -88,6 +88,12 @@ pub fn ignore_install_directory(root: &std::path::Path) -> anyhow::Result<()> {
     };
     for pattern in [
         "/fluentci_modules/",
+        "/src/FluentCI/Modules/",
+        "/src/fluentci_modules/",
+        "/src/FluentciModules*.res",
+        "/src/FluentciModules*.mjs",
+        "/src/FluentciModules*.res.mjs",
+        "/lib/fluentci_modules/",
         "/.fluentci/dependencies/",
         "/.fluentci/dependencies.add.guard",
         "/fluentci.lock.guard",

@@ -1,0 +1,16 @@
+//// Typed, deferred component/native pipelines. Only run performs effects.
+pub type Pipeline(output)
+@external(javascript, "../flow_ffi.mjs", "pipeline")
+pub fn pipeline(name: String) -> Pipeline(Nil)
+@external(javascript, "../flow_ffi.mjs", "workdir")
+pub fn workdir(pipeline: Pipeline(a), path: String) -> Pipeline(a)
+@external(javascript, "../flow_ffi.mjs", "env")
+pub fn env(pipeline: Pipeline(a), key: String, value: String) -> Pipeline(a)
+@external(javascript, "../flow_ffi.mjs", "exec")
+pub fn exec(pipeline: Pipeline(a), program: String, arguments: List(String)) -> Pipeline(String)
+@external(javascript, "../flow_ffi.mjs", "map")
+pub fn map(pipeline: Pipeline(a), project: fn(a) -> b) -> Pipeline(b)
+@external(javascript, "../flow_ffi.mjs", "ensuring")
+pub fn ensuring(pipeline: Pipeline(a), cleanup: fn() -> Nil) -> Pipeline(a)
+@external(javascript, "../flow_ffi.mjs", "run")
+pub fn run(pipeline: Pipeline(a)) -> a

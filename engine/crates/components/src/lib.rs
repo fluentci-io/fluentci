@@ -404,3 +404,5 @@ mod sdk_parity_tests {
         Ok(())
     }
 }
+
+pub mod pipeline_bindings;

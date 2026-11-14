@@ -3,7 +3,7 @@ use crate::{
     config::ModuleRuntime,
     modules::{LocalModule, ModuleSource},
 };
-use anyhow::{Context, Result, ensure};
+use anyhow::{ensure, Context, Result};
 use fluentci_engine::components::{
     composition::{self, DependencyInterface},
     module_dependencies,
@@ -87,6 +87,7 @@ async fn prepare_inner(
         .into_iter()
         .collect::<BTreeMap<_, _>>();
     let mut typescript = String::new();
+    let mut pipeline_sources = BTreeMap::new();
     for (alias, dependency) in &manifest.dependencies {
         let definition = dependency.definition(alias)?;
         let local = LocalModule::resolve(&source.join(super::FILE), &definition)?;
@@ -116,6 +117,11 @@ async fn prepare_inner(
         if manifest.module.runtime == ModuleRuntime::Component {
             let bytes = std::fs::read(&artifact)?;
             let interface = composition::interface(alias, &bytes)?;
+            pipeline_sources.extend(fluentci_engine::components::pipeline_bindings::sources(
+                alias,
+                &bytes,
+                manifest.module.sdk.name(),
+            )?);
             if manifest.module.sdk == crate::config::Sdk::Typescript {
                 typescript.push_str(&composition::typescript(alias, &bytes)?);
             }
@@ -139,6 +145,10 @@ async fn prepare_inner(
     let installed = source.join("fluentci_modules");
     std::fs::create_dir_all(&installed)?;
     crate::modules::write_if_changed(&installed.join("imports.d.ts"), typescript.as_bytes())?;
+    if manifest.module.runtime == ModuleRuntime::Component {
+        pipeline_sources.extend(crate::scaffold::pipeline_support(manifest.module.sdk)?);
+        install_pipeline_sources(source, pipeline_sources)?;
+    }
     Ok(prepared)
 }
 
@@ -192,4 +202,83 @@ pub(crate) fn install_artifact(
     )?;
     super::ignore_install_directory(source)?;
     Ok(artifact)
+}
+
+fn install_pipeline_sources(source: &Path, files: BTreeMap<String, String>) -> Result<()> {
+    let inventory = source.join(".fluentci/dependencies/pipeline-files.json");
+    let previous: BTreeMap<String, String> = if inventory.exists() {
+        serde_json::from_slice(&std::fs::read(&inventory)?)?
+    } else {
+        BTreeMap::new()
+    };
+    let runtime = source.join(".sdk/inspection/composition-runtime.mjs");
+    let runtime = serde_json::to_string(&runtime.to_string_lossy())?;
+    let raw_files = files.clone();
+    let files = files
+        .into_iter()
+        .map(|(path, content)| {
+            (
+                path,
+                content
+                    .replace("'fluentci:pipeline'", &runtime)
+                    .replace("\"fluentci:pipeline\"", &runtime),
+            )
+        })
+        .collect::<BTreeMap<_, _>>();
+    for path in previous.keys().chain(files.keys()) {
+        ensure!(
+            !Path::new(path).is_absolute()
+                && !Path::new(path)
+                    .components()
+                    .any(|part| matches!(part, std::path::Component::ParentDir)),
+            "Unsafe generated pipeline path"
+        );
+        let destination = source.join(path);
+        if destination.exists() {
+            let bytes = std::fs::read(&destination)?;
+            let unchanged = previous
+                .get(path)
+                .is_some_and(|digest| *digest == sha256::digest(&bytes));
+            let identical = files
+                .get(path)
+                .is_some_and(|content| content.as_bytes() == bytes)
+                || raw_files
+                    .get(path)
+                    .is_some_and(|content| content.as_bytes() == bytes);
+            let known_previous_sdk = [
+                (
+                    ".sdk/elixir/lib/fluentci/plugin/codegen.ex",
+                    "34b7b44002d8afa266282cbc81450818860145dfafa30fd4a37e2c0b9f03e037",
+                ),
+                (
+                    ".sdk/elixir/lib/mix/tasks/fluentci.plugin.build.ex",
+                    "627ffe7e112e2ac84a1bb4162f629e172cc7157a4353f8fb734b5d68207cbbe2",
+                ),
+            ]
+            .iter()
+            .any(|(name, digest)| path == name && sha256::digest(&bytes) == *digest);
+            ensure!(
+                unchanged || identical || known_previous_sdk,
+                "Refusing to replace edited or unowned pipeline binding: {}",
+                destination.display()
+            );
+        }
+    }
+    let mut next = BTreeMap::new();
+    for (path, content) in &files {
+        let destination = source.join(path);
+        if let Some(parent) = destination.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        crate::modules::write_if_changed(&destination, content.as_bytes())?;
+        next.insert(path.clone(), sha256::digest(content.as_bytes()));
+    }
+    for path in previous.keys().filter(|path| !next.contains_key(*path)) {
+        let file = source.join(path);
+        if file.exists() {
+            std::fs::remove_file(file)?;
+        }
+    }
+    crate::modules::write_if_changed(&inventory, &serde_json::to_vec_pretty(&next)?)?;
+    Ok(())
 }

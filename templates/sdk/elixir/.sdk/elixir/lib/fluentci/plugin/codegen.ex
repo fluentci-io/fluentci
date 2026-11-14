@@ -105,6 +105,8 @@ defmodule FluentCI.Plugin.Codegen do
   @doc false
   def component_body(value), do: expression(value)
 
+  defp expression(%FluentCI.Flow{} = pipeline), do: FluentCI.Flow.Codegen.expression(pipeline)
+
   defp expression(%Pipeline{} = pipeline) do
     initial = "let pipeline = dag().pipeline(&#{value(pipeline.name)})?;"
     steps = Enum.map_join(pipeline.steps, "\n", &step/1)
