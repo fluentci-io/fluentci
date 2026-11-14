@@ -50,6 +50,11 @@ export const categories = [
     topics: ["cloud", "aws", "azure", "gcp", "cloudflare", "digitalocean"],
   },
   {
+    value: "services",
+    label: "Services",
+    topics: ["service", "services"],
+  },
+  {
     value: "toolchains",
     label: "Toolchains",
     topics: ["setup", "toolchain", "runtime"],
