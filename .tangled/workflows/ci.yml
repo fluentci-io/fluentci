@@ -39,9 +39,7 @@ steps:
     command: |
       set -euo pipefail
       source .tangled/scripts/common.sh
-      python3 .github/scripts/test-setup-env.py
-      python3 .github/scripts/test-registry-artifact.py
-      python3 .tangled/tests/test-setup-env.py
+      escript .github/scripts/fluentci_ci test
       python3 .tangled/tests/test-workflows.py
   - name: Compile CI components and inspect interfaces
     command: |

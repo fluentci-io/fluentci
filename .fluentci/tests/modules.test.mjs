@@ -73,6 +73,7 @@ import { basename } from "node:path";
 const command = basename(process.argv[1]);
 appendFileSync(process.env.CI_TEST_LOG, JSON.stringify({command, args: process.argv.slice(2), cwd: process.cwd()}) + "\\n");
 if (process.env.CI_TEST_FAIL === command + ":" + process.argv[2]) process.exit(7);
+if (command === "escript" && process.argv[3] === "build-bsd-release") writeFileSync("bsd-built", "bsd-build");
 if (command === "hdiutil") writeFileSync(process.argv.at(-1), "fixture dmg");
 if (command === "ditto" && process.argv.includes("-c")) writeFileSync(process.argv.at(-1), "fixture zip");
 if (command === "bun" && process.argv[2] === "run") {
@@ -89,6 +90,8 @@ if (command === "bun" && process.argv[2] === "run") {
     "flakehub-push",
     "sudo",
     "python3",
+    "gleam",
+    "escript",
     "codesign",
     "hdiutil",
     "ditto",
@@ -398,12 +401,12 @@ test("release preparation validates inputs before building Studio on the input r
         "--jq",
         ".tagName",
       ],
-      ["python3", ".github/scripts/check-openbsd-msrv.py"],
-      ["python3", ".github/scripts/test-bsd-release-verification.py", "-v"],
-      ["python3", ".github/scripts/test-musl-release-verification.py", "-v"],
+      ["escript", ".github/scripts/fluentci_ci", "check-openbsd-msrv"],
+      ["escript", ".github/scripts/fluentci_ci", "test"],
       [
-        "python3",
-        ".github/scripts/create-bsd-smoke-fixtures.py",
+        "escript",
+        ".github/scripts/fluentci_ci",
+        "create-bsd-smoke-fixtures",
         ".release-smoke",
       ],
       ["bun", "install", "--frozen-lockfile", "--ignore-scripts"],
@@ -428,8 +431,8 @@ test("compiled BSD functions invoke the native helper and copied-back verifier",
   const scripts = join(f.directory, ".github/scripts");
   mkdirSync(scripts, { recursive: true });
   writeFileSync(
-    join(scripts, "build-bsd-release.sh"),
-    "#!/bin/sh\nprintf bsd-build > bsd-built\n",
+    join(scripts, "fluentci_ci"),
+    "compiled BEAM helper fixture\n",
   );
   const module = join(root, ".fluentci/release/dist/plugin.wasm");
   success(
@@ -449,7 +452,8 @@ test("compiled BSD functions invoke the native helper and copied-back verifier",
     }),
   );
   assert.deepEqual(f.commands().at(-1).args, [
-    ".github/scripts/verify-bsd-release.py",
+    ".github/scripts/fluentci_ci",
+    "verify-bsd-release",
     "dist/bsd/x86_64-unknown-openbsd",
     "2026.11.04",
     "x86_64-unknown-openbsd",

@@ -32,27 +32,38 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Test setup environment handoff
-        run: python3 .github/scripts/test-setup-env.py && python3 .github/scripts/test-registry-artifact.py
+        run: escript .github/scripts/fluentci_ci test
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --components rustfmt,clippy --targets wasm32-unknown-unknown,wasm32-wasip2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --components rustfmt,clippy --targets wasm32-unknown-unknown,wasm32-wasip2 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up bun through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up node through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
       - uses: Swatinem/rust-cache@v2
         with:
           key: ci-release-tests-no-lto
       - name: Set up purescript through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Verify the Wasm compiler toolchain by building modules
         run: fluentci --check-update=false modules --json
       - name: Verify compiled CI component interfaces
@@ -69,8 +80,6 @@ jobs:
           cargo fmt --manifest-path rust/Cargo.toml --check
       - name: Test shell installer with mocked release assets
         run: python3 tests/install.py
-      - name: Test musl release ELF verification
-        run: python3 .github/scripts/test-musl-release-verification.py -v
       - name: Test PureScript Linux packaging and publishing
         working-directory: .fluentci/release
         run: node --test test/*.test.mjs
@@ -92,14 +101,25 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up bun through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up node through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Lint, typecheck, and build documentation
@@ -131,10 +151,21 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up bun through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Lint, typecheck, and build the landing page
@@ -166,14 +197,25 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up bun through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up node through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Lint, typecheck, test, and bundle the Worker
@@ -189,22 +231,33 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up bun through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up node through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up gleam through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-gleam@v0.2.0 setup --version 1.19.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-gleam@v0.2.0 setup --version 1.19.2 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up pkl through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-pkl@v0.2.0 setup --version 0.31.1 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-pkl@v0.2.0 setup --version 0.31.1 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Install workspace dependencies
         run: bun install --frozen-lockfile --ignore-scripts
       - name: Check generated lexicons and formatting

@@ -124,6 +124,67 @@
         "aarch64"
       ],
       "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/setup/gemfury/README.md"
+    },
+    "@fluentci.io/setup-gleam@0.2.0": {
+      "registry": "https://api.fluentci.io",
+      "name": "setup-gleam",
+      "version": "0.2.0",
+      "author": "did:plc:cukdxxemtwuxspaiurk2xsfz",
+      "url": "https://modules.fluentci.io/fluentci.io/setup-gleam/v0.2.0/setup-gleam.wasm",
+      "sha256": "02573e5e4d66a1eb763a45b02fb745ebf2f95f233d739dac7a28c362535cd33d",
+      "uri": "at://did:plc:cukdxxemtwuxspaiurk2xsfz/io.fluentci.plugin/setup-gleam-0.2.0",
+      "cid": "bafyreih4prx4hipryltqhrkkqxfyy5ip5uik2v36tcqxonpknpvfwrqvam",
+      "repository": "https://tangled.org/fluentci.io/modules",
+      "topics": [
+        "gleam",
+        "setup",
+        "ci",
+        "toolchain",
+        "beam"
+      ],
+      "os": [
+        "linux",
+        "macos",
+        "freebsd",
+        "netbsd",
+        "openbsd"
+      ],
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ],
+      "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/setup/gleam/README.md"
+    },
+    "@fluentci.io/setup-erlang@0.2.0": {
+      "registry": "https://api.fluentci.io",
+      "name": "setup-erlang",
+      "version": "0.2.0",
+      "author": "did:plc:cukdxxemtwuxspaiurk2xsfz",
+      "url": "https://modules.fluentci.io/fluentci.io/setup-erlang/v0.2.0/setup-erlang.wasm",
+      "sha256": "08f115fb9d834f7aa7e41061eeca6087d370da50e43b396894a230b62a74b10b",
+      "uri": "at://did:plc:cukdxxemtwuxspaiurk2xsfz/io.fluentci.plugin/setup-erlang-0.2.0",
+      "cid": "bafyreife445fgrdk2rk77b7diilombejqexf5ft7w2dozkrmbdhnbmhcie",
+      "repository": "https://tangled.org/fluentci.io/modules",
+      "topics": [
+        "erlang",
+        "otp",
+        "beam",
+        "setup",
+        "ci",
+        "toolchain"
+      ],
+      "os": [
+        "linux",
+        "macos",
+        "freebsd",
+        "netbsd",
+        "openbsd"
+      ],
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ],
+      "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/setup/erlang/README.md"
     }
   },
   "git": {}

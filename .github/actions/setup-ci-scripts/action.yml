@@ -1,0 +1,29 @@
+name: Set up BEAM CI helpers
+description: Install Erlang and Gleam through published FluentCI modules and compile the CI escript.
+runs:
+  using: composite
+  steps:
+    - name: Install Erlang through FluentCI
+      shell: bash
+      run: |
+        fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup --version 27 --install-dir "$RUNNER_TEMP/fluentci-ci-erlang"
+        printf '%s\n' "$RUNNER_TEMP/fluentci-ci-erlang/bin" >> "$GITHUB_PATH"
+    - name: Install Gleam through FluentCI
+      shell: bash
+      env:
+        PATH_PREFIX: ${{ runner.temp }}/fluentci-ci-erlang/bin
+      run: |
+        export PATH="$PATH_PREFIX:$PATH"
+        fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup --version 1.17.0 --install-dir "$RUNNER_TEMP/fluentci-ci-gleam"
+        printf '%s\n' "$RUNNER_TEMP/fluentci-ci-gleam/bin" >> "$GITHUB_PATH"
+    - name: Cache BEAM helper dependencies
+      uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5
+      with:
+        path: .github/scripts/build
+        key: ci-beam-${{ runner.os }}-${{ runner.arch }}-otp27-gleam1.17-${{ hashFiles('.github/scripts/gleam.toml', '.github/scripts/manifest.toml', '.github/scripts/src/**') }}
+    - name: Compile BEAM escript
+      shell: bash
+      working-directory: .github/scripts
+      run: |
+        gleam export escript
+        git diff --exit-code -- gleam.toml manifest.toml

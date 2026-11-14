@@ -46,12 +46,13 @@ jobs:
           git check-ref-format "refs/tags/$PUBLISH_TAG"
           revision=$(git rev-parse --verify "refs/tags/$PUBLISH_TAG^{commit}")
           echo "revision=$revision" >> "$GITHUB_OUTPUT"
-      - name: Preserve setup environment bridge for older release checkouts
+      - name: Preserve BEAM helper source for historical release checkouts
         uses: actions/upload-artifact@v4
         with:
           name: nix-setup-environment-${{ inputs.registry }}
           path: |
-            .github/scripts/export-setup-env.py
+            .github/scripts/
+            .github/actions/setup-ci-scripts/
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
@@ -69,20 +70,31 @@ jobs:
         with:
           ref: ${{ needs.prepare.outputs.revision }}
           fetch-depth: 0
-      - name: Download setup environment bridge
+      - name: Download BEAM helper source
         uses: actions/download-artifact@v4
         with:
           name: nix-setup-environment-${{ inputs.registry }}
-          path: ${{ runner.temp }}/nix-setup
+          path: .github
       - name: Bootstrap FluentCI
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up determinate-nix through FluentCI
         shell: bash
         run: |
-          trusted_users=$(printf '["%s"]' "$(id -un)")
-          fluentci --check-update=false run setup-determinate-nix@v0.2.1 setup --sudo --trusted-users "$trusted_users" | python3 "$RUNNER_TEMP/nix-setup/export-setup-env.py"
+          trusted_users=$(id -un)
+          fluentci --check-update=false run setup-determinate-nix@v0.2.1 setup --sudo --trusted-users "$trusted_users" | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up FlakeHub publisher through FluentCI
         if: inputs.registry == 'flakehub'
         shell: bash
@@ -96,12 +108,12 @@ jobs:
           curl_home=$(mktemp -d "$RUNNER_TEMP/flakehub-setup-curl.XXXXXXXX")
           trap 'rm -rf "$curl_home"' EXIT
           printf 'header = "Authorization: Bearer %s"\n' "$GH_TOKEN" > "$curl_home/.curlrc"
-          CURL_HOME="$curl_home" fluentci --check-update=false run setup-flakehub-push@v0.2.0 setup | python3 "$RUNNER_TEMP/nix-setup/export-setup-env.py"
+          CURL_HOME="$curl_home" fluentci --check-update=false run setup-flakehub-push@v0.2.0 setup | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up Bun for Flakestry through FluentCI
         if: inputs.registry == 'flakestry'
         shell: bash
         run: |
-          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 "$RUNNER_TEMP/nix-setup/export-setup-env.py"
+          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Publish tagged flake through PureScript Wasm
         env:
           REGISTRY: ${{ inputs.registry }}

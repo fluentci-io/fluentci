@@ -186,16 +186,16 @@ component inside Alpine without glibc compatibility libraries.
 ## GitHub Actions environment handoff
 
 Setup components return their installation directory and environment as typed
-values. Workflows pipe that result to `.github/scripts/export-setup-env.py`,
+values. Workflows pipe that result to the BEAM `fluentci_ci export-setup-env` command,
 which persists PATH additions in `GITHUB_PATH` and variables such as `CARGO_HOME`,
 `RUSTUP_HOME`, and `JAVA_HOME` in `GITHUB_ENV`. This is necessary because each
 Actions step runs in a separate process. Tool installers run inside Wasm; the
-Python helper only exports the returned values and validates their shape.
+Gleam helper only exports the returned values and validates their shape.
 
 The setup bridge has standalone tests that do not install tools or invoke the CLI:
 
 ```sh
-python3 .github/scripts/test-setup-env.py
+escript .github/scripts/fluentci_ci test
 ```
 
 ### Bootstrap CLI compatibility
@@ -203,8 +203,8 @@ python3 .github/scripts/test-setup-env.py
 Workflows bootstrap FluentCI v0.17.3 and invoke pinned registry modules directly:
 
 ```sh
-fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
-fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --components rustfmt,clippy | python3 .github/scripts/export-setup-env.py
+fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
+fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --components rustfmt,clippy | escript .github/scripts/fluentci_ci export-setup-env
 ```
 
 The CLI resolves and caches registry components; no SDK compiler or separate
@@ -212,6 +212,17 @@ artifact downloader is needed. The environment bridge makes each setup result
 available to subsequent GitHub Actions steps. Repository CI modules built from
 source continue to run from their local Wasm artifacts.
 
-The legacy `.github/scripts/registry-artifact.py` helper remains available for
+The BEAM `fluentci_ci registry-artifact` command remains available for
 older CLI releases that can execute local components but cannot download them
 from the registry directly.
+
+## BEAM helper bootstrap
+
+GitHub jobs call `.github/actions/setup-ci-scripts` after bootstrapping FluentCI.
+It installs OTP 27 and Gleam 1.17 using the published setup modules before
+compiling a single portable escript. App SDK jobs can select newer toolchains
+afterward. BSD guests receive that compiled escript, install Erlang/Gleam with
+the same setup modules, and invoke helpers with `escript`; they do not need
+Node.js or a compiler matching the host's Gleam source syntax. Minimal native
+package/bootstrap commands remain inline because FluentCI must exist before it
+can install the toolchains. See [.github/scripts](../.github/scripts/README.md).

@@ -36,14 +36,25 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up node through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up purescript through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Compile the desktop module with FluentCI
         run: fluentci --check-update=false modules desktop --json
       - name: Verify desktop packaging and cleanup safeguards
@@ -84,18 +95,29 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --targets "${{ matrix.target }}" | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --targets "${{ matrix.target }}" | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up bun through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up node through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
       - uses: actions/download-artifact@v4
         with:
           name: desktop-release-module

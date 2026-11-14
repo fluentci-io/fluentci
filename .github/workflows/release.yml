@@ -39,33 +39,33 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
-      - name: Restore setup environment bridge for older releases
+      - name: Restore BEAM tooling for historical checkouts
         shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
         run: |
-          # A manual rebuild can check out a tag older than this workflow.
-          for bootstrap_script in export-setup-env.py; do
-            if [ ! -f ".github/scripts/$bootstrap_script" ]; then
-              mkdir -p .github/scripts
-              curl -fsSL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/${{ github.workflow_sha }}/.github/scripts/$bootstrap_script" \
-                -o ".github/scripts/$bootstrap_script"
-            fi
-          done
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up bun through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up node through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up purescript through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Prepare release inputs with FluentCI
         env:
           GH_TOKEN: ${{ github.token }}
@@ -79,6 +79,7 @@ jobs:
           path: |
             webui/dist/
             .release-smoke/*.wasm
+            .github/scripts/fluentci_ci
             .fluentci/release/dist/plugin.wasm
             .fluentci/release/dist/plugin.cjs
           include-hidden-files: true
@@ -122,21 +123,21 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
-      - name: Restore setup environment bridge for older releases
+      - name: Restore BEAM tooling for historical checkouts
         shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
         run: |
-          # A manual rebuild can check out a tag older than this workflow.
-          for bootstrap_script in export-setup-env.py; do
-            if [ ! -f ".github/scripts/$bootstrap_script" ]; then
-              mkdir -p .github/scripts
-              curl -fsSL "https://raw.githubusercontent.com/$GITHUB_REPOSITORY/${{ github.workflow_sha }}/.github/scripts/$bootstrap_script" \
-                -o ".github/scripts/$bootstrap_script"
-            fi
-          done
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up rust through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --targets "${{ matrix.target }}" | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --targets "${{ matrix.target }}" | escript .github/scripts/fluentci_ci export-setup-env
       - uses: actions/download-artifact@v4
         with:
           name: release-inputs
@@ -174,7 +175,7 @@ jobs:
       - name: Set up published Gemfury prerequisites
         if: endsWith(matrix.target, '-linux-gnu')
         run: |
-          fluentci --check-update=false run --frozen-lockfile setup-gemfury setup | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run --frozen-lockfile setup-gemfury setup | escript .github/scripts/fluentci_ci export-setup-env
       - name: Upload Debian and RPM packages with published Gemfury
         if: endsWith(matrix.target, '-linux-gnu')
         env:
@@ -213,6 +214,17 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - uses: actions/download-artifact@v4
         with:
           name: release-inputs
@@ -249,9 +261,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: .ci-cache/bsd-rust
-          key: bsd-release-v1-${{ matrix.os }}-${{ matrix.version }}-${{ env.BSD_RUST_VERSION }}-${{ hashFiles('Cargo.lock', 'Cargo.toml', 'engine/**/Cargo.toml', '.github/scripts/*bsd*') }}-${{ hashFiles('src/**/*.rs', 'engine/**/*.rs', 'webui/dist/**') }}
+          key: bsd-release-v1-${{ matrix.os }}-${{ matrix.version }}-${{ env.BSD_RUST_VERSION }}-${{ hashFiles('Cargo.lock', 'Cargo.toml', 'engine/**/Cargo.toml', '.github/scripts/src/**', '.github/scripts/manifest.toml') }}-${{ hashFiles('src/**/*.rs', 'engine/**/*.rs', 'webui/dist/**') }}
           restore-keys: |
-            bsd-release-v1-${{ matrix.os }}-${{ matrix.version }}-${{ env.BSD_RUST_VERSION }}-${{ hashFiles('Cargo.lock', 'Cargo.toml', 'engine/**/Cargo.toml', '.github/scripts/*bsd*') }}-
+            bsd-release-v1-${{ matrix.os }}-${{ matrix.version }}-${{ env.BSD_RUST_VERSION }}-${{ hashFiles('Cargo.lock', 'Cargo.toml', 'engine/**/Cargo.toml', '.github/scripts/src/**', '.github/scripts/manifest.toml') }}-
             bsd-release-v1-${{ matrix.os }}-${{ matrix.version }}-${{ env.BSD_RUST_VERSION }}-
       - name: Build and smoke-test FreeBSD release
         if: matrix.os == 'freebsd'
@@ -266,11 +278,14 @@ jobs:
           prepare: |
             set -eu
             export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
-            sh .github/scripts/prepare-bsd-release.sh
+            pkg install -y curl
             curl -fsSL https://raw.githubusercontent.com/fluentci-io/fluentci/main/install.sh | sh
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup
+            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup
+            escript .github/scripts/fluentci_ci prepare-bsd-release
             fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Build and smoke-test NetBSD release
         if: matrix.os == 'netbsd'
@@ -285,11 +300,19 @@ jobs:
           prepare: |
             set -eu
             export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
-            sh .github/scripts/prepare-bsd-release.sh
+            if [ ! -x /usr/pkg/bin/pkgin ]; then /usr/sbin/pkg_add pkgin; fi
+            repositories=$(sed -n 's/^PKG_PATH=//p' /etc/pkg_install.conf)
+            test -n "$repositories"
+            printf '%s\n' "$repositories" | tr ';' '\n' > /usr/pkg/etc/pkgin/repositories.conf
+            /usr/pkg/bin/pkgin -y update
+            /usr/pkg/bin/pkgin -y install curl
             curl -fsSL https://raw.githubusercontent.com/fluentci-io/fluentci/main/install.sh | sh
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup
+            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup
+            escript .github/scripts/fluentci_ci prepare-bsd-release
             fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Build and smoke-test OpenBSD release
         if: matrix.os == 'openbsd'
@@ -304,7 +327,7 @@ jobs:
           prepare: |
             set -eu
             export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
-            sh .github/scripts/prepare-bsd-release.sh
+            pkg_add -I curl
             # The runner downloaded and verified the component-capable OpenBSD asset.
             # Verify the synchronized binary again, then install without install.sh.
             bootstrap=.release-bootstrap/openbsd
@@ -315,6 +338,9 @@ jobs:
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup
+            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup
+            escript .github/scripts/fluentci_ci prepare-bsd-release
             fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Verify copied-back BSD assets with FluentCI
         run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-verify --target "$TARGET" --version "$RELEASE_VERSION"

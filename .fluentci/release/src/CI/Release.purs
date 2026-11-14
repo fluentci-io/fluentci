@@ -30,10 +30,9 @@ esac
 """
       ]
     , [ "gh", "release", "view", version, "--json", "tagName", "--jq", ".tagName" ]
-    , [ "python3", ".github/scripts/check-openbsd-msrv.py" ]
-    , [ "python3", ".github/scripts/test-bsd-release-verification.py", "-v" ]
-    , [ "python3", ".github/scripts/test-musl-release-verification.py", "-v" ]
-    , [ "python3", ".github/scripts/create-bsd-smoke-fixtures.py", ".release-smoke" ]
+    , [ "escript", ".github/scripts/fluentci_ci", "check-openbsd-msrv" ]
+    , [ "escript", ".github/scripts/fluentci_ci", "test" ]
+    , [ "escript", ".github/scripts/fluentci_ci", "create-bsd-smoke-fixtures", ".release-smoke" ]
     ]
   Studio.build
 
@@ -67,7 +66,7 @@ check args = do
   target <- requiredArgument "TARGET" args.target
   let binary = "target/" <> target <> "/release/fluentci"
   when (muslTarget target) $ run "musl-static-linkage"
-    [ [ "python3", ".github/scripts/verify-musl-binary.py", binary, target ] ]
+    [ [ "escript", ".github/scripts/fluentci_ci", "verify-musl-binary", binary, target ] ]
   run "release-check" [ [ binary, "--version" ], [ binary, "--help" ] ]
   when (muslTarget target) do
     workspace <- requiredEnv "GITHUB_WORKSPACE"
@@ -138,7 +137,7 @@ reserveBsdDisk = run "bsd-runner-disk"
 -- | @param target Rust target triple for the build or release.
 -- | @param version Release tag, for example v0.17.2.
 bsdBuild :: { target :: String, version :: String } -> Effect Unit
-bsdBuild args = run "bsd-native-build" [ [ "env", "TARGET=" <> args.target, "RELEASE_VERSION=" <> args.version, "sh", ".github/scripts/build-bsd-release.sh" ] ]
+bsdBuild args = run "bsd-native-build" [ [ "env", "TARGET=" <> args.target, "RELEASE_VERSION=" <> args.version, "escript", ".github/scripts/fluentci_ci", "build-bsd-release" ] ]
 
 -- | Verify copied BSD release artifacts.
 -- | @param target Rust target triple for the build or release.
@@ -147,7 +146,7 @@ bsdVerify :: { target :: String, version :: String } -> Effect Unit
 bsdVerify args = do
   target <- requiredArgument "TARGET" args.target
   version <- requiredArgument "RELEASE_VERSION" args.version
-  run "bsd-verify" [ [ "python3", ".github/scripts/verify-bsd-release.py", "dist/bsd/" <> target, version, target ] ]
+  run "bsd-verify" [ [ "escript", ".github/scripts/fluentci_ci", "verify-bsd-release", "dist/bsd/" <> target, version, target ] ]
 
 -- | Upload verified BSD artifacts.
 -- | @param target Rust target triple for the build or release.

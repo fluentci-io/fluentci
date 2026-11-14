@@ -3,9 +3,9 @@ name: npm CLI package
 on:
   push:
     branches: [main]
-    paths: ["npm/**", ".github/workflows/npm.yml", ".github/scripts/export-setup-env.py"]
+    paths: ["npm/**", ".github/workflows/npm.yml", ".github/scripts/**"]
   pull_request:
-    paths: ["npm/**", ".github/workflows/npm.yml", ".github/scripts/export-setup-env.py"]
+    paths: ["npm/**", ".github/workflows/npm.yml", ".github/scripts/**"]
   workflow_dispatch:
 
 permissions:
@@ -29,9 +29,20 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up Node.js through FluentCI
         shell: bash
-        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Test installer and executable wrapper with fixtures
         working-directory: npm
         run: npm test

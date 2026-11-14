@@ -17,6 +17,6 @@ fi
 
 fluentci_setup() {
   fluentci --check-update=false run "$@" |
-    python3 "$FLUENTCI_SPINDLE_ROOT/.tangled/scripts/setup-env.py"
+    escript "$FLUENTCI_SPINDLE_ROOT/.github/scripts/fluentci_ci" export-spindle-env
   source "$FLUENTCI_SPINDLE_ROOT/.tangled-state/environment.sh"
 }

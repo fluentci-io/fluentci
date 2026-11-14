@@ -26,14 +26,25 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up node through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up purescript through FluentCI
         shell: bash
         run: |
-          fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | python3 .github/scripts/export-setup-env.py
+          fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
       - name: Compile and test Nix module
         working-directory: .fluentci/nix-build
         run: |
@@ -81,11 +92,22 @@ jobs:
         uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Restore BEAM tooling for historical checkouts
+        shell: bash
+        env:
+          WORKFLOW_REVISION: ${{ github.workflow_sha }}
+        run: |
+          if [ ! -f .github/scripts/gleam.toml ]; then
+            git fetch origin "$WORKFLOW_REVISION" --depth 1
+            git restore --source="$WORKFLOW_REVISION" -- .github/scripts/gleam.toml .github/scripts/manifest.toml .github/scripts/src .github/scripts/test .github/scripts/.gitignore .github/scripts/README.md .github/actions/setup-ci-scripts
+          fi
+      - name: Set up Gleam BEAM CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - name: Set up determinate-nix through FluentCI
         shell: bash
         run: |
-          trusted_users=$(printf '["%s"]' "$(id -un)")
-          fluentci --check-update=false run setup-determinate-nix@v0.2.1 setup --sudo --trusted-users "$trusted_users" | python3 .github/scripts/export-setup-env.py
+          trusted_users=$(id -un)
+          fluentci --check-update=false run setup-determinate-nix@v0.2.1 setup --sudo --trusted-users "$trusted_users" | escript .github/scripts/fluentci_ci export-setup-env
       - uses: actions/download-artifact@v4
         with:
           name: nix-ci-wasm
@@ -104,7 +126,7 @@ jobs:
             access-tokens = github.com=${{ github.token }}
         # Cachix publishes source tags, not GitHub Releases; pin the upstream
         # version to bypass this plugin's releases/latest lookup.
-        run: fluentci --check-update=false run setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci | python3 .github/scripts/export-setup-env.py
+        run: fluentci --check-update=false run setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci | escript .github/scripts/fluentci_ci export-setup-env
       - name: Build Nix package and upload cache through FluentCI
         env:
           CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}

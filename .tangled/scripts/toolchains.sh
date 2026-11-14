@@ -2,6 +2,12 @@
 # Shared by the APT and DNF bootstraps; profile and sdk are set by the caller.
 curl -fsSL --retry 3 --connect-timeout 15 https://cli.fluentci.io -o "$RUNNER_TEMP/install-fluentci.sh"
 sh "$RUNNER_TEMP/install-fluentci.sh"
+# Bootstrap known prefixes without depending on the helper being compiled yet.
+fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup --version 27 --install-dir "$RUNNER_TEMP/fluentci-ci-erlang"
+export PATH="$RUNNER_TEMP/fluentci-ci-erlang/bin:$PATH"
+fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup --version 1.17.0 --install-dir "$RUNNER_TEMP/fluentci-ci-gleam"
+export PATH="$RUNNER_TEMP/fluentci-ci-gleam/bin:$PATH"
+(cd "$FLUENTCI_SPINDLE_ROOT/.github/scripts" && gleam export escript)
 fluentci_setup setup-node@v0.2.0 setup --version 24.22.2
 if [[ $profile != npm ]]; then
   fluentci_setup setup-bun@v0.2.0 setup --version 1.4.3

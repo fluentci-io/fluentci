@@ -7,7 +7,7 @@ when:
         "npm/**",
         ".tangled/**",
         ".github/workflows/npm.yml",
-        ".github/scripts/export-setup-env.py",
+        ".github/scripts/**",
       ]
   - event: pull_request
     paths:
@@ -15,7 +15,7 @@ when:
         "npm/**",
         ".tangled/**",
         ".github/workflows/npm.yml",
-        ".github/scripts/export-setup-env.py",
+        ".github/scripts/**",
       ]
   - event: manual
 
