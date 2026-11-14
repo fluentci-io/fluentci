@@ -226,8 +226,10 @@ mod tests {
             assert!(root.path().join(".sdk/wit/runtime.wit").is_file());
             match sdk {
                 Sdk::Rust => {
-                    assert!(!std::fs::read_to_string(root.path().join("Cargo.toml"))?
-                        .contains("extism"))
+                    assert!(
+                        !std::fs::read_to_string(root.path().join("Cargo.toml"))?
+                            .contains("extism")
+                    )
                 }
                 Sdk::Python => {
                     assert!(root.path().join("build.py").is_file());
@@ -235,10 +237,11 @@ mod tests {
                         !std::fs::read_to_string(root.path().join("plugin.py"))?.contains("extism")
                     );
                 }
-                Sdk::Elixir => assert!(root
-                    .path()
-                    .join(".sdk/elixir/lib/fluentci/plugin/component.ex")
-                    .is_file()),
+                Sdk::Elixir => assert!(
+                    root.path()
+                        .join(".sdk/elixir/lib/fluentci/plugin/component.ex")
+                        .is_file()
+                ),
                 _ => {
                     let build = std::fs::read_to_string(root.path().join("build.mjs"))?;
                     assert!(build.contains("runtime: \"component\""));

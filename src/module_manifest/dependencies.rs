@@ -3,7 +3,7 @@ use crate::{
     config::ModuleRuntime,
     modules::{LocalModule, ModuleSource},
 };
-use anyhow::{ensure, Context, Result};
+use anyhow::{Context, Result, ensure};
 use fluentci_engine::components::{
     composition::{self, DependencyInterface},
     module_dependencies,
