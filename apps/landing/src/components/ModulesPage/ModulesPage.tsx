@@ -77,10 +77,10 @@ export function ModulesPage() {
                   className="min-w-0 flex-1 bg-transparent text-sm text-ink outline-none"
                 />
                 <kbd
-                  className="shrink-0 rounded border border-line px-1.5 py-0.5 font-mono text-[10px]"
+                  className="shrink-0 rounded border border-line px-1.5 py-0.5 font-mono text-xs"
                   aria-hidden="true"
                 >
-                  Cmd+K
+                  ⌘&thinsp;K
                 </kbd>
               </label>
               <label>
