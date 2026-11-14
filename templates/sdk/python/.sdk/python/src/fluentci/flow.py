@@ -2,7 +2,7 @@
 from __future__ import annotations
 from dataclasses import dataclass, replace
 from copy import deepcopy
-from typing import Callable, Generic, TypeVar, Any
+from typing import Callable, Generic, TypeVar, Any, cast
 from time import time_ns
 import json
 
@@ -13,9 +13,9 @@ A = TypeVar('A')
 @dataclass(frozen=True)
 class Pipeline(Generic[T]):
     name: str
-    steps: tuple = ()
+    steps: tuple[tuple[Any, ...], ...] = ()
 
-    def _append(self, step: tuple) -> Pipeline[Any]:
+    def _append(self, step: tuple[Any, ...]) -> Pipeline[Any]:
         return replace(self, steps=(*self.steps,step))
 
     def exec(self, program: str, *arguments: str) -> Pipeline[str]:
@@ -39,19 +39,19 @@ class Pipeline(Generic[T]):
     def ensuring(self, cleanup: Callable[[], None]) -> Pipeline[T]:
         return self._append(('cleanup',cleanup))
 
-    def module(self, name: str, args: A, call: Callable[[A], U], *, project=False, run_dir=False, setup=False) -> Pipeline[U]:
+    def module(self, name: str, args: A | Callable[[T], A], call: Callable[[A], U], *, project: bool = False, run_dir: bool = False, setup: bool = False) -> Pipeline[U]:
         return self._append(('module',name,deepcopy(args),call,project,run_dir,setup))
 
     def run(self) -> T:
         from . import _imports as api
         from .pipeline import pipeline as native_pipeline
-        value=None
+        value: Any = None
         directory='.'
         cleanups=[step[1] for step in self.steps if step[0]=='cleanup']
-        saved={}
+        saved: dict[str, tuple[bool, str]] = {}
         run_id=str(time_ns())
-        failure=None
-        def set_env(key,data):
+        failure: BaseException | None = None
+        def set_env(key: str, data: str) -> None:
             if key not in saved:saved[key]=(json.loads(api.has_env(key)),api.get_env(key))
             api.set_envs(json.dumps([[key,data]]))
         try:
@@ -84,7 +84,9 @@ class Pipeline(Generic[T]):
                 except BaseException as error:
                     if failure is None:failure=error
         if failure is not None:raise failure
-        return value
+        # Each append changes the public output type to match its final step.
+        # The heterogeneous interpreter erases that type internally.
+        return cast(T, value)
 
 
 def pipeline(name: str) -> Pipeline[None]:

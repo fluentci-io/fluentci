@@ -1,7 +1,7 @@
 //! Typed sequential composition of native primitives and component operations.
 //! Construction is pure. `run` is the only terminal operation.
-use crate::dag;
 use crate::component::*;
+use crate::dag;
 use std::time::{SystemTime, UNIX_EPOCH};
 
 pub struct Context {
