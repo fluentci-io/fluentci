@@ -709,10 +709,31 @@ pub fn rust_sources(
         let raw = function["name"].as_str().context("Missing name")?;
         let name = snake(raw);
         let params = function["params"].as_array().context("Missing params")?;
-        ensure!(
-            params.len() == 1 && params[0]["type"]["kind"] == "record",
-            "Pipeline bindings require named argument records"
-        );
+        if params.len() != 1 || params[0]["type"]["kind"] != "record" {
+            let mut declarations = Vec::new();
+            let mut arguments = Vec::new();
+            for param in params {
+                let parameter = format!(
+                    "r#{}",
+                    snake(param["name"].as_str().context("Missing parameter name")?)
+                );
+                let ty = &param["type"];
+                declarations.push(format!("{parameter}: {}", rust_type(ty, &namespace)?));
+                arguments.push(match ty["kind"].as_str() {
+                    Some("string" | "list" | "record") => format!("&{parameter}"),
+                    _ => parameter,
+                });
+            }
+            let result = rust_type(&output(function), &namespace)?;
+            let call = format!("{namespace}::r#{name}({})", arguments.join(", "));
+            let call = if function["output"]["kind"] == "result" {
+                format!("{call}.map_err(|e|Error::msg(format!(\"{{e:?}}\")))")
+            } else {
+                format!("Ok({call})")
+            };
+            source.push_str(&format!("pub fn r#{name}({})->Operation<{result}>{{Operation::new(move |_context|{{{call}}})}}\n", declarations.join(", ")));
+            continue;
+        }
         let input = &params[0]["type"];
         let args = rust_type(input, &namespace)?;
         let result = rust_type(&output(function), &namespace)?;
@@ -795,6 +816,26 @@ mod tests {
                 "{sdk}"
             );
         }
+    }
+    #[test]
+    fn rust_bindings_preserve_zero_single_and_multiple_scalar_parameters() {
+        let bytes = wat::parse_str(r#"(component
+          (core module $m
+            (func (export "zero") (result i32) i32.const 0)
+            (func (export "identity") (param i32) (result i32) local.get 0)
+            (func (export "add") (param i32 i32) (result i32) local.get 0 local.get 1 i32.add))
+          (core instance $i (instantiate $m))
+          (func $zero (result u32) (canon lift (core func $i "zero")))
+          (func $identity (param "value" u32) (result u32) (canon lift (core func $i "identity")))
+          (func $add (param "left" u32) (param "right" u32) (result u32) (canon lift (core func $i "add")))
+          (instance (export "api") (export "zero" (func $zero)) (export "identity" (func $identity)) (export "add" (func $add))))"#).unwrap();
+        let files = sources("math", &bytes, "rust").unwrap();
+        let source = &files["fluentci_modules/math.rs"];
+        assert!(source.contains("pub fn r#zero()->Operation<u32>"));
+        assert!(source.contains("pub fn r#identity(r#value: u32)"));
+        assert!(source.contains("pub fn r#add(r#left: u32, r#right: u32)"));
+        assert!(source.contains("::r#add(r#left, r#right)"));
+        assert!(source.contains("::r#zero()"));
     }
     #[test]
     fn records_and_optional_argument_types_come_from_wit() {
