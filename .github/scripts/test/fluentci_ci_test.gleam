@@ -6,6 +6,7 @@ import ci/graph
 import ci/native
 import ci/setup
 import gleam/bit_array
+import gleam/int
 import gleam/list
 import gleam/result
 import gleam/string
@@ -239,9 +240,23 @@ pub fn bsd_archive_checksum_metadata_permissions_and_member_safety_test() {
         archive,
         archive_entries(target),
       ))
+      use members <- result.try(native.archive_entries(archive))
+      list.filter(members, fn(member) { member.0 == "fluentci" })
+      |> list.map(fn(member) { int.bitwise_and(member.3, 511) })
+      |> should.equal([493])
+      list.filter(members, fn(member) { member.0 == "README.md" })
+      |> list.map(fn(member) { int.bitwise_and(member.3, 511) })
+      |> should.equal([420])
       use _ <- result.try(c.checksum(archive, name))
       artifacts.verify_bsd(directory, "v0.0.0-test", target)
       |> should.equal(Ok(Nil))
+      use _ <- result.try(native.create_archive(
+        archive,
+        list.map(archive_entries(target), fn(entry) { #(entry.0, entry.1, 420) }),
+      ))
+      use _ <- result.try(c.checksum(archive, name))
+      artifacts.verify_bsd(directory, "v0.0.0-test", target)
+      |> should.equal(Error("Missing executable permissions"))
       use _ <- result.try(
         native.create_archive(archive, [
           #("../escape", <<1>>, 420),

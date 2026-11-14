@@ -96,11 +96,19 @@ archive_member(Path, Name) ->
     end.
 
 create_archive(Path, Files) ->
+    case temp(<<"fluentci-tar-">>) of
+        {ok, Directory} ->
+            try create_archive(Path, Files, Directory)
+            after file:del_dir_r(Directory) end;
+        Error -> Error
+    end.
+
+create_archive(Path, Files, Directory) ->
     case erl_tar:open(unicode:characters_to_list(Path), [write, compressed]) of
         {ok, Tar} ->
             Written = try
                 lists:foldl(fun
-                    ({Name, Bytes, Mode}, ok) -> erl_tar:add(Tar, Bytes, unicode:characters_to_list(Name), [{mode, Mode}]);
+                    (Entry, ok) -> add_archive_entry(Tar, Entry, Directory);
                     (_, Error) -> Error
                 end, ok, Files)
             catch _:Reason -> {error, Reason} end,
@@ -108,3 +116,20 @@ create_archive(Path, Files) ->
             case Written of ok -> result(Closed); Error -> result(Error) end;
         Error -> result(Error)
     end.
+
+add_archive_entry(Tar, {Name, Bytes, Mode}, Directory) ->
+    %% OTP 27 does not apply the mode option to binary entries. File-backed
+    %% entries preserve permissions across supported OTP versions. Never use
+    %% the archive member name as a staging path (it may contain ../).
+    Staged = filename:join(Directory, nonce()),
+    try
+        case file:write_file(Staged, Bytes, [exclusive]) of
+            ok ->
+                case file:change_mode(Staged, Mode) of
+                    ok -> erl_tar:add(Tar, unicode:characters_to_list(Staged),
+                                      unicode:characters_to_list(Name), []);
+                    Error -> Error
+                end;
+            Error -> Error
+        end
+    after file:delete(Staged) end.
