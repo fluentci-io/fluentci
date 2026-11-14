@@ -335,11 +335,11 @@ pub fn build() -> Result(Nil, String) {
   use target <- result.try(c.env("TARGET"))
   use selected <- result.try(c.env("BSD_RUST_VERSION"))
   use _ <- result.try(c.tag(tag))
-  use curl <- result.try(case #(native.platform(), target) {
-    #("freebsd", "x86_64-unknown-freebsd") -> Ok("/usr/local/bin/curl")
-    #("netbsd", "x86_64-unknown-netbsd") -> Ok("/usr/pkg/bin/curl")
-    #("openbsd", "x86_64-unknown-openbsd") -> Ok("/usr/local/bin/curl")
-    _ -> Error("Release target does not match native guest")
+  use curl <- result.try(case native.platform(), target {
+    "freebsd", "x86_64-unknown-freebsd" -> Ok("/usr/local/bin/curl")
+    "netbsd", "x86_64-unknown-netbsd" -> Ok("/usr/pkg/bin/curl")
+    "openbsd", "x86_64-unknown-openbsd" -> Ok("/usr/local/bin/curl")
+    _, _ -> Error("Release target does not match native guest")
   })
   let root = native.cwd()
   let _ =

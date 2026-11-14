@@ -7,7 +7,7 @@ fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup --versio
 export PATH="$RUNNER_TEMP/fluentci-ci-erlang/bin:$PATH"
 fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup --version 1.17.0 --install-dir "$RUNNER_TEMP/fluentci-ci-gleam"
 export PATH="$RUNNER_TEMP/fluentci-ci-gleam/bin:$PATH"
-(cd "$FLUENTCI_SPINDLE_ROOT/.github/scripts" && gleam export escript)
+(cd "$FLUENTCI_SPINDLE_ROOT/.github/scripts" && gleam build --target erlang --warnings-as-errors && gleam export escript)
 fluentci_setup setup-node@v0.2.0 setup --version 24.22.2
 if [[ $profile != npm ]]; then
   fluentci_setup setup-bun@v0.2.0 setup --version 1.4.3

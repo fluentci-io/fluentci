@@ -9,7 +9,7 @@ pub fn unsigned(value: Int) -> BitArray {
   case value > 127 {
     True -> <<
       int.bitwise_or(int.bitwise_and(value, 127), 128):8,
-      unsigned(int.bitwise_shift_right(value, 7)):bytes,
+      unsigned(int.bitwise_shift_right(value, 7)):bits,
     >>
     False -> <<value:8>>
   }
@@ -25,17 +25,17 @@ pub fn signed(value: Int) -> BitArray {
     && int.bitwise_and(byte, 64) != 0
   case done {
     True -> <<byte:8>>
-    False -> <<int.bitwise_or(byte, 128):8, signed(remaining):bytes>>
+    False -> <<int.bitwise_or(byte, 128):8, signed(remaining):bits>>
   }
 }
 
 fn name(value: String) -> BitArray {
   let bits = bit_array.from_string(value)
-  <<unsigned(bit_array.byte_size(bits)):bytes, bits:bytes>>
+  <<unsigned(bit_array.byte_size(bits)):bits, bits:bits>>
 }
 
 fn section(kind: Int, bits: BitArray) -> BitArray {
-  <<kind:8, unsigned(bit_array.byte_size(bits)):bytes, bits:bytes>>
+  <<kind:8, unsigned(bit_array.byte_size(bits)):bits, bits:bits>>
 }
 
 pub fn trap(export: String, memory: Bool, code: BitArray) -> BitArray {
@@ -44,14 +44,14 @@ pub fn trap(export: String, memory: Bool, code: BitArray) -> BitArray {
     True -> section(5, <<1, 0, 1>>)
     False -> <<>>
   }
-  let body = <<0, code:bytes, 11>>
+  let body = <<0, code:bits, 11>>
   <<
-    header:bytes,
-    section(1, <<1, 96, 0, 1, 127>>):bytes,
-    section(3, <<1, 0>>):bytes,
-    memory_section:bytes,
-    section(7, <<1, name(export):bytes, 0, 0>>):bytes,
-    section(10, <<1, unsigned(bit_array.byte_size(body)):bytes, body:bytes>>):bytes,
+    header:bits,
+    section(1, <<1, 96, 0, 1, 127>>):bits,
+    section(3, <<1, 0>>):bits,
+    memory_section:bits,
+    section(7, <<1, name(export):bits, 0, 0>>):bits,
+    section(10, <<1, unsigned(bit_array.byte_size(body)):bits, body:bits>>):bits,
   >>
 }
 
@@ -87,7 +87,7 @@ pub fn host_import() -> BitArray {
   ]
   let import_data =
     list.map(imports, fn(item) {
-      <<name(item.0):bytes, name(item.1):bytes, 0, unsigned(item.2):bytes>>
+      <<name(item.0):bits, name(item.1):bits, 0, unsigned(item.2):bits>>
     })
     |> bit_array.concat
   let key = bit_array.from_string("FLUENTCI_BSD_SMOKE")
@@ -96,7 +96,7 @@ pub fn host_import() -> BitArray {
     2,
     126,
     66,
-    signed(bit_array.byte_size(key)):bytes,
+    signed(bit_array.byte_size(key)):bits,
     16,
     0,
     33,
@@ -105,12 +105,12 @@ pub fn host_import() -> BitArray {
   let bytes = bytes(key)
   let code =
     list.index_map(bytes, fn(byte, index) {
-      <<32, 0, 66, signed(index):bytes, 124, 65, signed(byte):bytes, 16, 1>>
+      <<32, 0, 66, signed(index):bits, 124, 65, signed(byte):bits, 16, 1>>
     })
     |> bit_array.concat
   let body = <<
-    first:bytes,
-    code:bytes,
+    first:bits,
+    code:bits,
     32,
     0,
     16,
@@ -136,11 +136,11 @@ pub fn host_import() -> BitArray {
     0,
     0,
     0,
-    section(1, types):bytes,
-    section(2, <<5, import_data:bytes>>):bytes,
-    section(3, <<1, 3>>):bytes,
-    section(7, <<1, name("env_roundtrip"):bytes, 0, 5>>):bytes,
-    section(10, <<1, unsigned(bit_array.byte_size(body)):bytes, body:bytes>>):bytes,
+    section(1, types):bits,
+    section(2, <<5, import_data:bits>>):bits,
+    section(3, <<1, 3>>):bits,
+    section(7, <<1, name("env_roundtrip"):bits, 0, 5>>):bits,
+    section(10, <<1, unsigned(bit_array.byte_size(body)):bits, body:bits>>):bits,
   >>
 }
 

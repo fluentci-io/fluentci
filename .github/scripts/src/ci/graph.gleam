@@ -37,11 +37,12 @@ fn node_decoder() {
   decode.success(Node(id, deps))
 }
 
-fn graph_decoder() {
+fn graph_decoder() -> decode.Decoder(#(List(Package), List(Node))) {
   use packages <- decode.field("packages", decode.list(package_decoder()))
-  use nodes <-
-    decode.at(["resolve", "nodes"], decode.list(node_decoder()))
-    |> decode.then
+  use nodes <- decode.then(decode.at(
+    ["resolve", "nodes"],
+    decode.list(node_decoder()),
+  ))
   decode.success(#(packages, nodes))
 }
 
