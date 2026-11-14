@@ -233,7 +233,14 @@ fn official_registry_names_can_omit_the_handle() -> anyhow::Result<()> {
 fn compiled_ci_components_have_typed_documented_signatures() -> anyhow::Result<()> {
     let config = Config::parse(include_str!("../fluentci.toml"))?;
     for module in config.modules {
-        let path = std::path::Path::new(module.path.as_deref().unwrap()).join("dist/plugin.wasm");
+        // Published modules have independent contracts and no local build path.
+        if module.registry_package().is_some() {
+            continue;
+        }
+        let source = module.path.as_deref().ok_or_else(|| {
+            anyhow::anyhow!("Local CI module {:?} has no source path", module.name)
+        })?;
+        let path = std::path::Path::new(source).join("dist/plugin.wasm");
         let bytes = std::fs::read(path)?;
         assert!(fluentci_engine::components::is_component(&bytes));
         // inspect verifies embedded docs/types against the component's real WIT ABI.
