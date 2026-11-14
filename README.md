@@ -98,7 +98,9 @@ fluentci --version
 
 The installer resolves the latest release, detects your OS and architecture,
 verifies the archive's SHA-256 checksum, and installs into `~/.local/bin` without
-sudo. It supports Linux/macOS on x86_64 and arm64, and FreeBSD/NetBSD/OpenBSD on
+sudo. Linux releases include GNU and musl variants; the installer selects musl
+on Alpine (override with `FLUENTCI_LIBC=gnu` or `musl`). It supports Linux/macOS
+on x86_64 and arm64, and FreeBSD/NetBSD/OpenBSD on
 x86_64. Add `~/.local/bin` to your shell profile's `PATH` to keep it available.
 
 Set `FLUENTCI_VERSION` to override the release version. To change the install

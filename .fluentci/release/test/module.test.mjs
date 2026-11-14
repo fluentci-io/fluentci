@@ -4,10 +4,10 @@ import { createRequire } from "node:module";
 import { fixture } from "./host.mjs";
 
 const {
-  dependencies,
-  package: buildPackage,
-  upload,
-  github,
+  linuxPackageDependencies: dependencies,
+  linuxPackage: buildPackage,
+  linuxPackagePublish: upload,
+  linuxPackageGithub: github,
 } = createRequire(import.meta.url)("../dist/plugin.cjs");
 const environment = {
   TARGET: "x86_64-unknown-linux-gnu",
@@ -17,15 +17,6 @@ const environment = {
   FURY_TOKEN: "test-only-token",
   GH_TOKEN: "github-test-token",
 };
-
-test("missing or blank tokens skip upload before executing a command", () => {
-  for (const env of [{}, { FURY_TOKEN: "" }, { FURY_TOKEN: " \n" }]) {
-    const f = fixture(env);
-    upload(f.inputs)();
-    assert.match(f.output.join("\n"), /Skipping Gemfury/);
-    assert.deepEqual(f.calls, []);
-  }
-});
 
 test("PureScript packages both Linux architectures with literal metadata and checksums", () => {
   for (const [TARGET, debArch, rpmArch] of [
@@ -75,6 +66,8 @@ test("invalid targets, versions and missing publication configuration fail befor
   for (const TARGET of [
     "x86_64-apple-darwin",
     "x86_64-unknown-openbsd",
+    "x86_64-unknown-linux-musl",
+    "aarch64-unknown-linux-musl",
     "unknown",
   ]) {
     for (const job of [dependencies, buildPackage, upload]) {
@@ -93,18 +86,7 @@ test("invalid targets, versions and missing publication configuration fail befor
     assert.throws(() => buildPackage(f.inputs)());
     assert.deepEqual(f.calls, []);
   }
-  for (const key of [
-    "TARGET",
-    "RELEASE_VERSION",
-    "FURY_USER",
-    "FURY_ACCOUNT",
-  ]) {
-    const env = { ...environment };
-    delete env[key];
-    const f = fixture(env);
-    assert.throws(() => upload(f.inputs)(), new RegExp(key));
-    assert.deepEqual(f.calls, []);
-  }
+
 });
 
 test("command and native metadata failures clean staging before propagating", () => {
@@ -124,41 +106,14 @@ test("command and native metadata failures clean staging before propagating", ()
   }
 });
 
-test("uploads exact release files using environment credentials and propagates failure", () => {
-  for (const TARGET of [
-    "x86_64-unknown-linux-gnu",
-    "aarch64-unknown-linux-gnu",
-  ]) {
-    const f = fixture({ ...environment, TARGET });
-    upload(f.inputs)();
-    const uploads = f.calls.filter((args) => args[0] === "curl");
-    assert.equal(uploads.length, 2);
-    assert.deepEqual(
-      f.calls.slice(0, 2).map((args) => args.slice(0, 2)),
-      [
-        ["test", "-s"],
-        ["test", "-s"],
-      ],
-    );
-    for (const args of uploads) {
-      assert.ok(args.includes("%FURY_USER"));
-      assert.ok(args.includes("%FURY_TOKEN"));
-      assert.ok(args.includes("{{FURY_USER}}:{{FURY_TOKEN}}"));
-      assert.ok(args.includes("https://push.fury.io/fluentci/"));
-    }
-    assert.ok(!JSON.stringify(f.calls).includes(environment.FURY_TOKEN));
-  }
-  for (const env of [
-    { FURY_ACCOUNT: "../other" },
-    { FURY_USER: "user:password" },
-  ]) {
-    const f = fixture({ ...environment, ...env });
-    assert.throws(() => upload(f.inputs)(), /Invalid Gemfury/);
-    assert.deepEqual(f.calls, []);
-  }
-  const f = fixture(environment, { fail: (args) => args[0] === "curl" });
-  assert.throws(() => upload(f.inputs)(), /Injected command failure/);
-  assert.equal(f.calls.filter((args) => args[0] === "curl").length, 1);
+test("package publishing calls the pinned registry module with CSV paths and inherited credentials", () => {
+  const f = fixture(environment);
+  upload(f.inputs)();
+  const call = f.calls.find(args => args[0] === "fluentci");
+  assert.deepEqual(call.slice(0,7), ["fluentci", "--check-update=false", "run", "--frozen-lockfile", "gemfury", "upload", "--files"]);
+  assert.equal(call[7], "target/release-assets/fluentci_0.17.0_amd64.deb,target/release-assets/fluentci-0.17.0-1.x86_64.rpm");
+  assert.ok(!JSON.stringify(f.calls).includes(environment.FURY_TOKEN));
+  assert.ok(!f.calls.some(args => args[0] === "curl"));
 });
 
 test("packaging tools and GitHub package uploads also use literal argv", () => {

@@ -13,7 +13,7 @@ INSTALLER = Path(__file__).resolve().parents[1] / "install.sh"
 
 
 class InstallerTests(unittest.TestCase):
-    def run_installer(self, version=None, bad_checksum=False, bad_latest=False):
+    def run_installer(self, version=None, bad_checksum=False, bad_latest=False, libc="gnu", architecture="x86_64"):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             binary = b"#!/bin/sh\necho fluentci-test\n"
@@ -27,15 +27,17 @@ class InstallerTests(unittest.TestCase):
             (root / "checksum").write_text(("0" * 64 if bad_checksum else digest) + "  release.tar.gz\n")
             mock = root / "mock"
             mock.mkdir()
-            (mock / "uname").write_text('#!/bin/sh\ncase "$1" in -s) echo Linux;; -m) echo x86_64;; esac\n')
+            (mock / "uname").write_text(f'#!/bin/sh\ncase "$1" in -s) echo Linux;; -m) echo {architecture};; esac\n')
             (mock / "uname").chmod(0o755)
+            (mock / "ldd").write_text("#!/bin/sh\necho '" + ("musl libc" if libc == "musl" else "GNU libc 2.39") + "'\n")
+            (mock / "ldd").chmod(0o755)
             (mock / "curl").write_text(f"#!{sys.executable}\n" + '''import os, pathlib, shutil, sys
 root = pathlib.Path(os.environ["MOCK_ROOT"])
 args = sys.argv[1:]
 url = next(value for value in args if value.startswith("https://"))
 with (root / "requests").open("a") as log: log.write(url + "\\n")
 if url.endswith("/latest"):
-    print("https://github.com/tsirysndr/fluentci/releases/" + ("latest" if os.environ.get("BAD_LATEST") else "tag/2099.01.01"), end="")
+    print("https://github.com/fluentci-io/fluentci/releases/" + ("latest" if os.environ.get("BAD_LATEST") else "tag/2099.01.01"), end="")
 else:
     destination = pathlib.Path(args[args.index("-o") + 1])
     shutil.copyfile(root / ("checksum" if url.endswith(".sha256") else "release.tar.gz"), destination)
@@ -43,6 +45,7 @@ else:
             (mock / "curl").chmod(0o755)
             env = {**os.environ, "PATH": str(mock) + ":/usr/bin:/bin:/usr/sbin:/sbin", "MOCK_ROOT": str(root), "FLUENTCI_INSTALL_DIR": str(root / "installed")}
             env.pop("FLUENTCI_VERSION", None)
+            env.pop("FLUENTCI_LIBC", None)
             if version is not None:
                 env["FLUENTCI_VERSION"] = version
             if bad_latest:
@@ -64,6 +67,14 @@ else:
         self.assertNotIn("/releases/latest", requests)
         self.assertIn("/download/2026.11.04/", requests)
         self.assertIsNotNone(binary)
+
+    def test_musl_assets_for_both_architectures(self):
+        for architecture in ["x86_64", "aarch64"]:
+            with self.subTest(architecture=architecture):
+                result, requests, binary = self.run_installer(version="v0.17.4", libc="musl", architecture=architecture)
+                self.assertEqual(result.returncode, 0, result.stderr)
+                self.assertIn(f"{architecture}-unknown-linux-musl.tar.gz", requests)
+                self.assertIsNotNone(binary)
 
     def test_rejects_checksum_mismatch(self):
         result, _, binary = self.run_installer(bad_checksum=True)

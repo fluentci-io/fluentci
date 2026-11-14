@@ -54,6 +54,12 @@ runtime = "component"
 
 [[modules]]
 name = "gemfury"
-path = ".fluentci/gemfury"
+package = "@fluentci.io/gemfury@0.1.0"
+sdk = "purescript"
+runtime = "component"
+
+[[modules]]
+name = "setup-gemfury"
+package = "@fluentci.io/setup-gemfury@0.1.0"
 sdk = "purescript"
 runtime = "component"

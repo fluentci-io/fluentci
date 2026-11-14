@@ -24,7 +24,7 @@ test(
   "real Debian and RPM packages contain the executable, license, metadata and valid checksums",
   { skip: !available },
   () => {
-    const { package: buildPackage } = createRequire(import.meta.url)(
+    const { linuxPackage: buildPackage } = createRequire(import.meta.url)(
       "../dist/plugin.cjs",
     );
     const target =

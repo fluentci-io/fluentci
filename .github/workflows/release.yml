@@ -70,12 +70,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: fluentci --check-update=false run release prepare --version "$RELEASE_VERSION"
-      - name: Compile and test Gemfury PureScript Wasm module
-        working-directory: .fluentci/gemfury
-        run: |
-          npm ci --ignore-scripts
-          npm run build
-          npm test
+      - name: Test release packaging logic
+        working-directory: .fluentci/release
+        run: node --test test/*.test.mjs
       - uses: actions/upload-artifact@v4
         with:
           name: release-inputs
@@ -83,8 +80,7 @@ jobs:
             webui/dist/
             .release-smoke/*.wasm
             .fluentci/release/dist/plugin.wasm
-            .fluentci/gemfury/dist/plugin.wasm
-            .fluentci/gemfury/dist/plugin.cjs
+            .fluentci/release/dist/plugin.cjs
           include-hidden-files: true
           if-no-files-found: error
           retention-days: 7
@@ -103,6 +99,10 @@ jobs:
             target: x86_64-unknown-linux-gnu
           - os: ubuntu-24.04-arm
             target: aarch64-unknown-linux-gnu
+          - os: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
           - os: macos-latest
             target: x86_64-apple-darwin
           - os: macos-latest
@@ -154,30 +154,34 @@ jobs:
       - name: Package release assets with FluentCI
         run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" package --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Install Linux packaging tools through PureScript Wasm
-        if: runner.os == 'Linux'
-        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm dependencies --target "$TARGET"
+        if: endsWith(matrix.target, '-linux-gnu')
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" linux-package-dependencies --target "$TARGET"
       - name: Verify native Debian and RPM package formats
-        if: runner.os == 'Linux'
-        run: node --test .fluentci/gemfury/test/package.test.mjs
+        if: endsWith(matrix.target, '-linux-gnu')
+        run: node --test .fluentci/release/test/package.test.mjs
       - name: Build Debian and RPM packages through PureScript Wasm
-        if: runner.os == 'Linux'
-        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm package --target "$TARGET" --version "$RELEASE_VERSION"
+        if: endsWith(matrix.target, '-linux-gnu')
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" linux-package --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Upload GitHub release assets with FluentCI
         env:
           GH_TOKEN: ${{ github.token }}
         run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" upload --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Upload Linux package assets to GitHub release
-        if: runner.os == 'Linux'
+        if: endsWith(matrix.target, '-linux-gnu')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm github --target "$TARGET" --version "$RELEASE_VERSION"
-      - name: Upload Debian and RPM packages to Gemfury through PureScript Wasm
-        if: runner.os == 'Linux'
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" linux-package-github --target "$TARGET" --version "$RELEASE_VERSION"
+      - name: Set up published Gemfury prerequisites
+        if: endsWith(matrix.target, '-linux-gnu')
+        run: |
+          fluentci --check-update=false run --frozen-lockfile setup-gemfury setup | python3 .github/scripts/export-setup-env.py
+      - name: Upload Debian and RPM packages with published Gemfury
+        if: endsWith(matrix.target, '-linux-gnu')
         env:
           FURY_TOKEN: ${{ secrets.FURY_TOKEN }}
           FURY_USER: ${{ secrets.FURY_USER || vars.FURY_USER }}
           FURY_ACCOUNT: ${{ secrets.FURY_ACCOUNT || vars.FURY_ACCOUNT }}
-        run: fluentci --check-update=false run --wasm .fluentci/gemfury/dist/plugin.wasm upload --target "$TARGET" --version "$RELEASE_VERSION" --account "$FURY_ACCOUNT"
+        run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" linux-package-publish --target "$TARGET" --version "$RELEASE_VERSION"
 
   bsd:
     name: Release ${{ matrix.target }}

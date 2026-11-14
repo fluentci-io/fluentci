@@ -16,7 +16,6 @@ const modules = [
   "desktop",
   "nix-build",
   "cachix",
-  "gemfury",
 ];
 
 for (const module of modules) {

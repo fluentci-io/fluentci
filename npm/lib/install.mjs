@@ -12,10 +12,15 @@ const packageVersion = JSON.parse(
   readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 ).version;
 
-export function targetFor(platform, architecture) {
+export function detectLinuxLibc(report = process.report?.getReport?.()) {
+  return report?.header?.glibcVersionRuntime ? "gnu" : "musl";
+}
+
+export function targetFor(platform, architecture, libc = "gnu") {
+  if (platform === "linux" && !["gnu", "musl"].includes(libc)) throw Error("FLUENTCI_LIBC must be gnu or musl.");
   const os = {
     darwin: "apple-darwin",
-    linux: "unknown-linux-gnu",
+    linux: `unknown-linux-${libc}`,
     freebsd: "unknown-freebsd",
     netbsd: "unknown-netbsd",
     openbsd: "unknown-openbsd",
@@ -104,12 +109,13 @@ export async function ensureBinary({
   version = process.env.FLUENTCI_VERSION || packageVersion,
   platform = process.platform,
   architecture = process.arch,
+  libc = platform === "linux" ? (process.env.FLUENTCI_LIBC || detectLinuxLibc()) : undefined,
   cacheRoot = defaultCacheRoot(),
   fetchImpl = globalThis.fetch,
   extract = extractArchive,
   log = (message) => process.stderr.write(`${message}\n`),
 } = {}) {
-  const target = targetFor(platform, architecture);
+  const target = targetFor(platform, architecture, libc);
   let tag = releaseTag(version);
   if (tag === "latest") {
     const response = await request(fetchImpl, `${repository}/releases/latest`, "HEAD");

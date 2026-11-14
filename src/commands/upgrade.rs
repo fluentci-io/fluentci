@@ -16,14 +16,7 @@ pub(super) async fn execute() -> Result<()> {
         println!("Already on the latest release");
         return Ok(());
     }
-    let os = match std::env::consts::OS {
-        "macos" => "apple-darwin",
-        "linux" => "unknown-linux-gnu",
-        "freebsd" => "unknown-freebsd",
-        "netbsd" => "unknown-netbsd",
-        "openbsd" => "unknown-openbsd",
-        _ => bail!("Upgrade is not supported on this platform"),
-    };
+    let os = platform_suffix(std::env::consts::OS, cfg!(target_env = "musl"))?;
     let target = format!("{}-{os}", std::env::consts::ARCH);
     let asset_name = format!("fluentci_{version}_{target}.tar.gz");
     let asset = data["assets"]
@@ -52,4 +45,30 @@ pub(super) async fn execute() -> Result<()> {
     tokio::fs::rename(staged, current).await?;
     println!("Upgraded to {version}");
     Ok(())
+}
+
+fn platform_suffix(os: &str, musl: bool) -> Result<&'static str> {
+    Ok(match os {
+        "macos" => "apple-darwin",
+        "linux" if musl => "unknown-linux-musl",
+        "linux" => "unknown-linux-gnu",
+        "freebsd" => "unknown-freebsd",
+        "netbsd" => "unknown-netbsd",
+        "openbsd" => "unknown-openbsd",
+        _ => bail!("Upgrade is not supported on this platform"),
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn upgrade_keeps_the_compiled_libc_variant() -> Result<()> {
+        assert_eq!(platform_suffix("linux", true)?, "unknown-linux-musl");
+        assert_eq!(platform_suffix("linux", false)?, "unknown-linux-gnu");
+        assert_eq!(platform_suffix("macos", false)?, "apple-darwin");
+        assert!(platform_suffix("windows", false).is_err());
+        Ok(())
+    }
 }

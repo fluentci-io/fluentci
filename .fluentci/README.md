@@ -48,12 +48,13 @@ such as target, version, and cache is explicit; tokens stay in the environment.
 | `main`      | `check`, `build`                                                                                                                                      | Repository checks and release CLI build    |
 | `rust`      | `format`, `lint`, `test`, `check`, `build`                                                                                                            | Release Cargo checks; Studio builds first  |
 | `studio`    | `install`, `build`                                                                                                                                    | Frozen Bun install and embedded web assets |
-| `release`   | `prepare`, `build`, `build-prepared`, `check`, `package`, `upload`, `linux-dependencies`, `reserve-bsd-disk`, `bsd-build`, `bsd-verify`, `bsd-upload` | CLI releases on Linux, macOS and BSD       |
+| `release`   | `prepare`, `build`, `build-prepared`, `check`, `package`, `upload`, `linux-dependencies`, `reserve-bsd-disk`, `bsd-build`, `bsd-verify`, `bsd-upload`, `linux-package-dependencies`, `linux-package`, `linux-package-github`, `linux-package-publish`, `smoke` | CLI releases on Linux, macOS and BSD       |
 | `desktop`   | `build`, `clean`, `sign`, `package`, `upload`                                                                                                         | macOS Studio releases                      |
 | `nix`       | `check`, `metadata`, `flakehub`, `flakestry`                                                                                                          | Nix checks and publication                 |
 | `nix-build` | `build`                                                                                                                                               | Nix build with Cachix uploads              |
 | `cachix`    | `setup`, `push`                                                                                                                                       | Cache configuration and result uploads     |
-| `gemfury`   | `dependencies`, `package`, `upload`, `github`                                                                                                         | Debian/RPM packages and publication        |
+| `gemfury` | `upload` | Published package uploader |
+| `setup-gemfury` | `setup` | Published upload prerequisites |
 
 ## Build and test
 
@@ -158,26 +159,29 @@ Flakestry’s HTTP/JSON runtime. No publishing Wasm is compiled in these workflo
 Each publication has an explicit fresh `--run-dir`, and FlakeHub receives
 `--name "$GITHUB_REPOSITORY"`. Neither publishing function runs in the default check.
 
-## Gemfury
+## Linux packages and Gemfury
+
+FluentCI-specific Debian/RPM metadata lives in the release module. The old local
+Gemfury module is removed; uploading uses published components pinned in the root
+registry and lockfile: `gemfury@0.1.0` and `setup-gemfury@0.1.0`.
 
 ```sh
-fluentci run gemfury dependencies --target x86_64-unknown-linux-gnu
-fluentci run gemfury package --target x86_64-unknown-linux-gnu --version v0.17.2
-fluentci run gemfury upload --target x86_64-unknown-linux-gnu --version v0.17.2 --account fluentci
-fluentci run gemfury github --target x86_64-unknown-linux-gnu --version v0.17.2
+fluentci run release linux-package-dependencies --target x86_64-unknown-linux-gnu
+fluentci run release linux-package --target x86_64-unknown-linux-gnu --version v0.17.4
+fluentci run --frozen-lockfile setup-gemfury setup
+fluentci run --frozen-lockfile gemfury upload --files target/release-assets/fluentci_0.17.4_amd64.deb,target/release-assets/fluentci-0.17.4-1.x86_64.rpm
 ```
 
-Both `x86_64-unknown-linux-gnu` and `aarch64-unknown-linux-gnu` are supported.
-`CI.LinuxPackages` generates Debian/RPM metadata and checksums in PureScript,
-using native file primitives and literal `dpkg-deb`/`rpmbuild` argument vectors.
-The existing target executable must have been built first. Packages and checksum
-sidecars are written to `target/release-assets`; Ubuntu binaries require glibc 2.39.
+`FURY_ACCOUNT`, `FURY_USER`, and `FURY_TOKEN` remain environment credentials.
+The published uploader skips missing/blank tokens and propagates upload failures.
+CI exports the setup result through the existing GitHub environment bridge.
+Package creation supports GNU/Linux x86_64 and ARM64; musl targets publish separate
+checksum-verified tarballs instead of replacing the GNU Debian/RPM packages.
 
-Pass the destination as `--account`. Actions supplies it from `FURY_ACCOUNT`.
-`FURY_USER` and `FURY_TOKEN` remain environment credentials. A missing or blank
-token skips Gemfury uploads; authentication and upload errors fail the job.
-Curl 8.3+ expands credentials from environment variables, keeping tokens out of
-command arguments and pipeline plans. `github` uploads packages through `gh`.
+Release builds also include `x86_64-unknown-linux-musl` and
+`aarch64-unknown-linux-musl`. Their native runner uses `musl-gcc`; CI verifies static
+ELF linkage, then checks CLI startup, SQLite, Extism host imports and a typed Wasm
+component inside Alpine without glibc compatibility libraries.
 
 ## GitHub Actions environment handoff
 
@@ -200,7 +204,7 @@ Workflows bootstrap FluentCI v0.17.3 and invoke pinned registry modules directly
 
 ```sh
 fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | python3 .github/scripts/export-setup-env.py
-fluentci --check-update=false run setup-rust@v0.2.1 setup --toolchain stable --components '["rustfmt", "clippy"]' | python3 .github/scripts/export-setup-env.py
+fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --components rustfmt,clippy | python3 .github/scripts/export-setup-env.py
 ```
 
 The CLI resolves and caches registry components; no SDK compiler or separate

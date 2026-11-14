@@ -1,6 +1,6 @@
 package:
   name: fluentci-ci-release
-  dependencies: [effect, either, fluentci, prelude, foldable-traversable, fluentci-ci-common, fluentci-ci-studio]
+  dependencies: [effect, either, exceptions, maybe, fluentci, prelude, strings, foldable-traversable, fluentci-ci-common, fluentci-ci-studio]
 workspace:
   packageSet:
     registry: 81.11.0

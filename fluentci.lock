@@ -1,6 +1,9 @@
 {
   "lockfileVersion": 1,
-  "modules": {},
+  "modules": {
+    "gemfury": "@fluentci.io/gemfury@0.1.0",
+    "setup-gemfury": "@fluentci.io/setup-gemfury@0.1.0"
+  },
   "packages": {
     "@fluentci.io/setup-gh@latest": {
       "registry": "https://api.fluentci.io",
@@ -62,6 +65,65 @@
         "x86_64",
         "aarch64"
       ]
+    },
+    "@fluentci.io/gemfury@0.1.0": {
+      "registry": "https://api.fluentci.io",
+      "name": "gemfury",
+      "version": "0.1.0",
+      "author": "did:plc:cukdxxemtwuxspaiurk2xsfz",
+      "url": "https://modules.fluentci.io/fluentci.io/gemfury/v0.1.0/gemfury.wasm",
+      "sha256": "ac94cc665f05ac82c23067e48d2fa380eb3978360e69644073d71bb8783b7c19",
+      "uri": "at://did:plc:cukdxxemtwuxspaiurk2xsfz/io.fluentci.plugin/gemfury-0.1.0",
+      "cid": "bafyreib6esazteuvktxkhpwr3vyey43n6lfxyey7cs346z45p2snfyxrsi",
+      "repository": "https://tangled.org/fluentci.io/modules",
+      "topics": [
+        "gemfury",
+        "package-publishing",
+        "linux-packages",
+        "deb",
+        "rpm",
+        "artifacts",
+        "ci-cd",
+        "automation"
+      ],
+      "os": [
+        "linux",
+        "macos"
+      ],
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ],
+      "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/publishing/gemfury/README.md"
+    },
+    "@fluentci.io/setup-gemfury@0.1.0": {
+      "registry": "https://api.fluentci.io",
+      "name": "setup-gemfury",
+      "version": "0.1.0",
+      "author": "did:plc:cukdxxemtwuxspaiurk2xsfz",
+      "url": "https://modules.fluentci.io/fluentci.io/setup-gemfury/v0.1.0/setup-gemfury.wasm",
+      "sha256": "087f1385c99e498621c718c04aed60a8ced846cf00742316b5c0844a065b75df",
+      "uri": "at://did:plc:cukdxxemtwuxspaiurk2xsfz/io.fluentci.plugin/setup-gemfury-0.1.0",
+      "cid": "bafyreicojh4znng7ugyr46tvy4e2vgblfclh3oj3g5zrgh3gjvsj6eztga",
+      "repository": "https://tangled.org/fluentci.io/modules",
+      "topics": [
+        "gemfury",
+        "setup",
+        "packages",
+        "package-publishing",
+        "linux",
+        "deb",
+        "rpm"
+      ],
+      "os": [
+        "linux",
+        "macos"
+      ],
+      "arch": [
+        "x86_64",
+        "aarch64"
+      ],
+      "readme_url": "https://raw.githubusercontent.com/fluentci-io/modules/refs/heads/main/setup/gemfury/README.md"
     }
   },
   "git": {}

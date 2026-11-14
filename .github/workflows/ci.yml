@@ -67,9 +67,13 @@ jobs:
           cargo test --release --locked --manifest-path rust/Cargo.toml
           cargo clippy --release --locked --all-targets --manifest-path rust/Cargo.toml -- -D warnings
           cargo fmt --manifest-path rust/Cargo.toml --check
+      - name: Test shell installer with mocked release assets
+        run: python3 tests/install.py
+      - name: Test musl release ELF verification
+        run: python3 .github/scripts/test-musl-release-verification.py -v
       - name: Test PureScript Linux packaging and publishing
-        working-directory: .fluentci/gemfury
-        run: npm test
+        working-directory: .fluentci/release
+        run: node --test test/*.test.mjs
       - name: Run tests with FluentCI
         run: |
           FLUENTCI_BIN="$(command -v fluentci)" fluentci --check-update=false run main check

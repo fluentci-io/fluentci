@@ -15,8 +15,9 @@ fluentci --help
 ```
 
 Requires Node.js 20 or newer and `tar`. Supports macOS and Linux (glibc 2.39+)
-on x86_64/arm64, and FreeBSD, NetBSD, and OpenBSD on x86_64. Windows and Linux
-musl binaries are not currently published.
+on x86_64/arm64, including musl builds for Alpine Linux, and FreeBSD, NetBSD,
+and OpenBSD on x86_64. Windows binaries are not currently published.
+Linux libc detection selects GNU or musl archives and keeps their caches separate.
 
 The package has no runtime npm dependencies. Installation downloads the matching
 binary from [GitHub releases](https://github.com/fluentci-io/fluentci/releases)
@@ -31,6 +32,7 @@ The wrapper forwards arguments, terminal input/output, exit codes, and signals.
 ## Configuration
 
 - `FLUENTCI_VERSION`: override the binary release, e.g. `v0.17.3` or `latest`.
+- `FLUENTCI_LIBC`: override Linux libc detection with `gnu` or `musl`.
 - `FLUENTCI_CACHE_DIR`: override the binary cache directory.
 - `FLUENTCI_SKIP_DOWNLOAD=1`: skip the install-time download. The first invocation
   downloads the binary if it is missing, including when npm lifecycle scripts

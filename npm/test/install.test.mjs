@@ -6,7 +6,7 @@ import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { ensureBinary, extractArchive, releaseTag, targetFor } from "../lib/install.mjs";
+import { detectLinuxLibc, ensureBinary, extractArchive, releaseTag, targetFor } from "../lib/install.mjs";
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), "fluentci-npm-test-"));
@@ -22,6 +22,7 @@ async function fixture(t) {
       version: "0.17.3",
       platform: "linux",
       architecture: "x64",
+      libc: "gnu",
       log: () => {},
       fetchImpl: async (url) => {
         requests.push(url);
@@ -134,8 +135,21 @@ test("wrapper preserves literal arguments and the child exit code without downlo
   await writeFile(join(directory, "fluentci"), '#!/usr/bin/env node\nconsole.log(JSON.stringify(process.argv.slice(2))); process.exitCode = 19;\n', { mode: 0o755 });
   const args = ["run", "demo", "--src", "a path with spaces", "$(literal)"];
   const result = spawnSync(process.execPath, [fileURLToPath(new URL("../bin/fluentci.mjs", import.meta.url)), ...args], {
-    env: { ...process.env, FLUENTCI_CACHE_DIR: f.root, FLUENTCI_VERSION: "0.17.3" }, encoding: "utf8",
+    env: { ...process.env, FLUENTCI_CACHE_DIR: f.root, FLUENTCI_VERSION: "0.17.3", FLUENTCI_LIBC: "gnu" }, encoding: "utf8",
   });
   assert.equal(result.status, 19, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), args);
+});
+
+test("detects libc and selects separate musl release/cache identities", async (t) => {
+  assert.equal(detectLinuxLibc({header:{glibcVersionRuntime:"2.39"}}), "gnu");
+  assert.equal(detectLinuxLibc({header:{}}), "musl");
+  for (const [arch, target] of [["x64","x86_64"],["arm64","aarch64"]]) {
+    assert.equal(targetFor("linux", arch, "musl"), target+"-unknown-linux-musl");
+  }
+  assert.throws(() => targetFor("linux","x64","invalid"), /FLUENTCI_LIBC/);
+  const f = await fixture(t);
+  const binary = await ensureBinary({...f.options, libc:"musl"});
+  assert.ok(binary.endsWith("x86_64-unknown-linux-musl/fluentci"));
+  assert.ok(f.requests.every(url => url.includes("x86_64-unknown-linux-musl.tar.gz")));
 });

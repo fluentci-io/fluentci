@@ -10,7 +10,17 @@ done
 
 case "$(uname -s)" in
     Darwin) fluentci_os=apple-darwin ;;
-    Linux) fluentci_os=unknown-linux-gnu ;;
+    Linux)
+        case "${FLUENTCI_LIBC:-auto}" in
+            gnu|musl) fluentci_libc=$FLUENTCI_LIBC ;;
+            auto)
+                case "$(ldd --version 2>&1 || true)" in
+                    *musl*) fluentci_libc=musl ;;
+                    *) if [ -f /etc/alpine-release ]; then fluentci_libc=musl; else fluentci_libc=gnu; fi ;;
+                esac ;;
+            *) echo 'FLUENTCI_LIBC must be gnu or musl' >&2; exit 1 ;;
+        esac
+        fluentci_os="unknown-linux-$fluentci_libc" ;;
     FreeBSD) fluentci_os=unknown-freebsd ;;
     NetBSD) fluentci_os=unknown-netbsd ;;
     OpenBSD) fluentci_os=unknown-openbsd ;;
@@ -23,7 +33,7 @@ case "$(uname -m)" in
 esac
 fluentci_target="${fluentci_arch}-${fluentci_os}"
 case "$fluentci_target" in
-    x86_64-apple-darwin|aarch64-apple-darwin|x86_64-unknown-linux-gnu|aarch64-unknown-linux-gnu|x86_64-unknown-freebsd|x86_64-unknown-netbsd|x86_64-unknown-openbsd) ;;
+    x86_64-apple-darwin|aarch64-apple-darwin|x86_64-unknown-linux-gnu|aarch64-unknown-linux-gnu|x86_64-unknown-linux-musl|aarch64-unknown-linux-musl|x86_64-unknown-freebsd|x86_64-unknown-netbsd|x86_64-unknown-openbsd) ;;
     *) echo "No release binary is available for $fluentci_target" >&2; exit 1 ;;
 esac
 
