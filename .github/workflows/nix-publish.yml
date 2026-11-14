@@ -94,7 +94,7 @@ jobs:
         shell: bash
         run: |
           trusted_users=$(id -un)
-          fluentci --check-update=false run setup-determinate-nix@v0.2.1 setup --sudo --trusted-users "$trusted_users" | escript .github/scripts/fluentci_ci export-setup-env
+          fluentci --check-update=false run setup-determinate-nix@0.2.2 setup --sudo --trusted-users "$trusted_users" | escript .github/scripts/fluentci_ci export-setup-env
       - name: Set up FlakeHub publisher through FluentCI
         if: inputs.registry == 'flakehub'
         shell: bash

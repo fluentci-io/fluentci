@@ -44,8 +44,8 @@ steps:
     command: |
       set -euo pipefail
       source .tangled/scripts/common.sh
-      trusted_users=$(python3 -c 'import json,os,pwd; print(json.dumps([pwd.getpwuid(os.getuid()).pw_name]))')
-      fluentci_setup setup-determinate-nix@v0.2.1 setup --sudo --trusted-users "$trusted_users"
+      trusted_users=$(id -un)
+      fluentci_setup setup-determinate-nix@0.2.2 setup --sudo --trusted-users "$trusted_users"
       fluentci_setup setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci
   - name: Build native Linux flake and upload optional cache
     command: |
