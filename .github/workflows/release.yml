@@ -13,6 +13,11 @@ on:
         description: Optional source commit or branch to rebuild (defaults to the release tag)
         required: false
         type: string
+      bsd-only:
+        description: Rebuild only BSD assets (plus shared release inputs)
+        required: false
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -87,6 +92,7 @@ jobs:
           retention-days: 7
 
   release:
+    if: ${{ inputs.bsd-only != true }}
     name: Release ${{ matrix.target }}
     needs: studio
     runs-on: ${{ matrix.os }}
@@ -278,7 +284,8 @@ jobs:
           prepare: |
             set -eu
             export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
-            pkg install -y curl
+            # FluentCI executes setup commands through Bash; bootstrap it first.
+            pkg install -y bash curl
             curl -fsSL https://raw.githubusercontent.com/fluentci-io/fluentci/main/install.sh | sh
           run: |
             set -eu
@@ -305,7 +312,8 @@ jobs:
             test -n "$repositories"
             printf '%s\n' "$repositories" | tr ';' '\n' > /usr/pkg/etc/pkgin/repositories.conf
             /usr/pkg/bin/pkgin -y update
-            /usr/pkg/bin/pkgin -y install curl
+            # FluentCI executes setup commands through Bash; bootstrap it first.
+            /usr/pkg/bin/pkgin -y install bash curl
             curl -fsSL https://raw.githubusercontent.com/fluentci-io/fluentci/main/install.sh | sh
           run: |
             set -eu
@@ -327,7 +335,8 @@ jobs:
           prepare: |
             set -eu
             export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
-            pkg_add -I curl
+            # FluentCI executes setup commands through Bash; bootstrap it first.
+            pkg_add -I bash curl
             # The runner downloaded and verified the component-capable OpenBSD asset.
             # Verify the synchronized binary again, then install without install.sh.
             bootstrap=.release-bootstrap/openbsd

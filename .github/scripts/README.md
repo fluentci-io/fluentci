@@ -11,8 +11,14 @@ exports a single executable escript. Helpers use Gleam 1.17 and OTP 27 so the
 bytecode also runs on BSD guests with older native toolchains; application SDK
 jobs may select newer compiler/runtime versions afterward. Release jobs copy that escript into BSD
 VMs so a guest does not need to compile helper sources with its native compiler.
-Guest preparation first installs the minimal native prerequisites needed to
-bootstrap FluentCI, then calls both setup modules before running any helper.
+Guest preparation first installs Bash and curl using the native package manager.
+Bash must be available before FluentCI can execute either setup module. It then
+calls both setup modules before running any helper.
+
+For a BSD-only release recovery, dispatch the Release workflow from `main` with
+`tag` set to the existing release, `source-ref` set to the corrected commit, and
+`bsd-only` enabled. This rebuilds shared inputs and BSD assets while skipping
+Linux and macOS builds; it does not move the release tag.
 
 ```sh
 (cd .github/scripts && gleam export escript)
