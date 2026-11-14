@@ -43,6 +43,12 @@ pub fn verify_bsd(
     ),
     "Unsupported BSD target",
   ))
+  use _ <- result.try(c.require(
+    native.regular(directory <> "/status"),
+    "Missing BSD build status: "
+      <> directory
+      <> "/status; check guest build execution and artifact copyback",
+  ))
   use status <- result.try(c.text(directory <> "/status"))
   use _ <- result.try(c.require(
     string.trim(status) == "built",
@@ -50,6 +56,10 @@ pub fn verify_bsd(
   ))
   let name = "fluentci_" <> tag <> "_" <> target <> ".tar.gz"
   let archive = directory <> "/" <> name
+  use _ <- result.try(c.require(
+    native.regular(archive),
+    "Missing BSD release archive: " <> archive,
+  ))
   use digest <- result.try(c.file_hash(archive))
   use sidecar <- result.try(c.text(archive <> ".sha256"))
   use _ <- result.try(c.require(

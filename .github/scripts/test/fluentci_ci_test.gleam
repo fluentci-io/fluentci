@@ -235,6 +235,12 @@ pub fn bsd_archive_checksum_metadata_permissions_and_member_safety_test() {
       let target = "x86_64-unknown-netbsd"
       let name = "fluentci_v0.0.0-test_" <> target <> ".tar.gz"
       let archive = directory <> "/" <> name
+      artifacts.verify_bsd(directory, "v0.0.0-test", target)
+      |> should.equal(Error(
+        "Missing BSD build status: "
+        <> directory
+        <> "/status; check guest build execution and artifact copyback",
+      ))
       use _ <- result.try(c.write(directory <> "/status", "built\n"))
       use _ <- result.try(native.create_archive(
         archive,

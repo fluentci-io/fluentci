@@ -20,6 +20,11 @@ For a BSD-only release recovery, dispatch the Release workflow from `main` with
 `bsd-only` enabled. This rebuilds shared inputs and BSD assets while skipping
 Linux and macOS builds; it does not move the release tag.
 
+Noninteractive commands inside the VM run with stdin closed. The SSH runner
+feeds its shell script through stdin, which an Erlang VM can otherwise consume
+before the next command executes. Each guest verifies its release artifacts
+before copyback; the runner verifies them again before uploading.
+
 ```sh
 (cd .github/scripts && gleam export escript)
 escript .github/scripts/fluentci_ci export-setup-env

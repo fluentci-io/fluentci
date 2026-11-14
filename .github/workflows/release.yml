@@ -290,10 +290,12 @@ jobs:
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
-            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup
-            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup
-            escript .github/scripts/fluentci_ci prepare-bsd-release
-            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION"
+            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup </dev/null
+            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup </dev/null
+            escript .github/scripts/fluentci_ci prepare-bsd-release </dev/null
+            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION" </dev/null
+            # Fail inside the guest if the build produced no release artifacts.
+            escript .github/scripts/fluentci_ci verify-bsd-release "dist/bsd/$TARGET" "$RELEASE_VERSION" "$TARGET" </dev/null
       - name: Build and smoke-test NetBSD release
         if: matrix.os == 'netbsd'
         uses: vmactions/netbsd-vm@c8a0d7ddb84619a7a8cc4e652efa7950b3fd9f92
@@ -318,10 +320,12 @@ jobs:
           run: |
             set -eu
             export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
-            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup
-            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup
-            escript .github/scripts/fluentci_ci prepare-bsd-release
-            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION"
+            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup </dev/null
+            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup </dev/null
+            escript .github/scripts/fluentci_ci prepare-bsd-release </dev/null
+            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION" </dev/null
+            # Fail inside the guest if the build produced no release artifacts.
+            escript .github/scripts/fluentci_ci verify-bsd-release "dist/bsd/$TARGET" "$RELEASE_VERSION" "$TARGET" </dev/null
       - name: Build and smoke-test OpenBSD release
         if: matrix.os == 'openbsd'
         uses: vmactions/openbsd-vm@f1ca8bc8ecc5b6ef7218e5b914836e067e1546d3
@@ -348,10 +352,12 @@ jobs:
             set -eu
             # OpenBSD exposes unversioned OTP executables in this branch prefix.
             export PATH="$HOME/.local/bin:/usr/local/lib/erlang27/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
-            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup --version 27 --package-name erlang%27
-            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup
-            escript .github/scripts/fluentci_ci prepare-bsd-release
-            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION"
+            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup --version 27 --package-name erlang%27 </dev/null
+            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup </dev/null
+            escript .github/scripts/fluentci_ci prepare-bsd-release </dev/null
+            fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-build --target "$TARGET" --version "$RELEASE_VERSION" </dev/null
+            # Fail inside the guest if the build produced no release artifacts.
+            escript .github/scripts/fluentci_ci verify-bsd-release "dist/bsd/$TARGET" "$RELEASE_VERSION" "$TARGET" </dev/null
       - name: Verify copied-back BSD assets with FluentCI
         run: fluentci --check-update=false run --wasm "$RELEASE_MODULE" bsd-verify --target "$TARGET" --version "$RELEASE_VERSION"
       - name: Preserve BSD failure diagnostics
