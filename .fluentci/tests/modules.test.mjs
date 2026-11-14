@@ -372,6 +372,7 @@ test("BSD upload and runner setup run through the compiled module", (t) => {
         "build-essential",
         "cmake",
         "pkg-config",
+        "musl-tools",
       ],
     ],
   );
@@ -399,6 +400,7 @@ test("release preparation validates inputs before building Studio on the input r
       ],
       ["python3", ".github/scripts/check-openbsd-msrv.py"],
       ["python3", ".github/scripts/test-bsd-release-verification.py", "-v"],
+      ["python3", ".github/scripts/test-musl-release-verification.py", "-v"],
       [
         "python3",
         ".github/scripts/create-bsd-smoke-fixtures.py",
