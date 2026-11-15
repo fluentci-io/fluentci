@@ -101,6 +101,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # Nix fetches the flake separately from curl and does not read GH_TOKEN.
+          # Keep existing Nix settings and pass authentication through the environment.
+          printf -v NIX_CONFIG '%s\naccess-tokens = github.com=%s\n' "${NIX_CONFIG:-}" "$GH_TOKEN"
+          export NIX_CONFIG
           # This plugin fetches GitHub release metadata and GitHub-hosted assets
           # with curl. Authenticate its requests to avoid the shared runner's
           # unauthenticated API quota; keep credentials out of command arguments.
