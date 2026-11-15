@@ -25,6 +25,10 @@ class Pipeline(Generic[T]):
         if not program: raise ValueError('exec requires a program')
         return self._append(('exec',(program,*arguments)))
 
+    def pipe(self, operation: Callable[[Pipeline[T], A], Pipeline[U]], arguments: A) -> Pipeline[U]:
+        """Compose a generated module operation without executing the pipeline."""
+        return operation(self, arguments)
+
     def workdir(self, path: str) -> Pipeline[T]:
         if not path or '\0' in path: raise ValueError('Invalid working directory')
         return self._append(('workdir',path))

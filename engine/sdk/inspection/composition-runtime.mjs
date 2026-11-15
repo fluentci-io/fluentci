@@ -1,12 +1,22 @@
 // Shared guest runtime for generated, typed pipeline bindings. No construction IO.
-const append = (pipeline, step) => Object.freeze({...pipeline, steps:Object.freeze([...pipeline.steps,Object.freeze(step)])});
+const builder = (name, steps) => Object.freeze(Object.assign(Object.create(builderMethods), {name, steps}));
+const builderMethods = Object.freeze({
+  workdir(path) { return workdir(this, path); },
+  env(key, value) { return env(this, key, value); },
+  exec(argv) { return exec(this, argv); },
+  map(project) { return map(this, project); },
+  ensuring(cleanup) { return ensuring(this, cleanup); },
+  pipe(operation, args) { return operation(this, args); },
+  run() { return run(this); },
+});
+const append = (pipeline, step) => builder(pipeline.name, Object.freeze([...pipeline.steps,Object.freeze(step)]));
 const clone = value => {
   if (value === null || typeof value !== 'object') return value;
   if (Array.isArray(value)) return Object.freeze(value.map(clone));
   if (value instanceof Uint8Array) return new Uint8Array(value);
   return Object.freeze(Object.fromEntries(Object.entries(value).map(([k,v])=>[k,clone(v)])));
 };
-export const pipeline = name => { text(name); return Object.freeze({name,steps:Object.freeze([])}); };
+export const pipeline = name => { text(name); return builder(name, Object.freeze([])); };
 export const workdir = (p,path) => {text(path);return append(p,{kind:'workdir',path});};
 export const env = (p,key,value) => {text(key);text(value,true);if(key.includes('='))throw Error('Invalid environment key');return append(p,{kind:'env',key,value});};
 export const exec = (p,argv) => {if(!Array.isArray(argv)||!argv.length)throw Error('exec requires literal argv');argv.forEach((v,i)=>text(v,i>0));return append(p,{kind:'exec',argv:clone(argv)});};

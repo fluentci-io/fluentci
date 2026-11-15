@@ -72,3 +72,24 @@ test('SDK option and record codecs preserve typed values',()=>{
   const result=flow.fromWire({buildDir:'build'},shape,'gleam',{Config,just:v=>new Some(v),nothing:null});
   assert.ok(result instanceof Config);assert.ok(result.build_dir instanceof Some);assert.equal(result.build_dir[0],'build');
 });
+
+test('builder chains preserve immutable branches and compose named module operations',()=>{
+  const h=hostFixture(),events=[];
+  const operation=(p,args)=>flow.moduleStep(p,'tool.build',args,a=>{
+    events.push(a.label);return a.label;
+  });
+  const base=flow.pipeline('builder').workdir('/workspace');
+  const built=base
+    .ensuring(()=>events.push('cleanup'))
+    .env('MODE','test')
+    .pipe(operation,{label:'built'})
+    .map(value=>value.toUpperCase())
+    .pipe(operation,value=>({label:value}))
+    .exec(['echo','done']);
+  assert.equal(base.steps.length,1);
+  assert.deepEqual(events,[]);
+  assert.equal(flow.run(built,h.call),'native-result');
+  assert.deepEqual(events,['built','BUILT','cleanup']);
+  assert.equal(h.environment.has('MODE'),false);
+  assert.equal(flow.pipeline('terminal').pipe(operation,{label:'result'}).run(),'result');
+});
