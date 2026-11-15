@@ -311,6 +311,49 @@ test("module pages show a skeleton while their record loads", async ({
   ).toHaveCount(0);
 });
 
+test("README function tables keep names and signatures on one line and scroll within the page", async ({
+  page,
+}) => {
+  await registry(page);
+  await page.route("https://modules.example/README.md", (route) =>
+    route.fulfill({
+      contentType: "text/markdown",
+      body: [
+        "| Function name | Function | Description |",
+        "| --- | --- | --- |",
+        "| build_and_publish_release_artifacts | `build_and_publish_release_artifacts(target: string, release_version: string, upload_artifacts: boolean)` | Builds and publishes the release artifacts for the selected target. |",
+      ].join("\n"),
+    }),
+  );
+  await page.goto("/fluentci.io/plugin/sccache-0.1.0");
+  const table = page
+    .getByRole("region", { name: "Module README" })
+    .getByRole("table");
+  await expect(table).toBeVisible();
+  await page.evaluate(() => document.fonts.ready);
+  for (const cell of await table.locator("th, td").all()) {
+    expect(
+      await cell.evaluate((element) => {
+        const range = document.createRange();
+        range.selectNodeContents(element);
+        return new Set(
+          Array.from(range.getClientRects(), (rect) => Math.round(rect.top)),
+        ).size;
+      }),
+    ).toBe(1);
+  }
+  expect(
+    await table.evaluate(
+      (element) => element.scrollWidth > element.clientWidth,
+    ),
+  ).toBe(true);
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= window.innerWidth,
+    ),
+  ).toBe(true);
+});
+
 test("README code supports non-SDK languages with dark and light syntax themes", async ({
   page,
 }) => {

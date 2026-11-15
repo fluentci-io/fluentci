@@ -192,7 +192,7 @@ samp {
     @apply absolute inset-x-3 bottom-0 h-0.5 bg-cyan sm:inset-x-5;
   }
   .code {
-    @apply m-0 font-mono text-[15px] leading-[1.7];
+    @apply m-0 font-mono text-sm leading-[1.7];
     tab-size: 2;
   }
   .sdk-code {
@@ -412,6 +412,8 @@ samp {
   .module-markdown th,
   .module-markdown td {
     @apply border border-line px-3 py-2 text-left;
+    white-space: nowrap;
+    overflow-wrap: normal;
   }
   .module-markdown blockquote {
     @apply border-l-2 border-accent pl-4;

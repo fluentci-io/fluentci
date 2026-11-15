@@ -40,7 +40,7 @@ export function LandingPage() {
                   <span className="text-xs text-muted">Install with curl</span>
                   <Copy text={install} label="Copy install command" />
                 </div>
-                <Code className="whitespace-pre-wrap break-all text-[15px] leading-7">
+                <Code className="whitespace-pre-wrap break-all text-sm leading-7">
                   {install}
                 </Code>
               </div>
@@ -67,11 +67,11 @@ export function LandingPage() {
               </div>
               <Code
                 language={heroExample.language}
-                className="p-5 text-[15px] leading-[1.7] sm:p-6"
+                className="p-5 text-sm leading-[1.7] sm:p-6"
               >
                 {heroExample.code}
               </Code>
-              <div className="border-t border-line bg-paper px-5 py-4 font-mono text-[15px] text-ink">
+              <div className="border-t border-line bg-paper px-5 py-4 font-mono text-sm text-ink">
                 <Code className="text-sm">{heroExample.command}</Code>
               </div>
             </div>
@@ -197,12 +197,12 @@ export function LandingPage() {
                 <Copy text={install} />
               </div>
               <div className="space-y-5 p-5 sm:p-6">
-                <Code className="text-[15px] leading-7">{install}</Code>
+                <Code className="text-sm leading-7">{install}</Code>
                 <div className="border-t border-line pt-5">
                   <p className="mb-2 text-xs text-muted">
                     Add the CLI to this shell’s PATH, then verify:
                   </p>
-                  <Code className="text-[15px] leading-7">
+                  <Code className="text-sm leading-7">
                     {'export PATH="$HOME/.local/bin:$PATH"\nfluentci --version'}
                   </Code>
                 </div>
