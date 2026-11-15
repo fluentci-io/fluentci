@@ -48,9 +48,9 @@ samp {
 @theme {
   --font-sans: "Lexend", sans-serif;
   --font-mono: "CaskaydiaMono", monospace;
-  --color-paper: #09090d;
-  --color-panel: #101017;
-  --color-raised: #191922;
+  --color-paper: #0c0020;
+  --color-panel: #110021;
+  --color-raised: #2a2139;
   --color-accent: #c3a6ff;
   --color-accent-hover: #d4c0ff;
   --color-success: #9cdbaf;
@@ -58,7 +58,7 @@ samp {
   --color-ink: #efeff5;
   --color-muted: #a1a1b3;
   --color-soft: #baafcf;
-  --color-line: #292934;
+  --color-line: #34294f;
 }
 
 @layer base {
@@ -67,23 +67,32 @@ samp {
     font-synthesis: none;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    --syntax-comment: #858598;
-    --syntax-keyword: #c3a6ff;
-    --syntax-string: #9cdbaf;
-    --syntax-title: #73d9ea;
-    --syntax-type: #e9bd8a;
-    --syntax-number: #ffa6bf;
-    --syntax-variable: #c9c9d6;
-    --module-code-comment: #9399b2;
-    --module-code-keyword: #ff7ab2;
-    --module-code-string: #a5ed78;
-    --module-code-title: #6ee7ff;
-    --module-code-type: #ffd580;
-    --module-code-number: #b8a1ff;
-    --module-code-variable: #e2b2ff;
-    --module-code-property: #8cc8ff;
-    --module-code-builtin: #ffad66;
-    --module-code-meta: #f4c96b;
+    /* Midnight Synth by Eric Kelley: https://github.com/emkelley/midnight-synth
+       Adapted from its TextMate token palette; license: themes/midnight-synth-LICENSE. */
+    --syntax-background: #0c0020;
+    --syntax-foreground: #dbd4fa;
+    --syntax-comment: #dabdff96;
+    --syntax-keyword: #ff57f7;
+    --syntax-operator: #53d5d4;
+    --syntax-string: #ffece3d0;
+    --syntax-title: #57dae4;
+    --syntax-type: #fe4450;
+    --syntax-number: #ff7164;
+    --syntax-variable: #c368ff;
+    --syntax-property: #7ab1f8;
+    --syntax-builtin: #36f9f6;
+    --syntax-meta: #72f1b8;
+    --syntax-regexp: #eb8455;
+    --module-code-comment: var(--syntax-comment);
+    --module-code-keyword: var(--syntax-keyword);
+    --module-code-string: var(--syntax-string);
+    --module-code-title: var(--syntax-title);
+    --module-code-type: var(--syntax-type);
+    --module-code-number: var(--syntax-number);
+    --module-code-variable: var(--syntax-variable);
+    --module-code-property: var(--syntax-property);
+    --module-code-builtin: var(--syntax-builtin);
+    --module-code-meta: var(--syntax-meta);
   }
   :root[data-theme="light"] {
     color-scheme: light;
@@ -98,13 +107,20 @@ samp {
     --color-muted: #5c5c6e;
     --color-soft: #71627e;
     --color-line: #e3e2eb;
+    --syntax-background: #fafafd;
+    --syntax-foreground: #181822;
     --syntax-comment: #686878;
     --syntax-keyword: #6d28d9;
+    --syntax-operator: #08798a;
     --syntax-string: #197845;
     --syntax-title: #08798a;
     --syntax-type: #92521b;
     --syntax-number: #b52c60;
     --syntax-variable: #414154;
+    --syntax-property: #0a599e;
+    --syntax-builtin: #08798a;
+    --syntax-meta: #8f5914;
+    --syntax-regexp: #b54708;
     --module-code-comment: #677187;
     --module-code-keyword: #b42377;
     --module-code-string: #24752a;
@@ -193,6 +209,8 @@ samp {
   }
   .code {
     @apply m-0 font-mono text-sm leading-[1.7];
+    color: var(--syntax-foreground);
+    background-color: var(--syntax-background);
     tab-size: 2;
   }
   .sdk-code {
@@ -225,11 +243,16 @@ samp {
 .hljs-comment {
   color: var(--syntax-comment);
 }
-.hljs-keyword,
-.hljs-operator,
-.hljs-built_in {
+.hljs-keyword {
   color: var(--syntax-keyword);
 }
+.hljs-operator { color: var(--syntax-operator); }
+.hljs-built_in { color: var(--syntax-builtin); }
+.hljs-meta { color: var(--syntax-meta); }
+.hljs-regexp { color: var(--syntax-regexp); }
+.hljs-attr,
+.hljs-attribute,
+.hljs-property { color: var(--syntax-property); }
 .hljs-string,
 .hljs-meta .hljs-string {
   color: var(--syntax-string);
@@ -249,7 +272,6 @@ samp {
 .hljs-symbol {
   color: var(--syntax-number);
 }
-.hljs-attr,
 .hljs-variable,
 .hljs-params {
   color: var(--syntax-variable);

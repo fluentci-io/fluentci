@@ -1,12 +1,12 @@
-/* Vivid semantic accents shared with module function signatures. */
+/* Midnight Synth accents shared with homepage code and module signatures. */
 .module-markdown pre {
-  background: var(--color-panel);
+  background: var(--syntax-background);
 }
 .module-markdown pre code.hljs {
   display: block;
   overflow-x: auto;
   padding: 0;
-  color: var(--color-ink);
+  color: var(--syntax-foreground);
   background: transparent;
 }
 .module-markdown .hljs-comment,
@@ -16,13 +16,11 @@
 }
 .module-markdown .hljs-doctag,
 .module-markdown .hljs-keyword,
-.module-markdown .hljs-operator,
 .module-markdown .hljs-template-tag,
 .module-markdown .hljs-variable.language_ {
   color: var(--module-code-keyword);
 }
 .module-markdown .hljs-string,
-.module-markdown .hljs-regexp,
 .module-markdown .hljs-quote,
 .module-markdown .hljs-addition {
   color: var(--module-code-string);
@@ -36,12 +34,18 @@
 .module-markdown .hljs-type,
 .module-markdown .hljs-title.class_,
 .module-markdown .hljs-title.class_.inherited__,
-.module-markdown .hljs-literal,
 .module-markdown .hljs-bullet {
   color: var(--module-code-type);
 }
-.module-markdown .hljs-number {
+.module-markdown .hljs-number,
+.module-markdown .hljs-literal {
   color: var(--module-code-number);
+}
+.module-markdown .hljs-operator {
+  color: var(--syntax-operator);
+}
+.module-markdown .hljs-regexp {
+  color: var(--syntax-regexp);
 }
 .module-markdown .hljs-variable,
 .module-markdown .hljs-template-variable,
@@ -75,7 +79,7 @@
 .module-markdown .hljs-params,
 .module-markdown .hljs-subst,
 .module-markdown .hljs-tag {
-  color: var(--color-ink);
+  color: var(--syntax-foreground);
 }
 .module-markdown .hljs-punctuation {
   color: var(--module-code-comment);

@@ -83,10 +83,10 @@ export function ModulesPage() {
                   ⌘&thinsp;K
                 </kbd>
               </label>
-              <label>
+              <label className="relative">
                 <span className="sr-only">Sort modules</span>
                 <select
-                  className="w-full rounded-lg border border-line bg-panel px-3 py-3 text-xs text-ink sm:w-auto"
+                  className="w-full appearance-none rounded-lg border border-line bg-panel py-3 pl-3 pr-9 text-xs text-ink sm:w-auto"
                   value={filters.sort}
                   onChange={(event) =>
                     update({ ...filters, sort: event.target.value })
@@ -98,6 +98,18 @@ export function ModulesPage() {
                     </option>
                   ))}
                 </select>
+                <svg
+                  className="pointer-events-none absolute right-3 top-1/2 size-3.5 -translate-y-1/2 text-muted"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="1.7"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-hidden="true"
+                >
+                  <path d="m6 9 6 6 6-6" />
+                </svg>
               </label>
             </div>
             {!catalog.loading &&

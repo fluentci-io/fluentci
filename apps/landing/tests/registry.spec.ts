@@ -373,7 +373,11 @@ test("README code supports non-SDK languages with dark and light syntax themes",
     ).toBeVisible();
   }
   const keyword = markdown.locator("code.language-sql .hljs-keyword").first();
-  await expect(keyword).toHaveCSS("color", "rgb(255, 122, 178)");
+  await expect(keyword).toHaveCSS("color", "rgb(255, 87, 247)");
+  await expect(markdown.locator("pre").first()).toHaveCSS(
+    "background-color",
+    "rgb(12, 0, 32)",
+  );
   await page.getByRole("button", { name: "Switch to light theme" }).click();
   await expect(keyword).toHaveCSS("color", "rgb(180, 35, 119)");
   await expect(markdown.locator("code.language-unknown")).toHaveText(

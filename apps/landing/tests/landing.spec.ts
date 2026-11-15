@@ -10,7 +10,7 @@ test("defaults to dark and remembers a white light theme", async ({
   await expect(page.locator("html")).toHaveAttribute("data-theme", "dark");
   await expect(page.locator("body")).toHaveCSS(
     "background-color",
-    "rgb(9, 9, 13)",
+    "rgb(12, 0, 32)",
   );
   const heading = page.getByRole("heading", { level: 1 });
   await expect(heading).toHaveText("Strongly typed.Functional CI/CD.");
@@ -39,6 +39,14 @@ test("defaults to dark and remembers a white light theme", async ({
     /check :: Effect String/,
   );
   await expect(example.locator(".hljs-string").first()).toBeVisible();
+  await expect(example.locator(".hljs-keyword").first()).toHaveCSS(
+    "color",
+    "rgb(255, 87, 247)",
+  );
+  await expect(example.locator("pre").first()).toHaveCSS(
+    "background-color",
+    "rgb(12, 0, 32)",
+  );
   const switcher = page.getByRole("button", { name: "Switch to light theme" });
   await switcher.focus();
   await page.keyboard.press("Space");

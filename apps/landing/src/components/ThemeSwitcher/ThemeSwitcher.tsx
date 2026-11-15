@@ -10,7 +10,7 @@ export function ThemeSwitcher() {
     document.documentElement.style.colorScheme = theme;
     document
       .querySelector('meta[name="theme-color"]')
-      ?.setAttribute("content", theme === "dark" ? "#09090d" : "#ffffff");
+      ?.setAttribute("content", theme === "dark" ? "#0c0020" : "#ffffff");
     try {
       localStorage.setItem("fluentci-landing-theme", theme);
     } catch {

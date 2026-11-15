@@ -38,11 +38,13 @@ export function LandingPage() {
               >
                 <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
                   <span className="text-xs text-muted">Install with curl</span>
-                  <Copy text={install} label="Copy install command" />
                 </div>
-                <Code className="whitespace-pre-wrap break-all text-sm leading-7">
-                  {install}
-                </Code>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Code className="min-w-0 flex-1 text-sm leading-7">
+                    {install}
+                  </Code>
+                  <Copy text={install} label="Copy install command" iconOnly />
+                </div>
               </div>
               <div className="mt-8 flex flex-wrap items-center gap-6">
                 <a className="button-primary" href="#install">
@@ -194,10 +196,14 @@ export function LandingPage() {
             <div className="min-w-0 overflow-hidden rounded-xl border border-line bg-panel">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-4 text-xs">
                 <span>Install with curl</span>
-                <Copy text={install} />
               </div>
               <div className="space-y-5 p-5 sm:p-6">
-                <Code className="text-sm leading-7">{install}</Code>
+                <div className="flex min-w-0 items-center gap-3">
+                  <Code className="min-w-0 flex-1 text-sm leading-7">
+                    {install}
+                  </Code>
+                  <Copy text={install} iconOnly />
+                </div>
                 <div className="border-t border-line pt-5">
                   <p className="mb-2 text-xs text-muted">
                     Add the CLI to this shell’s PATH, then verify:

@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#09090d" />
+    <meta name="theme-color" content="#0c0020" />
     <script>
       // Apply the saved preference before rendering to avoid a theme flash.
       try {
@@ -13,7 +13,7 @@
         document.documentElement.dataset.theme = theme;
         document.documentElement.style.colorScheme = theme;
         document.querySelector('meta[name="theme-color"]').content =
-          theme === "light" ? "#ffffff" : "#09090d";
+          theme === "light" ? "#ffffff" : "#0c0020";
       } catch {
         document.documentElement.style.colorScheme = "dark";
       }
