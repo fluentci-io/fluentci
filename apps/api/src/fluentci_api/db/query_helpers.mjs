@@ -1,6 +1,6 @@
 // Encoding and SemVer helpers; no SQL or table definitions.
 import { createHash } from 'node:crypto';
-import { InvalidRequestError } from '@atproto/xrpc-server';
+import { InvalidRequestError, XRPCError } from '@atproto/xrpc-server';
 import semver from 'semver';
 import { toList } from '../../gleam.mjs';
 export const queryHash = (query, author) =>
@@ -43,6 +43,7 @@ export function latest(packages) {
 }
 export const words = (value) => toList(value.match(/[\p{L}\p{N}_]+/gu) ?? []);
 export function fail(code, message) {
+  if (code === 'PackageNotFound') throw new XRPCError(404, message, code);
   throw new InvalidRequestError(message, code);
 }
 

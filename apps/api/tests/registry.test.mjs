@@ -170,8 +170,19 @@ test('real XRPC query routes return validated schemas, pagination, and useful er
   assert.equal(list.status, 200);
   const invalid = await fetch(`${url}/xrpc/io.fluentci.registry.listPackages?limit=101`);
   assert.equal(invalid.status, 400);
-  const missing = await fetch(`${url}/xrpc/io.fluentci.registry.getPackage?name=missing`);
-  assert.equal((await missing.json()).error, 'PackageNotFound');
+  for (const query of [
+    'name=missing',
+    `name=dragonly&author=${did}`,
+    `name=hello&author=${did}&version=9.9.9`,
+    `name=hello&author=${other}`,
+  ]) {
+    const missing = await fetch(`${url}/xrpc/io.fluentci.registry.getPackage?${query}`);
+    assert.equal(missing.status, 404, query);
+    assert.deepEqual(await missing.json(), {
+      error: 'PackageNotFound',
+      message: 'Package not found',
+    });
+  }
 });
 
 test('function signatures survive Jetstream, SQLite and every registry response', async (t) => {
@@ -938,7 +949,7 @@ test('download recording requires a private token and atomically counts totals a
     assert.equal((await send(randomUUID(), secret)).status, 401);
   assert.equal((await send('not-a-uuid')).status, 400);
   assert.equal((await send(randomUUID(), token, { version: 'v1.0.0' })).status, 400);
-  assert.equal((await send(randomUUID(), token, { name: 'unknown' })).status, 400);
+  assert.equal((await send(randomUUID(), token, { name: 'unknown' })).status, 404);
   const id = randomUUID();
   assert.deepEqual(await (await send(id)).json(), { recorded: 1, downloads: 1 });
   assert.deepEqual(await (await send(id)).json(), { recorded: 0, downloads: 1 });
