@@ -1,6 +1,6 @@
 {
   "name": "@fluentci/cli",
-  "version": "0.17.4",
+  "version": "0.17.7",
   "description": "FluentCI CLI: typed, composable CI/CD pipelines powered by WebAssembly.",
   "type": "module",
   "bin": {
