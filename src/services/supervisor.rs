@@ -360,6 +360,7 @@ impl Manager {
         worker.state.state = "starting".into();
         worker.state.message = None;
         worker.state.exit_code = None;
+        worker.state.ports.clear();
         worker.runtime_env = worker.definition.env.clone();
         for value in worker.runtime_env.values_mut() {
             for (key, address) in &dependency_ports {
@@ -462,7 +463,14 @@ impl Manager {
                         || matches!(tokio::time::timeout(Duration::from_secs(2),Command::new("docker").args(["inspect","--format","{{.State.Running}}",&worker.container]).kill_on_drop(true).output()).await,Ok(Ok(output)) if output.status.success() && String::from_utf8_lossy(&output.stdout).trim()=="true")
                 }
             };
-            if ready {
+            // Exec probes can succeed before Docker publishes every binding.
+            // Never return stale or incomplete endpoint data after recreation.
+            let ports_ready = worker.definition.backend != Backend::Docker
+                || worker.definition.ports.iter().all(|binding| {
+                    let port = binding.rsplit(':').next().unwrap_or(binding);
+                    worker.state.ports.contains_key(&format!("{port}/tcp"))
+                });
+            if ready && ports_ready {
                 worker.state.state = if worker.definition.readiness.is_some() {
                     "ready"
                 } else {

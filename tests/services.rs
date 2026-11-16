@@ -205,7 +205,7 @@ fn docker_lifecycle_and_port_discovery_use_the_owning_container() -> Result<()> 
     let script = bin.join("docker");
     std::fs::write(
         &script,
-        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$DOCKER_CALLS\"\ncase \"$1\" in\nrun) trap 'exit 0' TERM; echo redis-ready; while :; do sleep 1; done;;\nport) echo '6379/tcp -> 127.0.0.1:46379';;\ninspect) echo true;;\nexec|stop|rm) exit 0;;\n*) exit 2;;\nesac\n",
+        "#!/bin/sh\nprintf '%s\\n' \"$*\" >> \"$DOCKER_CALLS\"\ncase \"$1\" in\nrun) trap 'exit 0' TERM; echo redis-ready; while :; do sleep 1; done;;\nport) if [ ! -f \"$DOCKER_CALLS.binding\" ]; then touch \"$DOCKER_CALLS.binding\"; exit 0; fi; echo '6379/tcp -> 127.0.0.1:46379';;\ninspect) echo true;;\nexec|stop|rm) exit 0;;\n*) exit 2;;\nesac\n",
     )?;
     std::fs::set_permissions(&script, std::fs::Permissions::from_mode(0o755))?;
     let calls = fixture.root.path().join("docker.calls");
@@ -225,6 +225,12 @@ fn docker_lifecycle_and_port_discovery_use_the_owning_container() -> Result<()> 
         "{}",
         String::from_utf8_lossy(&output.stderr)
     );
+    assert_eq!(
+        fixture.wait("redis", "ready")?["ports"]["6379/tcp"],
+        "127.0.0.1:46379"
+    );
+    std::fs::remove_file(format!("{}.binding", calls.display()))?;
+    fixture.ok(&["restart", "redis"])?;
     assert_eq!(
         fixture.wait("redis", "ready")?["ports"]["6379/tcp"],
         "127.0.0.1:46379"
