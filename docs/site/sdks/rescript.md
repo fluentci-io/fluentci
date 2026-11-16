@@ -18,6 +18,30 @@ arguments, return types, and help during the build. See [WebAssembly components]
 for the component toolchain and host API. Use `fluentci run main hello --help`
 to inspect the generated signature.
 
+## Export a component function
+
+Add a typed function to `src/Greeting.res`:
+
+```rescript
+type greetArgs = {name: string}
+
+let greet = (args: greetArgs): string => "Hello, " ++ args.name ++ "!"
+```
+
+If the source module has a `.resi` interface, expose the function and argument
+type there too. Add the function to `entry.mjs`, preserving existing jobs:
+
+```javascript
+export { hello, greet } from "./src/Greeting.res.mjs";
+```
+
+For another source module, use its generated `.res.mjs` path. Defining a public
+binding in ReScript alone does not add a CLI job: it must be reachable through
+the entrypoint. The build reads compiler signatures and generates WIT and adapters.
+
+Run `fluentci run main greet --name Tsiry`, or inspect it with
+`fluentci run main greet --help`. See [component export rules](/guides/components/#export-functions-by-sdk).
+
 The examples below use the Extism runtime explicitly in a fresh workspace.
 Both runtimes remain supported.
 

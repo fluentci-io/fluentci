@@ -18,6 +18,31 @@ arguments, return types, and help during the build. See [WebAssembly components]
 for the component toolchain and host API. Use `fluentci run main hello --help`
 to inspect the generated signature.
 
+## Export a component function
+
+Add a typed function to `src/Main.purs`, alongside the starter's `hello`:
+
+```purescript
+greet :: { name :: String } -> String
+greet args = "Hello, " <> args.name <> "!"
+```
+
+`module Main where` exports this function automatically. If you use an explicit
+module export list, include `greet` in that list. Then expose its compiled export
+in `entry.mjs`, keeping any existing jobs:
+
+```javascript
+export { hello, greet } from "./output/Main/index.js";
+```
+
+The build checks compiler signatures and CoreFn exports before generating WIT.
+Defining a function in PureScript without adding it to `entry.mjs` does not
+expose a CLI job. For a different source module, re-export from that module's
+compiled `output/<Module>/index.js` path instead.
+
+Run `fluentci run main greet --name Tsiry`, or inspect it with
+`fluentci run main greet --help`. See [component export rules](/guides/components/#export-functions-by-sdk).
+
 The examples below use the Extism runtime explicitly in a fresh workspace.
 Both runtimes remain supported.
 

@@ -102,36 +102,44 @@ snapshotting does not capture runtime random state. Elixir pipelines use the sam
 DSL implementation and return stdout, just like Extism guests. `run_plan` returns
 the execution report; cache mounts remain available in both runtimes.
 
-Python example (`plugin.py`):
+## Export functions by SDK
 
-```python
-from dataclasses import dataclass
+These rules apply to the default `runtime = "component"` starters. Each SDK guide
+has a complete example that adds a `greet` job to an existing module:
 
-@dataclass
-class Args:
-    name: str
+| SDK                                                               | Define the function                                                               | Expose it to FluentCI                                                                                                         |
+| ----------------------------------------------------------------- | --------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| [Rust](/sdks/rust/#export-a-component-function)                   | A typed `pub fn` in `src/jobs.rs`                                                 | The generated adapters export public job functions. A `pub use` alone does not add a job.                                     |
+| [TypeScript](/sdks/typescript/#export-a-component-function)       | A typed function in `entry.ts` or another source module                           | Add a named `export function` or `export { greet } from "./src/greetings"` to `entry.ts`.                                     |
+| [PureScript](/sdks/purescript/#export-a-component-function)       | A typed function exported by its PureScript module                                | Re-export it from the compiled `output/<Module>/index.js` path in `entry.mjs`.                                                |
+| [Gleam](/sdks/gleam/#export-a-component-function)                 | A typed `pub fn`, with public argument record constructors                        | Re-export it from the compiled Gleam module's `.mjs` path in `entry.mjs`.                                                     |
+| [ReScript](/sdks/rescript/#export-a-component-function)           | A typed public binding, also exposed by `.resi` if present                        | Re-export it from the generated `.res.mjs` file in `entry.mjs`.                                                               |
+| [ClojureScript](/sdks/clojurescript/#export-a-component-function) | A typed `defn` in `src/main/plugin.cljc`                                          | Add it to `src/main/entry.cljs`'s export map and expose a named wrapper in `entry.mjs`. Keep the component invocation bridge. |
+| [Python](/sdks/python/#export-a-component-function)               | A top-level function with explicit argument and return annotations in `plugin.py` | Functions without an underscore prefix are inspected automatically. No Extism decorator is needed.                            |
+| [Elixir](/sdks/elixir/#export-a-component-function)               | A `defplugin` declaration in the module selected by `entry`                       | The DSL generates the export, argument metadata, and Rust component implementation. An ordinary `def` alone is not a job.     |
 
-def hello(args: Args) -> str:
-    return f"Hello, {args.name}!"
-```
-
-TypeScript example (`entry.ts`):
-
-```typescript
-export function hello(args: { name: string }): string {
-  return `Hello, ${args.name}!`;
-}
-```
+For JavaScript-based SDKs, being public in the source language is not enough:
+the function must also appear in the inspected `entry.ts` or `entry.mjs` export
+surface. Keep existing exports when adding a job, and keep helper functions off
+that surface. Rust and Python inspect their configured source directly; Elixir
+uses its `defplugin` declarations.
 
 WIT uses kebab-case identifiers. For example, a source field `source_dir` becomes
 `source-dir` in WIT and `--source-dir` in the CLI; generated adapters convert it back
 to the language's native field name.
 
 ```sh
-fluentci run main hello --name Tsiry
+fluentci modules main --json
 fluentci run main --help
-fluentci run main hello --help
+fluentci run main greet --help
+fluentci run main greet --name Tsiry
 ```
+
+Use your workspace alias instead of `main` if it differs. These commands build
+the module as needed. If a function is missing from help or JSON discovery,
+check its source visibility, typed signature, and entrypoint exports before
+publishing. The standard build regenerates WIT and metadata; do not maintain a
+second export list in handwritten WIT or `imports.d.ts` for a component starter.
 
 The CLI derives parameter names, types, and return types from the compiled
 component's WIT surface without instantiating it. A single record parameter is

@@ -18,6 +18,37 @@ arguments, return types, and help during the build. See [WebAssembly components]
 for the component toolchain and host API. Use `fluentci run main hello --help`
 to inspect the generated signature.
 
+## Export a component function
+
+Add a public typed function and its argument record to `src/plugin.gleam`:
+
+```gleam
+pub type GreetArgs {
+  GreetArgs(name: String)
+}
+
+pub fn greet(args: GreetArgs) -> String {
+  "Hello, " <> args.name <> "!"
+}
+```
+
+Expose it in `entry.mjs`, keeping the starter's existing exports:
+
+```javascript
+export {
+  hello,
+  greet,
+} from "./build/dev/javascript/fluentci_plugin_demo/plugin.mjs";
+```
+
+Use the package name from `gleam.toml` in place of `fluentci_plugin_demo` if it
+differs. For another source module, use its compiled `.mjs` path. Both the
+function and record constructor must be public so the generated adapter can
+call them. A `pub fn` missing from `entry.mjs` is not a CLI job.
+
+Run `fluentci run main greet --name Tsiry`, or inspect it with
+`fluentci run main greet --help`. See [component export rules](/guides/components/#export-functions-by-sdk).
+
 The examples below use the Extism runtime explicitly in a fresh workspace.
 Both runtimes remain supported.
 

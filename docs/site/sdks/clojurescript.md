@@ -18,6 +18,47 @@ arguments, return types, and help during the build. See [WebAssembly components]
 for the component toolchain and host API. Use `fluentci run main hello --help`
 to inspect the generated signature.
 
+## Export a component function
+
+Add a typed function to `src/main/plugin.cljc`. The starter already imports
+`typed.clojure` as `t` on the Clojure side:
+
+```clojure
+#?(:clj (t/ann greet [(t/HMap :mandatory {:name t/Str} :complete? true) -> t/Str]))
+(defn greet [args]
+  (str "Hello, " (:name args) "!"))
+```
+
+Add it to the CommonJS export map in `src/main/entry.cljs`. Keep the generated
+component invocation bridge and any existing jobs:
+
+```clojure
+(ns main.entry
+  (:require [main.plugin :as plugin]
+            [fluentci.inspection :as inspection]))
+
+(set! (.-exports js/module)
+  #js {:hello plugin/hello
+       :greet plugin/greet
+       :__fluentci_component_invoke inspection/component-invoke})
+```
+
+Also add a named wrapper to the existing `entry.mjs`:
+
+```javascript
+// Uses the existing: import plugin from "./build/plugin.cjs";
+export function greet(args) {
+  return plugin.greet(args);
+}
+```
+
+All three layers must expose the function. The component adapter uses the
+checked source signature and invocation bridge to construct native keyword maps;
+do not replace that bridge with raw JSON handling.
+
+Run `fluentci run main greet --name Tsiry`, or inspect it with
+`fluentci run main greet --help`. See [component export rules](/guides/components/#export-functions-by-sdk).
+
 The examples below use the Extism runtime explicitly in a fresh workspace.
 Both runtimes remain supported.
 

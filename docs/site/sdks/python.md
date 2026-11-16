@@ -18,6 +18,32 @@ arguments, return types, and help during the build. See [WebAssembly components]
 for the component toolchain and host API. Use `fluentci run main hello --help`
 to inspect the generated signature.
 
+## Export a component function
+
+Add a top-level typed function to `plugin.py`:
+
+```python
+from dataclasses import dataclass
+
+@dataclass
+class GreetArgs:
+    name: str
+
+def greet(args: GreetArgs) -> str:
+    return f"Hello, {args.name}!"
+```
+
+The component inspector exports top-level functions whose names do not begin
+with `_`. Argument fields and the return value need explicit annotations. Use
+an underscore-prefixed name for private helpers; methods and imported functions
+are not automatically exported. To expose logic from another Python module,
+call it from a typed top-level function in the configured entry file.
+
+Do not add `@extism.plugin_fn` to component functions. The build generates the
+WIT interface and adapters. Run `fluentci run main greet --name Tsiry`, or inspect
+it with `fluentci run main greet --help`.
+See [component export rules](/guides/components/#export-functions-by-sdk).
+
 The examples below use the Extism runtime explicitly in a fresh workspace.
 Both runtimes remain supported.
 

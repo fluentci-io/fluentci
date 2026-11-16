@@ -18,6 +18,24 @@ arguments, return types, and help during the build. See [WebAssembly components]
 for the component toolchain and host API. Use `fluentci run main hello --help`
 to inspect the generated signature.
 
+## Export a component function
+
+Add a named, typed export to `entry.ts`:
+
+```typescript
+export function greet(args: { name: string }): string {
+  return `Hello, ${args.name}!`;
+}
+```
+
+If the function lives in another TypeScript module, expose it from `entry.ts`,
+for example `export { greet } from "./src/greetings"`. An import alone does not
+export it. Use named exports; default exports are rejected. The build inspects
+the entrypoint with the TypeScript compiler and generates WIT and adapters.
+
+Run `fluentci run main greet --name Tsiry`, or inspect it with
+`fluentci run main greet --help`. See [component export rules](/guides/components/#export-functions-by-sdk).
+
 The examples below use the Extism runtime explicitly in a fresh workspace.
 Both runtimes remain supported.
 

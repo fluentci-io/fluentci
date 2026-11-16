@@ -105,6 +105,11 @@ A component module depends on another **component**, with an exported WIT interf
 SDK components export `api`; an external component can export a single unambiguous
 interface. Core Extism Wasm cannot satisfy a native WIT component import.
 
+Installing or importing a dependency does not automatically expose its functions
+as jobs of the parent module. Define and export a typed wrapper in the parent,
+as in the `sum` examples below. Follow the [SDK export rules](/guides/components/#export-functions-by-sdk)
+to include that wrapper in the parent's public component interface.
+
 For example, the Rust `math` module can define these jobs:
 
 ```rust

@@ -18,6 +18,34 @@ arguments, return types, and help during the build. See [WebAssembly components]
 for the component toolchain and host API. Use `fluentci run main hello --help`
 to inspect the generated signature.
 
+## Export a component function
+
+For the default component runtime, add a typed `pub fn` to `src/jobs.rs`:
+
+```rust
+pub struct GreetArgs {
+    pub name: String,
+}
+
+pub fn greet(args: GreetArgs) -> String {
+    format!("Hello, {}!", args.name)
+}
+```
+
+The starter's `build.rs` inspects public functions in this file and generates
+their WIT exports and adapters. Keep `mod jobs` and the generated `component.rs`
+include in `src/lib.rs`. Private functions stay internal. To expose a helper
+defined in another Rust module, call it from a public function in `src/jobs.rs`;
+a `pub use` alone does not create an inspected job.
+
+To expose logic defined in another Rust module, call it from a typed public
+wrapper in `src/jobs.rs`. A `pub use` alone does not create an inspected job.
+Keep the starter's `src/lib.rs` and generated adapter include in place.
+
+Run `fluentci run main greet --name Tsiry`, or inspect it with
+`fluentci run main greet --help`. No `#[plugin_fn]` or handwritten WIT is needed
+for component exports. See [component export rules](/guides/components/#export-functions-by-sdk).
+
 The examples below use the Extism runtime explicitly in a fresh workspace.
 Both runtimes remain supported.
 

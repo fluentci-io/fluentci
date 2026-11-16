@@ -18,6 +18,32 @@ arguments, return types, and help during the build. See [WebAssembly components]
 for the component toolchain and host API. Use `fluentci run main hello --help`
 to inspect the generated signature.
 
+## Export a component function
+
+Add a `defplugin` declaration inside the module selected by `entry` (the
+starter uses `entry = "Main"` and `lib/main.ex`):
+
+```elixir
+defmodule Main do
+  use FluentCI.Plugin
+
+  @doc "Echo a name."
+  defplugin greet do
+    argument("name", "string")
+  end
+end
+```
+
+Add the declaration alongside existing jobs rather than defining a second
+`Main` module. Every `defplugin` becomes an exported job; an ordinary `def`
+alone does not. The supported DSL provides both the typed contract and the
+generated Rust component implementation. Keep logic within that DSL instead
+of relying on an arbitrary Elixir function being compiled into Wasm.
+
+Run `fluentci run main greet --name Tsiry`, or inspect it with
+`fluentci run main greet --help`. This example returns the supplied name.
+See [component export rules](/guides/components/#export-functions-by-sdk).
+
 The examples below use the Extism runtime explicitly in a fresh workspace.
 Both runtimes remain supported.
 
