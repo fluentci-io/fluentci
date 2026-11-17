@@ -147,10 +147,18 @@ nix-store --generate-binary-cache-key fluentci-1 nix-private.key nix-public.key
 
 Public reads require only the two variables. Uploads require both secrets.
 With no cache configuration the build uses default Nix substituters; incomplete
-configuration fails. The helper exports signed NARs for unsigned build paths,
-including intermediate Crane Cargo artifacts and the final closure. Dependencies
-already signed by trusted substituters remain available from their original
-caches. It uploads NARs before narinfo metadata; upload errors fail CI.
+configuration fails. During a build, the helper polls the valid Nix store every
+two seconds and publishes newly added unsigned paths, including intermediate
+Crane Cargo artifacts. It drains pending uploads at the end and checks the final
+closure for paths it has not published. Completed artifacts remain cached if a
+later build step fails. Dependencies already signed by trusted substituters stay
+in their original caches.
+
+Every export is signed with the private key. Before uploading, the helper checks
+for the configured key's signature on every narinfo and asks Nix to verify those
+signatures. It uploads NARs before narinfo metadata, with at most four concurrent
+HTTP uploads. Upload failures cancel the build client and fail CI; private keys
+and exported files are cleaned up. The workflow limits Nix HTTP connections to 16.
 Signing keys are temporary files outside the checkout and are removed after
 publishing. Credentials never appear in command arguments. The workflow
 preserves GitHub authentication through `GH_TOKEN` and `NIX_CONFIG`.

@@ -12,7 +12,12 @@ import {
 } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { build, configuration, uploadFiles } from "../run.mjs";
+import {
+  build,
+  configuration,
+  uploadFiles,
+  requireSignatures,
+} from "../run.mjs";
 
 const { privateKey, publicKey } = generateKeyPairSync("ed25519");
 const pub = publicKey.export({ format: "der", type: "spki" }).subarray(-32);
@@ -31,6 +36,7 @@ test("public cache reads preserve GitHub authentication and do not expose upload
     config.nixEnv.NIX_CONFIG,
     /access-tokens = github.com=test-github-token/,
   );
+  assert.match(config.nixEnv.NIX_CONFIG, /http-connections = 16/);
   assert.match(config.nixEnv.NIX_CONFIG, /extra-substituters = https:.*\/nix/);
   assert.match(
     config.nixEnv.NIX_CONFIG,
@@ -108,6 +114,7 @@ test("exports intermediate unsigned outputs, excludes signed substitutes, and re
           outputs: { out: "/nix/store/final" },
         },
       ]);
+    if (args.includes("--all")) return "";
     if (program === "nix-store")
       return "/nix/store/root.drv\n/nix/store/final\n/nix/store/cargo-artifacts\n/nix/store/public-dependency\n";
     if (args[0] === "path-info")
@@ -118,6 +125,7 @@ test("exports intermediate unsigned outputs, excludes signed substitutes, and re
           signatures: ["cache.nixos.org-1:signature"],
         },
       });
+    if (args[0] === "store") return "";
     const url = new URL(args[args.indexOf("--to") + 1]);
     keyPath = url.searchParams.get("secret-key");
     exportPath = decodeURIComponent(url.pathname);
@@ -125,6 +133,10 @@ test("exports intermediate unsigned outputs, excludes signed substitutes, and re
     assert.equal(
       await readFile(keyPath, "utf8"),
       env.FLUENTCI_NIX_SIGNING_KEY + "\n",
+    );
+    await writeFile(
+      join(exportPath, "test.narinfo"),
+      `Sig: fluentci-1:${Buffer.alloc(64).toString("base64")}\n`,
     );
     assert.ok(args.includes("--no-recursive"));
     assert.ok(args.includes("/nix/store/cargo-artifacts"));
@@ -145,7 +157,7 @@ test("exports intermediate unsigned outputs, excludes signed substitutes, and re
   assert.ok(!JSON.stringify(calls).includes(env.FLUENTCI_NIX_SIGNING_KEY));
 });
 
-test("failed build never attempts export or upload", async () => {
+test("failed baseline query never starts the build or upload", async () => {
   let calls = 0;
   await assert.rejects(
     build(
@@ -202,6 +214,122 @@ test("uploads payloads before metadata, skips server-managed cache info, and fai
       /HTTP 401/,
     );
     assert.equal(failed.length, 1);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("watcher publishes during the build, deduplicates paths, and drains after a build failure", async () => {
+  let rejectBuild;
+  let building = false;
+  let scans = 0;
+  let exports = 0;
+  let uploads = 0;
+  let keyPath;
+  const run = async (program, args) => {
+    if (args.includes("--all")) {
+      if (++scans === 1) return "/nix/store/preexisting";
+      return "/nix/store/preexisting\n/nix/store/artifact\n/nix/store/source.drv";
+    }
+    if (args[0] === "build") {
+      building = true;
+      return new Promise((_, reject) => {
+        rejectBuild = reject;
+      });
+    }
+    if (args[0] === "path-info")
+      return JSON.stringify([{ path: "/nix/store/artifact", signatures: [] }]);
+    if (args[0] === "store") return "";
+    assert.equal(args[0], "copy");
+    const destination = new URL(args[args.indexOf("--to") + 1]);
+    keyPath = destination.searchParams.get("secret-key");
+    exports++;
+    await writeFile(
+      join(decodeURIComponent(destination.pathname), "test.narinfo"),
+      `Sig: fluentci-1:${Buffer.alloc(64).toString("base64")}\n`,
+    );
+  };
+  await assert.rejects(
+    build(
+      env,
+      run,
+      async () => {
+        assert.equal(building, true, "publish before the build settles");
+        uploads++;
+        rejectBuild(Error("later compilation failed"));
+        building = false;
+      },
+      { pollIntervalMs: 1 },
+    ),
+    /later compilation failed/,
+  );
+  assert.equal(uploads, 1);
+  assert.equal(exports, 1);
+  await assert.rejects(access(keyPath));
+});
+
+test("upload failure cancels the running Nix build and cleans its private key", async () => {
+  let scans = 0;
+  let aborted = false;
+  let keyPath;
+  const run = async (program, args, _env, _capture, signal) => {
+    if (args.includes("--all"))
+      return ++scans === 1 ? "" : "/nix/store/artifact";
+    if (args[0] === "build")
+      return new Promise((_, reject) => {
+        signal.addEventListener(
+          "abort",
+          () => {
+            aborted = true;
+            reject(Error("aborted"));
+          },
+          { once: true },
+        );
+      });
+    if (args[0] === "path-info")
+      return JSON.stringify([{ path: "/nix/store/artifact", signatures: [] }]);
+    if (args[0] === "store") return "";
+    const destination = new URL(args[args.indexOf("--to") + 1]);
+    keyPath = destination.searchParams.get("secret-key");
+    await writeFile(
+      join(decodeURIComponent(destination.pathname), "test.narinfo"),
+      `Sig: fluentci-1:${Buffer.alloc(64).toString("base64")}\n`,
+    );
+  };
+  await assert.rejects(
+    build(
+      env,
+      run,
+      async () => {
+        throw Error("HTTP 401");
+      },
+      { pollIntervalMs: 1 },
+    ),
+    /HTTP 401/,
+  );
+  assert.equal(aborted, true);
+  await assert.rejects(access(keyPath));
+});
+
+test("publisher rejects unsigned metadata before any upload", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "fluentci-signature-test-"));
+  try {
+    await writeFile(
+      join(directory, "test.narinfo"),
+      "StorePath: /nix/store/test\n",
+    );
+    await assert.rejects(
+      requireSignatures(directory, env.FLUENTCI_NIX_PUBLIC_KEY),
+      /Refusing unsigned/,
+    );
+    await writeFile(
+      join(directory, "test.narinfo"),
+      `Sig: other-key:${Buffer.alloc(64).toString("base64")}\n`,
+    );
+    await assert.rejects(
+      requireSignatures(directory, env.FLUENTCI_NIX_PUBLIC_KEY),
+      /Refusing unsigned/,
+    );
   } finally {
     await rm(directory, { recursive: true, force: true });
   }

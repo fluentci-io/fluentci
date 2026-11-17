@@ -1,7 +1,16 @@
 import { spawn } from "node:child_process";
 import { createPrivateKey, createPublicKey } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { mkdtemp, mkdir, writeFile, readdir, rm, stat } from "node:fs/promises";
+import {
+  mkdtemp,
+  mkdir,
+  writeFile,
+  readdir,
+  rm,
+  stat,
+  readFile,
+} from "node:fs/promises";
+import { setTimeout as delay } from "node:timers/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -68,6 +77,7 @@ export function configuration(env) {
   if (cache)
     nixEnv.NIX_CONFIG = [
       env.NIX_CONFIG || "",
+      "http-connections = 16",
       `extra-substituters = ${cache}`,
       `extra-trusted-public-keys = ${publicKey}`,
     ].join("\n");
@@ -77,10 +87,11 @@ export function configuration(env) {
   return { cache, publicKey, token, signingKey, nixEnv };
 }
 
-export function command(program, args, env, capture = false) {
+export function command(program, args, env, capture = false, signal) {
   return new Promise((resolve, reject) => {
     const child = spawn(program, args, {
       env,
+      signal,
       stdio: ["ignore", capture ? "pipe" : "inherit", "inherit"],
     });
     let output = "";
@@ -140,10 +151,29 @@ export async function uploadFiles(directory, cache, token, fetcher = fetch) {
   }
 }
 
+export async function requireSignatures(directory, publicKey) {
+  const keyName = publicKey.split(":")[0];
+  const files = (await readdir(directory)).filter((file) =>
+    file.endsWith(".narinfo"),
+  );
+  if (!files.length) throw Error("Nix export contains no signed metadata");
+  for (const file of files) {
+    const text = await readFile(join(directory, file), "utf8");
+    const signed = text.split("\n").some((line) => {
+      const prefix = `Sig: ${keyName}:`;
+      if (!line.startsWith(prefix)) return false;
+      const signature = line.slice(prefix.length).trim();
+      return /^[A-Za-z0-9+/]{86}==$/.test(signature);
+    });
+    if (!signed) throw Error(`Refusing unsigned Nix metadata: ${file}`);
+  }
+}
+
 export async function build(
   env = process.env,
   run = command,
   upload = uploadFiles,
+  { pollIntervalMs = 2000 } = {},
 ) {
   const config = configuration(env);
   console.log(
@@ -151,61 +181,141 @@ export async function build(
       ? `Nix cache: ${config.cache}`
       : "No FluentCI cache configured; using default Nix substituters",
   );
-  const built = JSON.parse(
-    await run(
-      "nix",
-      ["build", "--no-write-lock-file", "--json", ".#fluentci"],
-      config.nixEnv,
-      true,
-    ),
-  );
+  const buildArgs = ["build", "--no-write-lock-file", "--json", ".#fluentci"];
   if (!config.token) {
+    await run("nix", buildArgs, config.nixEnv, true);
     console.log("No upload credentials; cache is read-only");
     return;
   }
-  const roots = built
-    .flatMap((result) => [result.drvPath, ...Object.values(result.outputs)])
-    .filter(Boolean);
-  const closure = lines(
-    await run(
-      "nix-store",
-      ["--query", "--requisites", "--include-outputs", ...roots],
-      config.nixEnv,
-      true,
-    ),
-  ).filter((path) => !path.endsWith(".drv"));
-  // Include intermediate outputs (notably Crane's Cargo artifacts). Existing
-  // signed substitutes stay available from their original trusted caches.
-  const paths = [];
-  for (const batch of batches([...new Set(closure)])) {
-    const metadata = JSON.parse(
-      await run("nix", ["path-info", "--json", ...batch], config.nixEnv, true),
-    );
-    const entries = Array.isArray(metadata)
-      ? metadata
-      : Object.entries(metadata).map(([path, info]) => ({ path, ...info }));
-    for (const info of entries)
-      if (!info.signatures?.length) paths.push(info.path);
-  }
-  if (!paths.length) return;
   const directory = await mkdtemp(
     join(env.RUNNER_TEMP || tmpdir(), "fluentci-nix-"),
   );
+  const controller = new AbortController();
+  let building;
   try {
     const keyPath = join(directory, "signing.key");
-    const exportDir = join(directory, "cache");
     await writeFile(keyPath, config.signingKey + "\n", { mode: 0o600 });
-    await mkdir(exportDir);
-    const destination = pathToFileURL(exportDir);
-    destination.searchParams.set("secret-key", keyPath);
-    for (const batch of batches(paths))
-      await run(
-        "nix",
-        ["copy", "--no-recursive", "--to", destination.href, ...batch],
-        config.nixEnv,
+    const published = new Set();
+    const allPaths = async () =>
+      lines(await run("nix", ["path-info", "--all"], config.nixEnv, true));
+    const seen = new Set(await allPaths());
+    const publish = async (candidates) => {
+      const unique = [...new Set(candidates)].filter(
+        (path) => !path.endsWith(".drv") && !published.has(path),
       );
-    await upload(exportDir, config.cache, config.token);
-    console.log(`Published ${paths.length} store paths to FluentCI cache`);
+      for (const batch of batches(unique)) {
+        const metadata = JSON.parse(
+          await run(
+            "nix",
+            ["path-info", "--json", ...batch],
+            config.nixEnv,
+            true,
+          ),
+        );
+        const entries = Array.isArray(metadata)
+          ? metadata
+          : Object.entries(metadata).map(([path, info]) => ({ path, ...info }));
+        const paths = entries
+          .filter((info) => !info.signatures?.length)
+          .map((info) => info.path);
+        if (!paths.length) continue;
+        const exportDir = join(directory, "cache");
+        await mkdir(exportDir);
+        try {
+          const destination = pathToFileURL(exportDir);
+          destination.searchParams.set("secret-key", keyPath);
+          await run(
+            "nix",
+            ["copy", "--no-recursive", "--to", destination.href, ...paths],
+            config.nixEnv,
+          );
+          await requireSignatures(exportDir, config.publicKey);
+          // Ask Nix to verify exported signatures using our key, without rereading
+          // or decompressing the NAR payloads. No unsigned metadata is published.
+          await run(
+            "nix",
+            [
+              "store",
+              "verify",
+              "--store",
+              pathToFileURL(exportDir).href,
+              "--no-contents",
+              "--sigs-needed",
+              "1",
+              "--trusted-public-keys",
+              config.publicKey,
+              ...paths,
+            ],
+            config.nixEnv,
+          );
+          await upload(exportDir, config.cache, config.token);
+          paths.forEach((path) => published.add(path));
+          console.log(
+            `Published ${paths.length} signed store paths (${published.size} total)`,
+          );
+        } finally {
+          await rm(exportDir, { recursive: true, force: true });
+        }
+      }
+    };
+    const scan = async () => {
+      const current = await allPaths();
+      const fresh = current.filter((path) => !seen.has(path));
+      current.forEach((path) => seen.add(path));
+      await publish(fresh);
+    };
+    let done = false;
+    // Capture rejection immediately; watcher failures cancel the build client,
+    // while build failures still drain completed artifacts into the cache.
+    building = Promise.resolve()
+      .then(() => run("nix", buildArgs, config.nixEnv, true, controller.signal))
+      .then(
+        (value) => ({ value }),
+        (error) => ({ error }),
+      )
+      .finally(() => {
+        done = true;
+      });
+    console.log(
+      "Watching Nix store; publishing newly built paths during the build",
+    );
+    while (!done) {
+      await scan();
+      if (!done) {
+        const pause = new AbortController();
+        try {
+          await Promise.race([
+            building,
+            delay(pollIntervalMs, undefined, { signal: pause.signal }),
+          ]);
+        } finally {
+          pause.abort();
+        }
+      }
+    }
+    const outcome = await building;
+    await scan();
+    if (outcome.error) throw outcome.error;
+    const built = JSON.parse(outcome.value);
+    const roots = built
+      .flatMap((result) => [result.drvPath, ...Object.values(result.outputs)])
+      .filter(Boolean);
+    if (roots.length) {
+      const closure = lines(
+        await run(
+          "nix-store",
+          ["--query", "--requisites", "--include-outputs", ...roots],
+          config.nixEnv,
+          true,
+        ),
+      );
+      await publish(closure);
+    }
+    console.log(`Nix cache uploads complete: ${published.size} signed paths`);
+  } catch (error) {
+    controller.abort();
+    if (building) await building;
+    throw error;
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
