@@ -296,3 +296,15 @@ test('cache usage history stores daily owner-scoped snapshots and returns only t
     [did, other].sort(),
   );
 });
+
+test('snapshot workers can open the shared database without replaying pending migrations', async (t) => {
+  const { connection } = await fixture(t);
+  const directory = mkdtempSync(join(tmpdir(), 'cache-pending-migration-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const reopened = await nativeDb.open({
+    url: connection.testUrl,
+    migrate: false,
+    migrationsFolder: directory,
+  });
+  await nativeDb.close(reopened);
+});

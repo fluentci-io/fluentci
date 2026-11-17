@@ -43,7 +43,8 @@ export async function open(options = {}) {
   try {
     native.exec('PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 10000;');
     if (path !== ':memory:') native.exec('PRAGMA journal_mode = WAL;');
-    migrate(db, { migrationsFolder: options.migrationsFolder ?? resolve(directory, 'drizzle') });
+    if (options.migrate !== false)
+      migrate(db, { migrationsFolder: options.migrationsFolder ?? resolve(directory, 'drizzle') });
     // The native driver's transaction callback is synchronous. Gleam callbacks
     // return promises, so explicitly keep BEGIN open until every awaited query
     // completes; the shared ORM queue excludes unrelated reads and writers.
