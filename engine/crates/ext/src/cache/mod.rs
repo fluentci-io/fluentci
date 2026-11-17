@@ -7,11 +7,12 @@ use std::{
     env,
     fs::{self, metadata},
     path::Path,
-    process::{Command, ExitStatus, Stdio},
+    process::ExitStatus,
     sync::mpsc::Sender,
     thread,
 };
 
+mod downloader;
 pub mod gcs;
 pub mod s3;
 
@@ -75,27 +76,23 @@ pub async fn download(key: &str) -> Result<(), Error> {
     );
 
     if let Some(CacheBackendType::CDN) = default_backend {
-        fs::create_dir_all(format!(
-            "{}/.fluentci/cache",
-            dirs::home_dir().unwrap().to_str().unwrap()
-        ))?;
-
-        let prefix = format!("{}/{}", env::consts::OS, env::consts::ARCH);
-        let url = std::env::var("FLUENTCI_CACHE_CDN_ENDPOINT")?;
-        let filename = cache_file.split("/").last().unwrap();
-        let url = format!("{}/{}/{}", url, prefix, filename);
-        let cmd = format!("wget {} -O {}", url, cache_file);
-        println!("-> {}", cmd.bright_cyan());
-
-        let mut child = Command::new("bash")
-            .arg("-c")
-            .arg(&cmd)
-            .stdout(Stdio::inherit())
-            .stderr(Stdio::inherit())
-            .spawn()?;
-
-        child.wait()?;
-
+        let mut url = reqwest::Url::parse(&std::env::var("FLUENTCI_CACHE_CDN_ENDPOINT")?)
+            .context("Invalid cache CDN URL")?;
+        url.path_segments_mut()
+            .map_err(|_| Error::msg("Invalid cache CDN base URL"))?
+            .pop_if_empty()
+            .push(env::consts::OS)
+            .push(env::consts::ARCH)
+            .push(
+                Path::new(&cache_file)
+                    .file_name()
+                    .unwrap()
+                    .to_str()
+                    .context("Invalid cache filename")?,
+            );
+        if !downloader::restore(url, Path::new(&cache_file)).await? {
+            println!("[cdn] Cache not found for key: {key}");
+        }
         return Ok(());
     }
 
@@ -224,7 +221,7 @@ impl Extension for Cache {
     }
 
     fn setup(&self) -> Result<(), Error> {
-        Pkgx::default().install(vec!["tar", "wget@1.21.4"])?;
+        Pkgx::default().install(vec!["tar"])?;
         Ok(())
     }
 

@@ -32,16 +32,29 @@ The native DAG action cache currently uses local action records and a local
 content-addressed blob store. The following remote variables belong to the legacy
 pipeline cache; they do not enable remote transport for native action records.
 
-| Variable                      | Purpose                      |
-| ----------------------------- | ---------------------------- |
-| `FLUENTCI_CACHE_GCS_BUCKET`   | GCS cache bucket             |
-| `FLUENTCI_CACHE_S3_ENDPOINT`  | S3-compatible cache endpoint |
-| `FLUENTCI_CACHE_S3_BUCKET`    | S3-compatible cache bucket   |
-| `FLUENTCI_CACHE_CDN_ENDPOINT` | Optional cache download CDN  |
+| Variable                       | Purpose                               |
+| ------------------------------ | ------------------------------------- |
+| `FLUENTCI_CACHE_GCS_BUCKET`    | GCS cache bucket                      |
+| `FLUENTCI_CACHE_S3_ENDPOINT`   | S3-compatible cache endpoint          |
+| `FLUENTCI_CACHE_S3_BUCKET`     | S3-compatible cache bucket            |
+| `FLUENTCI_CACHE_CDN_ENDPOINT`  | Optional cache download CDN           |
+| `FLUENTCI_CACHE_DOWNLOAD_JOBS` | Parallel CDN workers, 1–32; default 4 |
 
 GCS uses `GOOGLE_APPLICATION_CREDENTIALS`. S3-compatible caches use AWS credential
 configuration. These cache variables are separate from the registry API's
 `S3_BUCKET` and `S3_PUBLIC_URL`, which store published Wasm artifacts.
+
+CDN archive restores use a Tokio/reqwest downloader with an indicatif progress
+bar showing percentage, transferred bytes, speed, and ETA. Four workers download
+8 MiB byte ranges in parallel when the server provides range support and a strong
+ETag. Set `FLUENTCI_CACHE_DOWNLOAD_JOBS` to tune concurrency. Origins without a
+strong validator or range support use a single streaming request; unknown-length
+responses show a byte counter. Progress renders on stderr in a terminal.
+
+Downloads publish atomically after verifying byte ranges and lengths. A missing
+object is a cache miss; interrupted, changed, or malformed responses cannot leave
+a partial archive in the cache. This archive transport does not add remote
+transport to the native DAG action-record store.
 
 ## Diagnose cache surprises
 
@@ -52,5 +65,6 @@ to distinguish a cached task from a fresh command failure.
 
 ## Shared build-tool cache
 
-For account-scoped remote caching with Bazel, sccache, Go, Gradle, Maven, Nix,
-and generic HTTP clients, see [remote build cache](/guides/build-cache/).
+For account-scoped remote caching with Bazel HTTP/gRPC, Turborepo, Nx, BuildKit,
+sccache, Go, Gradle, Maven, Nix, and generic HTTP clients, see
+[remote build cache](/guides/build-cache/).

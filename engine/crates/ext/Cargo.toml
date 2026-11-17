@@ -24,6 +24,8 @@ dirs = "5.0.1"
 fluentci-logging = {path = "../logging", version = "0.1.2"}
 fluentci-types = {path = "../types", version = "0.1.10"}
 futures = "0.3.30"
+indicatif = "0.18.6"
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "stream"] }
 md5 = "0.7.0"
 mime_guess = "2.0.4"
 owo-colors = "4.0.0"
@@ -31,6 +33,6 @@ regex = "1.10.3"
 sha2 = "0.10.8"
 sha256 = "1.5.0"
 superconsole = { workspace = true }
-tokio = {version = "1.36.0", features = ["tokio-macros", "macros", "rt", "rt-multi-thread"]}
+tokio = {version = "1.36.0", features = ["tokio-macros", "macros", "rt", "rt-multi-thread", "fs", "io-util", "sync", "time", "net"]}
 users = "0.11.0"
 tempfile = "3"

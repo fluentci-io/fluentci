@@ -737,9 +737,16 @@ with the same variables used by FluentCI Engine:
 | `FLUENTCI_CACHE_S3_ENDPOINT`  | S3-compatible endpoint, including R2              |
 | `FLUENTCI_CACHE_S3_BUCKET`    | S3-compatible bucket                              |
 | `FLUENTCI_CACHE_CDN_ENDPOINT` | Optional CDN endpoint for downloading cached data |
+| `FLUENTCI_CACHE_DOWNLOAD_JOBS` | Parallel CDN download workers, 1–32 (default 4) |
 
 GCS uses `GOOGLE_APPLICATION_CREDENTIALS`. S3-compatible storage uses
 `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.
+
+CDN archive restores use Tokio and reqwest with an indicatif progress bar showing
+percentage, bytes, speed, and ETA. Large objects use parallel 8 MiB byte ranges
+when the origin supports ranges and a strong ETag; other responses stream through
+one request. Downloads are published atomically after validating their ranges
+and lengths. Interrupted downloads leave no reusable partial cache archive.
 
 ## Tracing and logging
 
