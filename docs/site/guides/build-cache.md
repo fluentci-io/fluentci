@@ -1,0 +1,275 @@
+---
+title: "Remote build cache"
+description: "Use account-scoped upload tokens with Bazel, sccache, Go, Gradle, Maven, Nix, and HTTP clients."
+section: "Build pipelines"
+url: "/guides/build-cache/"
+source: "guides/build-cache.md"
+---
+
+## Get your cache URL and token
+
+Open [Build cache](https://fluentci.io/cache), sign in, and generate an upload token.
+The response contains your account cache URL and a token valid for one hour.
+Invited collaborators enter the cache owner's handle to get a token for that
+owner's cache. See [cache access and CI credentials](/registry/cache/) for
+invitations, renewal, and automated CI exchanges.
+
+Set the URL exactly as returned, including the account namespace. Replace
+`OWNER_HASH` in these examples with the path from your returned URL and replace
+`PASTE_UPLOAD_TOKEN` with your upload token:
+
+```sh
+export FLUENTCI_CACHE_URL='https://cache.fluentci.io/accounts/OWNER_HASH'
+export FLUENTCI_CACHE_TOKEN='PASTE_UPLOAD_TOKEN'
+```
+
+Use HTTPS. Keep tokens in your terminal or CI secret store. Renew them before
+uploading after expiry; do not distribute the cache server's administrator token.
+CI credentials are exchanged for upload tokens and cannot be used directly as a
+cache client password.
+
+## Supported protocols
+
+| Client                      | Append to your account URL      | Upload authentication                |
+| --------------------------- | ------------------------------- | ------------------------------------ |
+| Bazel HTTP cache            | `/bazel`                        | Bearer header                        |
+| sccache WebDAV              | `/sccache/`                     | Bearer token                         |
+| Go helper                   | Nothing; helper adds `/gocache` | `FLUENTCI_CACHE_TOKEN`               |
+| Gradle HTTP build cache     | `/gradle/`                      | Basic-auth password                  |
+| Maven Build Cache Extension | `/maven/`                       | Maven server password                |
+| Nix binary cache            | `/nix`                          | Bearer header on PUT                 |
+| Generic HTTP                | `/generic/<key>`                | Bearer header or Basic-auth password |
+
+Reads are public when the server's public-read configuration and CDN are set up.
+The production service is `https://cache.fluentci.io`; its read origin is
+`https://cache-cdn.fluentci.io`. Use your returned cache service URL in clients;
+it also generates Nix discovery metadata. Uploading never goes to the CDN.
+
+This service stores build artifacts. It does not implement remote execution,
+Bazel gRPC/REAPI, a Maven dependency proxy, a Go module proxy, or the Cachix API.
+It is separate from the [native pipeline and package caches](/guides/caching/).
+
+## Bazel
+
+Use Bazel's HTTP remote cache with a bearer header.
+
+### Build with remote caching
+
+```sh
+bazel build //... \
+  --remote_cache="$FLUENTCI_CACHE_URL/bazel" \
+  --remote_header="Authorization=Bearer $FLUENTCI_CACHE_TOKEN"
+```
+
+For read-only builds, omit the header and add --remote_upload_local_results=false. This is an HTTP cache; remote execution and gRPC are not supported.
+
+[Bazel reference](https://bazel.build/remote/caching).
+
+## sccache
+
+Use a sccache build with WebDAV support enabled.
+
+### Configure the WebDAV backend
+
+```sh
+export SCCACHE_WEBDAV_ENDPOINT="$FLUENTCI_CACHE_URL/sccache/"
+export SCCACHE_WEBDAV_TOKEN="$FLUENTCI_CACHE_TOKEN"
+export SCCACHE_WEBDAV_DISABLE_CREATE_DIR=true
+export SCCACHE_WEBDAV_KEY_PREFIX='my-project/'
+export RUSTC_WRAPPER=sccache
+cargo build --release --locked
+```
+
+Directory creation must be disabled because this service does not implement PROPFIND or MKCOL. Restart an existing sccache daemon after changing its backend settings. For public reads only, omit the token and set SCCACHE_WEBDAV_RW_MODE=READ_ONLY.
+
+[sccache reference](https://github.com/mozilla/sccache/blob/main/docs/Webdav.md).
+
+## Go
+
+Go 1.24+ uses the fluentci-cache helper through GOCACHEPROG. Install that standalone binary on PATH first.
+
+### Enable the Go cache helper
+
+```sh
+export GOCACHEPROG='fluentci-cache gocache'
+go build ./...
+```
+
+Keep FLUENTCI_CACHE_URL at the account base URL. The helper appends /gocache automatically; Go cannot use the HTTP URL directly.
+
+[Go reference](https://go.dev/src/cmd/go/internal/cacheprog/cacheprog.go).
+
+## Gradle
+
+Configure Gradle's HTTP build cache using your token as a Basic-auth password.
+
+### settings.gradle.kts
+
+```kotlin
+import org.gradle.caching.http.HttpBuildCache
+
+buildCache {
+    local { isEnabled = true }
+    remote<HttpBuildCache> {
+        url = uri(System.getenv("FLUENTCI_CACHE_URL") + "/gradle/")
+        isPush = !System.getenv("FLUENTCI_CACHE_TOKEN").isNullOrBlank()
+        credentials {
+            username = "ci"
+            password = System.getenv("FLUENTCI_CACHE_TOKEN") ?: ""
+        }
+    }
+}
+```
+
+### Run the build
+
+```sh
+./gradlew --build-cache build
+```
+
+Alternatively set org.gradle.caching=true in gradle.properties. For public read-only use, omit the token; isPush will be false. The username can be any nonempty value.
+
+[Gradle reference](https://docs.gradle.org/current/userguide/build_cache.html#sec:build_cache_configure_remote).
+
+## Maven Build Cache
+
+Use Maven 3.9+ and the Maven Build Cache Extension. The extension stores build results here; this is not a Maven dependency repository.
+
+### .mvn/extensions.xml (if not already installed)
+
+```xml
+<extensions>
+  <extension>
+    <groupId>org.apache.maven.extensions</groupId>
+    <artifactId>maven-build-cache-extension</artifactId>
+    <version>1.3.0</version>
+  </extension>
+</extensions>
+```
+
+### .mvn/maven-build-cache-config.xml
+
+```xml
+<cache xmlns="http://maven.apache.org/BUILD-CACHE-CONFIG/1.4.0">
+  <configuration>
+    <enabled>true</enabled>
+    <remote enabled="true" id="fluentci-cache" transport="resolver">
+      <url>https://cache.fluentci.io/accounts/OWNER_HASH/maven/</url>
+    </remote>
+  </configuration>
+</cache>
+```
+
+### ~/.m2/settings.xml
+
+```xml
+<settings>
+  <servers>
+    <server>
+      <id>fluentci-cache</id>
+      <username>ci</username>
+      <password>${env.FLUENTCI_CACHE_TOKEN}</password>
+    </server>
+  </servers>
+</settings>
+```
+
+### Allow remote uploads
+
+```sh
+mvn verify -Dmaven.build.cache.remote.save.enabled=true
+```
+
+Merge these entries into existing XML files. Keep the server id identical in both files. Pin the extension version your project uses. For read-only builds, leave remote saving disabled and omit the credentials entry.
+
+[Maven Build Cache reference](https://maven.apache.org/extensions/maven-build-cache-extension/remote-cache.html).
+
+## Nix
+
+Use the token to upload NAR files and signed narinfo. Nix consumers read publicly; Nix signing keys are separate from the FluentCI upload token.
+
+### Consumer configuration in nix.conf
+
+```text
+extra-substituters = https://cache.fluentci.io/accounts/OWNER_HASH/nix
+extra-trusted-public-keys = my-cache-1:YOUR_NIX_PUBLIC_KEY
+```
+
+### Generate Nix signing keys once on the publishing machine
+
+```sh
+nix-store --generate-binary-cache-key my-cache-1 nix-private.pem nix-public.pem
+```
+
+### Export a signed closure, then upload NAR files before metadata
+
+```sh
+# Set absolute paths to your signing key and store closure.
+export NIX_SIGNING_KEY='/absolute/path/nix-private.pem'
+export STORE_PATH='/nix/store/your-built-closure'
+(
+  set -eu
+  export_dir="$(mktemp -d)"
+  nix copy --to "file://$export_dir?secret-key=$NIX_SIGNING_KEY" "$STORE_PATH"
+  cd "$export_dir"
+  find nar -type f -print | while IFS= read -r file; do
+    curl --fail-with-body \
+      -H "Authorization: Bearer $FLUENTCI_CACHE_TOKEN" \
+      --upload-file "$file" "$FLUENTCI_CACHE_URL/nix/$file" || exit 1
+  done
+  find . -maxdepth 1 -name '*.narinfo' -print | while IFS= read -r file; do
+    curl --fail-with-body \
+      -H "Authorization: Bearer $FLUENTCI_CACHE_TOKEN" \
+      --upload-file "$file" "$FLUENTCI_CACHE_URL/nix/${file#./}" || exit 1
+  done
+)
+```
+
+Replace YOUR_NIX_PUBLIC_KEY with the contents of nix-public.pem after its my-cache-1: prefix. Keep nix-private.pem with the publisher. Do not upload nix-cache-info: the service generates it. Direct nix copy --to https://... uploads and the Cachix service API are not implemented.
+
+[Nix reference](https://releases.nixos.org/nix/nix-2.34.7/manual/store/types/local-binary-cache-store.html).
+
+## Generic HTTP
+
+Store arbitrary files under /generic with a bearer token, or use the token as a Basic-auth password.
+
+### Upload and read a file
+
+```sh
+curl --fail-with-body \
+  -H "Authorization: Bearer $FLUENTCI_CACHE_TOKEN" \
+  --upload-file ./artifact.tar.zst \
+  "$FLUENTCI_CACHE_URL/generic/my-project/artifact.tar.zst"
+
+# Public read: no token needed.
+curl --fail-with-body \
+  "$FLUENTCI_CACHE_URL/generic/my-project/artifact.tar.zst" \
+  --output artifact-copy.tar.zst
+```
+
+### Alternative Basic-auth upload
+
+```sh
+curl --fail-with-body --user "ci:$FLUENTCI_CACHE_TOKEN" \
+  --upload-file ./artifact.tar.zst \
+  "$FLUENTCI_CACHE_URL/generic/my-project/artifact.tar.zst"
+```
+
+Successful uploads return 201; missing objects return 404. Public reads also support HEAD and single byte ranges. Existing keys can be replaced.
+
+[Generic HTTP reference](https://docs.fluentci.io/guides/build-cache/).
+
+## Storage and collaborators
+
+The cache page lists invited collaborators and lets owners remove access.
+Owners can explore keys, filter by prefix, see total bytes and object count,
+delete individual keys, or clear the cache after typing `CLEAR` to confirm.
+Upload tokens and CI credentials cannot manage storage. Public CDN copies may
+remain available until their cached responses expire after origin deletion.
+See [storage management](/registry/cache/#explore-storage-and-manage-collaborators).
+
+## Run your own cache
+
+The standalone `fluentci-cache` server supports S3-compatible, file, and memory
+storage. See [deploy the cache server](/development/build-cache/) for systemd,
+R2/S3 settings, CDN configuration, and signing-key setup.

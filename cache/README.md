@@ -46,14 +46,14 @@ Nix's binary-cache download format is supported; the Cachix service API, Cachix 
 - `GET` returns `200` with the stored bytes, or `404` for a miss.
 - `HEAD` returns object metadata without the body.
 - `PUT` atomically publishes an object and returns `201`; existing keys can be replaced.
-- Every PUT requires the configured token, including requests from localhost.
+- Every PUT requires a valid account-scoped upload token or the configured administrator token, including requests from localhost.
 - `Authorization: Bearer <token>` and Basic authentication with `<token>` as the password are accepted. The Basic username is ignored.
 - Single byte ranges return `206`; invalid or unsatisfiable ranges return `416`.
 - `ETag`, `If-Match`, and `If-None-Match` support revalidation of reads. Conditional writes, multipart HTTP range responses, `If-Range`, and date-based conditions are not implemented.
 - Bazel CAS keys must be lowercase SHA-256 hex digests. PUT hashes the bytes before publication and rejects mismatches with `400`. Action-cache values remain opaque.
 - Namespaces are isolated: `/gradle/key` and `/generic/key` are different objects. Root `/ac` and `/cas` alias their `/bazel` equivalents; root Nix paths alias `/nix`.
 - Keys are case-sensitive, at most 2,048 decoded bytes, and may have nested segments. Empty segments, dot segments, control characters, backslashes, and literal percent characters are rejected. Query parameters do not affect keys. Clients should use URL-safe keys.
-- `DELETE`, `POST`, `PROPFIND`, and `MKCOL` return `405`. Object deletion and listings are intentionally not exposed through HTTP.
+- Ordinary object paths reject `DELETE`, `POST`, `PROPFIND`, and `MKCOL` with `405`. Owner-authenticated listing and deletion use the separate account management endpoint.
 
 ## Configuration
 

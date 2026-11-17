@@ -6,6 +6,8 @@ url: "/registry/cache/"
 source: "registry/cache.md"
 ---
 
+For client-specific token examples, see [remote build cache](/guides/build-cache/).
+
 ## Generate an upload token
 
 Open [Build cache](https://fluentci.io/cache) and sign in with your AT Protocol

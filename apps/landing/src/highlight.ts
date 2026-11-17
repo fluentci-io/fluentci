@@ -1,5 +1,7 @@
 import hljs from "highlight.js/lib/core";
 import typescript from "highlight.js/lib/languages/typescript";
+import kotlin from "highlight.js/lib/languages/kotlin";
+import xml from "highlight.js/lib/languages/xml";
 import python from "highlight.js/lib/languages/python";
 import haskell from "highlight.js/lib/languages/haskell";
 import elixir from "highlight.js/lib/languages/elixir";
@@ -15,6 +17,9 @@ hljs.registerLanguage("clojurescript", clojure);
 hljs.registerLanguage("elixir", elixir);
 hljs.registerLanguage("rescript", reasonml);
 hljs.registerLanguage("bash", bash);
+hljs.registerLanguage("kotlin", kotlin);
+hljs.registerLanguage("xml", xml);
+hljs.registerLanguage("ini", ini);
 hljs.registerLanguage("toml", ini);
 hljs.registerLanguage("gleam", (h) => ({
   name: "Gleam",

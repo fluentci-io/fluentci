@@ -11,6 +11,7 @@ import {
 } from "../../cache/client";
 import { SiteHeader } from "../SiteHeader";
 import { SiteFooter } from "../SiteFooter";
+import { TokenInstructions } from "./TokenInstructions";
 import { CacheObjects } from "./CacheObjects";
 import { HandleSuggestions } from "../HandleSuggestions";
 import { useHandleSuggestions } from "../SignInDialog/useHandleSuggestions";
@@ -27,9 +28,9 @@ const secondary =
 export function CachePage() {
   const { account, loading, openSignIn } = useAuth();
   return (
-    <>
+    <div className="flex min-h-dvh flex-col">
       <SiteHeader />
-      <main className="page-width py-12 sm:py-20">
+      <main className="page-width flex-1 py-12 sm:py-20">
         <div className="max-w-3xl">
           <p className="text-xs uppercase tracking-widest text-accent">
             Build cache
@@ -55,7 +56,7 @@ export function CachePage() {
         </div>
       </main>
       <SiteFooter />
-    </>
+    </div>
   );
 }
 
@@ -281,6 +282,7 @@ function CacheSettings({ account }: { account: Account }) {
                   bearer token or Basic-auth password. Renewing does not revoke
                   an earlier token.
                 </p>
+                <TokenInstructions cacheUrl={upload.cacheUrl} />
               </div>
             )}
           </section>

@@ -49,3 +49,8 @@ Identify the store before invalidating anything: package download cache, languag
 compiler cache, native-task cache, or project history. Compare input paths and
 toolchain versions between hosts. Use [logs and tracing](/guides/observability/)
 to distinguish a cached task from a fresh command failure.
+
+## Shared build-tool cache
+
+For account-scoped remote caching with Bazel, sccache, Go, Gradle, Maven, Nix,
+and generic HTTP clients, see [remote build cache](/guides/build-cache/).

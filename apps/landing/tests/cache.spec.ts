@@ -367,3 +367,43 @@ test("cache storage shows usage, deletes selected keys, and requires CLEAR confi
     .click();
   await expect.poll(() => cleared).toBe(true);
 });
+
+test("upload token instructions cover every client without exposing the token in snippets", async ({
+  page,
+}) => {
+  await session(page);
+  await mock(page);
+  await page.goto("/cache");
+  await page
+    .getByRole("button", { name: "Generate upload token", exact: true })
+    .click();
+  const instructions = page.getByRole("region", {
+    name: "Token setup instructions",
+    exact: true,
+  });
+  await expect(instructions).toContainText(
+    "https://cache.example/accounts/account",
+  );
+  await expect(instructions).not.toContainText(token);
+  const client = page.getByLabel("Cache client", { exact: true });
+  for (const [id, expected] of [
+    ["bazel", "--remote_header"],
+    ["sccache", "SCCACHE_WEBDAV_TOKEN"],
+    ["go", "GOCACHEPROG"],
+    ["gradle", "remote<HttpBuildCache>"],
+    ["maven", "${env.FLUENTCI_CACHE_TOKEN}"],
+    ["nix", "nix copy --to"],
+    ["http", "--upload-file"],
+  ]) {
+    await client.selectOption(id);
+    await expect(instructions).toContainText(expected);
+    await expect(
+      instructions.locator("code .hljs-string").first(),
+    ).toBeVisible();
+    expect(
+      await page.evaluate(
+        () => document.documentElement.scrollWidth <= innerWidth,
+      ),
+    ).toBe(true);
+  }
+});
