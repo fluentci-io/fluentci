@@ -8,6 +8,9 @@ Writes require a token. Reads are public by default and can be made private at t
 
 From the repository root:
 
+Install the Protocol Buffers compiler (`protoc`) before building, for example
+`brew install protobuf` on macOS or `apt install protobuf-compiler` on Debian/Ubuntu.
+
 ```sh
 cargo build --release --locked --manifest-path cache/Cargo.toml
 export FLUENTCI_CACHE_TOKEN="$(openssl rand -hex 32)"
@@ -38,8 +41,12 @@ No FluentCI CLI, Studio build, database, or external service is needed for the f
 | Gradle | `/gradle/` | HTTP build cache GET/PUT |
 | Bazel | `/` or `/bazel/` | HTTP remote cache `/ac/<sha256>` and `/cas/<sha256>` |
 | Generic | `/generic/` | Arbitrary hierarchical keys over GET/HEAD/PUT |
+| Turborepo | `/accounts/<owner-hash>/turbo/` | HTTP artifact cache, signature headers, status, and events |
+| Nx | `/accounts/<owner-hash>/nx/` | Self-hosted HTTP cache; immutable artifact uploads |
+| Bazel gRPC | instance `accounts/<owner-hash>` | ActionCache, CAS, Capabilities, and resumable ByteStream |
+| BuildKit | `/v2/accounts/<owner-hash>/<repository>/` | OCI registry cache manifests, indexes, and resumable blob uploads |
 
-Nix's binary-cache download format is supported; the Cachix service API, Cachix CLI upload protocol, server-side NAR generation, and signing are not implemented. Publish signed `.narinfo` and NAR files produced by Nix. This is a cache server, not a remote executor, Maven Central proxy, Go module proxy, or Bazel gRPC/REAPI server.
+Nix's binary-cache download format is supported; the Cachix service API, Cachix CLI upload protocol, server-side NAR generation, and signing are not implemented. Publish signed `.narinfo` and NAR files produced by Nix. This is a cache server, not a remote executor, Maven Central proxy, or Go module proxy. Bazel gRPC provides cache services only, without remote execution. The OCI interface supports BuildKit cache push/pull, not a general image registry management API.
 
 ### HTTP behavior
 
@@ -107,6 +114,8 @@ Keep the token in the environment, a service secret, or a permission-restricted 
 | `public_read` | `FLUENTCI_CACHE_PUBLIC_READ` | `--public-read true/false` | `true` |
 | `read_only` | `FLUENTCI_CACHE_READ_ONLY` | `--read-only [true/false]` | `false` |
 | `max_upload` | `FLUENTCI_CACHE_MAX_UPLOAD` | `--max-upload` | 10 GiB, in bytes |
+| `staging_limit` | `FLUENTCI_CACHE_STAGING_LIMIT` | `--staging-limit` | 20 GiB reserved across resumable uploads |
+| `staging_directory` | `FLUENTCI_CACHE_STAGING_DIRECTORY` | `--staging-directory` | OS temporary directory |
 | `concurrency` | `FLUENTCI_CACHE_CONCURRENCY` | `--concurrency` | 128 active object transfers |
 | `timeout` | `FLUENTCI_CACHE_TIMEOUT` | `--timeout` | 300 seconds |
 | `nix_priority` | `FLUENTCI_CACHE_NIX_PRIORITY` | `--nix-priority` | 40 |
@@ -165,6 +174,35 @@ fluentci-cache serve --backend memory
 Both commands need `FLUENTCI_CACHE_TOKEN` unless read-only. The memory backend retains entire objects in RAM; use file or S3 for large caches. No server-side object eviction, TTL, or size quota is implemented. Use bucket lifecycle rules for S3 retention and external housekeeping for files. Coordinate eviction so NARs and Bazel CAS objects are not removed while referenced metadata remains useful.
 
 ## Client setup
+
+### Account-scoped adapters
+
+Use the owner hash and upload token from your cache settings. The URL for
+Turborepo is `https://cache.fluentci.io/accounts/<owner-hash>/turbo` (`TURBO_API`),
+with `TURBO_TOKEN` set to your token and `TURBO_TEAM` set to the owner hash.
+Nx uses `NX_SELF_HOSTED_REMOTE_CACHE_SERVER=https://cache.fluentci.io/accounts/<owner-hash>/nx`
+and `NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN` for its token.
+
+Bazel gRPC uses `--remote_cache=grpcs://cache.fluentci.io`,
+`--remote_instance_name=accounts/<owner-hash>`, and
+`--remote_header="Authorization=Bearer $FLUENTCI_CACHE_TOKEN"`. Terminate TLS
+at a proxy that forwards gRPC with HTTP/2; see
+[`systemd/caddy-cache.Caddyfile`](../systemd/caddy-cache.Caddyfile).
+
+For BuildKit, log in with your upload token as the password:
+
+```sh
+printf '%s' "$FLUENTCI_CACHE_TOKEN" | docker login cache.fluentci.io --username ci --password-stdin
+docker buildx build \
+  --cache-from type=registry,ref=cache.fluentci.io/accounts/OWNER_HASH/buildkit/project:cache \
+  --cache-to type=registry,ref=cache.fluentci.io/accounts/OWNER_HASH/buildkit/project:cache,mode=max .
+```
+
+Resumable OCI and gRPC sessions use temporary disk space and do not survive
+server restarts. Set `FLUENTCI_CACHE_STAGING_DIRECTORY` to a writable disk
+directory with sufficient capacity. Expired sessions are reclaimed on subsequent
+writes. Replaced Turborepo payloads remain until owner cleanup or bucket lifecycle
+rules remove them; no automatic garbage collector is provided.
 
 Examples use `https://cache.example.com`. Use `http://127.0.0.1:8080` for local testing. Insecure HTTP may need an explicit opt-in in individual clients.
 

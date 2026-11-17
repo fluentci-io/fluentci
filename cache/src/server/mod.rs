@@ -12,18 +12,24 @@ use object_store::ObjectStore;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
+mod artifacts;
 mod auth;
 mod download;
 mod error;
+mod grpc;
 mod key;
 mod manage;
+mod monorepo;
+mod oci;
 mod ops;
 mod routes;
+mod staging;
 mod upload;
 
 struct App {
     config: Config,
     upload_key: Option<jsonwebtoken::DecodingKey>,
+    staging: Arc<staging::Budget>,
     store: Arc<dyn ObjectStore>,
     reader: Arc<dyn ObjectStore>,
     permits: Arc<Semaphore>,
@@ -44,6 +50,7 @@ pub fn router(config: Config, store: Arc<dyn ObjectStore>) -> anyhow::Result<Rou
         .transpose()?;
     let app = Arc::new(App {
         upload_key,
+        staging: staging::Budget::new(config.staging_limit, config.staging_directory.clone())?,
         permits: Arc::new(Semaphore::new(config.concurrency)),
         reader: config.read_storage(store.clone())?,
         config,
@@ -56,6 +63,10 @@ pub fn router(config: Config, store: Arc<dyn ObjectStore>) -> anyhow::Result<Rou
         .route("/readyz", get(ready))
         .route("/metrics", get(metrics))
         .route("/accounts/{account}/_admin", post(manage::handle))
+        .route("/accounts/{account}/nx/v1/cache/{hash}", any(monorepo::nx))
+        .route("/accounts/{account}/turbo/{*rest}", any(monorepo::turbo))
         .route("/{*key}", any(handle))
-        .with_state(app))
+        .with_state(app.clone())
+        .merge(grpc::router(app.clone()))
+        .merge(oci::router(app)))
 }

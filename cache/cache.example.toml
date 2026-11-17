@@ -13,6 +13,8 @@ prefix = "fluentci-cache/v1"            # separate deployments with different pr
 public_read = true
 read_only = false
 max_upload = 10737418240                # bytes: 10 GiB, including Go's 32-byte envelope
+staging_limit = 21474836480             # bytes: 20 GiB shared by resumable uploads
+# staging_directory = "/var/lib/fluentci-cache/uploads" # writable disk, not a small tmpfs
 concurrency = 128                      # active object transfers; excess requests get 503
 # Upload deadline, backend response deadline, and download idle timeout (seconds).
 timeout = 300

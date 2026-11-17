@@ -64,6 +64,12 @@ pub struct Config {
     pub read_only: bool,
     #[arg(long, env = "FLUENTCI_CACHE_MAX_UPLOAD", default_value_t = 10 * 1024 * 1024 * 1024_u64)]
     pub max_upload: u64,
+    /// Total temporary disk bytes reserved by resumable gRPC and OCI uploads.
+    #[arg(long, env = "FLUENTCI_CACHE_STAGING_LIMIT", default_value_t = 20 * 1024 * 1024 * 1024_u64)]
+    pub staging_limit: u64,
+    /// Optional directory for resumable upload staging; defaults to the OS temporary directory.
+    #[arg(long, env = "FLUENTCI_CACHE_STAGING_DIRECTORY")]
+    pub staging_directory: Option<PathBuf>,
     #[arg(long, env = "FLUENTCI_CACHE_CONCURRENCY", default_value_t = 128)]
     pub concurrency: usize,
     /// Entire upload deadline and per-chunk download idle timeout.
@@ -104,8 +110,12 @@ impl Config {
     }
 
     pub fn validate(&self) -> Result<()> {
-        if self.concurrency == 0 || self.timeout == 0 || self.max_upload == 0 {
-            bail!("concurrency, timeout, and max-upload must be positive");
+        if self.concurrency == 0
+            || self.timeout == 0
+            || self.max_upload == 0
+            || self.staging_limit == 0
+        {
+            bail!("concurrency, timeout, max-upload, and staging-limit must be positive");
         }
         if self
             .token

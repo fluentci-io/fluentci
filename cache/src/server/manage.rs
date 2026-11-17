@@ -123,17 +123,18 @@ async fn manage(app: &App, account: &str, input: Input) -> Result<Value> {
             )
         }
         "delete" => {
-            let target = key(&format!("{root}{}", input.key))?;
-            if target.nix_info {
+            // Validate every path segment, then retain the stored namespace verbatim.
+            // New protocol adapters also own private metadata and payload namespaces.
+            key(&format!("{root}generic/{}", input.key))?;
+            if matches!(input.key.as_str(), "nix/nix-cache-info" | "nix-cache-info") {
                 return Err(Failure(
                     StatusCode::BAD_REQUEST,
                     "generated discovery key cannot be deleted\n",
                 ));
             }
-            app.store
-                .delete(&target.path)
-                .await
-                .map_err(backend_error)?;
+            let target = StorePath::parse(format!("{root}{}", input.key))
+                .map_err(|_| Failure(StatusCode::BAD_REQUEST, "invalid key\n"))?;
+            app.store.delete(&target).await.map_err(backend_error)?;
             Ok(json!({"deleted": 1}))
         }
         "clear" if input.confirm => {

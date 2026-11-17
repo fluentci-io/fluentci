@@ -1,5 +1,11 @@
 # Add to /pds/caddy/etc/caddy/Caddyfile on the production host.
 # The Caddy container uses host networking.
 cache.fluentci.io {
-    reverse_proxy 127.0.0.1:8080
+    @grpc header Content-Type application/grpc*
+    handle @grpc {
+        reverse_proxy h2c://127.0.0.1:8080
+    }
+    handle {
+        reverse_proxy 127.0.0.1:8080
+    }
 }

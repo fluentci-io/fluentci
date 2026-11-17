@@ -9,7 +9,8 @@ source: "development/build-cache.md"
 ## Build the standalone server
 
 The cache lives in `cache/` with its own Cargo manifest and lockfile. Build for
-the target Linux architecture using Rust 1.90 or newer:
+the target Linux architecture using Rust 1.90 or newer and the Protocol Buffers
+compiler (`protoc`; `apt install protobuf-compiler` on Debian/Ubuntu):
 
 ```sh
 cargo build --release --locked --manifest-path cache/Cargo.toml
@@ -28,7 +29,7 @@ list and delete permissions.
 
 Configure `/etc/fluentci/cache.env` with mode `0600`:
 
-```dotenv
+```sh
 FLUENTCI_CACHE_BACKEND=s3
 FLUENTCI_CACHE_BIND=127.0.0.1:8080
 FLUENTCI_CACHE_BUCKET=your-bucket
@@ -37,6 +38,8 @@ FLUENTCI_CACHE_ENDPOINT=https://YOUR_ACCOUNT_ID.r2.cloudflarestorage.com
 FLUENTCI_CACHE_CDN_URL=https://cache-cdn.fluentci.io
 FLUENTCI_CACHE_PREFIX=fluentci-cache/v1
 FLUENTCI_CACHE_PUBLIC_READ=true
+FLUENTCI_CACHE_STAGING_DIRECTORY=/var/lib/fluentci-cache/uploads
+FLUENTCI_CACHE_STAGING_LIMIT=21474836480
 AWS_ACCESS_KEY_ID=YOUR_ACCESS_KEY
 AWS_SECRET_ACCESS_KEY=YOUR_SECRET_KEY
 FLUENTCI_CACHE_TOKEN=YOUR_RANDOM_ADMIN_SECRET
@@ -82,7 +85,7 @@ openssl pkey -in cache-upload-private.pem -pubout -out cache-upload-public.pem
 Install the private key only on the API server, readable by its `fluentci`
 service account. In the API's `/etc/fluentci/api.env`, configure:
 
-```dotenv
+```sh
 CACHE_PUBLIC_URL=https://cache.fluentci.io
 CACHE_TOKEN_PRIVATE_KEY_FILE=/etc/fluentci/cache-upload-private.pem
 ```
@@ -133,9 +136,15 @@ eviction policy, or quota; configure storage lifecycle policies separately.
 
 For a Caddy container using host networking, add this to its active Caddyfile:
 
-```caddyfile
+```text
 cache.fluentci.io {
-    reverse_proxy 127.0.0.1:8080
+    @grpc header Content-Type application/grpc*
+    handle @grpc {
+        reverse_proxy h2c://127.0.0.1:8080
+    }
+    handle {
+        reverse_proxy 127.0.0.1:8080
+    }
 }
 ```
 
