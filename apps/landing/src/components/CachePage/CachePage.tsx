@@ -122,7 +122,7 @@ function CacheSettings({ account }: { account: Account }) {
     return () => controller.abort();
   }, []);
   useEffect(() => {
-    if (!upload) return;
+    if (!upload?.expiresAt) return;
     const timer = setTimeout(
       () => {
         setUpload(undefined);
@@ -278,21 +278,24 @@ function CacheSettings({ account }: { account: Account }) {
             >
               <h2 className="text-xl">Upload token</h2>
               <p className="mt-3 text-sm leading-6 text-muted">
-                Generate an upload token for your cache. Tokens last one hour.
+                Generate an upload token for your cache. Tokens remain valid
+                until you revoke them.
               </p>
               <form className="mt-5" onSubmit={submitToken}>
                 <button className={button} disabled={pending}>
                   {pending
                     ? "Working…"
                     : upload
-                      ? "Renew upload token"
+                      ? "Generate another token"
                       : "Generate upload token"}
                 </button>
               </form>
               {upload && (
                 <div className="mt-6 border-t border-line pt-5">
                   <p className="text-xs text-muted">
-                    Expires {new Date(upload.expiresAt).toLocaleString()}
+                    {upload.expiresAt
+                      ? `Expires ${new Date(upload.expiresAt).toLocaleString()}`
+                      : "Never expires · valid until revoked"}
                   </p>
                   <Secret
                     key={upload.token}
@@ -379,7 +382,7 @@ function CacheSettings({ account }: { account: Account }) {
                           setNotice(
                             method === "inviteUser"
                               ? "Upload access granted. Share your handle with the collaborator."
-                              : "Upload access revoked. Existing tokens expire within one hour.",
+                              : "Upload access revoked. Revoke existing upload tokens individually.",
                           );
                       })
                     }
@@ -521,7 +524,7 @@ function CacheSettings({ account }: { account: Account }) {
                                     await listCollaborators(signal);
                                     if (!signal.aborted)
                                       setNotice(
-                                        "Upload access revoked. Existing tokens expire within one hour.",
+                                        "Upload access revoked. Revoke existing upload tokens individually.",
                                       );
                                   })
                                 }
@@ -689,7 +692,7 @@ function CacheSettings({ account }: { account: Account }) {
                                 await list(signal);
                                 if (!signal.aborted)
                                   setNotice(
-                                    "CI credential revoked. Existing upload tokens expire within one hour.",
+                                    "CI credential revoked. Revoke existing upload tokens individually.",
                                   );
                               })
                             }

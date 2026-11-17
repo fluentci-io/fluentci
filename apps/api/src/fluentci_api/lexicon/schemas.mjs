@@ -165,7 +165,7 @@ export const schemas = [
     lexicon: 1,
     id: 'io.fluentci.cache.createToken',
     description:
-      'Issue a one-hour upload token for your cache, or a cache whose owner invited you. Requires an account service-auth JWT addressed to this method. Reads remain public.',
+      'Issue a non-expiring upload token for your cache, or a cache whose owner invited you. Requires an account service-auth JWT addressed to this method. Reads remain public.',
     defs: {
       main: {
         type: 'procedure',
@@ -186,7 +186,7 @@ export const schemas = [
           encoding: 'application/json',
           schema: {
             type: 'object',
-            required: ['id', 'token', 'expiresAt', 'cacheUrl', 'owner'],
+            required: ['id', 'token', 'cacheUrl', 'owner'],
             properties: {
               id: {
                 type: 'string',
@@ -292,7 +292,7 @@ export const schemas = [
       },
       uploadTokenView: {
         type: 'object',
-        required: ['id', 'owner', 'actor', 'createdAt', 'expiresAt', 'active'],
+        required: ['id', 'owner', 'actor', 'createdAt', 'active'],
         properties: {
           id: {
             type: 'string',
@@ -372,7 +372,7 @@ export const schemas = [
     lexicon: 1,
     id: 'io.fluentci.cache.exchangeCredential',
     description:
-      'Exchange a CI credential in the Authorization bearer header for a one-hour owner-scoped upload token. No PDS login is required.',
+      'Exchange a CI credential in the Authorization bearer header for a non-expiring owner-scoped upload token. No PDS login is required.',
     defs: {
       main: {
         type: 'procedure',
@@ -388,7 +388,7 @@ export const schemas = [
           encoding: 'application/json',
           schema: {
             type: 'object',
-            required: ['id', 'token', 'expiresAt', 'cacheUrl', 'owner'],
+            required: ['id', 'token', 'cacheUrl', 'owner'],
             properties: {
               id: {
                 type: 'string',
@@ -739,7 +739,7 @@ export const schemas = [
     lexicon: 1,
     id: 'io.fluentci.cache.revokeCredential',
     description:
-      'Owner-only: disable a CI credential. Already-issued upload tokens expire normally.',
+      'Owner-only: disable a CI credential. Already-issued upload tokens remain valid until individually revoked.',
     defs: {
       main: {
         type: 'procedure',

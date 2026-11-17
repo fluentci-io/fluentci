@@ -40,8 +40,8 @@ export function TokenInstructions({ cacheUrl }: { cacheUrl: string }) {
       <h3 className="text-lg">Use your token</h3>
       <p className="mt-3 text-sm leading-6 text-muted">
         Set these variables in your terminal or CI environment. Replace
-        PASTE_UPLOAD_TOKEN with the token above. Tokens expire after one hour;
-        renew the token or exchange your CI credential before a later upload.
+        PASTE_UPLOAD_TOKEN with the token above. Upload tokens remain valid
+        until revoked. Keep the token in your terminal or CI secret store.
       </p>
       <Snippet
         title="Environment variables"

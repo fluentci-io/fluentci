@@ -33,15 +33,15 @@ export async function createToken(server, request, allowed, save) {
 }
 export async function issueToken(server, owner, actor, save) {
   const output = mintToken(server, owner, actor);
-  const { id, expiresAt } = output.body;
-  await save(id, owner, actor, new Date().toISOString(), expiresAt);
+  const { id } = output.body;
+  await save(id, owner, actor, new Date().toISOString());
   return output;
 }
 export function mintToken(server, owner, actor, scope = 'cache:upload') {
   const { base, key } = settings(server);
   const cache = createHash('sha256').update(owner).digest('hex');
   const now = Math.floor(Date.now() / 1000);
-  const exp = now + 3600;
+  const exp = scope === 'cache:manage' ? now + 3600 : undefined;
   const id = randomUUID();
   const header = Buffer.from(JSON.stringify({ alg: 'EdDSA', typ: 'JWT' })).toString('base64url');
   const payload = Buffer.from(
@@ -64,7 +64,7 @@ export function mintToken(server, owner, actor, scope = 'cache:upload') {
     body: {
       id,
       token,
-      expiresAt: new Date(exp * 1000).toISOString(),
+      ...(exp === undefined ? {} : { expiresAt: new Date(exp * 1000).toISOString() }),
       cacheUrl: `${base}/accounts/${cache}`,
       owner,
     },

@@ -135,7 +135,9 @@ export function UploadTokenList({
               <CacheTableSkeleton columns={5} label="Loading upload tokens" />
             ) : (
               page?.tokens.map((token) => {
-                const expired = Date.parse(token.expiresAt) <= Date.now();
+                const expired = token.expiresAt
+                  ? Date.parse(token.expiresAt) <= Date.now()
+                  : false;
                 return (
                   <tr key={token.id}>
                     <td className="px-4 py-3">
@@ -153,7 +155,9 @@ export function UploadTokenList({
                       {new Date(token.createdAt).toLocaleString()}
                     </td>
                     <td className="px-4 py-3 text-xs text-muted">
-                      {new Date(token.expiresAt).toLocaleString()}
+                      {token.expiresAt
+                        ? new Date(token.expiresAt).toLocaleString()
+                        : "Never"}
                     </td>
                     <td className="px-4 py-3 text-xs">
                       {!token.active

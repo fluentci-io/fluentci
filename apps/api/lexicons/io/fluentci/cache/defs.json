@@ -87,7 +87,6 @@
         "owner",
         "actor",
         "createdAt",
-        "expiresAt",
         "active"
       ],
       "properties": {

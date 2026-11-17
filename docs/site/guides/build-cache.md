@@ -9,10 +9,10 @@ source: "guides/build-cache.md"
 ## Get your cache URL and token
 
 Open [Build cache](https://fluentci.io/cache), sign in, and generate an upload token.
-The response contains your account cache URL and a token valid for one hour.
+The response contains your account cache URL and an upload token that remains valid until revoked.
 The cache page generates tokens for the signed-in account. Invited collaborators
 can request a shared-cache token through the createToken API with the owner's handle. See [cache access and CI credentials](/registry/cache/) for
-invitations, renewal, and automated CI exchanges.
+invitations, revocation, and automated CI exchanges.
 
 Set the URL exactly as returned, including the account namespace. Replace
 `OWNER_HASH` in these examples with the path from your returned URL and replace
@@ -23,8 +23,8 @@ export FLUENTCI_CACHE_URL='https://cache.fluentci.io/accounts/OWNER_HASH'
 export FLUENTCI_CACHE_TOKEN='PASTE_UPLOAD_TOKEN'
 ```
 
-Use HTTPS. Keep tokens in your terminal or CI secret store. Renew them before
-uploading after expiry; do not distribute the cache server's administrator token.
+Use HTTPS. Keep upload tokens in your terminal or CI secret store and revoke them
+when no longer needed. Do not distribute the cache server's administrator token.
 CI credentials are exchanged for upload tokens and cannot be used directly as a
 cache client password.
 

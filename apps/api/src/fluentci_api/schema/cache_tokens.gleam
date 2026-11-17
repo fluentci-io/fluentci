@@ -1,8 +1,9 @@
 import fluentci_api/drizzle/orm.{
-  type Expression, type Table, boolean, boolean_column, column, index,
+  type Expression, type Table, boolean, boolean_column, column, index, optional,
   table as db_table, text, text_column,
 }
 import gleam/dynamic/decode.{type Decoder}
+import gleam/option.{type Option}
 
 pub type Row {
   Row(
@@ -10,7 +11,7 @@ pub type Row {
     owner: String,
     actor: String,
     created_at: String,
-    expires_at: String,
+    expires_at: Option(String),
     active: Bool,
   )
 }
@@ -20,7 +21,7 @@ pub fn decoder() -> Decoder(Row) {
   use owner <- decode.field("owner", decode.string)
   use actor <- decode.field("actor", decode.string)
   use created_at <- decode.field("created_at", decode.string)
-  use expires_at <- decode.field("expires_at", decode.string)
+  use expires_at <- decode.field("expires_at", decode.optional(decode.string))
   use active <- decode.field("active", decode.bool)
   decode.success(Row(id, owner, actor, created_at, expires_at, active))
 }
@@ -33,7 +34,7 @@ pub fn table() -> Table(Row) {
       text_column("owner", False, False),
       text_column("actor", False, False),
       text_column("created_at", False, False),
-      text_column("expires_at", False, False),
+      text_column("expires_at", True, False),
       boolean_column("active"),
     ],
     [index("cache_tokens_owner", ["owner", "id"], False)],
@@ -57,8 +58,8 @@ pub fn created_at(t: Table(Row)) -> Expression(String) {
   column(t, "created_at", text())
 }
 
-pub fn expires_at(t: Table(Row)) -> Expression(String) {
-  column(t, "expires_at", text())
+pub fn expires_at(t: Table(Row)) -> Expression(Option(String)) {
+  column(t, "expires_at", optional(text()))
 }
 
 pub fn active(t: Table(Row)) -> Expression(Bool) {

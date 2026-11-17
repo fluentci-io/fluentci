@@ -30,7 +30,7 @@ fn exchange(
   server: Server,
   request: Request,
   find: fn(String) -> Promise(List(c.Row)),
-  save: fn(String, String, String, String, String) -> Promise(Nil),
+  save: fn(String, String, String, String) -> Promise(Nil),
 ) -> Promise(Output)
 
 pub fn register(server: Server, connection: Db) -> Nil {
@@ -50,8 +50,8 @@ pub fn register(server: Server, connection: Db) -> Nil {
       server,
       request,
       fn(id) { db.find(connection, id) },
-      fn(id, owner, actor, created, expires) {
-        cache_tokens.save(connection, id, owner, actor, created, expires)
+      fn(id, owner, actor, created) {
+        cache_tokens.save(connection, id, owner, actor, created)
       },
     )
   })

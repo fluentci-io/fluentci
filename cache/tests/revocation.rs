@@ -49,6 +49,23 @@ async fn revocation_survives_restart_and_clear_and_denies_every_upload_adapter()
     let manage = fixture["manage"].as_str().unwrap();
     let base = format!("/accounts/{account}");
     let path = format!("{base}/generic/artifact");
+    for name in ["missingId", "expired"] {
+        assert_eq!(
+            send(&app, "PUT", &path, fixture[name].as_str().unwrap(), "data").await,
+            StatusCode::UNAUTHORIZED
+        );
+    }
+    assert_eq!(
+        send(
+            &app,
+            "POST",
+            &format!("{base}/_admin"),
+            fixture["unboundedManage"].as_str().unwrap(),
+            r#"{"action":"list"}"#
+        )
+        .await,
+        StatusCode::UNAUTHORIZED
+    );
     assert_eq!(
         send(&app, "PUT", &path, upload, "data").await,
         StatusCode::CREATED

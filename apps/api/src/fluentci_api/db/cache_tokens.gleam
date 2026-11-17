@@ -4,6 +4,7 @@ import fluentci_api/drizzle/orm.{
 }
 import fluentci_api/schema/cache_tokens as c
 import gleam/javascript/promise.{type Promise}
+import gleam/option.{None}
 
 pub fn save(
   db: Db,
@@ -11,7 +12,6 @@ pub fn save(
   owner: String,
   actor: String,
   created: String,
-  expires: String,
 ) -> Promise(Nil) {
   let t = c.table()
   use _ <- promise.map(all(
@@ -21,7 +21,7 @@ pub fn save(
       set(c.owner(t), owner),
       set(c.actor(t), actor),
       set(c.created_at(t), created),
-      set(c.expires_at(t), expires),
+      set(c.expires_at(t), None),
       set(c.active(t), True),
     ]),
   ))

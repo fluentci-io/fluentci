@@ -30,7 +30,8 @@ list and delete permissions.
 Upload-token revocation also requires authenticated HEAD access to the private
 `<prefix>/_revocations/` control objects. JWT uploads check origin storage before
 accepting writes. Preserve these markers when clearing artifacts or configuring
-bucket lifecycle rules. They are separate from account storage totals.
+bucket lifecycle rules. Non-expiring upload tokens require these markers to be
+retained permanently. They are separate from account storage totals.
 
 Configure `/etc/fluentci/cache.env` with mode `0600`:
 

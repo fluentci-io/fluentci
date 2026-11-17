@@ -7,7 +7,7 @@ export type UploadToken = {
   id: string;
   token: string;
   cacheUrl: string;
-  expiresAt: string;
+  expiresAt?: string;
   owner: string;
 };
 export type UploadTokenRecord = {
@@ -15,7 +15,7 @@ export type UploadTokenRecord = {
   owner: string;
   actor: string;
   createdAt: string;
-  expiresAt: string;
+  expiresAt?: string;
   active: boolean;
 };
 export type Credential = {

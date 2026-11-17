@@ -52,6 +52,8 @@ struct UploadClaims {
     sub: String,
     #[serde(default)]
     jti: Option<String>,
+    #[serde(default)]
+    exp: Option<u64>,
 }
 
 fn scoped_authorized(
@@ -81,13 +83,24 @@ fn scoped_authorized(
         let mut validation = Validation::new(Algorithm::EdDSA);
         validation.set_issuer(&[&app.config.upload_token_issuer]);
         validation.set_audience(&["fluentci-cache"]);
-        validation.set_required_spec_claims(&["exp", "nbf", "iss", "aud", "sub"]);
+        if owner_only {
+            validation.set_required_spec_claims(&["exp", "nbf", "iss", "aud", "sub"]);
+        } else {
+            validation.set_required_spec_claims(&["nbf", "iss", "aud", "sub"]);
+        }
         validation.validate_nbf = true;
         validation.leeway = 0;
         if let Ok(data) = decode::<UploadClaims>(&token, key, &validation)
             && data.claims.cache == account
             && data.claims.scope == scope
             && data.claims.sub.starts_with("did:")
+            && (owner_only
+                || data.claims.exp.is_some()
+                || data
+                    .claims
+                    .jti
+                    .as_ref()
+                    .is_some_and(|id| uuid::Uuid::parse_str(id).is_ok()))
             && (!owner_only || hex::encode(Sha256::digest(data.claims.sub.as_bytes())) == account)
         {
             return Ok(data.claims.jti);

@@ -16,7 +16,7 @@ fn create_token(
   server: Server,
   request: Request,
   allowed: fn(String, String) -> Promise(Bool),
-  save: fn(String, String, String, String, String) -> Promise(Nil),
+  save: fn(String, String, String, String) -> Promise(Nil),
 ) -> Promise(Output)
 
 @external(javascript, "./cache_tokens_ffi.mjs", "listTokens")
@@ -89,8 +89,8 @@ pub fn register(server: Server, db: Db) -> Nil {
       server,
       request,
       fn(owner, actor) { cache_members.allowed(db, owner, actor) },
-      fn(id, owner, actor, created, expires) {
-        cache_tokens.save(db, id, owner, actor, created, expires)
+      fn(id, owner, actor, created) {
+        cache_tokens.save(db, id, owner, actor, created)
       },
     )
   })

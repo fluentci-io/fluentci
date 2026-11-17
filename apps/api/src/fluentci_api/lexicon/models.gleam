@@ -157,7 +157,7 @@ pub type CacheCreateTokenOutput {
   CacheCreateTokenOutput(
     id: String,
     token: String,
-    expires_at: String,
+    expires_at: Option(String),
     cache_url: String,
     owner: String,
   )
@@ -169,11 +169,14 @@ pub fn encode_cache_create_token_output(
   let fields = [
     #("id", json.string(value.id)),
     #("token", json.string(value.token)),
-    #("expiresAt", json.string(value.expires_at)),
     #("cacheUrl", json.string(value.cache_url)),
     #("owner", json.string(value.owner)),
   ]
-
+  let fields =
+    list.append(fields, case value.expires_at {
+      None -> []
+      Some(item) -> [#("expiresAt", json.string(item))]
+    })
   json.object(fields)
 }
 
@@ -239,7 +242,7 @@ pub type CacheUploadTokenView {
     owner: String,
     actor: String,
     created_at: String,
-    expires_at: String,
+    expires_at: Option(String),
     active: Bool,
   )
 }
@@ -252,10 +255,13 @@ pub fn encode_cache_upload_token_view(
     #("owner", json.string(value.owner)),
     #("actor", json.string(value.actor)),
     #("createdAt", json.string(value.created_at)),
-    #("expiresAt", json.string(value.expires_at)),
     #("active", json.bool(value.active)),
   ]
-
+  let fields =
+    list.append(fields, case value.expires_at {
+      None -> []
+      Some(item) -> [#("expiresAt", json.string(item))]
+    })
   json.object(fields)
 }
 
@@ -297,7 +303,7 @@ pub type CacheExchangeCredentialOutput {
   CacheExchangeCredentialOutput(
     id: String,
     token: String,
-    expires_at: String,
+    expires_at: Option(String),
     cache_url: String,
     owner: String,
   )
@@ -309,11 +315,14 @@ pub fn encode_cache_exchange_credential_output(
   let fields = [
     #("id", json.string(value.id)),
     #("token", json.string(value.token)),
-    #("expiresAt", json.string(value.expires_at)),
     #("cacheUrl", json.string(value.cache_url)),
     #("owner", json.string(value.owner)),
   ]
-
+  let fields =
+    list.append(fields, case value.expires_at {
+      None -> []
+      Some(item) -> [#("expiresAt", json.string(item))]
+    })
   json.object(fields)
 }
 

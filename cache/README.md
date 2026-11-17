@@ -552,7 +552,7 @@ with that audience and method, then send it as `Authorization: Bearer ...`.
 
 | Procedure | JSON input | Result |
 | --- | --- | --- |
-| `io.fluentci.cache.createToken` | `{}` or `{"owner":"handle-or-did"}` | `token`, `expiresAt`, `cacheUrl`, `owner` |
+| `io.fluentci.cache.createToken` | `{}` or `{"owner":"handle-or-did"}` | `id`, `token`, `cacheUrl`, `owner` |
 | `io.fluentci.cache.inviteUser` | `{"actor":"handle-or-did"}` | Grants upload access to the caller's cache |
 | `io.fluentci.cache.revokeUser` | `{"actor":"handle-or-did"}` | Stops the actor from minting new tokens for the caller's cache |
 | `io.fluentci.cache.listTokens` | `{}` or `{"cursor":"CURSOR"}` | Redacted token metadata, 20 tokens per page |
@@ -570,7 +570,7 @@ curl --fail-with-body https://api.fluentci.io/xrpc/io.fluentci.cache.createToken
   --data '{}'
 ```
 
-Tokens expire after one hour. The returned `cacheUrl` has the form
+New upload tokens have no expiration and remain valid until revoked. The returned `cacheUrl` has the form
 `https://cache.fluentci.io/accounts/<sha256-of-owner-did>`; append the usual
 protocol path. For example, upload to `$CACHE_URL/generic/example` with
 `Authorization: Bearer $UPLOAD_TOKEN`, or use the token as a Basic-auth password
@@ -578,7 +578,7 @@ with any username. The Go helper accepts that URL as `FLUENTCI_CACHE_URL` and th
 upload token as `FLUENTCI_CACHE_TOKEN`. Other clients can append `/bazel`,
 `/gradle`, `/sccache`, `/maven`, or `/nix` as documented above.
 
-An upload token authorizes only PUT requests within that owner's cache. It
+An upload token authorizes protocol write operations within that owner's cache. It
 cannot write another account's cache, the legacy shared namespaces, or access
 administrative `/metrics` and `/readyz` endpoints. Keep the server's static
 administrator token private. Existing shared-cache clients using that token
@@ -593,19 +593,20 @@ public CDN is still public if the cache server's `public_read` is set to false.
 Use the cache server URL for generated `nix-cache-info` responses.
 
 Revoking membership prevents new tokens immediately; previously issued tokens
-remain usable until their one-hour expiry. Restarting the cache with a new
+remain usable until individually revoked. Restarting the cache with a new
 verification key invalidates all tokens signed with the previous key. Upload
 token signing is separate from Nix narinfo signing.
 
 Individual upload tokens can be revoked from the cache page or `revokeToken`.
 The API records identifiers and metadata for newly issued tokens, including CI
-exchanges, but never stores their secrets. Older untracked tokens expire normally.
+exchanges, but never stores their secrets. Older tokens retain their original signed expiry and should be replaced once.
 The cache stores revocation markers under `<prefix>/_revocations/<owner-hash>/`,
 outside the artifact namespace. Every JWT upload checks the marker through
 authenticated origin storage; failures reject the upload rather than bypassing
 revocation. Cache replicas sharing that prefix share revocation state. Clearing
 account artifacts does not remove markers. In-flight uploads are not cancelled.
-Do not delete markers for tokens which may still be valid.
+Retain revocation markers permanently for non-expiring tokens. Exclude this
+control prefix from artifact-expiration lifecycle rules.
 
 
 Owners can also browse keys and usage, delete individual keys, clear their own

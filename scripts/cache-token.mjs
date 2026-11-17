@@ -59,14 +59,18 @@ export async function exchangeCredential(
     url.search ||
     url.hash ||
     /[\r\n']/.test(data.cacheUrl) ||
-    !Number.isFinite(Date.parse(data.expiresAt)) ||
-    Date.parse(data.expiresAt) <= Date.now()
+    (data.expiresAt !== undefined &&
+      (typeof data.expiresAt !== "string" ||
+        !Number.isFinite(Date.parse(data.expiresAt)) ||
+        Date.parse(data.expiresAt) <= Date.now()))
   )
     throw Error("Invalid cache URL or expiry");
   return {
     token: data.token,
     cacheUrl: url.href,
-    expiresAt: new Date(data.expiresAt).toISOString(),
+    ...(data.expiresAt === undefined
+      ? {}
+      : { expiresAt: new Date(data.expiresAt).toISOString() }),
   };
 }
 
@@ -86,18 +90,22 @@ export async function main(args = process.argv.slice(2), env = process.env) {
     process.stdout.write(`::add-mask::${value.token}\n`);
     appendFileSync(
       env.GITHUB_ENV,
-      `FLUENTCI_CACHE_URL=${value.cacheUrl}\nFLUENTCI_CACHE_TOKEN=${value.token}\nFLUENTCI_CACHE_EXPIRES_AT=${value.expiresAt}\n`,
+      `FLUENTCI_CACHE_URL=${value.cacheUrl}\nFLUENTCI_CACHE_TOKEN=${value.token}\nFLUENTCI_CACHE_EXPIRES_AT=${value.expiresAt ?? ""}\n`,
     );
   } else {
     const temporary = `${envFile}.${randomUUID()}.tmp`;
     writeFileSync(
       temporary,
-      `FLUENTCI_CACHE_URL='${value.cacheUrl}'\nFLUENTCI_CACHE_TOKEN='${value.token}'\nFLUENTCI_CACHE_EXPIRES_AT='${value.expiresAt}'\n`,
+      `FLUENTCI_CACHE_URL='${value.cacheUrl}'\nFLUENTCI_CACHE_TOKEN='${value.token}'\nFLUENTCI_CACHE_EXPIRES_AT='${value.expiresAt ?? ""}'\n`,
       { mode: 0o600, flag: "wx" },
     );
     renameSync(temporary, envFile);
   }
-  process.stderr.write(`Cache upload token expires ${value.expiresAt}\n`);
+  process.stderr.write(
+    value.expiresAt
+      ? `Cache upload token expires ${value.expiresAt}\n`
+      : "Cache upload token remains valid until revoked\n",
+  );
 }
 
 if (

@@ -67,7 +67,7 @@ async function mock(page: Page) {
     owner: string;
     actor: string;
     createdAt: string;
-    expiresAt: string;
+    expiresAt?: string;
     active: boolean;
   }[] = [];
   await page.route(
@@ -96,7 +96,6 @@ async function mock(page: Page) {
           owner: did,
           actor: did,
           createdAt: new Date().toISOString(),
-          expiresAt: new Date(Date.now() + 3600000).toISOString(),
           active: true,
         });
       if (method === "revokeToken") {
@@ -128,7 +127,6 @@ async function mock(page: Page) {
                         id: uploadTokens.at(-1)!.id,
                         token,
                         cacheUrl: "https://cache.example/accounts/account",
-                        expiresAt: new Date(Date.now() + 3600000).toISOString(),
                         owner: did,
                       }
                     : method === "createCredential"
@@ -186,7 +184,7 @@ test("cache exchanges method-scoped service tokens, invites users, renews and cl
   await expect(
     page.getByLabel("Upload token", { exact: true }),
   ).toHaveAttribute("type", "password");
-  await page.getByRole("button", { name: "Renew upload token" }).click();
+  await page.getByRole("button", { name: "Generate another token" }).click();
   await expect
     .poll(() => calls.filter((call) => call.method === "createToken").length)
     .toBe(2);
@@ -635,7 +633,6 @@ test("upload token list redacts secrets, paginates, and revokes the selected tok
     owner: did,
     actor: did,
     createdAt: new Date().toISOString(),
-    expiresAt: new Date(Date.now() + 3600000).toISOString(),
     active: true,
   }));
   let revokedId = "";
@@ -664,6 +661,7 @@ test("upload token list redacts secrets, paginates, and revokes the selected tok
   await selectPanel(page, "Upload tokens");
   const table = page.getByRole("table", { name: "Upload tokens", exact: true });
   await expect(table.getByLabel("Redacted upload token")).toHaveCount(20);
+  await expect(table.getByText("Never", { exact: true })).toHaveCount(20);
   await expect(table).not.toContainText(token);
   const pagination = page.getByRole("navigation", {
     name: "Upload token pagination",

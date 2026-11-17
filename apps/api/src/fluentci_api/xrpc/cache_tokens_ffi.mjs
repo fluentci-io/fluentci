@@ -1,5 +1,6 @@
 import { XRPCError } from '@atproto/xrpc-server';
 import { manageCache } from './cache_ffi.mjs';
+import { Some } from '../../../gleam_stdlib/gleam/option.mjs';
 
 export async function listTokens(request, list) {
   const rows = (
@@ -10,7 +11,7 @@ export async function listTokens(request, list) {
     owner: row.owner,
     actor: row.actor,
     createdAt: row.created_at,
-    expiresAt: row.expires_at,
+    ...(row.expires_at instanceof Some ? { expiresAt: row.expires_at[0] } : {}),
     active: row.active,
   }));
   return {

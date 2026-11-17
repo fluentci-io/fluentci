@@ -15,13 +15,13 @@ account. Older sessions show **Authorize cache access**; approve the additional
 cache permissions before continuing.
 
 Choose **Generate upload token** to receive your account's cache URL and an
-upload token valid for one hour. The cache page always uses your signed-in account's cache.
+upload token that remains valid until revoked. The cache page always uses your signed-in account's cache.
 Invited collaborators can use the `createToken` API with the owner's handle or DID
 to request a token for a shared cache.
 The browser obtains a short-lived PDS service-auth JWT bound to the exact cache
 API method, then exchanges it at the FluentCI API. PDS session credentials are
 not sent to the FluentCI API. Upload tokens remain in page memory and disappear
-on sign-out, reload, or expiry.
+on sign-out or reload; this clears the displayed secret but does not revoke the token.
 
 Configure your cache client with the returned URL and a bearer token or a
 Basic-auth password. For the Go helper:
@@ -33,11 +33,11 @@ export GOCACHEPROG='fluentci-cache gocache'
 go build ./...
 ```
 
-Use **Renew upload token** for a new one-hour token. Renewing does not revoke a
-previous token. Cached files remain publicly readable through a correctly
+Use **Generate another token** to create a separate upload token. Generating one
+does not revoke previous tokens. Cached files remain publicly readable through a correctly
 configured CDN; invitations and tokens control uploads.
 
-**Issued upload tokens** lists tokens in pages of 20 with creation time, expiry,
+**Issued upload tokens** lists tokens in pages of 20 with creation time, expiry (Never for new tokens),
 and status. Secrets are always redacted in the list and are never stored by the
 API. Copy a newly generated secret before leaving the page. **Revoke** disables
 that token for subsequent uploads, including tokens issued through CI exchanges
@@ -45,7 +45,8 @@ or to collaborators for your cache. Revocation persists across cache restarts
 and clearing storage. Existing in-flight uploads can finish.
 
 Only tokens issued after token tracking was installed can be listed. Earlier
-tokens expire normally within one hour. Older sign-in sessions need the new
+tokens retain their original signed expiry; generate a new token once to obtain
+a token without expiry. Older sign-in sessions need the new
 `listTokens` and `revokeToken` permissions before managing this list.
 
 ## Invite a collaborator
@@ -56,7 +57,7 @@ they sign in and generate their own upload token with you as the cache owner.
 No email or external invitation message is sent automatically.
 
 **Revoke access** immediately prevents that user from generating more tokens.
-Already-issued upload tokens remain valid until their one-hour expiry unless
+Already-issued upload tokens remain valid until
 you revoke them individually in **Issued upload tokens**.
 
 ## Connect CI
@@ -68,11 +69,11 @@ The server stores only a SHA-256 hash. Save the secret as
 Credentials expire after 90 days and can be revoked in the same page. Create a
 replacement and update the CI secret before revoking the old credential.
 
-Each CI run exchanges this credential for a fresh one-hour upload token. CI does
+A CI run can exchange this credential for an upload token that remains valid until revoked. CI does
 not need an AT Protocol account password, OAuth session, or browser login.
-For jobs longer than one hour, repeat the exchange immediately before uploading.
-Revoking a CI credential blocks new exchanges; existing upload tokens expire
-normally. A CI credential only authorizes the token exchange endpoint, with no
+Revoking a CI credential blocks new exchanges; existing upload tokens must be
+revoked individually. You can also store an upload token directly in your CI secret
+store and reuse it across runs. A CI credential only authorizes the token exchange endpoint, with no
 permission to manage collaborators, other credentials, or cache administration.
 
 From a checkout of this repository, use the Node.js 22+ helper:
@@ -131,8 +132,8 @@ All methods are JSON POST requests under
 | `revokeToken`        | Owner's method-bound PDS service JWT | `{ "id": "TOKEN_UUID" }`                |
 | `exchangeCredential` | CI credential in the bearer header   | `{}`                                    |
 
-`createToken` and `exchangeCredential` return `token`, `expiresAt`, `cacheUrl`, and
-`owner`. Secret-bearing responses use `Cache-Control: no-store`. Credential lists
+`createToken` and `exchangeCredential` return `id`, `token`, `cacheUrl`, and
+`owner`. New upload tokens omit `expiresAt`; legacy records may include it. Secret-bearing responses use `Cache-Control: no-store`. Credential lists
 return metadata only, with up to the latest 100 entries. A user may create CI
 credentials for their own cache; an invitation alone does not grant management
 of the owner's CI credentials.
@@ -142,7 +143,7 @@ of the owner's CI credentials.
 On the cache page, enter a collaborator's handle to see account suggestions.
 Select an account with the mouse or arrow keys and Enter, then invite them.
 Use **Refresh collaborators** to list users with upload access and **Remove** to
-revoke a grant. Existing upload tokens still expire within one hour.
+revoke a grant. Revoke existing upload tokens individually.
 
 Under **Cache storage**, choose **Explore keys** to view keys, byte sizes and
 modification dates. Filter by a key prefix and use **More keys** for further

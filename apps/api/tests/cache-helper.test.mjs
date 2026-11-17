@@ -8,7 +8,6 @@ const credential = `fc_cache_ci_78ba2cf4-9844-4af8-a52c-4500e28bdc9e.${'a'.repea
 const value = {
   token: 'signed.upload.token',
   cacheUrl: 'https://cache.example/accounts/hash',
-  expiresAt: '2099-01-01T00:00:00.000Z',
 };
 
 test('CI helper exchanges credentials over HTTPS without following redirects', async () => {
@@ -21,6 +20,17 @@ test('CI helper exchanges credentials over HTTPS without following redirects', a
   assert.equal(input.options.headers.Authorization, `Bearer ${credential}`);
   assert.equal(input.options.redirect, 'error');
   assert.equal(output.token, value.token);
+  assert.equal(output.expiresAt, undefined);
+  const legacy = await exchangeCredential(credential, undefined, async () =>
+    Response.json({ ...value, expiresAt: '2099-01-01T00:00:00.000Z' }),
+  );
+  assert.equal(legacy.expiresAt, '2099-01-01T00:00:00.000Z');
+  await assert.rejects(
+    exchangeCredential(credential, undefined, async () =>
+      Response.json({ ...value, expiresAt: '2000-01-01T00:00:00.000Z' }),
+    ),
+    /expiry/,
+  );
   await assert.rejects(exchangeCredential(credential, 'http://untrusted.example'), /HTTPS/);
   await assert.rejects(exchangeCredential('invalid'), /CI credential/);
   await assert.rejects(
@@ -59,6 +69,8 @@ test('CI helper writes private environment files and never prints the secret', a
   await main(['--env-file', file], { FLUENTCI_CACHE_CREDENTIAL: credential });
   assert.equal(statSync(file).mode & 0o777, 0o600);
   assert.match(readFileSync(file, 'utf8'), /FLUENTCI_CACHE_TOKEN='signed.upload.token'/);
+  assert.match(stderr, /valid until revoked/);
+  assert.match(readFileSync(file, 'utf8'), /FLUENTCI_CACHE_EXPIRES_AT=''/);
   assert.equal(stdout.includes(value.token), false);
   assert.equal(stderr.includes(value.token), false);
   assert.equal(readFileSync(file, 'utf8').includes(credential), false);

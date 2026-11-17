@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { fileURLToPath } from 'node:url';
 import { once } from 'node:events';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createHash, generateKeyPairSync, verify } from 'node:crypto';
@@ -102,8 +102,9 @@ test('account cache tokens require method-scoped auth, owner grants and respect 
   assert.equal(claims.sub, did);
   assert.equal(claims.cache, hash);
   assert.equal(claims.scope, 'cache:upload');
-  assert.equal(claims.exp - claims.iat, 3600);
-  assert.equal(new Date(own.expiresAt).getTime(), claims.exp * 1000);
+  assert.equal(claims.exp, undefined);
+  assert.equal(own.expiresAt, undefined);
+  assert.equal(claims.jti, own.id);
   assert.equal((await call('createToken', other, { owner: did })).status, 403);
   // An invitation grants access to the caller's own cache only.
   assert.equal((await call('inviteUser', other, { actor: did })).status, 200);
@@ -339,6 +340,8 @@ test('upload token lists paginate without secrets and revocation is owner scoped
     false,
   );
   const rows = await connection.client.execute('SELECT * FROM cache_tokens');
+  assert.ok(rows.rows.every((row) => row.expires_at === null));
+  assert.ok([...first.tokens, ...second.tokens].every((row) => !('expiresAt' in row)));
   assert.equal(JSON.stringify(rows.rows).includes(issued[0].token), false);
   assert.equal((await call('listTokens', null)).status, 401);
   assert.equal((await call('revokeToken', other, { id: issued[0].id })).status, 404);
@@ -368,6 +371,7 @@ test('upload token lists paginate without secrets and revocation is owner scoped
   const credential = await (await call('createCredential', did, { label: 'CI' })).json();
   const ciToken = await (await exchange(credential.credential)).json();
   assert.ok(ciToken.id);
+  assert.equal(ciToken.expiresAt, undefined);
   assert.equal(
     (
       await connection.client.execute({
@@ -376,5 +380,40 @@ test('upload token lists paginate without secrets and revocation is owner scoped
       })
     ).rows[0].owner,
     did,
+  );
+});
+
+test('persistent-token migration preserves legacy expiry and accepts new tokens without expiry', async (t) => {
+  const directory = mkdtempSync(join(tmpdir(), 'cache-token-migration-'));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const migrations = join(directory, 'migrations');
+  mkdirSync(migrations);
+  const source = join(process.env.FLUENTCI_API_ROOT, 'drizzle');
+  for (const name of readdirSync(source)) {
+    if (!name.includes('0020_persistent_upload_tokens'))
+      cpSync(join(source, name), join(migrations, name), { recursive: true });
+  }
+  const url = `file:${join(directory, 'registry.sqlite')}`;
+  const legacy = await nativeDb.open({ url, migrationsFolder: migrations });
+  const expiry = '2099-01-01T00:00:00.000Z';
+  await legacy.client.execute({
+    sql: 'INSERT INTO cache_tokens VALUES (?, ?, ?, ?, ?, ?)',
+    args: ['legacy-token', did, did, new Date().toISOString(), expiry, 1],
+  });
+  await nativeDb.close(legacy);
+  const upgraded = await nativeDb.open({ url });
+  t.after(() => nativeDb.close(upgraded));
+  const db = await import('../build/dev/javascript/fluentci_api/fluentci_api/db/cache_tokens.mjs');
+  const { listTokens } =
+    await import('../build/dev/javascript/fluentci_api/fluentci_api/xrpc/cache_tokens_ffi.mjs');
+  await db.save(upgraded, 'persistent-token', did, did, new Date().toISOString());
+  const result = await listTokens(
+    { auth: { credentials: { did } }, input: { body: {} } },
+    (owner, cursor) => db.list(upgraded, owner, cursor),
+  );
+  assert.equal(result.body.tokens.find((row) => row.id === 'legacy-token').expiresAt, expiry);
+  assert.equal(
+    result.body.tokens.find((row) => row.id === 'persistent-token').expiresAt,
+    undefined,
   );
 });
