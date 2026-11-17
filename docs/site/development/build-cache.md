@@ -27,6 +27,11 @@ Grant the storage identity list, write, delete, and multipart upload/abort acces
 to the selected bucket and prefix. Owner browsing and storage cleanup require
 list and delete permissions.
 
+Upload-token revocation also requires authenticated HEAD access to the private
+`<prefix>/_revocations/` control objects. JWT uploads check origin storage before
+accepting writes. Preserve these markers when clearing artifacts or configuring
+bucket lifecycle rules. They are separate from account storage totals.
+
 Configure `/etc/fluentci/cache.env` with mode `0600`:
 
 ```sh
@@ -194,7 +199,7 @@ sudo systemctl start fluentci-cache-usage.service
 
 The job shares the API's environment and SQLite database, and uses
 `/opt/fluentci-runtime/node` by default. Override the runtime path if necessary.
-The cache page displays the latest sample from each of the last 14 UTC days.
+The cache page displays the latest sample from each of the last 30 UTC days.
 It does not invent data for dates before measurements began. Direct CDN request
 counts and edge cache hit rates need separate Cloudflare analytics; S3 metadata
 and these storage snapshots cannot measure them.

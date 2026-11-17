@@ -555,6 +555,8 @@ with that audience and method, then send it as `Authorization: Bearer ...`.
 | `io.fluentci.cache.createToken` | `{}` or `{"owner":"handle-or-did"}` | `token`, `expiresAt`, `cacheUrl`, `owner` |
 | `io.fluentci.cache.inviteUser` | `{"actor":"handle-or-did"}` | Grants upload access to the caller's cache |
 | `io.fluentci.cache.revokeUser` | `{"actor":"handle-or-did"}` | Stops the actor from minting new tokens for the caller's cache |
+| `io.fluentci.cache.listTokens` | `{}` or `{"cursor":"CURSOR"}` | Redacted token metadata, 20 tokens per page |
+| `io.fluentci.cache.revokeToken` | `{"id":"TOKEN_UUID"}` | Rejects subsequent uploads with this token |
 
 Owners always have upload access. Invitations grant access immediately; an
 invited user requests their own token with `owner` naming the cache owner. The
@@ -594,6 +596,16 @@ Revoking membership prevents new tokens immediately; previously issued tokens
 remain usable until their one-hour expiry. Restarting the cache with a new
 verification key invalidates all tokens signed with the previous key. Upload
 token signing is separate from Nix narinfo signing.
+
+Individual upload tokens can be revoked from the cache page or `revokeToken`.
+The API records identifiers and metadata for newly issued tokens, including CI
+exchanges, but never stores their secrets. Older untracked tokens expire normally.
+The cache stores revocation markers under `<prefix>/_revocations/<owner-hash>/`,
+outside the artifact namespace. Every JWT upload checks the marker through
+authenticated origin storage; failures reject the upload rather than bypassing
+revocation. Cache replicas sharing that prefix share revocation state. Clearing
+account artifacts does not remove markers. In-flight uploads are not cancelled.
+Do not delete markers for tokens which may still be valid.
 
 
 Owners can also browse keys and usage, delete individual keys, clear their own

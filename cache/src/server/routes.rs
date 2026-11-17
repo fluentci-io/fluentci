@@ -39,7 +39,7 @@ async fn handle_inner(app: &Arc<App>, raw: &str, request: Request) -> Result<Res
     let read = method == Method::GET || method == Method::HEAD;
     let key = key(raw)?;
     if method == Method::PUT {
-        upload_authorized(app, request.headers(), key.account.as_deref())?;
+        upload_authorized(app, request.headers(), key.account.as_deref()).await?;
     } else {
         authorized(app, request.headers(), read)?;
     }

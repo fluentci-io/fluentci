@@ -79,6 +79,41 @@
           "format": "datetime"
         }
       }
+    },
+    "uploadTokenView": {
+      "type": "object",
+      "required": [
+        "id",
+        "owner",
+        "actor",
+        "createdAt",
+        "expiresAt",
+        "active"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "owner": {
+          "type": "string",
+          "format": "did"
+        },
+        "actor": {
+          "type": "string",
+          "format": "did"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "active": {
+          "type": "boolean"
+        }
+      }
     }
   }
 }

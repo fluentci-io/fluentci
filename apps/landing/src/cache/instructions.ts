@@ -14,6 +14,8 @@ export FLUENTCI_CACHE_TOKEN='PASTE_UPLOAD_TOKEN'`;
 
 export function cacheInstructions(cacheUrl: string): CacheInstructions[] {
   const base = cacheUrl.replace(/\/$/, "");
+  const host = new URL(base).host;
+  const account = base.split("/accounts/")[1]?.split("/")[0] ?? "OWNER_HASH";
   return [
     {
       id: "bazel",
@@ -27,8 +29,75 @@ export function cacheInstructions(cacheUrl: string): CacheInstructions[] {
   --remote_header="Authorization=Bearer $FLUENTCI_CACHE_TOKEN"`,
         },
       ],
-      note: "For read-only builds, omit the header and add --remote_upload_local_results=false. This is an HTTP cache; remote execution and gRPC are not supported.",
+      note: "For read-only builds, omit the header and add --remote_upload_local_results=false. For gRPC, select Bazel gRPC. Remote execution is not supported.",
       reference: "https://bazel.build/remote/caching",
+    },
+    {
+      id: "bazel-grpc",
+      title: "Bazel gRPC",
+      description:
+        "Use Bazel's gRPC cache services with an account-scoped instance.",
+      steps: [
+        {
+          title: "Build with gRPC caching",
+          code: `bazel build //... \\
+  --remote_cache='grpcs://${host}' \\
+  --remote_instance_name='accounts/${account}' \\
+  --remote_header="Authorization=Bearer $FLUENTCI_CACHE_TOKEN"`,
+        },
+      ],
+      note: "Supports ActionCache, CAS, Capabilities, and resumable ByteStream with SHA-256. This is caching only; no remote executor is provided. Omit the header and disable uploads for public read-only use. The HTTPS proxy must forward gRPC over HTTP/2.",
+      reference: "https://bazel.build/remote/caching",
+    },
+    {
+      id: "turbo",
+      title: "Turborepo",
+      description: "Share Turborepo artifacts through the HTTP remote cache.",
+      steps: [
+        {
+          title: "Configure the remote cache",
+          code: `export TURBO_API="$FLUENTCI_CACHE_URL/turbo"
+export TURBO_TOKEN="$FLUENTCI_CACHE_TOKEN"
+export TURBO_TEAM='${account}'
+bunx turbo run build --cache=remote:rw`,
+        },
+      ],
+      note: "TURBO_TEAM must match the cache owner's hash. Artifact signature headers are preserved; if your project enables signatures, configure the same TURBO_REMOTE_CACHE_SIGNATURE_KEY for every trusted client. Verified with Turborepo 2.11.10.",
+      reference: "https://turborepo.dev/docs/core-concepts/remote-caching",
+    },
+    {
+      id: "nx",
+      title: "Nx",
+      description: "Use Nx's self-hosted HTTP remote cache.",
+      steps: [
+        {
+          title: "Configure Nx caching",
+          code: `export NX_SELF_HOSTED_REMOTE_CACHE_SERVER="$FLUENTCI_CACHE_URL/nx"
+export NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN="$FLUENTCI_CACHE_TOKEN"
+bunx nx run my-project:build`,
+        },
+      ],
+      note: "Replace my-project:build with a cacheable target in your workspace. Artifacts are immutable: an existing key returns 409. Verified with Nx 24.0.0; use a client version supporting the self-hosted remote-cache variables.",
+      reference: "https://nx.dev/docs/kb/self-hosted-caching",
+    },
+    {
+      id: "buildkit",
+      title: "BuildKit / Docker Buildx",
+      description:
+        "Export and restore BuildKit cache using the OCI registry interface.",
+      steps: [
+        {
+          title: "Authenticate and build",
+          code: `export FLUENTCI_CACHE_REGISTRY='${host}'
+export FLUENTCI_CACHE_REF="$FLUENTCI_CACHE_REGISTRY/accounts/${account}/buildkit/my-project:cache"
+printf '%s' "$FLUENTCI_CACHE_TOKEN" | docker login "$FLUENTCI_CACHE_REGISTRY" --username ci --password-stdin
+docker buildx build \\
+  --cache-from "type=registry,ref=$FLUENTCI_CACHE_REF" \\
+  --cache-to "type=registry,ref=$FLUENTCI_CACHE_REF,mode=max" .`,
+        },
+      ],
+      note: "Choose a Buildx driver with registry-cache support, such as docker-container. Replace my-project with a separate repository for each build. Supports cache manifests, indexes, blob upload resume, and public pulls; not a full registry management API. Verified with Buildx 0.36.1 and fresh BuildKit builders.",
+      reference: "https://docs.docker.com/build/cache/backends/registry/",
     },
     {
       id: "sccache",

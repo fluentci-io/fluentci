@@ -4,10 +4,19 @@ import { ok } from "@atcute/client";
 
 const api = "https://api.fluentci.io";
 export type UploadToken = {
+  id: string;
   token: string;
   cacheUrl: string;
   expiresAt: string;
   owner: string;
+};
+export type UploadTokenRecord = {
+  id: string;
+  owner: string;
+  actor: string;
+  createdAt: string;
+  expiresAt: string;
+  active: boolean;
 };
 export type Credential = {
   id: string;

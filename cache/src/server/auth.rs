@@ -5,6 +5,7 @@ use super::{
 use axum::http::{HeaderMap, StatusCode, header};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use jsonwebtoken::{Algorithm, Validation, decode};
+use object_store::path::Path;
 use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
@@ -49,6 +50,8 @@ struct UploadClaims {
     cache: String,
     scope: String,
     sub: String,
+    #[serde(default)]
+    jti: Option<String>,
 }
 
 fn scoped_authorized(
@@ -57,9 +60,9 @@ fn scoped_authorized(
     account: Option<&str>,
     scope: &str,
     owner_only: bool,
-) -> Result<()> {
+) -> Result<Option<String>> {
     if (!owner_only || app.config.token.is_some()) && authorized(app, headers, false).is_ok() {
-        return Ok(());
+        return Ok(None);
     }
     let token = headers
         .get(header::AUTHORIZATION)
@@ -87,7 +90,7 @@ fn scoped_authorized(
             && data.claims.sub.starts_with("did:")
             && (!owner_only || hex::encode(Sha256::digest(data.claims.sub.as_bytes())) == account)
         {
-            return Ok(());
+            return Ok(data.claims.jti);
         }
     }
     Err(Failure(
@@ -96,14 +99,39 @@ fn scoped_authorized(
     ))
 }
 
-pub(super) fn upload_authorized(
+pub(super) async fn upload_authorized(
     app: &App,
     headers: &HeaderMap,
     account: Option<&str>,
 ) -> Result<()> {
-    scoped_authorized(app, headers, account, "cache:upload", false)
+    if let Some(id) = scoped_authorized(app, headers, account, "cache:upload", false)? {
+        let path = revocation_path(account.unwrap_or_default(), &id);
+        match tokio::time::timeout(
+            std::time::Duration::from_secs(app.config.timeout),
+            app.store.head(&path),
+        )
+        .await
+        {
+            Ok(Err(object_store::Error::NotFound { .. })) => {}
+            Ok(Ok(_)) => return Err(Failure(StatusCode::UNAUTHORIZED, "upload token revoked\n")),
+            _ => {
+                return Err(Failure(
+                    StatusCode::SERVICE_UNAVAILABLE,
+                    "token status unavailable\n",
+                ));
+            }
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn manage_authorized(app: &App, headers: &HeaderMap, account: &str) -> Result<()> {
-    scoped_authorized(app, headers, Some(account), "cache:manage", true)
+    scoped_authorized(app, headers, Some(account), "cache:manage", true).map(|_| ())
+}
+
+pub(super) fn revocation_path(account: &str, id: &str) -> Path {
+    Path::from(format!(
+        "_revocations/{account}/{}",
+        hex::encode(Sha256::digest(id.as_bytes()))
+    ))
 }

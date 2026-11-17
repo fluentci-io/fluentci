@@ -15,8 +15,9 @@ account. Older sessions show **Authorize cache access**; approve the additional
 cache permissions before continuing.
 
 Choose **Generate upload token** to receive your account's cache URL and an
-upload token valid for one hour. Keep the owner field empty for your own cache.
-For a shared cache, enter the owner's handle or DID after they invite you.
+upload token valid for one hour. The cache page always uses your signed-in account's cache.
+Invited collaborators can use the `createToken` API with the owner's handle or DID
+to request a token for a shared cache.
 The browser obtains a short-lived PDS service-auth JWT bound to the exact cache
 API method, then exchanges it at the FluentCI API. PDS session credentials are
 not sent to the FluentCI API. Upload tokens remain in page memory and disappear
@@ -36,6 +37,17 @@ Use **Renew upload token** for a new one-hour token. Renewing does not revoke a
 previous token. Cached files remain publicly readable through a correctly
 configured CDN; invitations and tokens control uploads.
 
+**Issued upload tokens** lists tokens in pages of 20 with creation time, expiry,
+and status. Secrets are always redacted in the list and are never stored by the
+API. Copy a newly generated secret before leaving the page. **Revoke** disables
+that token for subsequent uploads, including tokens issued through CI exchanges
+or to collaborators for your cache. Revocation persists across cache restarts
+and clearing storage. Existing in-flight uploads can finish.
+
+Only tokens issued after token tracking was installed can be listed. Earlier
+tokens expire normally within one hour. Older sign-in sessions need the new
+`listTokens` and `revokeToken` permissions before managing this list.
+
 ## Invite a collaborator
 
 In **Invite collaborators**, enter a handle or DID and choose **Invite user**.
@@ -44,7 +56,8 @@ they sign in and generate their own upload token with you as the cache owner.
 No email or external invitation message is sent automatically.
 
 **Revoke access** immediately prevents that user from generating more tokens.
-Already-issued upload tokens remain valid until their one-hour expiry.
+Already-issued upload tokens remain valid until their one-hour expiry unless
+you revoke them individually in **Issued upload tokens**.
 
 ## Connect CI
 
@@ -114,6 +127,8 @@ All methods are JSON POST requests under
 | `createCredential`   | Owner's method-bound PDS service JWT | `{ "label": "Release pipeline" }`       |
 | `listCredentials`    | Owner's method-bound PDS service JWT | `{}`                                    |
 | `revokeCredential`   | Owner's method-bound PDS service JWT | `{ "id": "CREDENTIAL_UUID" }`           |
+| `listTokens`         | Owner's method-bound PDS service JWT | `{}` or `{ "cursor": "CURSOR" }`        |
+| `revokeToken`        | Owner's method-bound PDS service JWT | `{ "id": "TOKEN_UUID" }`                |
 | `exchangeCredential` | CI credential in the bearer header   | `{}`                                    |
 
 `createToken` and `exchangeCredential` return `token`, `expiresAt`, `cacheUrl`, and
@@ -151,7 +166,7 @@ permissions in addition to upload permissions.
 
 ## Usage chart
 
-The storage view includes daily bars for the last 14 UTC days. Switch between
+The storage view includes daily bars for the last 30 UTC days. Switch between
 stored bytes and object count. Hover over a bar or focus it with the keyboard to
 inspect a day's measurement. Missing historical samples show **No data**, not
 zero usage. A measured empty cache is shown as zero.

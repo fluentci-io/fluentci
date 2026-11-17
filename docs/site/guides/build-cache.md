@@ -10,8 +10,8 @@ source: "guides/build-cache.md"
 
 Open [Build cache](https://fluentci.io/cache), sign in, and generate an upload token.
 The response contains your account cache URL and a token valid for one hour.
-Invited collaborators enter the cache owner's handle to get a token for that
-owner's cache. See [cache access and CI credentials](/registry/cache/) for
+The cache page generates tokens for the signed-in account. Invited collaborators
+can request a shared-cache token through the createToken API with the owner's handle. See [cache access and CI credentials](/registry/cache/) for
 invitations, renewal, and automated CI exchanges.
 
 Set the URL exactly as returned, including the account namespace. Replace
@@ -30,15 +30,19 @@ cache client password.
 
 ## Supported protocols
 
-| Client                      | Append to your account URL      | Upload authentication                |
-| --------------------------- | ------------------------------- | ------------------------------------ |
-| Bazel HTTP cache            | `/bazel`                        | Bearer header                        |
-| sccache WebDAV              | `/sccache/`                     | Bearer token                         |
-| Go helper                   | Nothing; helper adds `/gocache` | `FLUENTCI_CACHE_TOKEN`               |
-| Gradle HTTP build cache     | `/gradle/`                      | Basic-auth password                  |
-| Maven Build Cache Extension | `/maven/`                       | Maven server password                |
-| Nix binary cache            | `/nix`                          | Bearer header on PUT                 |
-| Generic HTTP                | `/generic/<key>`                | Bearer header or Basic-auth password |
+| Client                      | Append to your account URL                 | Upload authentication                |
+| --------------------------- | ------------------------------------------ | ------------------------------------ |
+| Bazel HTTP cache            | `/bazel`                                   | Bearer header                        |
+| Bazel gRPC                  | instance `accounts/OWNER_HASH`             | Bearer metadata                      |
+| Turborepo                   | `/turbo`                                   | `TURBO_TOKEN`                        |
+| Nx                          | `/nx`                                      | Access-token environment variable    |
+| BuildKit / Docker Buildx    | OCI registry `/v2/accounts/OWNER_HASH/...` | Docker login password                |
+| sccache WebDAV              | `/sccache/`                                | Bearer token                         |
+| Go helper                   | Nothing; helper adds `/gocache`            | `FLUENTCI_CACHE_TOKEN`               |
+| Gradle HTTP build cache     | `/gradle/`                                 | Basic-auth password                  |
+| Maven Build Cache Extension | `/maven/`                                  | Maven server password                |
+| Nix binary cache            | `/nix`                                     | Bearer header on PUT                 |
+| Generic HTTP                | `/generic/<key>`                           | Bearer header or Basic-auth password |
 
 Reads are public when the server's public-read configuration and CDN are set up.
 The production service is `https://cache.fluentci.io`; its read origin is
@@ -46,7 +50,7 @@ The production service is `https://cache.fluentci.io`; its read origin is
 it also generates Nix discovery metadata. Uploading never goes to the CDN.
 
 This service stores build artifacts. It does not implement remote execution,
-Bazel gRPC/REAPI, a Maven dependency proxy, a Go module proxy, or the Cachix API.
+a Maven dependency proxy, a Go module proxy, or the Cachix API.
 It is separate from the [native pipeline and package caches](/guides/caching/).
 
 ## Bazel
@@ -61,9 +65,78 @@ bazel build //... \
   --remote_header="Authorization=Bearer $FLUENTCI_CACHE_TOKEN"
 ```
 
-For read-only builds, omit the header and add --remote_upload_local_results=false. This is an HTTP cache; remote execution and gRPC are not supported.
+For read-only builds, omit the header and add --remote_upload_local_results=false. For gRPC, select Bazel gRPC. Remote execution is not supported.
 
 [Bazel reference](https://bazel.build/remote/caching).
+
+## Bazel gRPC
+
+Use Bazel's gRPC cache services with an account-scoped instance.
+
+### Build with gRPC caching
+
+```sh
+bazel build //... \
+  --remote_cache='grpcs://cache.fluentci.io' \
+  --remote_instance_name='accounts/OWNER_HASH' \
+  --remote_header="Authorization=Bearer $FLUENTCI_CACHE_TOKEN"
+```
+
+Supports ActionCache, CAS, Capabilities, and resumable ByteStream with SHA-256. This is caching only; no remote executor is provided. Omit the header and disable uploads for public read-only use. The HTTPS proxy must forward gRPC over HTTP/2.
+
+[Bazel gRPC reference](https://bazel.build/remote/caching).
+
+## Turborepo
+
+Share Turborepo artifacts through the HTTP remote cache.
+
+### Configure the remote cache
+
+```sh
+export TURBO_API="$FLUENTCI_CACHE_URL/turbo"
+export TURBO_TOKEN="$FLUENTCI_CACHE_TOKEN"
+export TURBO_TEAM='OWNER_HASH'
+bunx turbo run build --cache=remote:rw
+```
+
+TURBO_TEAM must match the cache owner's hash. Artifact signature headers are preserved; if your project enables signatures, configure the same TURBO_REMOTE_CACHE_SIGNATURE_KEY for every trusted client. Verified with Turborepo 2.11.10.
+
+[Turborepo reference](https://turborepo.dev/docs/core-concepts/remote-caching).
+
+## Nx
+
+Use Nx's self-hosted HTTP remote cache.
+
+### Configure Nx caching
+
+```sh
+export NX_SELF_HOSTED_REMOTE_CACHE_SERVER="$FLUENTCI_CACHE_URL/nx"
+export NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN="$FLUENTCI_CACHE_TOKEN"
+bunx nx run my-project:build
+```
+
+Replace my-project:build with a cacheable target in your workspace. Artifacts are immutable: an existing key returns 409. Verified with Nx 24.0.0; use a client version supporting the self-hosted remote-cache variables.
+
+[Nx reference](https://nx.dev/docs/kb/self-hosted-caching).
+
+## BuildKit / Docker Buildx
+
+Export and restore BuildKit cache using the OCI registry interface.
+
+### Authenticate and build
+
+```sh
+export FLUENTCI_CACHE_REGISTRY='cache.fluentci.io'
+export FLUENTCI_CACHE_REF="$FLUENTCI_CACHE_REGISTRY/accounts/OWNER_HASH/buildkit/my-project:cache"
+printf '%s' "$FLUENTCI_CACHE_TOKEN" | docker login "$FLUENTCI_CACHE_REGISTRY" --username ci --password-stdin
+docker buildx build \
+  --cache-from "type=registry,ref=$FLUENTCI_CACHE_REF" \
+  --cache-to "type=registry,ref=$FLUENTCI_CACHE_REF,mode=max" .
+```
+
+Choose a Buildx driver with registry-cache support, such as docker-container. Replace my-project with a separate repository for each build. Supports cache manifests, indexes, blob upload resume, and public pulls; not a full registry management API. Verified with Buildx 0.36.1 and fresh BuildKit builders.
+
+[BuildKit / Docker Buildx reference](https://docs.docker.com/build/cache/backends/registry/).
 
 ## sccache
 

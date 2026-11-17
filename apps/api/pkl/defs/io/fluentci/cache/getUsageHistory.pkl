@@ -1,6 +1,6 @@
 amends "../../../../schema/lexicon.pkl"
 id = "io.fluentci.cache.getUsageHistory"
-description = "Owner-only: recorded daily storage snapshots for the last 14 UTC days. Missing days have no sample."
+description = "Owner-only: recorded daily storage snapshots for the last 30 UTC days. Missing days have no sample."
 defs = new Mapping {
  ["main"] = new Procedure {
   input = new Body { encoding = "application/json"

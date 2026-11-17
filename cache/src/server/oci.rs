@@ -130,7 +130,7 @@ fn finish(result: Result<Response>) -> Response {
 }
 
 async fn root(State(registry): State<Registry>, request: Request) -> Response {
-    let result = (|| {
+    let result = (async move {
         if !matches!(*request.method(), Method::GET | Method::HEAD) {
             return Ok(reply(StatusCode::METHOD_NOT_ALLOWED));
         }
@@ -155,12 +155,13 @@ async fn root(State(registry): State<Registry>, request: Request) -> Response {
                 .and_then(|v| serde_json::from_slice::<Value>(&v).ok())
                 .and_then(|v| v["cache"].as_str().map(str::to_owned));
             // The unverified account hint is used only as input to full signature and scope verification.
-            upload_authorized(&registry.app, request.headers(), account.as_deref())?;
+            upload_authorized(&registry.app, request.headers(), account.as_deref()).await?;
         } else {
             authorized(&registry.app, request.headers(), true)?;
         }
         Ok(Json(json!({})).into_response())
-    })();
+    })
+    .await;
     finish(result)
 }
 
@@ -182,7 +183,7 @@ async fn handle(
         if read {
             authorized(&registry.app, request.headers(), true)?;
         } else {
-            upload_authorized(&registry.app, request.headers(), Some(account))?;
+            upload_authorized(&registry.app, request.headers(), Some(account)).await?;
             if registry.app.config.read_only {
                 return Err(Failure(StatusCode::FORBIDDEN, "cache is read-only\n"));
             }
@@ -318,7 +319,7 @@ async fn upload_request(
     id: &str,
     request: Request,
 ) -> Result<Response> {
-    upload_authorized(&registry.app, request.headers(), Some(account))?;
+    upload_authorized(&registry.app, request.headers(), Some(account)).await?;
     let parameters = query(&request)?;
     let method = request.method().clone();
     if method == Method::POST && id.is_empty() {
@@ -785,7 +786,7 @@ async fn tags(
     if *request.method() != Method::GET {
         return Ok(reply(StatusCode::METHOD_NOT_ALLOWED));
     }
-    upload_authorized(&registry.app, request.headers(), Some(account))?;
+    upload_authorized(&registry.app, request.headers(), Some(account)).await?;
     let parameters = query(&request)?;
     let limit = parameters
         .get("n")

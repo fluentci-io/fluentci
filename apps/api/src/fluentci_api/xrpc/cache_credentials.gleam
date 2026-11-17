@@ -1,4 +1,5 @@
 import fluentci_api/db/cache_credentials as db
+import fluentci_api/db/cache_tokens
 import fluentci_api/db/client.{type Db}
 import fluentci_api/lexicon/models
 import fluentci_api/node/runtime.{type Output, type Request, type Server}
@@ -29,6 +30,7 @@ fn exchange(
   server: Server,
   request: Request,
   find: fn(String) -> Promise(List(c.Row)),
+  save: fn(String, String, String, String, String) -> Promise(Nil),
 ) -> Promise(Output)
 
 pub fn register(server: Server, connection: Db) -> Nil {
@@ -44,6 +46,13 @@ pub fn register(server: Server, connection: Db) -> Nil {
     revoke(request, fn(owner, id) { db.revoke(connection, owner, id) })
   })
   runtime.method(server, models.cache_exchange_credential, fn(request) {
-    exchange(server, request, fn(id) { db.find(connection, id) })
+    exchange(
+      server,
+      request,
+      fn(id) { db.find(connection, id) },
+      fn(id, owner, actor, created, expires) {
+        cache_tokens.save(connection, id, owner, actor, created, expires)
+      },
+    )
   })
 }

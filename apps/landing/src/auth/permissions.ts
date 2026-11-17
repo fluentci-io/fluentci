@@ -5,6 +5,8 @@ export const cacheMethods = [
   "clearCache",
   "listCollaborators",
   "createToken",
+  "listTokens",
+  "revokeToken",
   "inviteUser",
   "revokeUser",
   "createCredential",

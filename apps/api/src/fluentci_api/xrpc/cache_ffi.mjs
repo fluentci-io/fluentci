@@ -22,20 +22,27 @@ function settings(server) {
     throw unavailable();
   }
 }
-export async function createToken(server, request, allowed) {
+export async function createToken(server, request, allowed, save) {
   const actor = request.auth.credentials.did;
   const owner = request.input.body.owner
     ? await resolveActor(server, request.input.body.owner)
     : actor;
   if (!(await allowed(owner, actor)))
     throw new XRPCError(403, 'The cache owner must invite you first', 'AccessDenied');
-  return mintToken(server, owner, actor);
+  return issueToken(server, owner, actor, save);
+}
+export async function issueToken(server, owner, actor, save) {
+  const output = mintToken(server, owner, actor);
+  const { id, expiresAt } = output.body;
+  await save(id, owner, actor, new Date().toISOString(), expiresAt);
+  return output;
 }
 export function mintToken(server, owner, actor, scope = 'cache:upload') {
   const { base, key } = settings(server);
   const cache = createHash('sha256').update(owner).digest('hex');
   const now = Math.floor(Date.now() / 1000);
   const exp = now + 3600;
+  const id = randomUUID();
   const header = Buffer.from(JSON.stringify({ alg: 'EdDSA', typ: 'JWT' })).toString('base64url');
   const payload = Buffer.from(
     JSON.stringify({
@@ -47,7 +54,7 @@ export function mintToken(server, owner, actor, scope = 'cache:upload') {
       iat: now,
       nbf: now,
       exp,
-      jti: randomUUID(),
+      jti: id,
     }),
   ).toString('base64url');
   const unsigned = `${header}.${payload}`;
@@ -55,6 +62,7 @@ export function mintToken(server, owner, actor, scope = 'cache:upload') {
   return {
     encoding: 'application/json',
     body: {
+      id,
       token,
       expiresAt: new Date(exp * 1000).toISOString(),
       cacheUrl: `${base}/accounts/${cache}`,
@@ -122,7 +130,7 @@ export async function listCollaborators(request, list) {
 export async function usageHistory(request, query) {
   const now = new Date();
   const after = new Date(now);
-  after.setUTCDate(after.getUTCDate() - 14);
+  after.setUTCDate(after.getUTCDate() - 30);
   const before = new Date(now);
   before.setUTCDate(before.getUTCDate() + 1);
   const rows = (

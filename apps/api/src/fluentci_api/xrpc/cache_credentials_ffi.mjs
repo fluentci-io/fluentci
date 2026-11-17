@@ -1,6 +1,6 @@
 import { createHash, randomBytes, randomUUID, timingSafeEqual } from 'node:crypto';
 import { XRPCError } from '@atproto/xrpc-server';
-import { mintToken } from './cache_ffi.mjs';
+import { mintToken, issueToken } from './cache_ffi.mjs';
 
 const digest = (value) => createHash('sha256').update(value).digest();
 const view = (row) => ({
@@ -37,7 +37,7 @@ export async function revokeCredential(request, revoke) {
   await revoke(request.auth.credentials.did, request.input.body.id);
   return json({ revoked: true });
 }
-export async function exchangeCredential(server, request, find) {
+export async function exchangeCredential(server, request, find, save) {
   const credential = request.auth.credentials.cacheCredential;
   const match =
     /^fc_cache_ci_([0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12})\.[A-Za-z0-9_-]{43}$/.exec(
@@ -54,5 +54,5 @@ export async function exchangeCredential(server, request, find) {
     !timingSafeEqual(digest(credential), Buffer.from(row.digest, 'hex'))
   )
     throw denied();
-  return mintToken(server, row.owner, row.owner);
+  return issueToken(server, row.owner, row.owner, save);
 }

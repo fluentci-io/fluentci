@@ -721,6 +721,13 @@ database. See [architecture](./docs/site/development/architecture.md).
 
 ## Caching
 
+The standalone [FluentCI Cache server](./cache/README.md) supports Nix, sccache,
+Go, Maven Build Cache, Gradle, Bazel HTTP and gRPC, Turborepo, Nx, BuildKit OCI,
+and generic HTTP artifacts. Account caches provide public reads, scoped upload
+tokens, individual token revocation, collaborators, and storage management.
+See the [client setup guide](./docs/site/guides/build-cache.md) and
+[deployment guide](./docs/site/development/build-cache.md).
+
 The embedded engine supports local and remote caches. Configure remote storage
 with the same variables used by FluentCI Engine:
 

@@ -44,7 +44,7 @@ async fn run(
         if read {
             authorized(&app, request.headers(), true)?;
         } else {
-            upload_authorized(&app, request.headers(), Some(&account))?;
+            upload_authorized(&app, request.headers(), Some(&account)).await?;
         }
         if !read && app.config.read_only {
             return Err(Failure(StatusCode::FORBIDDEN, "cache is read-only\n"));
@@ -96,7 +96,7 @@ async fn inner(
             }
         }
         if rest == "artifacts/status" && method == Method::GET {
-            upload_authorized(app, request.headers(), Some(account))?;
+            upload_authorized(app, request.headers(), Some(account)).await?;
             return Ok(Json(json!({"status":"enabled"})).into_response());
         }
         if rest == "artifacts/events" && method == Method::POST {

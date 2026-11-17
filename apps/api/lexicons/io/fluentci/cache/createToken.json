@@ -23,12 +23,16 @@
         "schema": {
           "type": "object",
           "required": [
+            "id",
             "token",
             "expiresAt",
             "cacheUrl",
             "owner"
           ],
           "properties": {
+            "id": {
+              "type": "string"
+            },
             "token": {
               "type": "string"
             },

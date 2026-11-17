@@ -258,7 +258,7 @@ test('storage procedure reports failures without exposing backend details', asyn
   assert.doesNotMatch(await response.text(), /private backend details/);
 });
 
-test('cache usage history stores daily owner-scoped snapshots and returns only the last 14 UTC days', async (t) => {
+test('cache usage history stores daily owner-scoped snapshots and returns only the last 30 UTC days', async (t) => {
   const { call, connection } = await fixture(t, false, {
     cacheFetch: async () => Response.json({ keys: [], totalBytes: 2048, totalKeys: 2 }),
   });
@@ -269,8 +269,9 @@ test('cache usage history stores daily owner-scoped snapshots and returns only t
     value.setUTCDate(value.getUTCDate() + offset);
     return value.toISOString().slice(0, 10);
   };
-  await usage.record(connection, did, date(-14), 100, 1, `${date(-14)}T12:00:00.000Z`);
-  await usage.record(connection, did, date(-13), 200, 2, `${date(-13)}T12:00:00.000Z`);
+  for (let offset = -30; offset < 0; offset++) {
+    await usage.record(connection, did, date(offset), 200, 2, `${date(offset)}T12:00:00.000Z`);
+  }
   await usage.record(connection, other, date(-1), 999, 9, `${date(-1)}T12:00:00.000Z`);
   assert.equal((await call('listKeys')).status, 200);
   assert.equal((await call('getUsageHistory', null)).status, 401);
@@ -279,13 +280,10 @@ test('cache usage history stores daily owner-scoped snapshots and returns only t
   const output = await response.json();
   assert.deepEqual(
     output.samples.map((sample) => [sample.date, sample.bytes, sample.keyCount]),
-    [
-      [date(-13), 200, 2],
-      [date(0), 2048, 2],
-    ],
+    [...Array.from({ length: 29 }, (_, index) => [date(-29 + index), 200, 2]), [date(0), 2048, 2]],
   );
   assert.equal((await call('listKeys')).status, 200);
-  assert.equal((await (await call('getUsageHistory')).json()).samples.length, 2);
+  assert.equal((await (await call('getUsageHistory')).json()).samples.length, 30);
   assert.deepEqual(
     (await (await call('getUsageHistory', other)).json()).samples.map((sample) => sample.bytes),
     [999],
@@ -307,4 +305,76 @@ test('snapshot workers can open the shared database without replaying pending mi
     migrationsFolder: directory,
   });
   await nativeDb.close(reopened);
+});
+
+test('upload token lists paginate without secrets and revocation is owner scoped and durable', async (t) => {
+  const revoked = [];
+  let fail = false;
+  const { call, connection, exchange } = await fixture(t, false, {
+    cacheFetch: async (_url, request) => {
+      if (fail) return new Response('', { status: 503 });
+      const input = JSON.parse(request.body);
+      assert.equal(input.action, 'revokeToken');
+      revoked.push(input.id);
+      return Response.json({ revoked: true });
+    },
+  });
+  const issued = [];
+  for (let i = 0; i < 22; i++) issued.push(await (await call('createToken')).json());
+  const foreign = await (await call('createToken', other)).json();
+  const first = await (await call('listTokens')).json();
+  assert.equal(first.tokens.length, 20);
+  assert.ok(first.cursor);
+  assert.equal(
+    first.tokens.some((row) => row.id === foreign.id),
+    false,
+  );
+  const second = await (await call('listTokens', did, { cursor: first.cursor })).json();
+  assert.equal(second.tokens.length, 2);
+  assert.equal(second.cursor, undefined);
+  assert.equal(new Set([...first.tokens, ...second.tokens].map((row) => row.id)).size, 22);
+  assert.equal(JSON.stringify(first).includes(issued[0].token), false);
+  assert.equal(
+    first.tokens.some((row) => 'token' in row),
+    false,
+  );
+  const rows = await connection.client.execute('SELECT * FROM cache_tokens');
+  assert.equal(JSON.stringify(rows.rows).includes(issued[0].token), false);
+  assert.equal((await call('listTokens', null)).status, 401);
+  assert.equal((await call('revokeToken', other, { id: issued[0].id })).status, 404);
+  fail = true;
+  assert.equal((await call('revokeToken', did, { id: issued[0].id })).status, 503);
+  assert.equal(
+    (
+      await connection.client.execute({
+        sql: 'SELECT active FROM cache_tokens WHERE id = ?',
+        args: [issued[0].id],
+      })
+    ).rows[0].active,
+    1,
+  );
+  fail = false;
+  assert.equal((await call('revokeToken', did, { id: issued[0].id })).status, 200);
+  assert.deepEqual(revoked, [issued[0].id]);
+  assert.equal(
+    (
+      await connection.client.execute({
+        sql: 'SELECT active FROM cache_tokens WHERE id = ?',
+        args: [issued[0].id],
+      })
+    ).rows[0].active,
+    0,
+  );
+  const credential = await (await call('createCredential', did, { label: 'CI' })).json();
+  const ciToken = await (await exchange(credential.credential)).json();
+  assert.ok(ciToken.id);
+  assert.equal(
+    (
+      await connection.client.execute({
+        sql: 'SELECT owner FROM cache_tokens WHERE id = ?',
+        args: [ciToken.id],
+      })
+    ).rows[0].owner,
+    did,
+  );
 });

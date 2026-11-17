@@ -3,6 +3,9 @@ import { UsageChart } from "./UsageChart";
 import { formatBytes, type UsageSample } from "../../cache/usage";
 import type { Account } from "../../auth/client";
 import { cacheRequest } from "../../cache/client";
+import { Skeleton } from "../Skeleton";
+import { CacheTableSkeleton } from "./CacheSkeleton";
+import { SearchIcon } from "../SearchIcon";
 
 type Entry = { key: string; size: number; lastModified: string };
 type Listing = {
@@ -142,25 +145,37 @@ export function CacheObjects({ account }: { account: Account }) {
           {notice}
         </p>
       )}
-      {listing && (
+      {listing ? (
         <p className="mt-4 text-sm" aria-label="Cache usage">
           {formatBytes(listing.totalBytes)} used ·{" "}
           {listing.totalKeys.toLocaleString()} keys
         </p>
-      )}
-      <UsageChart samples={samples} error={historyError} />
+      ) : !error ? (
+        <div role="status" aria-label="Loading cache usage" className="mt-4">
+          <Skeleton className="h-5 w-40" />
+        </div>
+      ) : null}
+      <UsageChart
+        samples={samples}
+        error={historyError || (!listing ? error : "")}
+      />
       <form onSubmit={submit} className="mt-5 space-y-3">
         <div className="flex flex-wrap gap-3">
           <label className="min-w-0 flex-1 text-sm" htmlFor="cache-search">
             Search cache entries
-            <input
-              id="cache-search"
-              type="search"
-              className={`${field} mt-2`}
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Quick filter by key"
-            />
+            <span className="relative mt-2 block">
+              <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted">
+                <SearchIcon />
+              </span>
+              <input
+                id="cache-search"
+                type="search"
+                className={`${field} pl-10`}
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Quick filter by key"
+              />
+            </span>
           </label>
           <button className={`${button} self-end`} disabled={pending}>
             Refresh entries
@@ -171,21 +186,21 @@ export function CacheObjects({ account }: { account: Account }) {
           <label className="mt-3 block" htmlFor="cache-prefix">
             Key prefix
           </label>
-          <input
-            id="cache-prefix"
-            className={`${field} mt-2`}
-            value={prefix}
-            onChange={(event) => setPrefix(event.target.value)}
-            placeholder="generic/ or bazel/"
-            maxLength={2048}
-          />
+          <div className="relative mt-2">
+            <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-muted">
+              <SearchIcon />
+            </span>
+            <input
+              id="cache-prefix"
+              className={`${field} pl-10`}
+              value={prefix}
+              onChange={(event) => setPrefix(event.target.value)}
+              placeholder="generic/ or bazel/"
+              maxLength={2048}
+            />
+          </div>
         </details>
       </form>
-      {pending && !listing && (
-        <p role="status" className="mt-5 text-sm text-muted">
-          Loading cache entries…
-        </p>
-      )}
       <div className="mt-5 overflow-x-auto rounded-lg border border-line">
         <table
           className="w-full table-fixed text-left text-sm"
@@ -211,6 +226,9 @@ export function CacheObjects({ account }: { account: Account }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
+            {!listing && !error && (
+              <CacheTableSkeleton columns={4} label="Loading cache entries" />
+            )}
             {(listing?.keys ?? [])
               .filter((entry) =>
                 entry.key.toLowerCase().includes(search.toLowerCase()),

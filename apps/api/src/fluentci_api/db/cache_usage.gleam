@@ -58,7 +58,7 @@ pub fn history(
         and([eq(u.owner(t), owner), gt(u.date(t), after), lt(u.date(t), before)]),
       )
       |> order_by([asc(u.date(t))])
-      |> limit(14),
+      |> limit(30),
   )
 }
 

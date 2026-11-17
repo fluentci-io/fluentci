@@ -12,7 +12,9 @@ export const ids = {
   cache_list_collaborators: 'io.fluentci.cache.listCollaborators',
   cache_list_credentials: 'io.fluentci.cache.listCredentials',
   cache_list_keys: 'io.fluentci.cache.listKeys',
+  cache_list_tokens: 'io.fluentci.cache.listTokens',
   cache_revoke_credential: 'io.fluentci.cache.revokeCredential',
+  cache_revoke_token: 'io.fluentci.cache.revokeToken',
   cache_revoke_user: 'io.fluentci.cache.revokeUser',
   like: 'io.fluentci.like',
   plugin: 'io.fluentci.plugin',
@@ -184,8 +186,11 @@ export const schemas = [
           encoding: 'application/json',
           schema: {
             type: 'object',
-            required: ['token', 'expiresAt', 'cacheUrl', 'owner'],
+            required: ['id', 'token', 'expiresAt', 'cacheUrl', 'owner'],
             properties: {
+              id: {
+                type: 'string',
+              },
               token: {
                 type: 'string',
               },
@@ -285,6 +290,34 @@ export const schemas = [
           },
         },
       },
+      uploadTokenView: {
+        type: 'object',
+        required: ['id', 'owner', 'actor', 'createdAt', 'expiresAt', 'active'],
+        properties: {
+          id: {
+            type: 'string',
+          },
+          owner: {
+            type: 'string',
+            format: 'did',
+          },
+          actor: {
+            type: 'string',
+            format: 'did',
+          },
+          createdAt: {
+            type: 'string',
+            format: 'datetime',
+          },
+          expiresAt: {
+            type: 'string',
+            format: 'datetime',
+          },
+          active: {
+            type: 'boolean',
+          },
+        },
+      },
     },
   },
   {
@@ -355,8 +388,11 @@ export const schemas = [
           encoding: 'application/json',
           schema: {
             type: 'object',
-            required: ['token', 'expiresAt', 'cacheUrl', 'owner'],
+            required: ['id', 'token', 'expiresAt', 'cacheUrl', 'owner'],
             properties: {
+              id: {
+                type: 'string',
+              },
               token: {
                 type: 'string',
               },
@@ -390,7 +426,7 @@ export const schemas = [
     lexicon: 1,
     id: 'io.fluentci.cache.getUsageHistory',
     description:
-      'Owner-only: recorded daily storage snapshots for the last 14 UTC days. Missing days have no sample.',
+      'Owner-only: recorded daily storage snapshots for the last 30 UTC days. Missing days have no sample.',
     defs: {
       main: {
         type: 'procedure',
@@ -648,6 +684,59 @@ export const schemas = [
   },
   {
     lexicon: 1,
+    id: 'io.fluentci.cache.listTokens',
+    description: 'Owner-only cache management. Requires a method-scoped service-auth token.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: [],
+            properties: {
+              cursor: {
+                type: 'string',
+                maxLength: 2048,
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['tokens'],
+            properties: {
+              tokens: {
+                type: 'array',
+                items: {
+                  type: 'ref',
+                  ref: 'io.fluentci.cache.defs#uploadTokenView',
+                },
+              },
+              cursor: {
+                type: 'string',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+          {
+            name: 'InvalidRequest',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
     id: 'io.fluentci.cache.revokeCredential',
     description:
       'Owner-only: disable a CI credential. Already-issued upload tokens expire normally.',
@@ -681,6 +770,53 @@ export const schemas = [
           },
         },
         errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.revokeToken',
+    description: 'Owner-only: revoke an upload token at the cache server.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['id'],
+            properties: {
+              id: {
+                type: 'string',
+                minLength: 36,
+                maxLength: 36,
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['revoked'],
+            properties: {
+              revoked: {
+                type: 'boolean',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'TokenNotFound',
+          },
           {
             name: 'AuthRequired',
           },

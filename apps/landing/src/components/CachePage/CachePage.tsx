@@ -15,8 +15,12 @@ import { TokenInstructions } from "./TokenInstructions";
 import { CacheObjects } from "./CacheObjects";
 import { HandleSuggestions } from "../HandleSuggestions";
 import { useHandleSuggestions } from "../SignInDialog/useHandleSuggestions";
-import { getProfiles, type Profile } from "../../registry/client";
+import { getProfiles, httpUrl, type Profile } from "../../registry/client";
 import { Copy } from "../Copy";
+import { UserIcon } from "../UserIcon";
+import { SearchIcon } from "../SearchIcon";
+import { UploadTokenList } from "./UploadTokenList";
+import { CachePageSkeleton, CacheTableSkeleton } from "./CacheSkeleton";
 
 const field =
   "mt-2 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-accent";
@@ -43,9 +47,7 @@ export function CachePage() {
             files are public to anyone with their URL.
           </p>
           {loading ? (
-            <p role="status" className="mt-8">
-              Loading your account…
-            </p>
+            <CachePageSkeleton />
           ) : account ? (
             <CacheSettings key={account.did} account={account} />
           ) : (
@@ -92,7 +94,6 @@ function CacheSettings({ account }: { account: Account }) {
   );
   const [panel, setPanel] = useState("storage");
   const [collaboratorSearch, setCollaboratorSearch] = useState("");
-  const [owner, setOwner] = useState("");
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const [collaboratorProfiles, setCollaboratorProfiles] = useState<
     Record<string, Profile>
@@ -196,14 +197,14 @@ function CacheSettings({ account }: { account: Account }) {
       const value = await cacheRequest<UploadToken>(
         account,
         "createToken",
-        owner.trim() ? { owner: owner.trim().replace(/^@/, "") } : {},
+        {},
         signal,
       );
       if (!signal.aborted) setUpload(value);
     });
   };
   return (
-    <div className="mt-8 grid items-start gap-8 md:grid-cols-[12rem_minmax(0,1fr)]">
+    <div className="mt-8 grid items-start gap-8 md:grid-cols-[15rem_minmax(0,1fr)]">
       <aside className="md:sticky md:top-24">
         <nav
           aria-label="Cache navigation"
@@ -277,25 +278,10 @@ function CacheSettings({ account }: { account: Account }) {
             >
               <h2 className="text-xl">Upload token</h2>
               <p className="mt-3 text-sm leading-6 text-muted">
-                Tokens last one hour. Leave the owner empty for your cache, or
-                enter an owner who has invited you.
+                Generate an upload token for your cache. Tokens last one hour.
               </p>
               <form className="mt-5" onSubmit={submitToken}>
-                <label className="text-sm" htmlFor="cache-owner">
-                  Cache owner (optional)
-                </label>
-                <input
-                  className={field}
-                  id="cache-owner"
-                  placeholder="handle.example or did:plc:…"
-                  value={owner}
-                  onChange={(e) => {
-                    setOwner(e.target.value);
-                    setUpload(undefined);
-                  }}
-                  disabled={pending}
-                />
-                <button className={`${button} mt-4`} disabled={pending}>
+                <button className={button} disabled={pending}>
                   {pending
                     ? "Working…"
                     : upload
@@ -337,6 +323,14 @@ function CacheSettings({ account }: { account: Account }) {
                   <TokenInstructions cacheUrl={upload.cacheUrl} />
                 </div>
               )}
+              <UploadTokenList
+                account={account}
+                enabled={panel === "tokens"}
+                refreshKey={upload?.id}
+                onRevoke={(id) => {
+                  if (upload?.id === id) setUpload(undefined);
+                }}
+              />
             </section>
             <section
               hidden={panel !== "collaborators"}
@@ -344,9 +338,8 @@ function CacheSettings({ account }: { account: Account }) {
             >
               <h2 className="text-xl">Collaborators</h2>
               <p className="mt-3 text-sm leading-6 text-muted">
-                Manage upload access to your own cache. Invited users sign in
-                and generate their own token using your handle as the cache
-                owner.
+                Invite teammates to upload to your cache using their own AT
+                Protocol accounts.
               </p>
               <label className="mt-5 block text-sm" htmlFor="cache-actor">
                 Collaborator handle or DID
@@ -411,16 +404,21 @@ function CacheSettings({ account }: { account: Account }) {
                 >
                   Search collaborators
                 </label>
-                <input
-                  id="collaborator-filter"
-                  type="search"
-                  className={field}
-                  value={collaboratorSearch}
-                  onChange={(event) =>
-                    setCollaboratorSearch(event.target.value)
-                  }
-                  placeholder="Filter by handle, name, or DID"
-                />
+                <div className="relative">
+                  <span className="pointer-events-none absolute bottom-0 left-4 top-2 flex items-center text-muted">
+                    <SearchIcon />
+                  </span>
+                  <input
+                    id="collaborator-filter"
+                    type="search"
+                    className={`${field} pl-11`}
+                    value={collaboratorSearch}
+                    onChange={(event) =>
+                      setCollaboratorSearch(event.target.value)
+                    }
+                    placeholder="Filter by handle, name, or DID"
+                  />
+                </div>
                 <div className="mt-4 overflow-x-auto rounded-lg border border-line">
                   <table
                     className="w-full table-fixed text-left text-sm"
@@ -440,6 +438,12 @@ function CacheSettings({ account }: { account: Account }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-line">
+                      {pending && !collaboratorsLoaded && (
+                        <CacheTableSkeleton
+                          columns={3}
+                          label="Loading collaborators"
+                        />
+                      )}
                       {collaborators
                         .filter((did) =>
                           [
@@ -454,21 +458,49 @@ function CacheSettings({ account }: { account: Account }) {
                         .map((did) => (
                           <tr key={did}>
                             <td className="max-w-sm px-4 py-3">
-                              <p className="break-all">
-                                {collaboratorProfiles[did]?.handle
-                                  ? `@${collaboratorProfiles[did].handle}`
-                                  : did}
-                              </p>
-                              {collaboratorProfiles[did]?.displayName && (
-                                <p className="mt-1 text-xs text-muted">
-                                  {collaboratorProfiles[did].displayName}
-                                </p>
-                              )}
-                              {collaboratorProfiles[did]?.handle && (
-                                <p className="mt-1 break-all font-mono text-xs text-muted">
-                                  {did}
-                                </p>
-                              )}
+                              <div className="flex items-center gap-3">
+                                <span
+                                  className="relative flex size-8 shrink-0 items-center justify-center overflow-hidden rounded-full bg-raised text-muted"
+                                  aria-hidden="true"
+                                >
+                                  <UserIcon />
+                                  {httpUrl(
+                                    collaboratorProfiles[did]?.avatar,
+                                  ) && (
+                                    <img
+                                      key={collaboratorProfiles[did].avatar}
+                                      src={httpUrl(
+                                        collaboratorProfiles[did].avatar,
+                                      )}
+                                      alt=""
+                                      className="absolute inset-0 size-full object-cover"
+                                      loading="lazy"
+                                      referrerPolicy="no-referrer"
+                                      onError={(event) => {
+                                        event.currentTarget.style.display =
+                                          "none";
+                                      }}
+                                    />
+                                  )}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="break-all">
+                                    {collaboratorProfiles[did]?.handle
+                                      ? `@${collaboratorProfiles[did].handle}`
+                                      : did}
+                                  </p>
+                                  {collaboratorProfiles[did]?.displayName && (
+                                    <p className="mt-1 text-xs text-muted">
+                                      {collaboratorProfiles[did].displayName}
+                                    </p>
+                                  )}
+                                  {collaboratorProfiles[did]?.handle && (
+                                    <p className="mt-1 break-all font-mono text-xs text-muted">
+                                      {did}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
                             </td>
                             <td className="px-4 py-3 text-xs text-muted">
                               Upload
@@ -713,51 +745,69 @@ function CollaboratorInput({
   };
   return (
     <>
-      <input
-        ref={input}
-        className={field}
-        id="cache-actor"
-        value={value}
-        role="combobox"
-        aria-autocomplete="list"
-        aria-expanded={show}
-        aria-controls="cache-invite-suggestions"
-        aria-activedescendant={
-          show && active >= 0
-            ? `cache-invite-suggestions-option-${active}`
-            : undefined
-        }
-        onChange={(event) => {
-          change(event.target.value.replace(/^@+/, ""));
-          setSuggest(true);
-          setActive(-1);
-        }}
-        onKeyDown={(event) => {
-          if (!show) return;
-          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
-            event.preventDefault();
-            setActive((index) =>
-              items.length
-                ? (index +
-                    (event.key === "ArrowDown" ? 1 : -1) +
-                    items.length) %
-                  items.length
-                : -1,
-            );
-          } else if (event.key === "Enter" && items[active]) {
-            event.preventDefault();
-            select(items[active]);
-          } else if (event.key === "Escape") {
-            event.preventDefault();
-            setSuggest(false);
+      <div className="relative">
+        <span className="pointer-events-none absolute bottom-0 left-4 top-2 flex items-center text-muted">
+          <svg
+            aria-hidden="true"
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.7"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <circle cx="9" cy="7" r="4" />
+            <path d="M2 21v-2a7 7 0 0 1 14 0v2M20 8v6m-3-3h6" />
+          </svg>
+        </span>
+        <input
+          ref={input}
+          className={`${field} pl-11`}
+          id="cache-actor"
+          value={value}
+          role="combobox"
+          aria-autocomplete="list"
+          aria-expanded={show}
+          aria-controls="cache-invite-suggestions"
+          aria-activedescendant={
+            show && active >= 0
+              ? `cache-invite-suggestions-option-${active}`
+              : undefined
           }
-        }}
-        placeholder="teammate.example"
-        autoComplete="off"
-        autoCapitalize="none"
-        spellCheck={false}
-        disabled={disabled}
-      />
+          onChange={(event) => {
+            change(event.target.value.replace(/^@+/, ""));
+            setSuggest(true);
+            setActive(-1);
+          }}
+          onKeyDown={(event) => {
+            if (!show) return;
+            if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+              event.preventDefault();
+              setActive((index) =>
+                items.length
+                  ? (index +
+                      (event.key === "ArrowDown" ? 1 : -1) +
+                      items.length) %
+                    items.length
+                  : -1,
+              );
+            } else if (event.key === "Enter" && items[active]) {
+              event.preventDefault();
+              select(items[active]);
+            } else if (event.key === "Escape") {
+              event.preventDefault();
+              setSuggest(false);
+            }
+          }}
+          placeholder="teammate.example"
+          autoComplete="off"
+          autoCapitalize="none"
+          spellCheck={false}
+          disabled={disabled}
+        />
+      </div>
       {show && (
         <HandleSuggestions
           id="cache-invite-suggestions"

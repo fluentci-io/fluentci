@@ -1,0 +1,38 @@
+amends "../../../../schema/lexicon.pkl"
+
+id = "io.fluentci.cache.revokeToken"
+description = "Owner-only: revoke an upload token at the cache server."
+defs = new Mapping {
+  ["main"] = new Procedure {
+    input = new Body {
+      encoding = "application/json"
+      schema = new ObjectField {
+        required = List("id")
+        properties = new Mapping {
+          ["id"] = new StringField {
+            minLength = 36
+            maxLength = 36
+          }
+        }
+      }
+    }
+    output = new Body {
+      encoding = "application/json"
+      schema = new ObjectField {
+        required = List("revoked")
+        properties = new Mapping {
+          ["revoked"] = new BooleanField {
+          }
+        }
+      }
+    }
+    errors = List(new Error { name = "TokenNotFound" },
+      new Error {
+        name = "AuthRequired"
+      },
+      new Error {
+        name = "CacheUnavailable"
+      }
+    )
+  }
+}

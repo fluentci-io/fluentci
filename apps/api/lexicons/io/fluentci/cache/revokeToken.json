@@ -1,0 +1,51 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.cache.revokeToken",
+  "description": "Owner-only: revoke an upload token at the cache server.",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "id"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "minLength": 36,
+              "maxLength": 36
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "revoked"
+          ],
+          "properties": {
+            "revoked": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "TokenNotFound"
+        },
+        {
+          "name": "AuthRequired"
+        },
+        {
+          "name": "CacheUnavailable"
+        }
+      ]
+    }
+  }
+}

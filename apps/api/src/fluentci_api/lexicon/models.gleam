@@ -30,7 +30,11 @@ pub const cache_list_credentials = "io.fluentci.cache.listCredentials"
 
 pub const cache_list_keys = "io.fluentci.cache.listKeys"
 
+pub const cache_list_tokens = "io.fluentci.cache.listTokens"
+
 pub const cache_revoke_credential = "io.fluentci.cache.revokeCredential"
+
+pub const cache_revoke_token = "io.fluentci.cache.revokeToken"
 
 pub const cache_revoke_user = "io.fluentci.cache.revokeUser"
 
@@ -151,6 +155,7 @@ pub fn encode_cache_create_token_input(
 
 pub type CacheCreateTokenOutput {
   CacheCreateTokenOutput(
+    id: String,
     token: String,
     expires_at: String,
     cache_url: String,
@@ -162,6 +167,7 @@ pub fn encode_cache_create_token_output(
   value: CacheCreateTokenOutput,
 ) -> json.Json {
   let fields = [
+    #("id", json.string(value.id)),
     #("token", json.string(value.token)),
     #("expiresAt", json.string(value.expires_at)),
     #("cacheUrl", json.string(value.cache_url)),
@@ -227,6 +233,32 @@ pub fn encode_cache_usage_sample(value: CacheUsageSample) -> json.Json {
   json.object(fields)
 }
 
+pub type CacheUploadTokenView {
+  CacheUploadTokenView(
+    id: String,
+    owner: String,
+    actor: String,
+    created_at: String,
+    expires_at: String,
+    active: Bool,
+  )
+}
+
+pub fn encode_cache_upload_token_view(
+  value: CacheUploadTokenView,
+) -> json.Json {
+  let fields = [
+    #("id", json.string(value.id)),
+    #("owner", json.string(value.owner)),
+    #("actor", json.string(value.actor)),
+    #("createdAt", json.string(value.created_at)),
+    #("expiresAt", json.string(value.expires_at)),
+    #("active", json.bool(value.active)),
+  ]
+
+  json.object(fields)
+}
+
 pub type CacheDeleteKeyInput {
   CacheDeleteKeyInput(key: String)
 }
@@ -263,6 +295,7 @@ pub fn encode_cache_exchange_credential_input(
 
 pub type CacheExchangeCredentialOutput {
   CacheExchangeCredentialOutput(
+    id: String,
     token: String,
     expires_at: String,
     cache_url: String,
@@ -274,6 +307,7 @@ pub fn encode_cache_exchange_credential_output(
   value: CacheExchangeCredentialOutput,
 ) -> json.Json {
   let fields = [
+    #("id", json.string(value.id)),
     #("token", json.string(value.token)),
     #("expiresAt", json.string(value.expires_at)),
     #("cacheUrl", json.string(value.cache_url)),
@@ -456,6 +490,46 @@ pub fn encode_cache_list_keys_output(value: CacheListKeysOutput) -> json.Json {
   json.object(fields)
 }
 
+pub type CacheListTokensInput {
+  CacheListTokensInput(cursor: Option(String))
+}
+
+pub fn encode_cache_list_tokens_input(
+  value: CacheListTokensInput,
+) -> json.Json {
+  let fields = []
+  let fields =
+    list.append(fields, case value.cursor {
+      None -> []
+      Some(item) -> [#("cursor", json.string(item))]
+    })
+  json.object(fields)
+}
+
+pub type CacheListTokensOutput {
+  CacheListTokensOutput(
+    tokens: List(CacheUploadTokenView),
+    cursor: Option(String),
+  )
+}
+
+pub fn encode_cache_list_tokens_output(
+  value: CacheListTokensOutput,
+) -> json.Json {
+  let fields = [
+    #(
+      "tokens",
+      json.array(value.tokens, fn(item) { encode_cache_upload_token_view(item) }),
+    ),
+  ]
+  let fields =
+    list.append(fields, case value.cursor {
+      None -> []
+      Some(item) -> [#("cursor", json.string(item))]
+    })
+  json.object(fields)
+}
+
 pub type CacheRevokeCredentialInput {
   CacheRevokeCredentialInput(id: String)
 }
@@ -474,6 +548,30 @@ pub type CacheRevokeCredentialOutput {
 
 pub fn encode_cache_revoke_credential_output(
   value: CacheRevokeCredentialOutput,
+) -> json.Json {
+  let fields = [#("revoked", json.bool(value.revoked))]
+
+  json.object(fields)
+}
+
+pub type CacheRevokeTokenInput {
+  CacheRevokeTokenInput(id: String)
+}
+
+pub fn encode_cache_revoke_token_input(
+  value: CacheRevokeTokenInput,
+) -> json.Json {
+  let fields = [#("id", json.string(value.id))]
+
+  json.object(fields)
+}
+
+pub type CacheRevokeTokenOutput {
+  CacheRevokeTokenOutput(revoked: Bool)
+}
+
+pub fn encode_cache_revoke_token_output(
+  value: CacheRevokeTokenOutput,
 ) -> json.Json {
   let fields = [#("revoked", json.bool(value.revoked))]
 

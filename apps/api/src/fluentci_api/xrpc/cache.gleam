@@ -1,11 +1,13 @@
 //// Account-authenticated cache token and upload membership procedures.
 
 import fluentci_api/db/cache_members
+import fluentci_api/db/cache_tokens
 import fluentci_api/db/cache_usage
 import fluentci_api/db/client.{type Db}
 import fluentci_api/lexicon/models
 import fluentci_api/node/runtime.{type Output, type Request, type Server}
 import fluentci_api/schema/cache_members as member
+import fluentci_api/schema/cache_tokens as token
 import fluentci_api/schema/cache_usage as usage
 import gleam/javascript/promise.{type Promise}
 
@@ -14,6 +16,21 @@ fn create_token(
   server: Server,
   request: Request,
   allowed: fn(String, String) -> Promise(Bool),
+  save: fn(String, String, String, String, String) -> Promise(Nil),
+) -> Promise(Output)
+
+@external(javascript, "./cache_tokens_ffi.mjs", "listTokens")
+fn list_tokens(
+  request: Request,
+  list: fn(String, String) -> Promise(List(token.Row)),
+) -> Promise(Output)
+
+@external(javascript, "./cache_tokens_ffi.mjs", "revokeToken")
+fn revoke_token(
+  server: Server,
+  request: Request,
+  find: fn(String) -> Promise(List(token.Row)),
+  revoke: fn(String, String) -> Promise(Nil),
 ) -> Promise(Output)
 
 @external(javascript, "./cache_ffi.mjs", "membership")
@@ -68,9 +85,27 @@ pub fn register(server: Server, db: Db) -> Nil {
     })
   })
   runtime.method(server, models.cache_create_token, fn(request) {
-    create_token(server, request, fn(owner, actor) {
-      cache_members.allowed(db, owner, actor)
+    create_token(
+      server,
+      request,
+      fn(owner, actor) { cache_members.allowed(db, owner, actor) },
+      fn(id, owner, actor, created, expires) {
+        cache_tokens.save(db, id, owner, actor, created, expires)
+      },
+    )
+  })
+  runtime.method(server, models.cache_list_tokens, fn(request) {
+    list_tokens(request, fn(owner, cursor) {
+      cache_tokens.list(db, owner, cursor)
     })
+  })
+  runtime.method(server, models.cache_revoke_token, fn(request) {
+    revoke_token(
+      server,
+      request,
+      fn(id) { cache_tokens.find(db, id) },
+      fn(owner, id) { cache_tokens.revoke(db, owner, id) },
+    )
   })
   runtime.method(server, models.cache_invite_user, fn(request) {
     membership(server, request, True, fn(owner, actor, active) {

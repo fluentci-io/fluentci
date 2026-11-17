@@ -37,4 +37,15 @@ defs = new Mapping {
       ["observedAt"] = new StringField { format = "datetime" }
     }
   }
+  ["uploadTokenView"] = new ObjectField {
+    required = List("id", "owner", "actor", "createdAt", "expiresAt", "active")
+    properties = new Mapping {
+      ["id"] = new StringField {}
+      ["owner"] = new StringField { format = "did" }
+      ["actor"] = new StringField { format = "did" }
+      ["createdAt"] = new StringField { format = "datetime" }
+      ["expiresAt"] = new StringField { format = "datetime" }
+      ["active"] = new BooleanField {}
+    }
+  }
 }

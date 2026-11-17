@@ -1,6 +1,6 @@
 use super::{
     App,
-    auth::manage_authorized,
+    auth::{manage_authorized, revocation_path},
     error::{Failure, Result, backend_error},
     key::key,
 };
@@ -37,6 +37,8 @@ pub(super) struct Input {
     key: String,
     #[serde(default)]
     confirm: bool,
+    #[serde(default)]
+    id: String,
 }
 
 fn page_size() -> usize {
@@ -83,6 +85,19 @@ async fn manage(app: &App, account: &str, input: Input) -> Result<Value> {
     let root = format!("accounts/{account}/");
     let prefix = StorePath::from(format!("accounts/{account}"));
     match input.action.as_str() {
+        "revokeToken" => {
+            if uuid::Uuid::parse_str(&input.id).is_err() {
+                return Err(Failure(StatusCode::BAD_REQUEST, "invalid token id\n"));
+            }
+            app.store
+                .put(
+                    &revocation_path(account, &input.id),
+                    bytes::Bytes::from_static(b"revoked").into(),
+                )
+                .await
+                .map_err(backend_error)?;
+            Ok(json!({"revoked": true}))
+        }
         "list" => {
             if input.limit == 0
                 || input.limit > 200

@@ -139,7 +139,7 @@ fn digest_function(function: i32) -> Result<(), Status> {
 }
 
 impl Cache {
-    fn authorize(
+    async fn authorize(
         &self,
         headers: &HeaderMap,
         instance: &str,
@@ -153,7 +153,9 @@ impl Cache {
             })?;
         key(&format!("accounts/{account}/generic/check")).map_err(failure)?;
         if write {
-            upload_authorized(&self.app, headers, Some(account)).map_err(failure)?;
+            upload_authorized(&self.app, headers, Some(account))
+                .await
+                .map_err(failure)?;
             if self.app.config.read_only {
                 return Err(Status::permission_denied("cache is read-only"));
             }
@@ -163,13 +165,14 @@ impl Cache {
         Ok(account.into())
     }
 
-    fn account<T>(
+    async fn account<T: Sync>(
         &self,
         request: &Request<T>,
         instance: &str,
         write: bool,
     ) -> Result<String, Status> {
         self.authorize(&request.metadata().clone().into_headers(), instance, write)
+            .await
     }
 
     fn permit(&self) -> Result<OwnedSemaphorePermit, Status> {
@@ -237,7 +240,8 @@ impl re::capabilities_server::Capabilities for Cache {
             authorized(&self.app, &request.metadata().clone().into_headers(), true)
                 .map_err(failure)?;
         } else {
-            self.account(&request, &request.get_ref().instance_name, false)?;
+            self.account(&request, &request.get_ref().instance_name, false)
+                .await?;
         }
         Ok(Response::new(re::ServerCapabilities {
             cache_capabilities: Some(re::CacheCapabilities {
@@ -270,7 +274,9 @@ impl re::action_cache_server::ActionCache for Cache {
         &self,
         request: Request<re::GetActionResultRequest>,
     ) -> Result<Response<re::ActionResult>, Status> {
-        let account = self.account(&request, &request.get_ref().instance_name, false)?;
+        let account = self
+            .account(&request, &request.get_ref().instance_name, false)
+            .await?;
         let input = request.into_inner();
         digest_function(input.digest_function)?;
         let value = digest(input.action_digest.as_ref(), self.app.config.max_upload)?;
@@ -331,7 +337,9 @@ impl re::action_cache_server::ActionCache for Cache {
         &self,
         request: Request<re::UpdateActionResultRequest>,
     ) -> Result<Response<re::ActionResult>, Status> {
-        let account = self.account(&request, &request.get_ref().instance_name, true)?;
+        let account = self
+            .account(&request, &request.get_ref().instance_name, true)
+            .await?;
         let input = request.into_inner();
         digest_function(input.digest_function)?;
         let value = digest(input.action_digest.as_ref(), self.app.config.max_upload)?;
@@ -361,7 +369,9 @@ impl re::content_addressable_storage_server::ContentAddressableStorage for Cache
         &self,
         request: Request<re::FindMissingBlobsRequest>,
     ) -> Result<Response<re::FindMissingBlobsResponse>, Status> {
-        let account = self.account(&request, &request.get_ref().instance_name, false)?;
+        let account = self
+            .account(&request, &request.get_ref().instance_name, false)
+            .await?;
         let input = request.into_inner();
         digest_function(input.digest_function)?;
         if input.blob_digests.len() > 10000 {
@@ -390,7 +400,9 @@ impl re::content_addressable_storage_server::ContentAddressableStorage for Cache
         &self,
         request: Request<re::BatchUpdateBlobsRequest>,
     ) -> Result<Response<re::BatchUpdateBlobsResponse>, Status> {
-        let account = self.account(&request, &request.get_ref().instance_name, true)?;
+        let account = self
+            .account(&request, &request.get_ref().instance_name, true)
+            .await?;
         let input = request.into_inner();
         digest_function(input.digest_function)?;
         if input.requests.iter().map(|r| r.data.len()).sum::<usize>() > BATCH_LIMIT
@@ -421,7 +433,9 @@ impl re::content_addressable_storage_server::ContentAddressableStorage for Cache
         &self,
         request: Request<re::BatchReadBlobsRequest>,
     ) -> Result<Response<re::BatchReadBlobsResponse>, Status> {
-        let account = self.account(&request, &request.get_ref().instance_name, false)?;
+        let account = self
+            .account(&request, &request.get_ref().instance_name, false)
+            .await?;
         let input = request.into_inner();
         digest_function(input.digest_function)?;
         if input.digests.len() > 10000 {
@@ -459,7 +473,9 @@ impl re::content_addressable_storage_server::ContentAddressableStorage for Cache
         &self,
         request: Request<re::GetTreeRequest>,
     ) -> Result<Response<Self::GetTreeStream>, Status> {
-        let account = self.account(&request, &request.get_ref().instance_name, false)?;
+        let account = self
+            .account(&request, &request.get_ref().instance_name, false)
+            .await?;
         let input = request.into_inner();
         digest_function(input.digest_function)?;
         if !input.page_token.is_empty() {
@@ -594,7 +610,7 @@ impl bs::byte_stream_server::ByteStream for Cache {
             false,
             self.app.config.max_upload,
         )?;
-        let account = self.account(&request, &instance, false)?;
+        let account = self.account(&request, &instance, false).await?;
         let input = request.into_inner();
         if input.read_offset < 0 || input.read_limit < 0 || input.read_offset > value.size_bytes {
             return Err(Status::out_of_range("invalid read range"));
@@ -667,7 +683,7 @@ impl bs::byte_stream_server::ByteStream for Cache {
             .ok_or_else(|| Status::invalid_argument("empty write stream"))?;
         let name = first.resource_name.clone();
         let (instance, value) = resource(&name, true, self.app.config.max_upload)?;
-        let account = self.authorize(&headers, &instance, true)?;
+        let account = self.authorize(&headers, &instance, true).await?;
         let entry = {
             let mut uploads = self.uploads.lock().await;
             uploads.retain(|_, entry| {
@@ -780,7 +796,7 @@ impl bs::byte_stream_server::ByteStream for Cache {
             true,
             self.app.config.max_upload,
         )?;
-        let account = self.account(&request, &instance, true)?;
+        let account = self.account(&request, &instance, true).await?;
         let entry = self
             .uploads
             .lock()

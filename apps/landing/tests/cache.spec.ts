@@ -62,6 +62,14 @@ async function mock(page: Page) {
   const methods: string[] = [];
   const calls: { method: string; body: Record<string, string> }[] = [];
   let revoked = false;
+  const uploadTokens: {
+    id: string;
+    owner: string;
+    actor: string;
+    createdAt: string;
+    expiresAt: string;
+    active: boolean;
+  }[] = [];
   await page.route(
     "https://pds.example/xrpc/com.atproto.server.getServiceAuth?*",
     async (route) => {
@@ -82,6 +90,21 @@ async function mock(page: Page) {
       const method = request.url().split(".").pop()!;
       expect(request.headers().authorization).toBe(`Bearer service-${method}`);
       calls.push({ method, body: request.postDataJSON() });
+      if (method === "createToken")
+        uploadTokens.push({
+          id: `00000000-0000-4000-8000-${String(uploadTokens.length + 1).padStart(12, "0")}`,
+          owner: did,
+          actor: did,
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date(Date.now() + 3600000).toISOString(),
+          active: true,
+        });
+      if (method === "revokeToken") {
+        const item = uploadTokens.find(
+          (item) => item.id === request.postDataJSON().id,
+        );
+        if (item) item.active = false;
+      }
       const credential = {
         id: "a6936fbe-71f6-4acf-898f-c7b6fccf836c",
         label: "Build",
@@ -90,30 +113,35 @@ async function mock(page: Page) {
         active: !revoked,
       };
       const body =
-        method === "getUsageHistory"
-          ? { samples: [] }
-          : method === "listKeys"
-            ? { keys: [], totalKeys: 0, totalBytes: 0 }
-            : method === "listCollaborators"
-              ? { actors: [] }
-              : method === "createToken"
-                ? {
-                    token,
-                    cacheUrl: "https://cache.example/accounts/account",
-                    expiresAt: new Date(Date.now() + 3600000).toISOString(),
-                    owner: did,
-                  }
-                : method === "createCredential"
-                  ? { ...credential, credential: secret, owner: did }
-                  : method === "listCredentials"
-                    ? { credentials: [credential] }
-                    : method === "revokeCredential"
-                      ? ((revoked = true), { revoked: true })
-                      : {
-                          owner: did,
-                          actor: "did:plc:invited",
-                          active: method === "inviteUser",
-                        };
+        method === "listTokens"
+          ? { tokens: uploadTokens }
+          : method === "revokeToken"
+            ? { revoked: true }
+            : method === "getUsageHistory"
+              ? { samples: [] }
+              : method === "listKeys"
+                ? { keys: [], totalKeys: 0, totalBytes: 0 }
+                : method === "listCollaborators"
+                  ? { actors: [] }
+                  : method === "createToken"
+                    ? {
+                        id: uploadTokens.at(-1)!.id,
+                        token,
+                        cacheUrl: "https://cache.example/accounts/account",
+                        expiresAt: new Date(Date.now() + 3600000).toISOString(),
+                        owner: did,
+                      }
+                    : method === "createCredential"
+                      ? { ...credential, credential: secret, owner: did }
+                      : method === "listCredentials"
+                        ? { credentials: [credential] }
+                        : method === "revokeCredential"
+                          ? ((revoked = true), { revoked: true })
+                          : {
+                              owner: did,
+                              actor: "did:plc:invited",
+                              active: method === "inviteUser",
+                            };
       await route.fulfill({ json: body });
     },
   );
@@ -162,14 +190,12 @@ test("cache exchanges method-scoped service tokens, invites users, renews and cl
   await expect
     .poll(() => calls.filter((call) => call.method === "createToken").length)
     .toBe(2);
-  await page.getByLabel("Cache owner (optional)").fill("@friend.example");
-  await expect(page.getByLabel("Upload token", { exact: true })).toHaveCount(0);
-  await page.getByRole("button", { name: "Generate upload token" }).click();
-  await expect
-    .poll(
-      () => calls.findLast((call) => call.method === "createToken")?.body.owner,
-    )
-    .toBe("friend.example");
+  await expect(page.getByLabel("Cache owner (optional)")).toHaveCount(0);
+  expect(
+    calls
+      .filter((call) => call.method === "createToken")
+      .every((call) => Object.keys(call.body).length === 0),
+  ).toBe(true);
   await selectPanel(page, "Collaborators");
   await page.getByLabel("Collaborator handle or DID").fill("@teammate.example");
   await page.getByRole("button", { name: "Invite user", exact: true }).click();
@@ -410,6 +436,10 @@ test("upload token instructions cover every client without exposing the token in
   const client = page.getByLabel("Cache client", { exact: true });
   for (const [id, expected] of [
     ["bazel", "--remote_header"],
+    ["bazel-grpc", "--remote_instance_name"],
+    ["turbo", "TURBO_TEAM"],
+    ["nx", "NX_SELF_HOSTED_REMOTE_CACHE_SERVER"],
+    ["buildkit", "docker buildx build"],
     ["sccache", "SCCACHE_WEBDAV_TOKEN"],
     ["go", "GOCACHEPROG"],
     ["gradle", "remote<HttpBuildCache>"],
@@ -499,7 +529,7 @@ test("cache dashboard tables filter immediately and sidebar switches views", asy
   });
 });
 
-test("usage graph shows 14 real UTC days and distinguishes missing history from zero", async ({
+test("usage graph shows 30 real UTC days and distinguishes missing history from zero", async ({
   page,
 }) => {
   await session(page);
@@ -530,23 +560,35 @@ test("usage graph shows 14 real UTC days and distinguishes missing history from 
   );
   await page.goto("/cache");
   const chart = page.getByRole("region", {
-    name: "Cache usage last 14 days",
+    name: "Cache usage last 30 days",
     exact: true,
   });
-  await expect(chart.getByRole("button")).toHaveCount(14);
+  await expect(chart.getByRole("button")).toHaveCount(30);
   await expect(
     chart.getByRole("button", { name: `${today}: 2.0 KiB`, exact: true }),
   ).toBeVisible();
   await expect(
     chart.getByRole("button", { name: `${yesterday}: 0 B`, exact: true }),
   ).toBeVisible();
-  await expect(chart.getByRole("button", { name: /No data/ })).toHaveCount(12);
+  await expect(chart.getByRole("button", { name: /No data/ })).toHaveCount(28);
   await chart
     .getByLabel("Usage chart metric", { exact: true })
     .selectOption("keyCount");
   await expect(
     chart.getByRole("button", { name: `${today}: 2 keys`, exact: true }),
   ).toBeVisible();
+  await chart
+    .getByRole("button", { name: `${today}: 2 keys`, exact: true })
+    .hover();
+  await expect(chart.getByRole("tooltip")).toContainText(
+    new Date(`${today}T00:00:00Z`).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      timeZone: "UTC",
+    }),
+  );
+  await expect(chart.getByRole("tooltip")).toContainText("2 keys");
   await page.screenshot({
     path: `/tmp/fluentci-cache-usage-${test.info().project.name}.png`,
     fullPage: true,
@@ -581,4 +623,60 @@ test("collaborator invitation rejects the current account in suggestions and man
   await expect(page.getByRole("option", { name: /self.example/ })).toHaveCount(
     0,
   );
+});
+
+test("upload token list redacts secrets, paginates, and revokes the selected token", async ({
+  page,
+}) => {
+  await session(page);
+  const { calls } = await mock(page);
+  const records = Array.from({ length: 21 }, (_, index) => ({
+    id: `00000000-0000-4000-8000-${String(index + 1).padStart(12, "0")}`,
+    owner: did,
+    actor: did,
+    createdAt: new Date().toISOString(),
+    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+    active: true,
+  }));
+  let revokedId = "";
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.cache.listTokens",
+    (route) => {
+      const more = route.request().postDataJSON().cursor;
+      return route.fulfill({
+        json: {
+          tokens: (more ? records.slice(20) : records.slice(0, 20)).map(
+            (record) => ({ ...record, active: record.id !== revokedId }),
+          ),
+          ...(!more ? { cursor: records[19].id } : {}),
+        },
+      });
+    },
+  );
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.cache.revokeToken",
+    (route) => {
+      revokedId = route.request().postDataJSON().id;
+      return route.fulfill({ json: { revoked: true } });
+    },
+  );
+  await page.goto("/cache");
+  await selectPanel(page, "Upload tokens");
+  const table = page.getByRole("table", { name: "Upload tokens", exact: true });
+  await expect(table.getByLabel("Redacted upload token")).toHaveCount(20);
+  await expect(table).not.toContainText(token);
+  const pagination = page.getByRole("navigation", {
+    name: "Upload token pagination",
+  });
+  await pagination.getByRole("button", { name: "Next", exact: true }).click();
+  await expect(table.getByLabel("Redacted upload token")).toHaveCount(1);
+  await expect(pagination).toContainText("Page 2");
+  await table.getByRole("button", { name: "Revoke token 00000021" }).click();
+  await expect(table).toContainText("Revoked");
+  expect(revokedId).toBe(records[20].id);
+  await pagination
+    .getByRole("button", { name: "Previous", exact: true })
+    .click();
+  await expect(table.getByLabel("Redacted upload token")).toHaveCount(20);
+  expect(calls.filter((call) => call.method === "createToken")).toHaveLength(0);
 });

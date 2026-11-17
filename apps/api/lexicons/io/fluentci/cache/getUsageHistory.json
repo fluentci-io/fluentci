@@ -1,7 +1,7 @@
 {
   "lexicon": 1,
   "id": "io.fluentci.cache.getUsageHistory",
-  "description": "Owner-only: recorded daily storage snapshots for the last 14 UTC days. Missing days have no sample.",
+  "description": "Owner-only: recorded daily storage snapshots for the last 30 UTC days. Missing days have no sample.",
   "defs": {
     "main": {
       "type": "procedure",

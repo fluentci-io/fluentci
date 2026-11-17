@@ -16,9 +16,9 @@ export function formatBytes(value: number) {
   return `${size.toFixed(1)} ${units[unit]}`;
 }
 export function usageDays(samples: UsageSample[], now = new Date()) {
-  return Array.from({ length: 14 }, (_, index) => {
+  return Array.from({ length: 30 }, (_, index) => {
     const day = new Date(now);
-    day.setUTCDate(day.getUTCDate() - 13 + index);
+    day.setUTCDate(day.getUTCDate() - 29 + index);
     const date = day.toISOString().slice(0, 10);
     return { date, sample: samples.find((sample) => sample.date === date) };
   });
