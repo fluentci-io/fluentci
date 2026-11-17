@@ -500,3 +500,59 @@ src/
 | sccache sends `PROPFIND` / `MKCOL` | Set `SCCACHE_WEBDAV_DISABLE_CREATE_DIR=true` and restart its daemon. |
 | Go fails to start its helper | Use an absolute binary path, verify Go version and temporary-disk access. |
 | Nix cannot trust a cached path | Publish signed narinfo, configure the matching trusted public key, and verify all referenced NARs were uploaded first. |
+
+
+## Account upload tokens
+
+For Linux deployment, use the [systemd service and configuration guide](../systemd/README.md#build-cache-service).
+
+The API provides these JSON POST procedures. Each requires an AT Protocol
+service-auth JWT from the caller's PDS, with `aud` set to the API's `SERVICE_DID`
+and `lxm` set to the exact procedure NSID. An ordinary PDS session access token
+is not a service-auth token. Obtain one using `com.atproto.server.getServiceAuth`
+with that audience and method, then send it as `Authorization: Bearer ...`.
+
+| Procedure | JSON input | Result |
+| --- | --- | --- |
+| `io.fluentci.cache.createToken` | `{}` or `{"owner":"handle-or-did"}` | `token`, `expiresAt`, `cacheUrl`, `owner` |
+| `io.fluentci.cache.inviteUser` | `{"actor":"handle-or-did"}` | Grants upload access to the caller's cache |
+| `io.fluentci.cache.revokeUser` | `{"actor":"handle-or-did"}` | Stops the actor from minting new tokens for the caller's cache |
+
+Owners always have upload access. Invitations grant access immediately; an
+invited user requests their own token with `owner` naming the cache owner. The
+caller cannot choose a different owner when inviting or revoking users. Grants
+persist in the API's SQLite database. These procedures do not send notifications.
+
+```sh
+curl --fail-with-body https://api.fluentci.io/xrpc/io.fluentci.cache.createToken \
+  -H "Authorization: Bearer $SERVICE_AUTH_TOKEN" \
+  -H 'Content-Type: application/json' \
+  --data '{}'
+```
+
+Tokens expire after one hour. The returned `cacheUrl` has the form
+`https://cache.fluentci.io/accounts/<sha256-of-owner-did>`; append the usual
+protocol path. For example, upload to `$CACHE_URL/generic/example` with
+`Authorization: Bearer $UPLOAD_TOKEN`, or use the token as a Basic-auth password
+with any username. The Go helper accepts that URL as `FLUENTCI_CACHE_URL` and the
+upload token as `FLUENTCI_CACHE_TOKEN`. Other clients can append `/bazel`,
+`/gradle`, `/sccache`, `/maven`, or `/nix` as documented above.
+
+An upload token authorizes only PUT requests within that owner's cache. It
+cannot write another account's cache, the legacy shared namespaces, or access
+administrative `/metrics` and `/readyz` endpoints. Keep the server's static
+administrator token private. Existing shared-cache clients using that token
+continue to work.
+
+Reads are public with `public_read = true`, including account caches. S3 reads
+use the configured `cdn_url` anonymously: it must point to the bucket root,
+with the configured storage prefix accessible through the CDN. Account objects
+are stored under `<prefix>/accounts/<owner-hash>/<protocol>/<key>`. Direct CDN
+reads also remain public; invitations do not grant or restrict read access. A
+public CDN is still public if the cache server's `public_read` is set to false.
+Use the cache server URL for generated `nix-cache-info` responses.
+
+Revoking membership prevents new tokens immediately; previously issued tokens
+remain usable until their one-hour expiry. Restarting the cache with a new
+verification key invalidates all tokens signed with the previous key. Upload
+token signing is separate from Nix narinfo signing.

@@ -44,7 +44,7 @@ async fn cdn(State(cdn): State<Cdn>, mut request: Request) -> Response {
     cdn.origin.oneshot(request).await.unwrap()
 }
 
-async fn fixture() -> (Router, Arc<InMemory>, Cdn, tokio::task::JoinHandle<()>) {
+async fn fixture(public_read: bool) -> (Router, Arc<InMemory>, Cdn, tokio::task::JoinHandle<()>) {
     let read_store = Arc::new(InMemory::new());
     read_store
         .put(&Path::from("generic/key"), "0123456789".into())
@@ -58,7 +58,7 @@ async fn fixture() -> (Router, Arc<InMemory>, Cdn, tokio::task::JoinHandle<()>) 
     let mut config = config();
     config.backend = Backend::S3;
     config.prefix = "team/cache".into();
-    config.public_read = false;
+    config.public_read = public_read;
     config.cdn_url = Some(format!("http://{}/bucket/", listener.local_addr().unwrap()));
     let service = Router::new()
         .fallback(any(self::cdn))
@@ -82,7 +82,7 @@ fn request(method: &str, path: &str, body: impl Into<Body>) -> Request {
 
 #[tokio::test]
 async fn s3_reads_use_cdn_for_get_head_ranges_and_conditionals_without_forwarding_tokens() {
-    let (app, writes, cdn, server) = fixture().await;
+    let (app, writes, cdn, server) = fixture(false).await;
     let response = app
         .clone()
         .oneshot(request("GET", "/generic/key", Body::empty()))
@@ -141,7 +141,7 @@ async fn s3_reads_use_cdn_for_get_head_ranges_and_conditionals_without_forwardin
 
 #[tokio::test]
 async fn writes_never_use_cdn_and_cdn_misses_never_fall_back_to_origin() {
-    let (app, writes, cdn, server) = fixture().await;
+    let (app, writes, cdn, server) = fixture(false).await;
     assert_eq!(
         app.clone()
             .oneshot(request("PUT", "/generic/new", "new artifact"))
@@ -220,4 +220,42 @@ fn file_and_memory_backends_keep_reading_the_supplied_store() {
             &config.read_storage(store.clone()).unwrap()
         ));
     }
+}
+
+#[tokio::test]
+async fn account_reads_are_public_through_configured_cdn() {
+    let (app, writes, cdn, server) = fixture(true).await;
+    let key = format!("/accounts/{}/generic/public", "a".repeat(64));
+    assert_eq!(
+        cdn.origin
+            .clone()
+            .oneshot(request("PUT", &key, "public artifact"))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::CREATED
+    );
+    let response = app
+        .oneshot(Request::builder().uri(&key).body(Body::empty()).unwrap())
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::OK);
+    assert_eq!(
+        to_bytes(response.into_body(), 1024).await.unwrap(),
+        "public artifact"
+    );
+    assert!(
+        writes
+            .head(&Path::from(key.trim_start_matches('/')))
+            .await
+            .is_err()
+    );
+    assert!(
+        cdn.requests
+            .lock()
+            .unwrap()
+            .iter()
+            .all(|(_, path, auth)| path == &format!("/bucket/team/cache{key}") && !auth)
+    );
+    server.abort();
 }

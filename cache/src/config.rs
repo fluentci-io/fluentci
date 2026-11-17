@@ -49,6 +49,15 @@ pub struct Config {
     /// Bearer token, or password with any Basic-auth username. Never logged.
     #[arg(long, env = "FLUENTCI_CACHE_TOKEN", hide_env_values = true)]
     pub token: Option<String>,
+    /// Ed25519 public PEM for account-scoped upload JWTs minted by the API.
+    #[arg(long, env = "FLUENTCI_CACHE_UPLOAD_TOKEN_PUBLIC_KEY_FILE")]
+    pub upload_token_public_key_file: Option<PathBuf>,
+    #[arg(
+        long,
+        env = "FLUENTCI_CACHE_UPLOAD_TOKEN_ISSUER",
+        default_value = "did:web:api.fluentci.io"
+    )]
+    pub upload_token_issuer: String,
     #[arg(long, env = "FLUENTCI_CACHE_PUBLIC_READ", default_value_t = true, action = clap::ArgAction::Set)]
     pub public_read: bool,
     #[arg(long, env = "FLUENTCI_CACHE_READ_ONLY", default_value_t = false, action = clap::ArgAction::Set, num_args = 0..=1, default_missing_value = "true")]

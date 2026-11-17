@@ -22,6 +22,7 @@ mod upload;
 
 struct App {
     config: Config,
+    upload_key: Option<jsonwebtoken::DecodingKey>,
     store: Arc<dyn ObjectStore>,
     reader: Arc<dyn ObjectStore>,
     permits: Arc<Semaphore>,
@@ -32,7 +33,16 @@ struct App {
 /// Storage implementations must publish writes atomically (as object_store backends do).
 pub fn router(config: Config, store: Arc<dyn ObjectStore>) -> anyhow::Result<Router> {
     config.validate()?;
+    let upload_key = config
+        .upload_token_public_key_file
+        .as_ref()
+        .map(|path| {
+            jsonwebtoken::DecodingKey::from_ed_pem(&std::fs::read(path)?)
+                .map_err(anyhow::Error::from)
+        })
+        .transpose()?;
     let app = Arc::new(App {
+        upload_key,
         permits: Arc::new(Semaphore::new(config.concurrency)),
         reader: config.read_storage(store.clone())?,
         config,

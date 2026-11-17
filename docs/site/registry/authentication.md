@@ -57,3 +57,8 @@ The publisher DID, not its changeable handle, identifies the author of a plugin.
 Two publishers can use the same plugin name. Each publisher/name can have
 multiple versions, with unique `(author DID, name, version)` records. Continue
 with [publishing](/registry/publishing/).
+
+## Browser cache access and CI
+
+See [Cache access](/registry/cache/) for browser-generated upload tokens,
+collaborator invitations, and owner-created revocable CI credentials.

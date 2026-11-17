@@ -25,7 +25,8 @@ import {
 } from "@atcute/identity-resolver";
 import { getProfiles, type Profile, type Plugin } from "../registry/client";
 
-export const scope = "atproto repo:io.fluentci.like repo:io.fluentci.plugin";
+import { scope } from "./permissions";
+export { scope } from "./permissions";
 export { accountKey } from "./storage";
 const returnKey = "fluentci-oauth-return";
 const redirect = `${location.origin}/oauth/callback`;

@@ -1,6 +1,6 @@
 use super::{
     App,
-    auth::authorized,
+    auth::{authorized, upload_authorized},
     download::download,
     error::{Failure, Result},
     key::key,
@@ -37,7 +37,12 @@ pub(super) async fn handle(
 async fn handle_inner(app: &Arc<App>, raw: &str, request: Request) -> Result<Response> {
     let method = request.method().clone();
     let read = method == Method::GET || method == Method::HEAD;
-    authorized(app, request.headers(), read)?;
+    let key = key(raw)?;
+    if method == Method::PUT {
+        upload_authorized(app, request.headers(), key.account.as_deref())?;
+    } else {
+        authorized(app, request.headers(), read)?;
+    }
     if !read && method != Method::PUT {
         return Ok((
             StatusCode::METHOD_NOT_ALLOWED,
@@ -48,7 +53,6 @@ async fn handle_inner(app: &Arc<App>, raw: &str, request: Request) -> Result<Res
     if !read && app.config.read_only {
         return Err(Failure(StatusCode::FORBIDDEN, "cache is read-only\n"));
     }
-    let key = key(raw)?;
     let permit = app
         .permits
         .clone()

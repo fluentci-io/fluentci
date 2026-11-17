@@ -30,14 +30,17 @@ export function create(database, options = {}) {
 }
 export function method(server, nsid, handler) {
   const config = { handler: async (request) => handler(request) };
-  if (nsid === PUBLISH)
+  if (
+    nsid === PUBLISH ||
+    (nsid.startsWith('io.fluentci.cache.') && nsid !== 'io.fluentci.cache.exchangeCredential')
+  )
     config.auth = async ({ req }) => {
       const token = /^Bearer ([^ ]+)$/i.exec(req.headers.authorization ?? '')?.[1];
       if (!token) throw new AuthRequiredError('A publisher service-auth token is required');
       const claims = await verifyJwt(
         token,
         process.env.SERVICE_DID ?? 'did:web:api.fluentci.io',
-        PUBLISH,
+        nsid,
         (issuer, refresh) =>
           (server.options.resolveSigningKey ?? identity.did.resolveAtprotoKey.bind(identity.did))(
             issuer,
@@ -46,6 +49,12 @@ export function method(server, nsid, handler) {
       );
       if (claims.iss.includes('#')) throw new AuthRequiredError('Expected an account DID');
       return { credentials: { did: claims.iss } };
+    };
+  if (nsid === 'io.fluentci.cache.exchangeCredential')
+    config.auth = async ({ req }) => {
+      const token = /^Bearer ([^ ]{1,256})$/i.exec(req.headers.authorization ?? '')?.[1];
+      if (!token) throw new AuthRequiredError('A CI credential is required');
+      return { credentials: { cacheCredential: token } };
     };
   if (nsid === RECORD_DOWNLOAD)
     config.auth = async ({ req }) => {

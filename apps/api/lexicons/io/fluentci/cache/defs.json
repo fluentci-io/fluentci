@@ -1,0 +1,35 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.cache.defs",
+  "defs": {
+    "credentialView": {
+      "type": "object",
+      "required": [
+        "id",
+        "label",
+        "createdAt",
+        "expiresAt",
+        "active"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "label": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "expiresAt": {
+          "type": "string",
+          "format": "datetime"
+        },
+        "active": {
+          "type": "boolean"
+        }
+      }
+    }
+  }
+}

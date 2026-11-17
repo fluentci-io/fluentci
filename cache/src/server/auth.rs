@@ -4,6 +4,8 @@ use super::{
 };
 use axum::http::{HeaderMap, StatusCode, header};
 use base64::{Engine, engine::general_purpose::STANDARD};
+use jsonwebtoken::{Algorithm, Validation, decode};
+use serde::Deserialize;
 use sha2::{Digest, Sha256};
 use subtle::ConstantTimeEq;
 
@@ -40,4 +42,53 @@ pub(super) fn authorized(app: &App, headers: &HeaderMap, read: bool) -> Result<(
             "authentication required\n",
         ))
     }
+}
+
+#[derive(Deserialize)]
+struct UploadClaims {
+    cache: String,
+    scope: String,
+    sub: String,
+}
+
+pub(super) fn upload_authorized(
+    app: &App,
+    headers: &HeaderMap,
+    account: Option<&str>,
+) -> Result<()> {
+    if authorized(app, headers, false).is_ok() {
+        return Ok(());
+    }
+    let token = headers
+        .get(header::AUTHORIZATION)
+        .and_then(|h| h.to_str().ok())
+        .and_then(|h| {
+            if let Some(token) = h.strip_prefix("Bearer ") {
+                Some(token.to_owned())
+            } else {
+                h.strip_prefix("Basic ")
+                    .and_then(|v| STANDARD.decode(v).ok())
+                    .and_then(|v| String::from_utf8(v).ok())
+                    .and_then(|v| v.split_once(':').map(|(_, p)| p.to_owned()))
+            }
+        });
+    if let (Some(key), Some(token), Some(account)) = (&app.upload_key, token, account) {
+        let mut validation = Validation::new(Algorithm::EdDSA);
+        validation.set_issuer(&[&app.config.upload_token_issuer]);
+        validation.set_audience(&["fluentci-cache"]);
+        validation.set_required_spec_claims(&["exp", "nbf", "iss", "aud", "sub"]);
+        validation.validate_nbf = true;
+        validation.leeway = 0;
+        if let Ok(data) = decode::<UploadClaims>(&token, key, &validation)
+            && data.claims.cache == account
+            && data.claims.scope == "cache:upload"
+            && data.claims.sub.starts_with("did:")
+        {
+            return Ok(());
+        }
+    }
+    Err(Failure(
+        StatusCode::UNAUTHORIZED,
+        "authentication required\n",
+    ))
 }

@@ -6,7 +6,7 @@
   "redirect_uris": [
     "https://fluentci.io/oauth/callback"
   ],
-  "scope": "atproto repo:io.fluentci.like repo:io.fluentci.plugin",
+  "scope": "atproto repo:io.fluentci.like repo:io.fluentci.plugin rpc:io.fluentci.cache.createToken?aud=* rpc:io.fluentci.cache.inviteUser?aud=* rpc:io.fluentci.cache.revokeUser?aud=* rpc:io.fluentci.cache.createCredential?aud=* rpc:io.fluentci.cache.listCredentials?aud=* rpc:io.fluentci.cache.revokeCredential?aud=*",
   "grant_types": [
     "authorization_code",
     "refresh_token"

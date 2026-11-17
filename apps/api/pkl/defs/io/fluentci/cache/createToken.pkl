@@ -1,0 +1,34 @@
+amends "../../../../schema/lexicon.pkl"
+
+id = "io.fluentci.cache.createToken"
+description = "Issue a one-hour upload token for your cache, or a cache whose owner invited you. Requires an account service-auth JWT addressed to this method. Reads remain public."
+defs = new Mapping {
+  ["main"] = new Procedure {
+    input = new Body {
+      encoding = "application/json"
+      schema = new ObjectField {
+        required = List()
+        properties = new Mapping {
+          ["owner"] = new StringField { format = "at-identifier" }
+        }
+      }
+    }
+    output = new Body {
+      encoding = "application/json"
+      schema = new ObjectField {
+        required = List("token", "expiresAt", "cacheUrl", "owner")
+        properties = new Mapping {
+          ["token"] = new StringField {}
+          ["expiresAt"] = new StringField { format = "datetime" }
+          ["cacheUrl"] = new StringField { format = "uri" }
+          ["owner"] = new StringField { format = "did" }
+        }
+      }
+    }
+    errors = List(
+      new Error { name = "AuthRequired" },
+      new Error { name = "AccessDenied" },
+      new Error { name = "CacheUnavailable" }
+    )
+  }
+}

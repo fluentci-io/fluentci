@@ -4,6 +4,7 @@ import {
   createRouter,
   Outlet,
 } from "@tanstack/react-router";
+import { CachePage } from "./components/CachePage/CachePage";
 import { LandingPage } from "./components/LandingPage";
 import { NotFound } from "./components/NotFound";
 import { PublisherPage } from "./components/PublisherPage";
@@ -38,11 +39,22 @@ const modulesRoute = createRoute({
   component: ModulesPage,
 });
 
-const oauthRoute = createRoute({ getParentRoute: () => rootRoute, path: "/oauth/callback", component: OAuthCallback });
+const cacheRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/cache",
+  component: CachePage,
+});
+
+const oauthRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: "/oauth/callback",
+  component: OAuthCallback,
+});
 
 export const router = createRouter({
   routeTree: rootRoute.addChildren([
     oauthRoute,
+    cacheRoute,
     indexRoute,
     modulesRoute,
     moduleRoute,

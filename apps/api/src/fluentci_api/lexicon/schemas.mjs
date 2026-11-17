@@ -1,6 +1,14 @@
 // Generated from pkl/defs by scripts/lexicons.mjs. DO NOT EDIT.
 export const ids = {
   com_atproto_repo_strong_ref: 'com.atproto.repo.strongRef',
+  cache_create_credential: 'io.fluentci.cache.createCredential',
+  cache_create_token: 'io.fluentci.cache.createToken',
+  cache_defs: 'io.fluentci.cache.defs',
+  cache_exchange_credential: 'io.fluentci.cache.exchangeCredential',
+  cache_invite_user: 'io.fluentci.cache.inviteUser',
+  cache_list_credentials: 'io.fluentci.cache.listCredentials',
+  cache_revoke_credential: 'io.fluentci.cache.revokeCredential',
+  cache_revoke_user: 'io.fluentci.cache.revokeUser',
   like: 'io.fluentci.like',
   plugin: 'io.fluentci.plugin',
   registry_defs: 'io.fluentci.registry.defs',
@@ -31,6 +39,408 @@ export const schemas = [
             format: 'cid',
           },
         },
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.createCredential',
+    description:
+      'Owner-only: create a 90-day revocable CI credential. The secret is returned once.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['label'],
+            properties: {
+              label: {
+                type: 'string',
+                minLength: 1,
+                maxLength: 80,
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['id', 'label', 'createdAt', 'expiresAt', 'active', 'credential', 'owner'],
+            properties: {
+              id: {
+                type: 'string',
+              },
+              label: {
+                type: 'string',
+              },
+              createdAt: {
+                type: 'string',
+                format: 'datetime',
+              },
+              expiresAt: {
+                type: 'string',
+                format: 'datetime',
+              },
+              active: {
+                type: 'boolean',
+              },
+              credential: {
+                type: 'string',
+              },
+              owner: {
+                type: 'string',
+                format: 'did',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.createToken',
+    description:
+      'Issue a one-hour upload token for your cache, or a cache whose owner invited you. Requires an account service-auth JWT addressed to this method. Reads remain public.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: [],
+            properties: {
+              owner: {
+                type: 'string',
+                format: 'at-identifier',
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['token', 'expiresAt', 'cacheUrl', 'owner'],
+            properties: {
+              token: {
+                type: 'string',
+              },
+              expiresAt: {
+                type: 'string',
+                format: 'datetime',
+              },
+              cacheUrl: {
+                type: 'string',
+                format: 'uri',
+              },
+              owner: {
+                type: 'string',
+                format: 'did',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'AccessDenied',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.defs',
+    defs: {
+      credentialView: {
+        type: 'object',
+        required: ['id', 'label', 'createdAt', 'expiresAt', 'active'],
+        properties: {
+          id: {
+            type: 'string',
+          },
+          label: {
+            type: 'string',
+          },
+          createdAt: {
+            type: 'string',
+            format: 'datetime',
+          },
+          expiresAt: {
+            type: 'string',
+            format: 'datetime',
+          },
+          active: {
+            type: 'boolean',
+          },
+        },
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.exchangeCredential',
+    description:
+      'Exchange a CI credential in the Authorization bearer header for a one-hour owner-scoped upload token. No PDS login is required.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: [],
+            properties: {},
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['token', 'expiresAt', 'cacheUrl', 'owner'],
+            properties: {
+              token: {
+                type: 'string',
+              },
+              expiresAt: {
+                type: 'string',
+                format: 'datetime',
+              },
+              cacheUrl: {
+                type: 'string',
+                format: 'uri',
+              },
+              owner: {
+                type: 'string',
+                format: 'did',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.inviteUser',
+    description:
+      'Grant an account upload access to your cache. Requires an account service-auth JWT addressed to this method. Reads remain public.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['actor'],
+            properties: {
+              actor: {
+                type: 'string',
+                format: 'at-identifier',
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['owner', 'actor', 'active'],
+            properties: {
+              owner: {
+                type: 'string',
+                format: 'did',
+              },
+              actor: {
+                type: 'string',
+                format: 'did',
+              },
+              active: {
+                type: 'boolean',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'AccessDenied',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.listCredentials',
+    description: 'Owner-only: list up to 100 latest CI credentials without secret values.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: [],
+            properties: {},
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['credentials'],
+            properties: {
+              credentials: {
+                type: 'array',
+                items: {
+                  type: 'ref',
+                  ref: 'io.fluentci.cache.defs#credentialView',
+                },
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.revokeCredential',
+    description:
+      'Owner-only: disable a CI credential. Already-issued upload tokens expire normally.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['id'],
+            properties: {
+              id: {
+                type: 'string',
+                minLength: 36,
+                maxLength: 36,
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['revoked'],
+            properties: {
+              revoked: {
+                type: 'boolean',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.revokeUser',
+    description:
+      'Revoke an account’s ability to mint new upload tokens for your cache. Requires an account service-auth JWT addressed to this method. Reads remain public.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['actor'],
+            properties: {
+              actor: {
+                type: 'string',
+                format: 'at-identifier',
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['owner', 'actor', 'active'],
+            properties: {
+              owner: {
+                type: 'string',
+                format: 'did',
+              },
+              actor: {
+                type: 'string',
+                format: 'did',
+              },
+              active: {
+                type: 'boolean',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'AccessDenied',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+        ],
       },
     },
   },

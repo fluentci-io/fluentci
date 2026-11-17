@@ -125,8 +125,10 @@ test("sign in opens a handle modal, supports Escape, and advertises collection-s
   expect(metadata.redirect_uris).toEqual([
     "https://fluentci.io/oauth/callback",
   ]);
-  expect(metadata.scope).toBe(
-    "atproto repo:io.fluentci.like repo:io.fluentci.plugin",
+  expect(metadata.scope).toContain("repo:io.fluentci.like");
+  expect(metadata.scope).toContain("rpc:io.fluentci.cache.createToken?aud=*");
+  expect(metadata.scope).toContain(
+    "rpc:io.fluentci.cache.createCredential?aud=*",
   );
   expect(
     await page.evaluate(() =>
@@ -236,7 +238,7 @@ test("avatar menu links to profile and logs out of the browser session", async (
   const menu = page.getByLabel("Account", { exact: true });
   await expect(menu).toContainText("A Person");
   await expect(menu).toContainText("@person.example");
-  await expect(menu.getByRole("link")).toHaveAttribute(
+  await expect(menu.getByRole("link", { name: /A Person/ })).toHaveAttribute(
     "href",
     "/person.example",
   );
@@ -413,8 +415,9 @@ test("handle sign-in discovers the PDS and starts PKCE OAuth with both collectio
     });
     throw Error(String(details));
   }
-  expect(par!.get("scope")).toBe(
-    "atproto repo:io.fluentci.like repo:io.fluentci.plugin",
+  expect(par!.get("scope")).toContain("repo:io.fluentci.like");
+  expect(par!.get("scope")).toContain(
+    "rpc:io.fluentci.cache.createToken?aud=*",
   );
   expect(par!.get("code_challenge_method")).toBe("S256");
   expect(par!.get("code_challenge")).toBeTruthy();

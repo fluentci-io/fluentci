@@ -1,0 +1,22 @@
+amends "../../../../schema/lexicon.pkl"
+
+id = "io.fluentci.cache.defs"
+defs = new Mapping {
+  ["credentialView"] = new ObjectField {
+    required = List("id", "label", "createdAt", "expiresAt", "active")
+    properties = new Mapping {
+      ["id"] = new StringField {
+      }
+      ["label"] = new StringField {
+      }
+      ["createdAt"] = new StringField {
+        format = "datetime"
+      }
+      ["expiresAt"] = new StringField {
+        format = "datetime"
+      }
+      ["active"] = new BooleanField {
+      }
+    }
+  }
+}

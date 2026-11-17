@@ -1,0 +1,60 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.cache.revokeUser",
+  "description": "Revoke an account’s ability to mint new upload tokens for your cache. Requires an account service-auth JWT addressed to this method. Reads remain public.",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "actor"
+          ],
+          "properties": {
+            "actor": {
+              "type": "string",
+              "format": "at-identifier"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "owner",
+            "actor",
+            "active"
+          ],
+          "properties": {
+            "owner": {
+              "type": "string",
+              "format": "did"
+            },
+            "actor": {
+              "type": "string",
+              "format": "did"
+            },
+            "active": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthRequired"
+        },
+        {
+          "name": "AccessDenied"
+        },
+        {
+          "name": "CacheUnavailable"
+        }
+      ]
+    }
+  }
+}

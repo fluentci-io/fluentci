@@ -136,7 +136,7 @@ for (const { name, schema, id } of models) {
       ([key, field]) =>
         `let fields = list.append(fields, case value.${snake(key)} { None -> [] Some(item) -> [#(${quote(key)}, ${encode(field, 'item', id)})] })`,
     );
-  gleam.push(`pub fn encode_${snake(name)}(value: ${name}) -> json.Json {
+  gleam.push(`pub fn encode_${snake(name)}(${fields.length ? 'value' : '_value'}: ${name}) -> json.Json {
     let fields = [${mandatory.join(', ')}]
     ${optional.join('\n')}
     json.object(fields)

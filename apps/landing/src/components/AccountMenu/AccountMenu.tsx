@@ -103,6 +103,13 @@ export function AccountMenu() {
               </span>
             </span>
           </Link>
+          <Link
+            to="/cache"
+            className="block border-t border-line px-4 py-3 text-xs hover:bg-raised"
+            onClick={() => setOpen(false)}
+          >
+            Build cache
+          </Link>
           <button
             type="button"
             className="w-full border-t border-line px-4 py-3 text-left text-xs hover:bg-raised"

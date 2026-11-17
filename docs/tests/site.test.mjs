@@ -49,7 +49,9 @@ test("all documented navigation entries have rendered pages and consistent activ
       page.url,
     );
     assert.match(html, /data-pagefind-body/);
-    assert.doesNotMatch(html, /\{\{|undefined|\[object Object\]/);
+    // Fenced examples can intentionally contain GitHub Actions expressions.
+    const prose = html.replace(/<pre\b[\s\S]*?<\/pre>/g, "");
+    assert.doesNotMatch(prose, /\{\{|undefined|\[object Object\]/);
   }
 });
 

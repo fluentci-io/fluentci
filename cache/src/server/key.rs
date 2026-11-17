@@ -4,6 +4,7 @@ use object_store::path::Path;
 
 pub(super) struct Key {
     pub(super) path: Path,
+    pub(super) account: Option<String>,
     pub(super) cas: Option<String>,
     pub(super) content_type: &'static str,
     pub(super) nix_info: bool,
@@ -19,6 +20,24 @@ pub(super) fn key(raw: &str) -> Result<Key> {
     {
         return Err(Failure(StatusCode::BAD_REQUEST, "invalid cache key\n"));
     }
+    let (account, raw) = if let Some(scoped) = raw.strip_prefix("accounts/") {
+        let (id, rest) = scoped
+            .split_once('/')
+            .ok_or(Failure(StatusCode::BAD_REQUEST, "account key required\n"))?;
+        if id.len() != 64
+            || !id
+                .bytes()
+                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
+        {
+            return Err(Failure(
+                StatusCode::BAD_REQUEST,
+                "invalid account namespace\n",
+            ));
+        }
+        (Some(id.to_owned()), rest)
+    } else {
+        (None, raw)
+    };
     let (namespace, rest) = raw.split_once('/').unwrap_or((raw, ""));
     let (namespace, rest) = match namespace {
         "nix" => ("nix", rest),
@@ -59,8 +78,13 @@ pub(super) fn key(raw: &str) -> Result<Key> {
     } else {
         "application/octet-stream"
     };
+    let prefix = account
+        .as_ref()
+        .map(|id| format!("accounts/{id}/"))
+        .unwrap_or_default();
     Ok(Key {
-        path: Path::parse(format!("{namespace}/{rest}"))
+        account,
+        path: Path::parse(format!("{prefix}{namespace}/{rest}"))
             .map_err(|_| Failure(StatusCode::BAD_REQUEST, "invalid key\n"))?,
         cas,
         content_type,

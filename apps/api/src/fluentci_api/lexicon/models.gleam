@@ -8,6 +8,22 @@ import gleam/option.{type Option, None, Some}
 
 pub const com_atproto_repo_strong_ref = "com.atproto.repo.strongRef"
 
+pub const cache_create_credential = "io.fluentci.cache.createCredential"
+
+pub const cache_create_token = "io.fluentci.cache.createToken"
+
+pub const cache_defs = "io.fluentci.cache.defs"
+
+pub const cache_exchange_credential = "io.fluentci.cache.exchangeCredential"
+
+pub const cache_invite_user = "io.fluentci.cache.inviteUser"
+
+pub const cache_list_credentials = "io.fluentci.cache.listCredentials"
+
+pub const cache_revoke_credential = "io.fluentci.cache.revokeCredential"
+
+pub const cache_revoke_user = "io.fluentci.cache.revokeUser"
+
 pub const like = "io.fluentci.like"
 
 pub const plugin = "io.fluentci.plugin"
@@ -38,6 +54,251 @@ pub fn encode_com_atproto_repo_strong_ref(
   let fields = [
     #("uri", json.string(value.uri)),
     #("cid", json.string(value.cid)),
+  ]
+
+  json.object(fields)
+}
+
+pub type CacheCreateCredentialInput {
+  CacheCreateCredentialInput(label: String)
+}
+
+pub fn encode_cache_create_credential_input(
+  value: CacheCreateCredentialInput,
+) -> json.Json {
+  let fields = [#("label", json.string(value.label))]
+
+  json.object(fields)
+}
+
+pub type CacheCreateCredentialOutput {
+  CacheCreateCredentialOutput(
+    id: String,
+    label: String,
+    created_at: String,
+    expires_at: String,
+    active: Bool,
+    credential: String,
+    owner: String,
+  )
+}
+
+pub fn encode_cache_create_credential_output(
+  value: CacheCreateCredentialOutput,
+) -> json.Json {
+  let fields = [
+    #("id", json.string(value.id)),
+    #("label", json.string(value.label)),
+    #("createdAt", json.string(value.created_at)),
+    #("expiresAt", json.string(value.expires_at)),
+    #("active", json.bool(value.active)),
+    #("credential", json.string(value.credential)),
+    #("owner", json.string(value.owner)),
+  ]
+
+  json.object(fields)
+}
+
+pub type CacheCreateTokenInput {
+  CacheCreateTokenInput(owner: Option(String))
+}
+
+pub fn encode_cache_create_token_input(
+  value: CacheCreateTokenInput,
+) -> json.Json {
+  let fields = []
+  let fields =
+    list.append(fields, case value.owner {
+      None -> []
+      Some(item) -> [#("owner", json.string(item))]
+    })
+  json.object(fields)
+}
+
+pub type CacheCreateTokenOutput {
+  CacheCreateTokenOutput(
+    token: String,
+    expires_at: String,
+    cache_url: String,
+    owner: String,
+  )
+}
+
+pub fn encode_cache_create_token_output(
+  value: CacheCreateTokenOutput,
+) -> json.Json {
+  let fields = [
+    #("token", json.string(value.token)),
+    #("expiresAt", json.string(value.expires_at)),
+    #("cacheUrl", json.string(value.cache_url)),
+    #("owner", json.string(value.owner)),
+  ]
+
+  json.object(fields)
+}
+
+pub type CacheCredentialView {
+  CacheCredentialView(
+    id: String,
+    label: String,
+    created_at: String,
+    expires_at: String,
+    active: Bool,
+  )
+}
+
+pub fn encode_cache_credential_view(value: CacheCredentialView) -> json.Json {
+  let fields = [
+    #("id", json.string(value.id)),
+    #("label", json.string(value.label)),
+    #("createdAt", json.string(value.created_at)),
+    #("expiresAt", json.string(value.expires_at)),
+    #("active", json.bool(value.active)),
+  ]
+
+  json.object(fields)
+}
+
+pub type CacheExchangeCredentialInput {
+  CacheExchangeCredentialInput
+}
+
+pub fn encode_cache_exchange_credential_input(
+  _value: CacheExchangeCredentialInput,
+) -> json.Json {
+  let fields = []
+
+  json.object(fields)
+}
+
+pub type CacheExchangeCredentialOutput {
+  CacheExchangeCredentialOutput(
+    token: String,
+    expires_at: String,
+    cache_url: String,
+    owner: String,
+  )
+}
+
+pub fn encode_cache_exchange_credential_output(
+  value: CacheExchangeCredentialOutput,
+) -> json.Json {
+  let fields = [
+    #("token", json.string(value.token)),
+    #("expiresAt", json.string(value.expires_at)),
+    #("cacheUrl", json.string(value.cache_url)),
+    #("owner", json.string(value.owner)),
+  ]
+
+  json.object(fields)
+}
+
+pub type CacheInviteUserInput {
+  CacheInviteUserInput(actor: String)
+}
+
+pub fn encode_cache_invite_user_input(
+  value: CacheInviteUserInput,
+) -> json.Json {
+  let fields = [#("actor", json.string(value.actor))]
+
+  json.object(fields)
+}
+
+pub type CacheInviteUserOutput {
+  CacheInviteUserOutput(owner: String, actor: String, active: Bool)
+}
+
+pub fn encode_cache_invite_user_output(
+  value: CacheInviteUserOutput,
+) -> json.Json {
+  let fields = [
+    #("owner", json.string(value.owner)),
+    #("actor", json.string(value.actor)),
+    #("active", json.bool(value.active)),
+  ]
+
+  json.object(fields)
+}
+
+pub type CacheListCredentialsInput {
+  CacheListCredentialsInput
+}
+
+pub fn encode_cache_list_credentials_input(
+  _value: CacheListCredentialsInput,
+) -> json.Json {
+  let fields = []
+
+  json.object(fields)
+}
+
+pub type CacheListCredentialsOutput {
+  CacheListCredentialsOutput(credentials: List(CacheCredentialView))
+}
+
+pub fn encode_cache_list_credentials_output(
+  value: CacheListCredentialsOutput,
+) -> json.Json {
+  let fields = [
+    #(
+      "credentials",
+      json.array(value.credentials, fn(item) {
+        encode_cache_credential_view(item)
+      }),
+    ),
+  ]
+
+  json.object(fields)
+}
+
+pub type CacheRevokeCredentialInput {
+  CacheRevokeCredentialInput(id: String)
+}
+
+pub fn encode_cache_revoke_credential_input(
+  value: CacheRevokeCredentialInput,
+) -> json.Json {
+  let fields = [#("id", json.string(value.id))]
+
+  json.object(fields)
+}
+
+pub type CacheRevokeCredentialOutput {
+  CacheRevokeCredentialOutput(revoked: Bool)
+}
+
+pub fn encode_cache_revoke_credential_output(
+  value: CacheRevokeCredentialOutput,
+) -> json.Json {
+  let fields = [#("revoked", json.bool(value.revoked))]
+
+  json.object(fields)
+}
+
+pub type CacheRevokeUserInput {
+  CacheRevokeUserInput(actor: String)
+}
+
+pub fn encode_cache_revoke_user_input(
+  value: CacheRevokeUserInput,
+) -> json.Json {
+  let fields = [#("actor", json.string(value.actor))]
+
+  json.object(fields)
+}
+
+pub type CacheRevokeUserOutput {
+  CacheRevokeUserOutput(owner: String, actor: String, active: Bool)
+}
+
+pub fn encode_cache_revoke_user_output(
+  value: CacheRevokeUserOutput,
+) -> json.Json {
+  let fields = [
+    #("owner", json.string(value.owner)),
+    #("actor", json.string(value.actor)),
+    #("active", json.bool(value.active)),
   ]
 
   json.object(fields)

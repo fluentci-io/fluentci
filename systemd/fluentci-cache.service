@@ -1,0 +1,35 @@
+[Unit]
+Description=FluentCI build cache
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=60
+StartLimitBurst=5
+
+[Service]
+Type=exec
+User=fluentci-cache
+Group=fluentci-cache
+WorkingDirectory=/var/lib/fluentci-cache
+StateDirectory=fluentci-cache
+StateDirectoryMode=0750
+EnvironmentFile=/etc/fluentci/cache.env
+ExecStart=/usr/local/bin/fluentci-cache serve --config /etc/fluentci/cache.toml
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=330
+LimitNOFILE=65536
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectHome=true
+ProtectSystem=strict
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+
+[Install]
+WantedBy=multi-user.target

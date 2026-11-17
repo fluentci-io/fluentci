@@ -45,6 +45,7 @@ const navigation = [
       { title: "Studio", url: "/studio/" },
       { title: "Desktop app", url: "/studio/desktop/" },
       { title: "Account and Tangled", url: "/registry/authentication/" },
+      { title: "Cache access", url: "/registry/cache/" },
       { title: "Publish a plugin", url: "/registry/publishing/" },
       { title: "Find and run plugins", url: "/registry/using-plugins/" },
       { title: "Logs and tracing", url: "/guides/observability/" },

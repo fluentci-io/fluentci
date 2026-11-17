@@ -2,6 +2,8 @@
 
 import fluentci_api/db/client.{type Db}
 import fluentci_api/node/runtime.{type Server}
+import fluentci_api/xrpc/cache
+import fluentci_api/xrpc/cache_credentials
 import fluentci_api/xrpc/io/fluentci/registry/get_actor_likes
 import fluentci_api/xrpc/io/fluentci/registry/get_actor_packages
 import fluentci_api/xrpc/io/fluentci/registry/get_package
@@ -11,6 +13,8 @@ import fluentci_api/xrpc/io/fluentci/registry/record_download
 import fluentci_api/xrpc/io/fluentci/registry/search_packages
 
 pub fn register(server: Server, database: Db) -> Nil {
+  cache.register(server, database)
+  cache_credentials.register(server, database)
   list_packages.register(server, database)
   get_actor_likes.register(server, database)
   get_actor_packages.register(server, database)

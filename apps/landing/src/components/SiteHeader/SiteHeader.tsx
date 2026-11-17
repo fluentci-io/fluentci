@@ -33,6 +33,13 @@ export function SiteHeader() {
         >
           Modules
         </Link>
+        <Link
+          className="nav-link"
+          to="/cache"
+          activeProps={{ className: "text-accent" }}
+        >
+          Cache
+        </Link>
         <Link className="nav-link" to="/" hash="sdks">
           SDKs
         </Link>
