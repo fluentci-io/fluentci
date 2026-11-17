@@ -1,10 +1,12 @@
 //// Account-authenticated cache token and upload membership procedures.
 
 import fluentci_api/db/cache_members
+import fluentci_api/db/cache_usage
 import fluentci_api/db/client.{type Db}
 import fluentci_api/lexicon/models
 import fluentci_api/node/runtime.{type Output, type Request, type Server}
 import fluentci_api/schema/cache_members as member
+import fluentci_api/schema/cache_usage as usage
 import gleam/javascript/promise.{type Promise}
 
 @external(javascript, "./cache_ffi.mjs", "createToken")
@@ -27,6 +29,7 @@ fn manage_cache(
   server: Server,
   request: Request,
   action: String,
+  record: fn(String, String, Int, Int, String) -> Promise(Nil),
 ) -> Promise(Output)
 
 @external(javascript, "./cache_ffi.mjs", "listCollaborators")
@@ -35,15 +38,29 @@ fn list_collaborators(
   list: fn(String, String) -> Promise(List(member.Row)),
 ) -> Promise(Output)
 
+@external(javascript, "./cache_ffi.mjs", "usageHistory")
+fn usage_history(
+  request: Request,
+  query: fn(String, String, String) -> Promise(List(usage.Row)),
+) -> Promise(Output)
+
 pub fn register(server: Server, db: Db) -> Nil {
+  let record = fn(owner, date, bytes, keys, observed) {
+    cache_usage.record(db, owner, date, bytes, keys, observed)
+  }
+  runtime.method(server, models.cache_get_usage_history, fn(request) {
+    usage_history(request, fn(owner, after, before) {
+      cache_usage.history(db, owner, after, before)
+    })
+  })
   runtime.method(server, models.cache_list_keys, fn(request) {
-    manage_cache(server, request, "list")
+    manage_cache(server, request, "list", record)
   })
   runtime.method(server, models.cache_delete_key, fn(request) {
-    manage_cache(server, request, "delete")
+    manage_cache(server, request, "delete", record)
   })
   runtime.method(server, models.cache_clear_cache, fn(request) {
-    manage_cache(server, request, "clear")
+    manage_cache(server, request, "clear", record)
   })
   runtime.method(server, models.cache_list_collaborators, fn(request) {
     list_collaborators(request, fn(owner, cursor) {

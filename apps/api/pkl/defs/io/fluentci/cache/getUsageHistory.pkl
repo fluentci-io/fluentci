@@ -1,0 +1,18 @@
+amends "../../../../schema/lexicon.pkl"
+id = "io.fluentci.cache.getUsageHistory"
+description = "Owner-only: recorded daily storage snapshots for the last 14 UTC days. Missing days have no sample."
+defs = new Mapping {
+ ["main"] = new Procedure {
+  input = new Body { encoding = "application/json"
+ schema = new ObjectField { required = List()
+ properties = new Mapping {} } }
+  output = new Body {
+   encoding = "application/json"
+   schema = new ObjectField {
+    required = List("samples")
+    properties = new Mapping { ["samples"] = new ArrayField { items = new RefField { ref = "io.fluentci.cache.defs#usageSample" } } }
+   }
+  }
+  errors = List(new Error { name = "AuthRequired" })
+ }
+}

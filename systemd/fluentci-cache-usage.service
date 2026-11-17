@@ -1,0 +1,21 @@
+[Unit]
+Description=Record daily FluentCI cache storage usage
+Wants=network-online.target
+After=network-online.target fluentci-api.service fluentci-cache.service
+
+[Service]
+Type=oneshot
+User=fluentci
+Group=fluentci
+WorkingDirectory=/opt/fluentci/apps/api
+Environment=NODE_ENV=production
+Environment=DATABASE_URL=file:/var/lib/fluentci/registry.sqlite
+EnvironmentFile=/etc/fluentci/api.env
+ExecStart=/opt/fluentci-runtime/node /opt/fluentci/apps/api/entry/cache-usage.mjs
+TimeoutStartSec=1h
+UMask=0027
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/fluentci

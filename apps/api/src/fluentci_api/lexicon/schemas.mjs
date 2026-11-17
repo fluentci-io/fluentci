@@ -7,6 +7,7 @@ export const ids = {
   cache_defs: 'io.fluentci.cache.defs',
   cache_delete_key: 'io.fluentci.cache.deleteKey',
   cache_exchange_credential: 'io.fluentci.cache.exchangeCredential',
+  cache_get_usage_history: 'io.fluentci.cache.getUsageHistory',
   cache_invite_user: 'io.fluentci.cache.inviteUser',
   cache_list_collaborators: 'io.fluentci.cache.listCollaborators',
   cache_list_credentials: 'io.fluentci.cache.listCredentials',
@@ -261,6 +262,29 @@ export const schemas = [
           },
         },
       },
+      usageSample: {
+        type: 'object',
+        required: ['date', 'bytes', 'keyCount', 'observedAt'],
+        properties: {
+          date: {
+            type: 'string',
+            minLength: 10,
+            maxLength: 10,
+          },
+          bytes: {
+            type: 'integer',
+            minimum: 0,
+          },
+          keyCount: {
+            type: 'integer',
+            minimum: 0,
+          },
+          observedAt: {
+            type: 'string',
+            format: 'datetime',
+          },
+        },
+      },
     },
   },
   {
@@ -357,6 +381,46 @@ export const schemas = [
           },
           {
             name: 'CacheUnavailable',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.getUsageHistory',
+    description:
+      'Owner-only: recorded daily storage snapshots for the last 14 UTC days. Missing days have no sample.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: [],
+            properties: {},
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['samples'],
+            properties: {
+              samples: {
+                type: 'array',
+                items: {
+                  type: 'ref',
+                  ref: 'io.fluentci.cache.defs#usageSample',
+                },
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
           },
         ],
       },

@@ -1,0 +1,41 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.cache.getUsageHistory",
+  "description": "Owner-only: recorded daily storage snapshots for the last 14 UTC days. Missing days have no sample.",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [],
+          "properties": {}
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "samples"
+          ],
+          "properties": {
+            "samples": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "io.fluentci.cache.defs#usageSample"
+              }
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthRequired"
+        }
+      ]
+    }
+  }
+}

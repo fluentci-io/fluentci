@@ -168,3 +168,24 @@ Deploy the API changes and migrations as described in
 For upgrades, stage a new binary as `/usr/local/bin/fluentci-cache.new`, rename
 it over the installed binary, then restart `fluentci-cache`. Keep configuration,
 keys, and persistent storage separate from the binary.
+
+## Usage history
+
+The API records daily storage-byte and object-count snapshots for each owner who
+lists their cache. Install the provided timer on the API host to record snapshots
+hourly between page visits:
+
+```sh
+sudo install -m 0644 systemd/fluentci-cache-usage.service /etc/systemd/system/
+sudo install -m 0644 systemd/fluentci-cache-usage.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now fluentci-cache-usage.timer
+sudo systemctl start fluentci-cache-usage.service
+```
+
+The job shares the API's environment and SQLite database, and uses
+`/opt/fluentci-runtime/node` by default. Override the runtime path if necessary.
+The cache page displays the latest sample from each of the last 14 UTC days.
+It does not invent data for dates before measurements began. Direct CDN request
+counts and edge cache hit rates need separate Cloudflare analytics; S3 metadata
+and these storage snapshots cannot measure them.

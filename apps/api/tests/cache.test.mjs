@@ -123,6 +123,8 @@ test('account cache tokens require method-scoped auth, owner grants and respect 
   assert.deepEqual((await (await call('listCollaborators')).json()).actors, []);
   assert.equal((await call('createToken', did)).status, 200);
   assert.equal((await call('revokeUser', did, { actor: did })).status, 400);
+  assert.equal((await call('inviteUser', did, { actor: did })).status, 400);
+  assert.equal((await call('inviteUser', did, { actor: 'owner.test' })).status, 400);
   const rows = await connection.client.execute('SELECT * FROM cache_members');
   assert.equal(rows.rows.find((row) => row.owner === did && row.actor === other).active, 0);
 });
@@ -254,4 +256,43 @@ test('storage procedure reports failures without exposing backend details', asyn
   const response = await call('listKeys');
   assert.equal(response.status, 503);
   assert.doesNotMatch(await response.text(), /private backend details/);
+});
+
+test('cache usage history stores daily owner-scoped snapshots and returns only the last 14 UTC days', async (t) => {
+  const { call, connection } = await fixture(t, false, {
+    cacheFetch: async () => Response.json({ keys: [], totalBytes: 2048, totalKeys: 2 }),
+  });
+  const usage =
+    await import('../build/dev/javascript/fluentci_api/fluentci_api/db/cache_usage.mjs');
+  const date = (offset) => {
+    const value = new Date();
+    value.setUTCDate(value.getUTCDate() + offset);
+    return value.toISOString().slice(0, 10);
+  };
+  await usage.record(connection, did, date(-14), 100, 1, `${date(-14)}T12:00:00.000Z`);
+  await usage.record(connection, did, date(-13), 200, 2, `${date(-13)}T12:00:00.000Z`);
+  await usage.record(connection, other, date(-1), 999, 9, `${date(-1)}T12:00:00.000Z`);
+  assert.equal((await call('listKeys')).status, 200);
+  assert.equal((await call('getUsageHistory', null)).status, 401);
+  const response = await call('getUsageHistory');
+  assert.equal(response.status, 200);
+  const output = await response.json();
+  assert.deepEqual(
+    output.samples.map((sample) => [sample.date, sample.bytes, sample.keyCount]),
+    [
+      [date(-13), 200, 2],
+      [date(0), 2048, 2],
+    ],
+  );
+  assert.equal((await call('listKeys')).status, 200);
+  assert.equal((await (await call('getUsageHistory')).json()).samples.length, 2);
+  assert.deepEqual(
+    (await (await call('getUsageHistory', other)).json()).samples.map((sample) => sample.bytes),
+    [999],
+  );
+  const owners = (await usage.owners(connection, '')).toArray();
+  assert.deepEqual(
+    owners.map((row) => row.owner),
+    [did, other].sort(),
+  );
 });

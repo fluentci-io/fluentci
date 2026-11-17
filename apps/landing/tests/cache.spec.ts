@@ -90,28 +90,30 @@ async function mock(page: Page) {
         active: !revoked,
       };
       const body =
-        method === "listKeys"
-          ? { keys: [], totalKeys: 0, totalBytes: 0 }
-          : method === "listCollaborators"
-            ? { actors: [] }
-            : method === "createToken"
-              ? {
-                  token,
-                  cacheUrl: "https://cache.example/accounts/account",
-                  expiresAt: new Date(Date.now() + 3600000).toISOString(),
-                  owner: did,
-                }
-              : method === "createCredential"
-                ? { ...credential, credential: secret, owner: did }
-                : method === "listCredentials"
-                  ? { credentials: [credential] }
-                  : method === "revokeCredential"
-                    ? ((revoked = true), { revoked: true })
-                    : {
-                        owner: did,
-                        actor: "did:plc:invited",
-                        active: method === "inviteUser",
-                      };
+        method === "getUsageHistory"
+          ? { samples: [] }
+          : method === "listKeys"
+            ? { keys: [], totalKeys: 0, totalBytes: 0 }
+            : method === "listCollaborators"
+              ? { actors: [] }
+              : method === "createToken"
+                ? {
+                    token,
+                    cacheUrl: "https://cache.example/accounts/account",
+                    expiresAt: new Date(Date.now() + 3600000).toISOString(),
+                    owner: did,
+                  }
+                : method === "createCredential"
+                  ? { ...credential, credential: secret, owner: did }
+                  : method === "listCredentials"
+                    ? { credentials: [credential] }
+                    : method === "revokeCredential"
+                      ? ((revoked = true), { revoked: true })
+                      : {
+                          owner: did,
+                          actor: "did:plc:invited",
+                          active: method === "inviteUser",
+                        };
       await route.fulfill({ json: body });
     },
   );
@@ -163,7 +165,11 @@ test("cache exchanges method-scoped service tokens, invites users, renews and cl
   await page.getByLabel("Cache owner (optional)").fill("@friend.example");
   await expect(page.getByLabel("Upload token", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Generate upload token" }).click();
-  await expect.poll(() => calls.at(-1)?.body.owner).toBe("friend.example");
+  await expect
+    .poll(
+      () => calls.findLast((call) => call.method === "createToken")?.body.owner,
+    )
+    .toBe("friend.example");
   await selectPanel(page, "Collaborators");
   await page.getByLabel("Collaborator handle or DID").fill("@teammate.example");
   await page.getByRole("button", { name: "Invite user", exact: true }).click();
@@ -354,7 +360,7 @@ test("cache storage shows usage, deletes selected keys, and requires CLEAR confi
   await page
     .getByRole("button", { name: "Refresh entries", exact: true })
     .click();
-  await expect(page.getByLabel("Cache usage")).toHaveText(
+  await expect(page.getByLabel("Cache usage", { exact: true })).toHaveText(
     "2.0 KiB used · 1 keys",
   );
   await page
@@ -368,7 +374,9 @@ test("cache storage shows usage, deletes selected keys, and requires CLEAR confi
   await page
     .getByRole("button", { name: "Confirm deletion", exact: true })
     .click();
-  await expect(page.getByLabel("Cache usage")).toHaveText("0 B used · 0 keys");
+  await expect(page.getByLabel("Cache usage", { exact: true })).toHaveText(
+    "0 B used · 0 keys",
+  );
   await page.getByRole("button", { name: "Clear cache", exact: true }).click();
   await expect(
     page.getByRole("button", { name: "Confirm deletion", exact: true }),
@@ -489,4 +497,88 @@ test("cache dashboard tables filter immediately and sidebar switches views", asy
     path: `/tmp/fluentci-cache-dashboard-${test.info().project.name}.png`,
     fullPage: true,
   });
+});
+
+test("usage graph shows 14 real UTC days and distinguishes missing history from zero", async ({
+  page,
+}) => {
+  await session(page);
+  await mock(page);
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.cache.getUsageHistory",
+    (route) =>
+      route.fulfill({
+        json: {
+          samples: [
+            {
+              date: yesterday,
+              bytes: 0,
+              keyCount: 0,
+              observedAt: `${yesterday}T12:00:00.000Z`,
+            },
+            {
+              date: today,
+              bytes: 2048,
+              keyCount: 2,
+              observedAt: new Date().toISOString(),
+            },
+          ],
+        },
+      }),
+  );
+  await page.goto("/cache");
+  const chart = page.getByRole("region", {
+    name: "Cache usage last 14 days",
+    exact: true,
+  });
+  await expect(chart.getByRole("button")).toHaveCount(14);
+  await expect(
+    chart.getByRole("button", { name: `${today}: 2.0 KiB`, exact: true }),
+  ).toBeVisible();
+  await expect(
+    chart.getByRole("button", { name: `${yesterday}: 0 B`, exact: true }),
+  ).toBeVisible();
+  await expect(chart.getByRole("button", { name: /No data/ })).toHaveCount(12);
+  await chart
+    .getByLabel("Usage chart metric", { exact: true })
+    .selectOption("keyCount");
+  await expect(
+    chart.getByRole("button", { name: `${today}: 2 keys`, exact: true }),
+  ).toBeVisible();
+  await page.screenshot({
+    path: `/tmp/fluentci-cache-usage-${test.info().project.name}.png`,
+    fullPage: true,
+  });
+});
+
+test("collaborator invitation rejects the current account in suggestions and manual input", async ({
+  page,
+}) => {
+  await session(page);
+  await mock(page);
+  await page.route(
+    "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?*",
+    (route) =>
+      route.fulfill({
+        json: {
+          actors: [{ did, handle: "self.example", displayName: "Yourself" }],
+        },
+      }),
+  );
+  await page.goto("/cache");
+  await selectPanel(page, "Collaborators");
+  const input = page.getByLabel("Collaborator handle or DID");
+  await input.fill(did);
+  await expect(
+    page.getByRole("button", { name: "Invite user", exact: true }),
+  ).toBeDisabled();
+  await expect(
+    page.getByText("You already own this cache and cannot invite yourself."),
+  ).toBeVisible();
+  await input.fill("self");
+  await expect(page.getByRole("option", { name: /self.example/ })).toHaveCount(
+    0,
+  );
 });

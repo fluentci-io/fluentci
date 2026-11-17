@@ -148,3 +148,16 @@ The owner-only JSON procedures are `io.fluentci.cache.listKeys` (optional
 `io.fluentci.cache.listCollaborators` (optional `cursor`). Each requires its own
 method-scoped service-auth JWT. Storage management needs S3 list and delete
 permissions in addition to upload permissions.
+
+## Usage chart
+
+The storage view includes daily bars for the last 14 UTC days. Switch between
+stored bytes and object count. Hover over a bar or focus it with the keyboard to
+inspect a day's measurement. Missing historical samples show **No data**, not
+zero usage. A measured empty cache is shown as zero.
+
+Refreshing the listing records the current day's latest measurement. The hourly
+snapshot job keeps registered owners updated between visits; see
+[cache deployment](/development/build-cache/#usage-history).
+These measurements come from object metadata and include stored cache objects.
+They do not count direct CDN reads, request traffic, or edge cache hits.

@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
+import { UsageChart } from "./UsageChart";
+import { formatBytes, type UsageSample } from "../../cache/usage";
 import type { Account } from "../../auth/client";
 import { cacheRequest } from "../../cache/client";
 
@@ -13,18 +15,9 @@ const button =
   "rounded-lg border border-line px-3 py-2 text-sm hover:bg-raised disabled:opacity-50";
 const field =
   "w-full rounded-lg border border-line bg-paper px-3 py-2 text-sm outline-none focus:border-accent";
-function formatBytes(value: number) {
-  if (value < 1024) return `${value} B`;
-  const units = ["KiB", "MiB", "GiB", "TiB"];
-  let size = value / 1024,
-    unit = 0;
-  while (size >= 1024 && unit < units.length - 1) {
-    size /= 1024;
-    unit++;
-  }
-  return `${size.toFixed(1)} ${units[unit]}`;
-}
 export function CacheObjects({ account }: { account: Account }) {
+  const [samples, setSamples] = useState<UsageSample[]>();
+  const [historyError, setHistoryError] = useState("");
   const [listing, setListing] = useState<Listing>();
   const [search, setSearch] = useState("");
   const [prefix, setPrefix] = useState("");
@@ -39,8 +32,24 @@ export function CacheObjects({ account }: { account: Account }) {
     lifetime.current = controller;
     setPending(true);
     void cacheRequest<Listing>(account, "listKeys", {}, controller.signal)
-      .then((result) => {
-        if (!controller.signal.aborted) setListing(result);
+      .then(async (result) => {
+        if (controller.signal.aborted) return;
+        setListing(result);
+        try {
+          const history = await cacheRequest<{ samples: UsageSample[] }>(
+            account,
+            "getUsageHistory",
+            {},
+            controller.signal,
+          );
+          if (!controller.signal.aborted) {
+            setSamples(history.samples);
+            setHistoryError("");
+          }
+        } catch {
+          if (!controller.signal.aborted)
+            setHistoryError("Usage history unavailable");
+        }
       })
       .catch((reason) => {
         if (!controller.signal.aborted)
@@ -85,13 +94,27 @@ export function CacheObjects({ account }: { account: Account }) {
         ...result,
         keys: more ? [...(previous?.keys ?? []), ...result.keys] : result.keys,
       }));
+    try {
+      const history = await cacheRequest<{ samples: UsageSample[] }>(
+        account,
+        "getUsageHistory",
+        {},
+        signal,
+      );
+      if (!signal.aborted) {
+        setSamples(history.samples);
+        setHistoryError("");
+      }
+    } catch {
+      if (!signal.aborted) setHistoryError("Usage history unavailable");
+    }
   }
   const submit = (event: FormEvent) => {
     event.preventDefault();
     void work((signal) => load(signal));
   };
   return (
-    <section className="rounded-xl border border-line bg-panel p-6 sm:p-8">
+    <section className="rounded-xl bg-panel p-6 sm:p-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-xl">Cache entries</h2>
         <button
@@ -125,6 +148,7 @@ export function CacheObjects({ account }: { account: Account }) {
           {listing.totalKeys.toLocaleString()} keys
         </p>
       )}
+      <UsageChart samples={samples} error={historyError} />
       <form onSubmit={submit} className="mt-5 space-y-3">
         <div className="flex flex-wrap gap-3">
           <label className="min-w-0 flex-1 text-sm" htmlFor="cache-search">

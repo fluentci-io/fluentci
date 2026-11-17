@@ -119,3 +119,25 @@ credentials remain separate from these user upload tokens.
 See the [cache API documentation](../cache/README.md#account-upload-tokens)
 for token issuance and invitations. No service is installed or started merely by
 adding these files to the checkout.
+
+### Usage history snapshots
+
+The API records the latest UTC-day storage size and key count whenever an owner
+refreshes their cache listing. Install the hourly snapshot job to keep history
+updated between page visits:
+
+```sh
+sudo install -m 0644 systemd/fluentci-cache-usage.service /etc/systemd/system/
+sudo install -m 0644 systemd/fluentci-cache-usage.timer /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now fluentci-cache-usage.timer
+sudo systemctl start fluentci-cache-usage.service
+sudo journalctl -u fluentci-cache-usage.service -n 20
+```
+
+This job uses the API's signing key and SQLite database, so install it on the API
+host. Its Node path defaults to `/opt/fluentci-runtime/node`; override `ExecStart`
+when using a different runtime path. Owners are registered when their storage is
+first listed. The chart shows the last 14 UTC days; days without a recorded
+snapshot remain missing. These are stored-object byte/count measurements, not
+CDN request or cache-hit analytics.

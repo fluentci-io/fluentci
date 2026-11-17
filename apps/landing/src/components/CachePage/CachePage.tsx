@@ -100,6 +100,13 @@ function CacheSettings({ account }: { account: Account }) {
   const [collaboratorCursor, setCollaboratorCursor] = useState<string>();
   const [collaboratorsLoaded, setCollaboratorsLoaded] = useState(false);
   const [actor, setActor] = useState("");
+  const ownActor = actor.trim().replace(/^@+/, "").toLowerCase();
+  const selfActor =
+    ownActor === account.did.toLowerCase() ||
+    Boolean(
+      account.profile?.handle &&
+      ownActor === account.profile.handle.toLowerCase(),
+    );
   const [label, setLabel] = useState("");
   const [upload, setUpload] = useState<UploadToken>();
   const [credential, setCredential] = useState<NewCredential>();
@@ -247,7 +254,7 @@ function CacheSettings({ account }: { account: Account }) {
           </p>
         )}
         {!authorized ? (
-          <section className="rounded-xl border border-line bg-panel p-6">
+          <section className="rounded-xl bg-panel p-6">
             <h2 className="text-xl">Authorize cache access</h2>
             <p className="mt-3 text-sm leading-6 text-muted">
               Your existing session needs permission to manage cache tokens and
@@ -266,7 +273,7 @@ function CacheSettings({ account }: { account: Account }) {
           <>
             <section
               hidden={panel !== "tokens"}
-              className="rounded-xl border border-line bg-panel p-6 sm:p-8"
+              className="rounded-xl bg-panel p-6 sm:p-8"
             >
               <h2 className="text-xl">Upload token</h2>
               <p className="mt-3 text-sm leading-6 text-muted">
@@ -333,7 +340,7 @@ function CacheSettings({ account }: { account: Account }) {
             </section>
             <section
               hidden={panel !== "collaborators"}
-              className="rounded-xl border border-line bg-panel p-6 sm:p-8"
+              className="rounded-xl bg-panel p-6 sm:p-8"
             >
               <h2 className="text-xl">Collaborators</h2>
               <p className="mt-3 text-sm leading-6 text-muted">
@@ -348,7 +355,13 @@ function CacheSettings({ account }: { account: Account }) {
                 value={actor}
                 change={setActor}
                 disabled={pending}
+                self={account}
               />
+              {selfActor && (
+                <p className="mt-2 text-xs text-muted">
+                  You already own this cache and cannot invite yourself.
+                </p>
+              )}
               <div className="mt-4 flex flex-wrap gap-3">
                 {(
                   [
@@ -359,7 +372,7 @@ function CacheSettings({ account }: { account: Account }) {
                   <button
                     key={method}
                     className={method === "inviteUser" ? button : secondary}
-                    disabled={pending || !actor.trim()}
+                    disabled={pending || !actor.trim() || selfActor}
                     onClick={() =>
                       void perform(async (signal) => {
                         await cacheRequest(
@@ -535,7 +548,7 @@ function CacheSettings({ account }: { account: Account }) {
             </div>
             <section
               hidden={panel !== "ci"}
-              className="rounded-xl border border-line bg-panel p-6 sm:p-8"
+              className="rounded-xl bg-panel p-6 sm:p-8"
             >
               <h2 className="text-xl">CI credentials</h2>
               <p className="mt-3 text-sm leading-6 text-muted">
@@ -675,10 +688,12 @@ function CollaboratorInput({
   value,
   change,
   disabled,
+  self,
 }: {
   value: string;
   change: (value: string) => void;
   disabled: boolean;
+  self: Account;
 }) {
   const [suggest, setSuggest] = useState(false);
   const [active, setActive] = useState(-1);
@@ -687,10 +702,9 @@ function CollaboratorInput({
     value,
     suggest && !disabled && !value.startsWith("did:"),
   );
+  const items = suggestions.items.filter((profile) => profile.did !== self.did);
   const show =
-    suggest &&
-    !disabled &&
-    (suggestions.loading || suggestions.items.length > 0);
+    suggest && !disabled && (suggestions.loading || items.length > 0);
   const select = (profile: Profile) => {
     change(profile.handle);
     setSuggest(false);
@@ -723,16 +737,16 @@ function CollaboratorInput({
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
             setActive((index) =>
-              suggestions.items.length
+              items.length
                 ? (index +
                     (event.key === "ArrowDown" ? 1 : -1) +
-                    suggestions.items.length) %
-                  suggestions.items.length
+                    items.length) %
+                  items.length
                 : -1,
             );
-          } else if (event.key === "Enter" && suggestions.items[active]) {
+          } else if (event.key === "Enter" && items[active]) {
             event.preventDefault();
-            select(suggestions.items[active]);
+            select(items[active]);
           } else if (event.key === "Escape") {
             event.preventDefault();
             setSuggest(false);
@@ -747,7 +761,7 @@ function CollaboratorInput({
       {show && (
         <HandleSuggestions
           id="cache-invite-suggestions"
-          items={suggestions.items}
+          items={items}
           loading={suggestions.loading}
           active={active}
           select={select}

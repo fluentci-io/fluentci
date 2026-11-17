@@ -27,4 +27,14 @@ defs = new Mapping {
   ["lastModified"] = new StringField { format = "datetime" }
  }
  }
+  ["usageSample"] = new ObjectField {
+    required = List("date", "bytes", "keyCount", "observedAt")
+    properties = new Mapping {
+      ["date"] = new StringField { minLength = 10
+ maxLength = 10 }
+      ["bytes"] = new IntegerField { minimum = 0 }
+      ["keyCount"] = new IntegerField { minimum = 0 }
+      ["observedAt"] = new StringField { format = "datetime" }
+    }
+  }
 }

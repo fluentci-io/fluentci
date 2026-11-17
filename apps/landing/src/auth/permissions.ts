@@ -1,4 +1,5 @@
 export const cacheMethods = [
+  "getUsageHistory",
   "listKeys",
   "deleteKey",
   "clearCache",

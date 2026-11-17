@@ -72,7 +72,7 @@ export async function membership(server, request, active, grant) {
   return { encoding: 'application/json', body: { owner, actor, active } };
 }
 
-export async function manageCache(server, request, action) {
+export async function manageCache(server, request, action, record = async () => {}) {
   if (action === 'clear' && request.input.body.confirm !== true)
     throw new XRPCError(400, 'Confirm cache clearing', 'InvalidRequest');
   const actor = request.auth.credentials.did;
@@ -91,6 +91,10 @@ export async function manageCache(server, request, action) {
       throw new Error('Cache management unavailable');
     }
     const data = await response.json();
+    if (action === 'list') {
+      const observed = new Date().toISOString();
+      await record(actor, observed.slice(0, 10), data.totalBytes, data.totalKeys, observed);
+    }
     if (data.cursor === null) delete data.cursor;
     return { encoding: 'application/json', body: data, headers: { 'Cache-Control': 'no-store' } };
   } catch (error) {
@@ -111,6 +115,33 @@ export async function listCollaborators(request, list) {
   return {
     encoding: 'application/json',
     body: { actors, ...(rows.length > 100 ? { cursor: actors.at(-1) } : {}) },
+    headers: { 'Cache-Control': 'no-store' },
+  };
+}
+
+export async function usageHistory(request, query) {
+  const now = new Date();
+  const after = new Date(now);
+  after.setUTCDate(after.getUTCDate() - 14);
+  const before = new Date(now);
+  before.setUTCDate(before.getUTCDate() + 1);
+  const rows = (
+    await query(
+      request.auth.credentials.did,
+      after.toISOString().slice(0, 10),
+      before.toISOString().slice(0, 10),
+    )
+  ).toArray();
+  return {
+    encoding: 'application/json',
+    body: {
+      samples: rows.map((row) => ({
+        date: row.date,
+        bytes: row.bytes,
+        keyCount: row.key_count,
+        observedAt: row.observed_at,
+      })),
+    },
     headers: { 'Cache-Control': 'no-store' },
   };
 }

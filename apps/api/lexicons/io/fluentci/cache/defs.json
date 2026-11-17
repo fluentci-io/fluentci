@@ -51,6 +51,34 @@
           "format": "datetime"
         }
       }
+    },
+    "usageSample": {
+      "type": "object",
+      "required": [
+        "date",
+        "bytes",
+        "keyCount",
+        "observedAt"
+      ],
+      "properties": {
+        "date": {
+          "type": "string",
+          "minLength": 10,
+          "maxLength": 10
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "keyCount": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "observedAt": {
+          "type": "string",
+          "format": "datetime"
+        }
+      }
     }
   }
 }

@@ -1,0 +1,11 @@
+[Unit]
+Description=Update FluentCI cache usage history hourly
+
+[Timer]
+OnCalendar=*-*-* *:05:00 UTC
+Persistent=true
+RandomizedDelaySec=60
+Unit=fluentci-cache-usage.service
+
+[Install]
+WantedBy=timers.target

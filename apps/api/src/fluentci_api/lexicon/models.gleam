@@ -20,6 +20,8 @@ pub const cache_delete_key = "io.fluentci.cache.deleteKey"
 
 pub const cache_exchange_credential = "io.fluentci.cache.exchangeCredential"
 
+pub const cache_get_usage_history = "io.fluentci.cache.getUsageHistory"
+
 pub const cache_invite_user = "io.fluentci.cache.inviteUser"
 
 pub const cache_list_collaborators = "io.fluentci.cache.listCollaborators"
@@ -205,6 +207,26 @@ pub fn encode_cache_key_view(value: CacheKeyView) -> json.Json {
   json.object(fields)
 }
 
+pub type CacheUsageSample {
+  CacheUsageSample(
+    date: String,
+    bytes: Int,
+    key_count: Int,
+    observed_at: String,
+  )
+}
+
+pub fn encode_cache_usage_sample(value: CacheUsageSample) -> json.Json {
+  let fields = [
+    #("date", json.string(value.date)),
+    #("bytes", json.int(value.bytes)),
+    #("keyCount", json.int(value.key_count)),
+    #("observedAt", json.string(value.observed_at)),
+  ]
+
+  json.object(fields)
+}
+
 pub type CacheDeleteKeyInput {
   CacheDeleteKeyInput(key: String)
 }
@@ -256,6 +278,35 @@ pub fn encode_cache_exchange_credential_output(
     #("expiresAt", json.string(value.expires_at)),
     #("cacheUrl", json.string(value.cache_url)),
     #("owner", json.string(value.owner)),
+  ]
+
+  json.object(fields)
+}
+
+pub type CacheGetUsageHistoryInput {
+  CacheGetUsageHistoryInput
+}
+
+pub fn encode_cache_get_usage_history_input(
+  _value: CacheGetUsageHistoryInput,
+) -> json.Json {
+  let fields = []
+
+  json.object(fields)
+}
+
+pub type CacheGetUsageHistoryOutput {
+  CacheGetUsageHistoryOutput(samples: List(CacheUsageSample))
+}
+
+pub fn encode_cache_get_usage_history_output(
+  value: CacheGetUsageHistoryOutput,
+) -> json.Json {
+  let fields = [
+    #(
+      "samples",
+      json.array(value.samples, fn(item) { encode_cache_usage_sample(item) }),
+    ),
   ]
 
   json.object(fields)
