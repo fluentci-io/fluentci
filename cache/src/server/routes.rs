@@ -6,11 +6,12 @@ use super::{
     key::key,
     upload::upload,
 };
+use crate::config::Backend;
 use axum::{
     body::Body,
     extract::{Path as UrlPath, Request, State},
     http::{Method, StatusCode, header},
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Redirect, Response},
 };
 use std::{
     sync::{Arc, atomic::Ordering},
@@ -53,12 +54,6 @@ async fn handle_inner(app: &Arc<App>, raw: &str, request: Request) -> Result<Res
     if !read && app.config.read_only {
         return Err(Failure(StatusCode::FORBIDDEN, "cache is read-only\n"));
     }
-    let permit = app
-        .permits
-        .clone()
-        .try_acquire_owned()
-        .map_err(|_| Failure(StatusCode::SERVICE_UNAVAILABLE, "cache busy; retry later\n"))?;
-    let deadline = Duration::from_secs(app.config.timeout);
     if key.nix_info {
         if !read {
             return Err(Failure(
@@ -86,6 +81,27 @@ async fn handle_inner(app: &Arc<App>, raw: &str, request: Request) -> Result<Res
         );
         return Ok(response);
     }
+    // Public Nix reads need no backend connection or transfer permit. Redirect
+    // even misses to the CDN, which returns the real 404 instead of a busy 503.
+    // Private reads keep the authenticated proxy path.
+    if read && key.is_nix() && app.config.public_read && matches!(app.config.backend, Backend::S3) {
+        let mut url =
+            reqwest::Url::parse(app.config.cdn_url.as_deref().expect("validated S3 CDN URL"))
+                .expect("validated S3 CDN URL");
+        {
+            let mut segments = url.path_segments_mut().expect("validated HTTP CDN URL");
+            segments.pop_if_empty();
+            segments.extend(app.config.prefix.split('/').filter(|part| !part.is_empty()));
+            segments.extend(key.path.as_ref().split('/'));
+        }
+        return Ok(Redirect::temporary(url.as_str()).into_response());
+    }
+    let permit = app
+        .permits
+        .clone()
+        .try_acquire_owned()
+        .map_err(|_| Failure(StatusCode::SERVICE_UNAVAILABLE, "cache busy; retry later\n"))?;
+    let deadline = Duration::from_secs(app.config.timeout);
     if read {
         tokio::time::timeout(
             deadline,

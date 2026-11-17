@@ -10,6 +10,16 @@ pub(super) struct Key {
     pub(super) nix_info: bool,
 }
 
+impl Key {
+    pub(super) fn is_nix(&self) -> bool {
+        self.path
+            .as_ref()
+            .split('/')
+            .nth(if self.account.is_some() { 2 } else { 0 })
+            == Some("nix")
+    }
+}
+
 pub(super) fn key(raw: &str) -> Result<Key> {
     if raw.len() > 2048
         || raw.contains(['\\', '\0', '%'])

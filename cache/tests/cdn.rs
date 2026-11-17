@@ -59,6 +59,7 @@ async fn fixture(public_read: bool) -> (Router, Arc<InMemory>, Cdn, tokio::task:
     config.backend = Backend::S3;
     config.prefix = "team/cache".into();
     config.public_read = public_read;
+    config.concurrency = 1;
     config.cdn_url = Some(format!("http://{}/bucket/", listener.local_addr().unwrap()));
     let service = Router::new()
         .fallback(any(self::cdn))
@@ -257,5 +258,102 @@ async fn account_reads_are_public_through_configured_cdn() {
             .iter()
             .all(|(_, path, auth)| path == &format!("/bucket/team/cache{key}") && !auth)
     );
+    server.abort();
+}
+
+#[tokio::test]
+async fn public_nix_reads_redirect_without_waiting_for_saturated_transfer_slots() {
+    let (app, writes, cdn, server) = fixture(true).await;
+    // Keep the sole transfer permit until this response is dropped.
+    let held = app
+        .clone()
+        .oneshot(request("GET", "/generic/key", Body::empty()))
+        .await
+        .unwrap();
+    let account = "a".repeat(64);
+    for path in [
+        "/nix/hash.narinfo".to_owned(),
+        "/hash.narinfo".to_owned(),
+        "/nar/payload.nar.xz".to_owned(),
+        format!("/accounts/{account}/nix/hash.narinfo"),
+        format!("/accounts/{account}/nix/nar/payload.nar.xz"),
+    ] {
+        for method in ["GET", "HEAD"] {
+            let response = app
+                .clone()
+                .oneshot(
+                    Request::builder()
+                        .method(method)
+                        .uri(&path)
+                        .body(Body::empty())
+                        .unwrap(),
+                )
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
+            let location = response.headers()[header::LOCATION].to_str().unwrap();
+            let url = reqwest::Url::parse(location).unwrap();
+            let canonical = if path.starts_with("/accounts/") || path.starts_with("/nix/") {
+                path.clone()
+            } else {
+                format!("/nix{path}")
+            };
+            assert_eq!(url.path(), format!("/bucket/team/cache{canonical}"));
+            assert!(url.username().is_empty());
+            assert!(url.password().is_none());
+            assert!(url.query().is_none());
+        }
+    }
+    for path in [
+        "/nix-cache-info".to_owned(),
+        format!("/accounts/{account}/nix/nix-cache-info"),
+    ] {
+        let response = app
+            .clone()
+            .oneshot(request("GET", &path, Body::empty()))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::OK);
+        assert!(
+            to_bytes(response.into_body(), 1024)
+                .await
+                .unwrap()
+                .starts_with(b"StoreDir:")
+        );
+    }
+    assert_eq!(cdn.requests.lock().unwrap().len(), 1);
+    assert!(writes.head(&Path::from("nix/hash.narinfo")).await.is_err());
+    drop(held);
+    // Uploads still go to the write store, never to the public CDN.
+    let response = app
+        .oneshot(request("PUT", "/nix/hash.narinfo", "signed metadata"))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::CREATED);
+    assert!(writes.head(&Path::from("nix/hash.narinfo")).await.is_ok());
+    server.abort();
+}
+
+#[tokio::test]
+async fn private_nix_reads_never_redirect_to_public_cdn() {
+    let (app, _, _, server) = fixture(false).await;
+    let response = app
+        .clone()
+        .oneshot(
+            Request::builder()
+                .uri("/nix/hash.narinfo")
+                .body(Body::empty())
+                .unwrap(),
+        )
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::UNAUTHORIZED);
+    assert!(!response.headers().contains_key(header::LOCATION));
+    let response = app
+        .oneshot(request("GET", "/nix/hash.narinfo", Body::empty()))
+        .await
+        .unwrap();
+    assert_eq!(response.status(), StatusCode::NOT_FOUND);
+    assert!(!response.headers().contains_key(header::LOCATION));
     server.abort();
 }
