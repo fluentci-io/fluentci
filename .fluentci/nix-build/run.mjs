@@ -114,14 +114,20 @@ const batches = (values, size = 100) =>
     values.slice(index * size, (index + 1) * size),
   );
 
-export async function uploadFiles(directory, cache, token, fetcher = fetch) {
+export async function uploadFiles(
+  directory,
+  cache,
+  token,
+  fetcher = fetch,
+  metadataFiles,
+) {
   // Publish payloads completely before making any narinfo visible to readers.
   const nars = (await readdir(join(directory, "nar"))).map(
     (file) => `nar/${file}`,
   );
-  const infos = (await readdir(directory)).filter((file) =>
-    file.endsWith(".narinfo"),
-  );
+  const infos =
+    metadataFiles ??
+    (await readdir(directory)).filter((file) => file.endsWith(".narinfo"));
   for (const files of [nars, infos]) {
     for (const group of batches(files, 4)) {
       const results = await Promise.allSettled(
@@ -196,6 +202,9 @@ export async function build(
     const keyPath = join(directory, "signing.key");
     await writeFile(keyPath, config.signingKey + "\n", { mode: 0o600 });
     const published = new Set();
+    const publishedMetadata = new Set();
+    const exportDir = join(directory, "cache");
+    await mkdir(exportDir);
     const allPaths = async () =>
       lines(await run("nix", ["path-info", "--all"], config.nixEnv, true));
     const seen = new Set(await allPaths());
@@ -219,19 +228,29 @@ export async function build(
           .filter((info) => !info.signatures?.length)
           .map((info) => info.path);
         if (!paths.length) continue;
-        const exportDir = join(directory, "cache");
-        await mkdir(exportDir);
-        try {
-          const destination = pathToFileURL(exportDir);
-          destination.searchParams.set("secret-key", keyPath);
-          await run(
-            "nix",
-            ["copy", "--no-recursive", "--to", destination.href, ...paths],
-            config.nixEnv,
-          );
-          await requireSignatures(exportDir, config.publicKey);
-          // Ask Nix to verify exported signatures using our key, without rereading
-          // or decompressing the NAR payloads. No unsigned metadata is published.
+        const destination = pathToFileURL(exportDir);
+        destination.searchParams.set("secret-key", keyPath);
+        // Export references recursively: a binary cache rejects a path whose
+        // references have no narinfo in the destination. Keep those narinfos
+        // between batches so common dependencies are exported only once.
+        await run(
+          "nix",
+          ["copy", "--to", destination.href, ...paths],
+          config.nixEnv,
+        );
+        const metadataFiles = (await readdir(exportDir)).filter(
+          (file) => file.endsWith(".narinfo") && !publishedMetadata.has(file),
+        );
+        if (!metadataFiles.length) continue;
+        const exportedPaths = [];
+        for (const file of metadataFiles) {
+          const text = await readFile(join(exportDir, file), "utf8");
+          const path = /^StorePath: (.+)$/m.exec(text)?.[1];
+          if (!path) throw Error(`Invalid exported Nix metadata: ${file}`);
+          exportedPaths.push(path);
+        }
+        await requireSignatures(exportDir, config.publicKey);
+        for (const exportedBatch of batches(exportedPaths)) {
           await run(
             "nix",
             [
@@ -244,18 +263,27 @@ export async function build(
               "1",
               "--trusted-public-keys",
               config.publicKey,
-              ...paths,
+              ...exportedBatch,
             ],
             config.nixEnv,
           );
-          await upload(exportDir, config.cache, config.token);
-          paths.forEach((path) => published.add(path));
-          console.log(
-            `Published ${paths.length} signed store paths (${published.size} total)`,
-          );
-        } finally {
-          await rm(exportDir, { recursive: true, force: true });
         }
+        await upload(
+          exportDir,
+          config.cache,
+          config.token,
+          undefined,
+          metadataFiles,
+        );
+        exportedPaths.forEach((path) => published.add(path));
+        metadataFiles.forEach((file) => publishedMetadata.add(file));
+        // Remote payloads are now durable. Retain local metadata for future
+        // reference checks, while releasing large compressed NAR files.
+        await rm(join(exportDir, "nar"), { recursive: true, force: true });
+        await mkdir(join(exportDir, "nar"));
+        console.log(
+          `Published ${exportedPaths.length} signed store paths (${published.size} total)`,
+        );
       }
     };
     const scan = async () => {

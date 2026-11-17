@@ -109,6 +109,8 @@ jobs:
         shell: bash
         run: |
           test -s .fluentci/nix-build/dist/plugin.wasm
+      - name: Check Nix cache exports with native references
+        run: FLUENTCI_TEST_NIX=1 node --test .fluentci/nix-build/test/native.test.mjs
       - name: Build Nix package and upload cache through FluentCI
         env:
           FLUENTCI_CACHE_URL: ${{ vars.FLUENTCI_CACHE_URL }}

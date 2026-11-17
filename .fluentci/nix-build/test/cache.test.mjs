@@ -136,9 +136,9 @@ test("exports intermediate unsigned outputs, excludes signed substitutes, and re
     );
     await writeFile(
       join(exportPath, "test.narinfo"),
-      `Sig: fluentci-1:${Buffer.alloc(64).toString("base64")}\n`,
+      `StorePath: /nix/store/artifact\nSig: fluentci-1:${Buffer.alloc(64).toString("base64")}\n`,
     );
-    assert.ok(args.includes("--no-recursive"));
+    assert.ok(!args.includes("--no-recursive"));
     assert.ok(args.includes("/nix/store/cargo-artifacts"));
     assert.ok(!args.includes("/nix/store/public-dependency"));
   };
@@ -246,7 +246,7 @@ test("watcher publishes during the build, deduplicates paths, and drains after a
     exports++;
     await writeFile(
       join(decodeURIComponent(destination.pathname), "test.narinfo"),
-      `Sig: fluentci-1:${Buffer.alloc(64).toString("base64")}\n`,
+      `StorePath: /nix/store/artifact\nSig: fluentci-1:${Buffer.alloc(64).toString("base64")}\n`,
     );
   };
   await assert.rejects(
@@ -293,7 +293,7 @@ test("upload failure cancels the running Nix build and cleans its private key", 
     keyPath = destination.searchParams.get("secret-key");
     await writeFile(
       join(decodeURIComponent(destination.pathname), "test.narinfo"),
-      `Sig: fluentci-1:${Buffer.alloc(64).toString("base64")}\n`,
+      `StorePath: /nix/store/artifact\nSig: fluentci-1:${Buffer.alloc(64).toString("base64")}\n`,
     );
   };
   await assert.rejects(

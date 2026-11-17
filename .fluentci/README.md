@@ -151,8 +151,10 @@ configuration fails. During a build, the helper polls the valid Nix store every
 two seconds and publishes newly added unsigned paths, including intermediate
 Crane Cargo artifacts. It drains pending uploads at the end and checks the final
 closure for paths it has not published. Completed artifacts remain cached if a
-later build step fails. Dependencies already signed by trusted substituters stay
-in their original caches.
+later build step fails. Each selected artifact is exported with its references,
+including upstream dependencies, so the published cache has a complete closure.
+Already published paths are reused between batches. Compressed payloads are
+removed locally after upload while metadata is retained for reference checks.
 
 Every export is signed with the private key. Before uploading, the helper checks
 for the configured key's signature on every narinfo and asks Nix to verify those
