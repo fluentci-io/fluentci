@@ -6,3 +6,7 @@
 - Do not run the `fluentci` CLI locally unless the user explicitly permits it.
 - Build Studio assets with `cd webui && bun install --frozen-lockfile --ignore-scripts && bun run build:web` before compiling the CLI.
 - Keep all `use` imports in one contiguous block. Add blank lines after that block and between functions, types, and implementations.
+
+# Commit messages
+
+- Always use Conventional Commits for commit messages (for example, `feat(cache): add storage management` or `fix(api): validate cache tokens`).
