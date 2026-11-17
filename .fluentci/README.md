@@ -33,7 +33,7 @@ fluentci run desktop package --target aarch64-apple-darwin --version v0.17.2
 fluentci run release build-prepared --target x86_64-unknown-linux-gnu
 fluentci run release package --target x86_64-unknown-linux-gnu --version v0.17.2
 fluentci run setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci
-fluentci run nix-build build --cache fluentci
+fluentci run nix-build build
 ```
 
 Arguments are WIT strings with source descriptions. These jobs perform effects
@@ -43,18 +43,18 @@ without inputs take no flags. WIT uses kebab-case names: `build-prepared`,
 Invalid or missing arguments fail before invoking the job. Runtime configuration
 such as target, version, and cache is explicit; tokens stay in the environment.
 
-| Module      | Functions                                                                                                                                             | Purpose                                    |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| `main`      | `check`, `build`                                                                                                                                      | Repository checks and release CLI build    |
-| `rust`      | `format`, `lint`, `test`, `check`, `build`                                                                                                            | Release Cargo checks; Studio builds first  |
-| `studio`    | `install`, `build`                                                                                                                                    | Frozen Bun install and embedded web assets |
-| `release`   | `prepare`, `build`, `build-prepared`, `check`, `package`, `upload`, `linux-dependencies`, `reserve-bsd-disk`, `bsd-build`, `bsd-verify`, `bsd-upload`, `linux-package-dependencies`, `linux-package`, `linux-package-github`, `linux-package-publish`, `smoke` | CLI releases on Linux, macOS and BSD       |
-| `desktop`   | `build`, `clean`, `sign`, `package`, `upload`                                                                                                         | macOS Studio releases                      |
-| `nix`       | `check`, `metadata`, `flakehub`, `flakestry`                                                                                                          | Nix checks and publication                 |
-| `nix-build` | `build`                                                                                                                                               | Nix build with Cachix uploads              |
-| `cachix`    | `setup`, `push`                                                                                                                                       | Cache configuration and result uploads     |
-| `gemfury` | `upload` | Published package uploader |
-| `setup-gemfury` | `setup` | Published upload prerequisites |
+| Module          | Functions                                                                                                                                                                                                                                                      | Purpose                                    |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| `main`          | `check`, `build`                                                                                                                                                                                                                                               | Repository checks and release CLI build    |
+| `rust`          | `format`, `lint`, `test`, `check`, `build`                                                                                                                                                                                                                     | Release Cargo checks; Studio builds first  |
+| `studio`        | `install`, `build`                                                                                                                                                                                                                                             | Frozen Bun install and embedded web assets |
+| `release`       | `prepare`, `build`, `build-prepared`, `check`, `package`, `upload`, `linux-dependencies`, `reserve-bsd-disk`, `bsd-build`, `bsd-verify`, `bsd-upload`, `linux-package-dependencies`, `linux-package`, `linux-package-github`, `linux-package-publish`, `smoke` | CLI releases on Linux, macOS and BSD       |
+| `desktop`       | `build`, `clean`, `sign`, `package`, `upload`                                                                                                                                                                                                                  | macOS Studio releases                      |
+| `nix`           | `check`, `metadata`, `flakehub`, `flakestry`                                                                                                                                                                                                                   | Nix checks and publication                 |
+| `nix-build`     | `build`                                                                                                                                                                                                                                                        | Nix build with FluentCI cache uploads      |
+| `cachix`        | `setup`, `push`                                                                                                                                                                                                                                                | Cache configuration and result uploads     |
+| `gemfury`       | `upload`                                                                                                                                                                                                                                                       | Published package uploader                 |
+| `setup-gemfury` | `setup`                                                                                                                                                                                                                                                        | Published upload prerequisites             |
 
 ## Build and test
 
@@ -119,35 +119,44 @@ the image is verified before checksums or uploads. `desktop clean --target …`
 removes disposable CI build products while preserving the bundled app and
 reusable Cargo dependencies. It skips cleanup outside GitHub Actions.
 
-## Cachix and Nix publishing
+## FluentCI cache and Nix publishing
 
-The registry module `setup-cachix@0.2.1` installs Cachix and enables the public
-`fluentci` cache with `--cache fluentci`. Pin the upstream Cachix version with
-`--version 1.14.0`: Cachix publishes Git tags, while this plugin's default `latest`
-lookup expects a GitHub Release. Its typed environment result is exported
-to subsequent workflow steps. `CACHIX_AUTH_TOKEN` enables uploads; missing or
-blank tokens skip uploads while Nix builds still run.
-The Nix build and publishing workflows pass the job's GitHub token as `GH_TOKEN`
-and as `access-tokens = github.com=…` through `NIX_CONFIG`. Nix requires the latter
-to authenticate GitHub flake fetches; setting `GH_TOKEN` alone is insufficient.
-Tokens remain in the workflow environment rather than command arguments or files.
-The environment bridge streams host-command logs immediately to the workflow
-console, including Nix downloads and build output, while keeping the final typed
-environment JSON separate. Installing Cachix can take longer on a cold Nix store.
-`nix-build build --cache fluentci` uses Cachix `watch-exec`
-to upload new build paths through the local `CI.Cachix` helper, then pushes the
-final `./result` closure. The local `cachix` module is compiled alongside `nix-build`;
-the registry setup module configures the workflow environment. Both Wasm artifacts
-are staged with explicit relative paths before upload and checked after download.
-Failures
-propagate. The cache name is a named argument; the token is never a CLI argument.
+The Nix build workflow pins FluentCI CLI **v0.17.8**, the latest published
+release, and uses the FluentCI cache service on Linux x86_64, Linux ARM64, and
+macOS. It compiles the PureScript Nix component to Wasm before running builds.
+
+Add these GitHub Actions repository **variables**:
+
+| Variable                  | Value                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `FLUENTCI_CACHE_URL`      | Account base URL from the cache page: `https://cache.fluentci.io/accounts/<owner-hash>`, without `/nix` |
+| `FLUENTCI_NIX_PUBLIC_KEY` | Complete public key, such as `fluentci-1:<base64>`                                                      |
+
+Add these repository **secrets**:
+
+| Secret                     | Value                                                         |
+| -------------------------- | ------------------------------------------------------------- |
+| `FLUENTCI_CACHE_TOKEN`     | Upload token generated on the cache page; valid until revoked |
+| `FLUENTCI_NIX_SIGNING_KEY` | Complete private signing-key file contents, not a path        |
+
+Generate a matching key pair outside the checkout:
 
 ```sh
-fluentci run setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci
-fluentci run nix-build build --cache fluentci
-cachix push fluentci ./result
-fluentci run nix flakehub --version v0.17.2
-fluentci run nix flakestry --version v0.17.2 --ref COMMIT_SHA
+nix-store --generate-binary-cache-key fluentci-1 nix-private.key nix-public.key
+```
+
+Public reads require only the two variables. Uploads require both secrets.
+With no cache configuration the build uses default Nix substituters; incomplete
+configuration fails. The helper exports signed NARs for unsigned build paths,
+including intermediate Crane Cargo artifacts and the final closure. Dependencies
+already signed by trusted substituters remain available from their original
+caches. It uploads NARs before narinfo metadata; upload errors fail CI.
+Signing keys are temporary files outside the checkout and are removed after
+publishing. Credentials never appear in command arguments. The workflow
+preserves GitHub authentication through `GH_TOKEN` and `NIX_CONFIG`.
+
+```sh
+fluentci run nix-build build
 ```
 
 Nix publishers require their tools and GitHub OIDC variables. FlakeHub also needs

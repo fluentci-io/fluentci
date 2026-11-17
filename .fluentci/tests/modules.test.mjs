@@ -43,7 +43,7 @@ function namedArguments(module, fn, values) {
         upload: ["target", "version"],
       },
       nix: { flakehub: ["version"], flakestry: ["version", "ref"] },
-      "nix-build": { build: ["cache"] },
+      "nix-build": { build: [] },
     }[name]?.[fn] ?? [];
   const variables = {
     target: "TARGET",
@@ -64,6 +64,12 @@ function fixture(t) {
   const bin = join(directory, "bin");
   mkdirSync(bin);
   mkdirSync(join(directory, "webui"));
+  mkdirSync(join(directory, ".fluentci/nix-build"), { recursive: true });
+  writeFileSync(
+    join(directory, ".fluentci/nix-build/run.mjs"),
+    readFileSync(join(root, ".fluentci/nix-build/run.mjs")),
+  );
+
   const log = join(directory, "commands.jsonl");
   const mock = join(bin, "command.mjs");
   writeFileSync(
@@ -73,6 +79,7 @@ import { basename } from "node:path";
 const command = basename(process.argv[1]);
 appendFileSync(process.env.CI_TEST_LOG, JSON.stringify({command, args: process.argv.slice(2), cwd: process.cwd()}) + "\\n");
 if (process.env.CI_TEST_FAIL === command + ":" + process.argv[2]) process.exit(7);
+if (command === "nix" && process.argv[2] === "build") console.log("[]");
 if (command === "escript" && process.argv[3] === "build-bsd-release") writeFileSync("bsd-built", "bsd-build");
 if (command === "hdiutil") writeFileSync(process.argv.at(-1), "fixture dmg");
 if (command === "ditto" && process.argv.includes("-c")) writeFileSync(process.argv.at(-1), "fixture zip");
@@ -430,10 +437,7 @@ test("compiled BSD functions invoke the native helper and copied-back verifier",
   const f = fixture(t);
   const scripts = join(f.directory, ".github/scripts");
   mkdirSync(scripts, { recursive: true });
-  writeFileSync(
-    join(scripts, "fluentci_ci"),
-    "compiled BEAM helper fixture\n",
-  );
+  writeFileSync(join(scripts, "fluentci_ci"), "compiled BEAM helper fixture\n");
   const module = join(root, ".fluentci/release/dist/plugin.wasm");
   success(
     f.run(module, "bsdBuild", {
@@ -571,52 +575,52 @@ test("desktop jobs reject invalid targets and unsafe release tags", (t) => {
   }
 });
 
-test("Nix build module invokes the locked FluentCI package build", (t) => {
+const noCache = {
+  FLUENTCI_CACHE_URL: null,
+  FLUENTCI_NIX_PUBLIC_KEY: null,
+  FLUENTCI_CACHE_TOKEN: null,
+  FLUENTCI_NIX_SIGNING_KEY: null,
+};
+
+test("Nix build uses default substituters without cache configuration", (t) => {
   const f = fixture(t);
-  success(f.run("nix-build", "build", { CACHIX_AUTH_TOKEN: null }));
+  success(f.run("nix-build", "build", noCache));
   assert.deepEqual(
     f.commands().map(({ command, args }) => [command, ...args]),
-    [["nix", "build", "--no-write-lock-file", ".#fluentci"]],
+    [["nix", "build", "--no-write-lock-file", "--json", ".#fluentci"]],
   );
 });
 
-test("Nix builds watch and push store paths when Cachix authentication is configured", (t) => {
+test("Nix build supports public cache reads without upload credentials", (t) => {
   const f = fixture(t);
   success(
-    f.run("nix-build", "build", { CACHIX_AUTH_TOKEN: "test-only-token" }),
+    f.run("nix-build", "build", {
+      ...noCache,
+      FLUENTCI_CACHE_URL: `https://cache.fluentci.io/accounts/${"a".repeat(64)}`,
+      FLUENTCI_NIX_PUBLIC_KEY: `fluentci-1:${Buffer.alloc(32).toString("base64")}`,
+    }),
   );
-  const commands = f.commands().map(({ command, args }) => [command, ...args]);
-  const prefix = [
-    "nix",
-    "run",
-    "--no-write-lock-file",
-    "--inputs-from",
-    ".",
-    "nixpkgs#cachix",
-    "--",
-  ];
-  assert.deepEqual(commands, [
-    [
-      ...prefix,
-      "watch-exec",
-      "fluentci",
-      "--",
-      "nix",
-      "build",
-      "--no-write-lock-file",
-      ".#fluentci",
-    ],
-    [...prefix, "push", "fluentci", "./result"],
-  ]);
-  assert.ok(!JSON.stringify(commands).includes("test-only-token"));
+  assert.equal(f.commands().length, 1);
 });
 
-test("failed watched Nix builds stop before the final cache push", (t) => {
+test("Nix build rejects incomplete upload credentials before building", (t) => {
   const f = fixture(t);
   assert.notEqual(
     f.run("nix-build", "build", {
-      CACHIX_AUTH_TOKEN: "test-only-token",
-      CI_TEST_FAIL: "nix:run",
+      ...noCache,
+      FLUENTCI_CACHE_TOKEN: "test-only-token",
+    }).status,
+    0,
+  );
+  assert.equal(f.commands().length, 0);
+});
+
+test("failed Nix build never attempts cache export", (t) => {
+  const f = fixture(t);
+  assert.notEqual(
+    f.run("nix-build", "build", {
+      ...noCache,
+      CI_TEST_FAIL: "nix:build",
     }).status,
     0,
   );

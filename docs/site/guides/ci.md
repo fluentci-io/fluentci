@@ -92,17 +92,43 @@ nix build .#fluentci
 bun scripts/generate-bun-nix.mjs
 ```
 
-`.github/workflows/nix-build.yml` runs on pushes to `main` and manual dispatch.
-It compiles the `nix-build` and `cachix` PureScript modules once, then runs their
-Wasm on the three native platforms. Cachix setup runs before the Nix build. Set
-the `CACHIX_AUTH_TOKEN` repository secret; the workflow uses the `fluentci` cache.
-Missing or empty tokens skip Cachix and continue the build.
-With a token, the `nix-build` module runs
-`cachix watch-exec fluentci -- nix build --no-write-lock-file .#fluentci` through
-the pinned Cachix executable. It uploads new build outputs and dependencies, then
-explicitly pushes `./result` and its runtime closure. Upload failures fail CI.
-Without a token, it runs the normal Nix build and skips uploads. The token needs
-write access to the `fluentci` cache; it never appears in command arguments.
+The Nix build workflow pins FluentCI CLI **v0.17.8**, the latest published
+release, and uses the FluentCI cache service on Linux x86_64, Linux ARM64, and
+macOS. It compiles the PureScript Nix component to Wasm before running builds.
+
+Add these GitHub Actions repository **variables**:
+
+| Variable                  | Value                                                                                                   |
+| ------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `FLUENTCI_CACHE_URL`      | Account base URL from the cache page: `https://cache.fluentci.io/accounts/<owner-hash>`, without `/nix` |
+| `FLUENTCI_NIX_PUBLIC_KEY` | Complete public key, such as `fluentci-1:<base64>`                                                      |
+
+Add these repository **secrets**:
+
+| Secret                     | Value                                                         |
+| -------------------------- | ------------------------------------------------------------- |
+| `FLUENTCI_CACHE_TOKEN`     | Upload token generated on the cache page; valid until revoked |
+| `FLUENTCI_NIX_SIGNING_KEY` | Complete private signing-key file contents, not a path        |
+
+Generate a matching key pair outside the checkout:
+
+```sh
+nix-store --generate-binary-cache-key fluentci-1 nix-private.key nix-public.key
+```
+
+Public reads require only the two variables. Uploads require both secrets.
+With no cache configuration the build uses default Nix substituters; incomplete
+configuration fails. The helper exports signed NARs for unsigned build paths,
+including intermediate Crane Cargo artifacts and the final closure. Dependencies
+already signed by trusted substituters remain available from their original
+caches. It uploads NARs before narinfo metadata; upload errors fail CI.
+Signing keys are temporary files outside the checkout and are removed after
+publishing. Credentials never appear in command arguments. The workflow
+preserves GitHub authentication through `GH_TOKEN` and `NIX_CONFIG`.
+
+```sh
+fluentci run nix-build build
+```
 
 ## Debian and RPM releases with Gemfury
 

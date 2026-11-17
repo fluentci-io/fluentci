@@ -13,11 +13,11 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  FLUENTCI_VERSION: 'v0.17.3'
+  FLUENTCI_VERSION: "v0.17.8"
 
 jobs:
   prepare:
-    name: Compile Nix and Cachix Wasm modules
+    name: Compile Nix Wasm module
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -51,18 +51,11 @@ jobs:
           npm ci --ignore-scripts
           npm run build
           npm test
-      - name: Compile and test Cachix module
-        working-directory: .fluentci/cachix
-        run: |
-          npm ci --ignore-scripts
-          npm run build
-          npm test
       - name: Stage CI modules with explicit relative paths
         shell: bash
         run: |
-          mkdir -p "$RUNNER_TEMP/nix-ci-wasm/nix-build/dist" "$RUNNER_TEMP/nix-ci-wasm/cachix/dist"
+          mkdir -p "$RUNNER_TEMP/nix-ci-wasm/nix-build/dist"
           cp .fluentci/nix-build/dist/plugin.wasm "$RUNNER_TEMP/nix-ci-wasm/nix-build/dist/plugin.wasm"
-          cp .fluentci/cachix/dist/plugin.wasm "$RUNNER_TEMP/nix-ci-wasm/cachix/dist/plugin.wasm"
       - uses: actions/upload-artifact@v4
         with:
           name: nix-ci-wasm
@@ -116,21 +109,13 @@ jobs:
         shell: bash
         run: |
           test -s .fluentci/nix-build/dist/plugin.wasm
-          test -s .fluentci/cachix/dist/plugin.wasm
-      - name: Set up Cachix through FluentCI
-        shell: bash
-        env:
-          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
-          GH_TOKEN: ${{ github.token }}
-          NIX_CONFIG: |
-            access-tokens = github.com=${{ github.token }}
-        # Cachix publishes source tags, not GitHub Releases; pin the upstream
-        # version to bypass this plugin's releases/latest lookup.
-        run: fluentci --check-update=false run setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci | escript .github/scripts/fluentci_ci export-setup-env
       - name: Build Nix package and upload cache through FluentCI
         env:
-          CACHIX_AUTH_TOKEN: ${{ secrets.CACHIX_AUTH_TOKEN }}
+          FLUENTCI_CACHE_URL: ${{ vars.FLUENTCI_CACHE_URL }}
+          FLUENTCI_NIX_PUBLIC_KEY: ${{ vars.FLUENTCI_NIX_PUBLIC_KEY }}
+          FLUENTCI_CACHE_TOKEN: ${{ secrets.FLUENTCI_CACHE_TOKEN }}
+          FLUENTCI_NIX_SIGNING_KEY: ${{ secrets.FLUENTCI_NIX_SIGNING_KEY }}
           GH_TOKEN: ${{ github.token }}
           NIX_CONFIG: |
             access-tokens = github.com=${{ github.token }}
-        run: fluentci --check-update=false run --wasm .fluentci/nix-build/dist/plugin.wasm build --cache fluentci
+        run: fluentci --check-update=false run --wasm .fluentci/nix-build/dist/plugin.wasm build
