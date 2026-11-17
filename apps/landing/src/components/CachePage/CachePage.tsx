@@ -42,7 +42,12 @@ export function CachePage() {
           <h1 className="mt-3 text-3xl sm:text-4xl">
             Your cache, ready to share.
           </h1>
-          <p className="mt-4 text-sm leading-7 text-muted">
+          <p className="mt-4 max-w-4xl text-sm leading-7 text-muted">
+            Globally distributed caching for Nix, Bazel (HTTP and gRPC),
+            Turborepo, Nx, BuildKit / Docker Buildx, sccache, Go, Maven, Gradle,
+            and generic HTTP artifacts.
+          </p>
+          <p className="mt-3 text-sm leading-7 text-muted">
             Generate upload tokens, invite collaborators, and connect CI. Cached
             files are public to anyone with their URL.
           </p>
