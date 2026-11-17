@@ -118,6 +118,13 @@ async function mock(page: Page) {
   return { methods, calls };
 }
 
+async function selectPanel(page: Page, name: string) {
+  await page
+    .getByRole("navigation", { name: "Cache navigation" })
+    .getByRole("button", { name, exact: true })
+    .click();
+}
+
 test("cache requires sign in and older sessions need cache authorization", async ({
   page,
 }) => {
@@ -141,6 +148,7 @@ test("cache exchanges method-scoped service tokens, invites users, renews and cl
   await session(page);
   const { methods, calls } = await mock(page);
   await page.goto("/cache");
+  await selectPanel(page, "Upload tokens");
   await page.getByRole("button", { name: "Generate upload token" }).click();
   await expect(page.getByLabel("Upload token", { exact: true })).toHaveValue(
     token,
@@ -156,6 +164,7 @@ test("cache exchanges method-scoped service tokens, invites users, renews and cl
   await expect(page.getByLabel("Upload token", { exact: true })).toHaveCount(0);
   await page.getByRole("button", { name: "Generate upload token" }).click();
   await expect.poll(() => calls.at(-1)?.body.owner).toBe("friend.example");
+  await selectPanel(page, "Collaborators");
   await page.getByLabel("Collaborator handle or DID").fill("@teammate.example");
   await page.getByRole("button", { name: "Invite user", exact: true }).click();
   await expect(
@@ -194,6 +203,7 @@ test("CI credential secret appears once and owner can revoke it", async ({
   await session(page);
   const { calls } = await mock(page);
   await page.goto("/cache");
+  await selectPanel(page, "CI credentials");
   await page.getByLabel("Credential name").fill("Build");
   await page
     .getByRole("button", { name: "Create CI credential", exact: true })
@@ -287,6 +297,7 @@ test("cache invitations suggest handles and listed collaborators can be removed"
     },
   );
   await page.goto("/cache");
+  await selectPanel(page, "Collaborators");
   const input = page.getByLabel("Collaborator handle or DID");
   await input.fill("team");
   await expect(
@@ -340,7 +351,9 @@ test("cache storage shows usage, deletes selected keys, and requires CLEAR confi
     },
   );
   await page.goto("/cache");
-  await page.getByRole("button", { name: "Explore keys", exact: true }).click();
+  await page
+    .getByRole("button", { name: "Refresh entries", exact: true })
+    .click();
   await expect(page.getByLabel("Cache usage")).toHaveText(
     "2.0 KiB used · 1 keys",
   );
@@ -374,6 +387,7 @@ test("upload token instructions cover every client without exposing the token in
   await session(page);
   await mock(page);
   await page.goto("/cache");
+  await selectPanel(page, "Upload tokens");
   await page
     .getByRole("button", { name: "Generate upload token", exact: true })
     .click();
@@ -406,4 +420,73 @@ test("upload token instructions cover every client without exposing the token in
       ),
     ).toBe(true);
   }
+});
+
+test("cache dashboard tables filter immediately and sidebar switches views", async ({
+  page,
+}) => {
+  await session(page);
+  await mock(page);
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.cache.listKeys",
+    (route) =>
+      route.fulfill({
+        json: {
+          keys: [
+            {
+              key: "generic/release",
+              size: 2048,
+              lastModified: new Date().toISOString(),
+            },
+            {
+              key: "bazel/cas/build",
+              size: 4096,
+              lastModified: new Date().toISOString(),
+            },
+          ],
+          totalKeys: 2,
+          totalBytes: 6144,
+        },
+      }),
+  );
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.cache.listCollaborators",
+    (route) =>
+      route.fulfill({
+        json: {
+          actors: [
+            "did:plc:friendoneabcdefghijklmn",
+            "did:plc:friendtwoabcdefghijklmn",
+          ],
+        },
+      }),
+  );
+  await page.goto("/cache");
+  const table = page.getByRole("table", { name: "Cache entries", exact: true });
+  await expect(table.getByRole("row")).toHaveCount(3);
+  await page
+    .getByLabel("Search cache entries", { exact: true })
+    .fill("release");
+  await expect(table.getByRole("row")).toHaveCount(2);
+  await expect(table).not.toContainText("bazel/cas/build");
+  await selectPanel(page, "Collaborators");
+  const collaborators = page.getByRole("table", {
+    name: "Collaborators",
+    exact: true,
+  });
+  await expect(collaborators.getByRole("row")).toHaveCount(3);
+  await page
+    .getByLabel("Search collaborators", { exact: true })
+    .fill("friendtwo");
+  await expect(collaborators.getByRole("row")).toHaveCount(2);
+  await expect(collaborators).not.toContainText("friendone");
+  expect(
+    await page.evaluate(
+      () => document.documentElement.scrollWidth <= innerWidth,
+    ),
+  ).toBe(true);
+  await page.screenshot({
+    path: `/tmp/fluentci-cache-dashboard-${test.info().project.name}.png`,
+    fullPage: true,
+  });
 });

@@ -26,6 +26,7 @@ function formatBytes(value: number) {
 }
 export function CacheObjects({ account }: { account: Account }) {
   const [listing, setListing] = useState<Listing>();
+  const [search, setSearch] = useState("");
   const [prefix, setPrefix] = useState("");
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
@@ -36,8 +37,22 @@ export function CacheObjects({ account }: { account: Account }) {
   useEffect(() => {
     const controller = new AbortController();
     lifetime.current = controller;
+    setPending(true);
+    void cacheRequest<Listing>(account, "listKeys", {}, controller.signal)
+      .then((result) => {
+        if (!controller.signal.aborted) setListing(result);
+      })
+      .catch((reason) => {
+        if (!controller.signal.aborted)
+          setError(
+            reason instanceof Error ? reason.message : "Cache request failed",
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setPending(false);
+      });
     return () => controller.abort();
-  }, []);
+  }, [account]);
   async function work(run: (signal: AbortSignal) => Promise<void>) {
     if (pending || !lifetime.current) return;
     const signal = lifetime.current.signal;
@@ -77,7 +92,19 @@ export function CacheObjects({ account }: { account: Account }) {
   };
   return (
     <section className="rounded-xl border border-line bg-panel p-6 sm:p-8">
-      <h2 className="text-xl">Cache storage</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-xl">Cache entries</h2>
+        <button
+          className={`${button} text-red-400`}
+          disabled={pending}
+          onClick={() => {
+            setRemove("*");
+            setConfirm("");
+          }}
+        >
+          Clear cache
+        </button>
+      </div>
       <p className="mt-3 text-sm leading-6 text-muted">
         Explore and manage your own cache. Storage totals include all keys in
         your account.
@@ -98,77 +125,127 @@ export function CacheObjects({ account }: { account: Account }) {
           {listing.totalKeys.toLocaleString()} keys
         </p>
       )}
-      <form onSubmit={submit} className="mt-5 flex flex-wrap gap-3">
-        <label className="min-w-0 flex-1 text-sm">
-          Key prefix
+      <form onSubmit={submit} className="mt-5 space-y-3">
+        <div className="flex flex-wrap gap-3">
+          <label className="min-w-0 flex-1 text-sm" htmlFor="cache-search">
+            Search cache entries
+            <input
+              id="cache-search"
+              type="search"
+              className={`${field} mt-2`}
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Quick filter by key"
+            />
+          </label>
+          <button className={`${button} self-end`} disabled={pending}>
+            Refresh entries
+          </button>
+        </div>
+        <details className="text-xs text-muted">
+          <summary className="cursor-pointer">Filter storage by prefix</summary>
+          <label className="mt-3 block" htmlFor="cache-prefix">
+            Key prefix
+          </label>
           <input
+            id="cache-prefix"
             className={`${field} mt-2`}
             value={prefix}
-            onChange={(event) => {
-              setPrefix(event.target.value);
-              setListing(undefined);
-            }}
+            onChange={(event) => setPrefix(event.target.value)}
             placeholder="generic/ or bazel/"
             maxLength={2048}
           />
-        </label>
-        <button className={`${button} self-end`} disabled={pending}>
-          Explore keys
-        </button>
+        </details>
       </form>
-      {listing && (
-        <>
-          <ul className="mt-5 space-y-3">
-            {listing.keys.map((entry) => (
-              <li
-                key={entry.key}
-                className="flex min-w-0 flex-wrap items-center gap-3 rounded-lg border border-line p-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="break-all font-mono text-xs">{entry.key}</p>
-                  <p className="mt-1 text-xs text-muted">
-                    {formatBytes(entry.size)} ·{" "}
-                    {new Date(entry.lastModified).toLocaleString()}
-                  </p>
-                </div>
-                <button
-                  className={button}
-                  disabled={pending}
-                  aria-label={`Delete ${entry.key}`}
-                  onClick={() => {
-                    setRemove(entry.key);
-                    setConfirm("");
-                  }}
-                >
-                  Delete
-                </button>
-              </li>
-            ))}
-          </ul>
-          {listing.keys.length === 0 && (
-            <p className="mt-4 text-sm text-muted">No matching cache keys.</p>
-          )}
-          {listing.cursor && (
-            <button
-              className={`${button} mt-4`}
-              disabled={pending}
-              onClick={() => void work((signal) => load(signal, true))}
-            >
-              More keys
-            </button>
-          )}
-        </>
+      {pending && !listing && (
+        <p role="status" className="mt-5 text-sm text-muted">
+          Loading cache entries…
+        </p>
       )}
-      <button
-        className={`${button} mt-6 text-red-400`}
-        disabled={pending}
-        onClick={() => {
-          setRemove("*");
-          setConfirm("");
-        }}
-      >
-        Clear cache
-      </button>
+      <div className="mt-5 overflow-x-auto rounded-lg border border-line">
+        <table
+          className="w-full table-fixed text-left text-sm"
+          aria-label="Cache entries"
+        >
+          <thead className="border-b border-line bg-raised text-xs text-muted">
+            <tr>
+              <th scope="col" className="px-4 py-3 font-medium">
+                Key
+              </th>
+              <th scope="col" className="w-20 px-2 py-3 font-medium sm:px-4">
+                Size
+              </th>
+              <th
+                scope="col"
+                className="hidden w-36 px-4 py-3 font-medium sm:table-cell"
+              >
+                Updated
+              </th>
+              <th scope="col" className="w-20 px-2 py-3 font-medium sm:px-4">
+                <span className="sr-only">Actions</span>
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-line">
+            {(listing?.keys ?? [])
+              .filter((entry) =>
+                entry.key.toLowerCase().includes(search.toLowerCase()),
+              )
+              .map((entry) => (
+                <tr key={entry.key}>
+                  <td className="max-w-md px-4 py-3">
+                    <code className="break-all font-mono text-xs">
+                      {entry.key}
+                    </code>
+                  </td>
+                  <td className="whitespace-nowrap px-2 py-3 text-xs text-muted sm:px-4">
+                    {formatBytes(entry.size)}
+                  </td>
+                  <td className="hidden whitespace-nowrap px-4 py-3 text-xs text-muted sm:table-cell">
+                    {new Date(entry.lastModified).toLocaleString()}
+                  </td>
+                  <td className="px-2 py-3 text-right sm:px-4">
+                    <button
+                      className={button}
+                      disabled={pending}
+                      aria-label={`Delete ${entry.key}`}
+                      onClick={() => {
+                        setRemove(entry.key);
+                        setConfirm("");
+                      }}
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            {listing &&
+              listing.keys.filter((entry) =>
+                entry.key.toLowerCase().includes(search.toLowerCase()),
+              ).length === 0 && (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-muted">
+                    No matching cache keys.
+                  </td>
+                </tr>
+              )}
+          </tbody>
+        </table>
+      </div>
+      {listing?.cursor && (
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          <button
+            className={button}
+            disabled={pending}
+            onClick={() => void work((signal) => load(signal, true))}
+          >
+            More keys
+          </button>
+          <p className="text-xs text-muted">
+            Search filters loaded entries. Load more to search additional keys.
+          </p>
+        </div>
+      )}
       {remove !== undefined && (
         <div
           className="mt-4 rounded-lg border border-line p-4"

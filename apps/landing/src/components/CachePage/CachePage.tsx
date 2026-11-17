@@ -31,7 +31,7 @@ export function CachePage() {
     <div className="flex min-h-dvh flex-col">
       <SiteHeader />
       <main className="page-width flex-1 py-12 sm:py-20">
-        <div className="max-w-3xl">
+        <div className="min-w-0">
           <p className="text-xs uppercase tracking-widest text-accent">
             Build cache
           </p>
@@ -90,6 +90,8 @@ function CacheSettings({ account }: { account: Account }) {
   const [authorized, setAuthorized] = useState(() =>
     hasCachePermissions(account.agent.session.token.scope),
   );
+  const [panel, setPanel] = useState("storage");
+  const [collaboratorSearch, setCollaboratorSearch] = useState("");
   const [owner, setOwner] = useState("");
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const [collaboratorProfiles, setCollaboratorProfiles] = useState<
@@ -194,339 +196,477 @@ function CacheSettings({ account }: { account: Account }) {
     });
   };
   return (
-    <div className="mt-10 space-y-8">
-      {error && (
-        <p role="alert" className="rounded-lg border border-line p-4 text-sm">
-          {error}
-        </p>
-      )}
-      {notice && (
-        <p role="status" className="text-sm text-accent">
-          {notice}
-        </p>
-      )}
-      {!authorized ? (
-        <section className="rounded-xl border border-line bg-panel p-6">
-          <h2 className="text-xl">Authorize cache access</h2>
-          <p className="mt-3 text-sm leading-6 text-muted">
-            Your existing session needs permission to manage cache tokens and
-            invitations. Continue with your AT Protocol account to grant access.
-          </p>
-          <button
-            className={`${button} mt-5`}
-            disabled={pending}
-            onClick={() => void reauthorize()}
-          >
-            Authorize cache access
-          </button>
-        </section>
-      ) : (
-        <>
-          <section className="rounded-xl border border-line bg-panel p-6 sm:p-8">
-            <h2 className="text-xl">Upload token</h2>
-            <p className="mt-3 text-sm leading-6 text-muted">
-              Tokens last one hour. Leave the owner empty for your cache, or
-              enter an owner who has invited you.
-            </p>
-            <form className="mt-5" onSubmit={submitToken}>
-              <label className="text-sm" htmlFor="cache-owner">
-                Cache owner (optional)
-              </label>
-              <input
-                className={field}
-                id="cache-owner"
-                placeholder="handle.example or did:plc:…"
-                value={owner}
-                onChange={(e) => {
-                  setOwner(e.target.value);
-                  setUpload(undefined);
-                }}
-                disabled={pending}
-              />
-              <button className={`${button} mt-4`} disabled={pending}>
-                {pending
-                  ? "Working…"
-                  : upload
-                    ? "Renew upload token"
-                    : "Generate upload token"}
-              </button>
-            </form>
-            {upload && (
-              <div className="mt-6 border-t border-line pt-5">
-                <p className="text-xs text-muted">
-                  Expires {new Date(upload.expiresAt).toLocaleString()}
-                </p>
-                <Secret
-                  key={upload.token}
-                  value={upload.token}
-                  label="Upload token"
-                />
-                <label className="mt-5 block text-sm" htmlFor="cache-url">
-                  Cache URL
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    id="cache-url"
-                    readOnly
-                    className={`${field} min-w-0 font-mono`}
-                    value={upload.cacheUrl}
-                  />
-                  <Copy
-                    text={upload.cacheUrl}
-                    label="Copy cache URL"
-                    iconOnly
-                  />
-                </div>
-                <p className="mt-3 text-xs leading-6 text-muted">
-                  Use this URL with your cache client and send the token as a
-                  bearer token or Basic-auth password. Renewing does not revoke
-                  an earlier token.
-                </p>
-                <TokenInstructions cacheUrl={upload.cacheUrl} />
-              </div>
-            )}
-          </section>
-          <section className="rounded-xl border border-line bg-panel p-6 sm:p-8">
-            <h2 className="text-xl">Invite collaborators</h2>
-            <p className="mt-3 text-sm leading-6 text-muted">
-              Manage upload access to your own cache. Invited users sign in and
-              generate their own token using your handle as the cache owner.
-            </p>
-            <label className="mt-5 block text-sm" htmlFor="cache-actor">
-              Collaborator handle or DID
-            </label>
-            <CollaboratorInput
-              value={actor}
-              change={setActor}
-              disabled={pending}
-            />
-            <div className="mt-4 flex flex-wrap gap-3">
-              {(
-                [
-                  ["inviteUser", "Invite user"],
-                  ["revokeUser", "Revoke access"],
-                ] as const
-              ).map(([method, title]) => (
-                <button
-                  key={method}
-                  className={method === "inviteUser" ? button : secondary}
-                  disabled={pending || !actor.trim()}
-                  onClick={() =>
-                    void perform(async (signal) => {
-                      await cacheRequest(
-                        account,
-                        method,
-                        { actor: actor.trim().replace(/^@/, "") },
-                        signal,
-                      );
-                      await listCollaborators(signal);
-                      if (!signal.aborted)
-                        setNotice(
-                          method === "inviteUser"
-                            ? "Upload access granted. Share your handle with the collaborator."
-                            : "Upload access revoked. Existing tokens expire within one hour.",
-                        );
-                    })
-                  }
-                >
-                  {title}
-                </button>
-              ))}
-            </div>
-            <div className="mt-6 border-t border-line pt-5">
-              <button
-                className={secondary}
-                disabled={pending}
-                onClick={() =>
-                  void perform((signal) => listCollaborators(signal))
-                }
-              >
-                Refresh collaborators
-              </button>
-              {collaboratorsLoaded && collaborators.length === 0 && (
-                <p className="mt-4 text-sm text-muted">
-                  No invited collaborators.
-                </p>
-              )}
-              <ul className="mt-4 space-y-3">
-                {collaborators.map((did) => (
-                  <li
-                    key={did}
-                    className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-line p-3"
-                  >
-                    <span className="min-w-0 break-all text-sm">
-                      {collaboratorProfiles[did]?.handle
-                        ? `@${collaboratorProfiles[did].handle}`
-                        : did}
-                    </span>
-                    <button
-                      className={secondary}
-                      aria-label={`Remove ${collaboratorProfiles[did]?.handle ?? did}`}
-                      disabled={pending}
-                      onClick={() =>
-                        void perform(async (signal) => {
-                          await cacheRequest(
-                            account,
-                            "revokeUser",
-                            { actor: did },
-                            signal,
-                          );
-                          await listCollaborators(signal);
-                          if (!signal.aborted)
-                            setNotice(
-                              "Upload access revoked. Existing tokens expire within one hour.",
-                            );
-                        })
-                      }
-                    >
-                      Remove
-                    </button>
-                  </li>
-                ))}
-              </ul>
-              {collaboratorCursor && (
-                <button
-                  className={`${secondary} mt-4`}
-                  disabled={pending}
-                  onClick={() =>
-                    void perform((signal) => listCollaborators(signal, true))
-                  }
-                >
-                  More collaborators
-                </button>
-              )}
-            </div>
-          </section>
-          <CacheObjects account={account} />
-          <section className="rounded-xl border border-line bg-panel p-6 sm:p-8">
-            <h2 className="text-xl">CI credentials</h2>
-            <p className="mt-3 text-sm leading-6 text-muted">
-              Create a revocable credential for your own cache. Save it in your
-              CI secret store and exchange it for a fresh upload token on every
-              run. Credentials expire after 90 days.
-            </p>
-            <form
-              className="mt-5"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void perform(async (signal) => {
-                  setCredential(undefined);
-                  const value = await cacheRequest<NewCredential>(
-                    account,
-                    "createCredential",
-                    { label: label.trim() },
-                    signal,
-                  );
-                  if (!signal.aborted) {
-                    setCredential(value);
-                    setLabel("");
-                  }
-                  await list(signal);
-                });
+    <div className="mt-8 grid items-start gap-8 md:grid-cols-[12rem_minmax(0,1fr)]">
+      <aside className="md:sticky md:top-24">
+        <nav
+          aria-label="Cache navigation"
+          className="grid grid-cols-2 gap-1 rounded-xl bg-panel p-2 md:grid-cols-1"
+        >
+          {[
+            ["storage", "Cache entries"],
+            ["collaborators", "Collaborators"],
+            ["tokens", "Upload tokens"],
+            ["ci", "CI credentials"],
+          ].map(([id, name]) => (
+            <button
+              key={id}
+              type="button"
+              aria-current={panel === id ? "page" : undefined}
+              className={`rounded-lg px-3 py-2.5 text-left text-sm ${panel === id ? "bg-raised text-accent" : "text-muted hover:bg-raised hover:text-ink"}`}
+              disabled={!authorized}
+              onClick={() => {
+                setPanel(id);
+                setError("");
+                setNotice("");
+                if (id === "collaborators" && !collaboratorsLoaded)
+                  void perform((signal) => listCollaborators(signal));
               }}
             >
-              <label className="text-sm" htmlFor="credential-label">
-                Credential name
+              {name}
+            </button>
+          ))}
+          <a
+            className="rounded-lg px-3 py-2.5 text-left text-sm text-muted hover:bg-raised hover:text-ink"
+            href="https://docs.fluentci.io/guides/build-cache/"
+            target="_blank"
+            rel="noreferrer"
+          >
+            Documentation ↗
+          </a>
+        </nav>
+      </aside>
+      <div className="min-w-0 space-y-6">
+        {error && (
+          <p role="alert" className="rounded-lg border border-line p-4 text-sm">
+            {error}
+          </p>
+        )}
+        {notice && (
+          <p role="status" className="text-sm text-accent">
+            {notice}
+          </p>
+        )}
+        {!authorized ? (
+          <section className="rounded-xl border border-line bg-panel p-6">
+            <h2 className="text-xl">Authorize cache access</h2>
+            <p className="mt-3 text-sm leading-6 text-muted">
+              Your existing session needs permission to manage cache tokens and
+              invitations. Continue with your AT Protocol account to grant
+              access.
+            </p>
+            <button
+              className={`${button} mt-5`}
+              disabled={pending}
+              onClick={() => void reauthorize()}
+            >
+              Authorize cache access
+            </button>
+          </section>
+        ) : (
+          <>
+            <section
+              hidden={panel !== "tokens"}
+              className="rounded-xl border border-line bg-panel p-6 sm:p-8"
+            >
+              <h2 className="text-xl">Upload token</h2>
+              <p className="mt-3 text-sm leading-6 text-muted">
+                Tokens last one hour. Leave the owner empty for your cache, or
+                enter an owner who has invited you.
+              </p>
+              <form className="mt-5" onSubmit={submitToken}>
+                <label className="text-sm" htmlFor="cache-owner">
+                  Cache owner (optional)
+                </label>
+                <input
+                  className={field}
+                  id="cache-owner"
+                  placeholder="handle.example or did:plc:…"
+                  value={owner}
+                  onChange={(e) => {
+                    setOwner(e.target.value);
+                    setUpload(undefined);
+                  }}
+                  disabled={pending}
+                />
+                <button className={`${button} mt-4`} disabled={pending}>
+                  {pending
+                    ? "Working…"
+                    : upload
+                      ? "Renew upload token"
+                      : "Generate upload token"}
+                </button>
+              </form>
+              {upload && (
+                <div className="mt-6 border-t border-line pt-5">
+                  <p className="text-xs text-muted">
+                    Expires {new Date(upload.expiresAt).toLocaleString()}
+                  </p>
+                  <Secret
+                    key={upload.token}
+                    value={upload.token}
+                    label="Upload token"
+                  />
+                  <label className="mt-5 block text-sm" htmlFor="cache-url">
+                    Cache URL
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="cache-url"
+                      readOnly
+                      className={`${field} min-w-0 font-mono`}
+                      value={upload.cacheUrl}
+                    />
+                    <Copy
+                      text={upload.cacheUrl}
+                      label="Copy cache URL"
+                      iconOnly
+                    />
+                  </div>
+                  <p className="mt-3 text-xs leading-6 text-muted">
+                    Use this URL with your cache client and send the token as a
+                    bearer token or Basic-auth password. Renewing does not
+                    revoke an earlier token.
+                  </p>
+                  <TokenInstructions cacheUrl={upload.cacheUrl} />
+                </div>
+              )}
+            </section>
+            <section
+              hidden={panel !== "collaborators"}
+              className="rounded-xl border border-line bg-panel p-6 sm:p-8"
+            >
+              <h2 className="text-xl">Collaborators</h2>
+              <p className="mt-3 text-sm leading-6 text-muted">
+                Manage upload access to your own cache. Invited users sign in
+                and generate their own token using your handle as the cache
+                owner.
+              </p>
+              <label className="mt-5 block text-sm" htmlFor="cache-actor">
+                Collaborator handle or DID
               </label>
-              <input
-                className={field}
-                id="credential-label"
-                value={label}
-                maxLength={80}
-                onChange={(e) => setLabel(e.target.value)}
-                placeholder="Release pipeline"
+              <CollaboratorInput
+                value={actor}
+                change={setActor}
                 disabled={pending}
-                required
               />
-              <button
-                className={`${button} mt-4`}
-                disabled={pending || !label.trim()}
+              <div className="mt-4 flex flex-wrap gap-3">
+                {(
+                  [
+                    ["inviteUser", "Invite user"],
+                    ["revokeUser", "Revoke access"],
+                  ] as const
+                ).map(([method, title]) => (
+                  <button
+                    key={method}
+                    className={method === "inviteUser" ? button : secondary}
+                    disabled={pending || !actor.trim()}
+                    onClick={() =>
+                      void perform(async (signal) => {
+                        await cacheRequest(
+                          account,
+                          method,
+                          { actor: actor.trim().replace(/^@/, "") },
+                          signal,
+                        );
+                        await listCollaborators(signal);
+                        if (!signal.aborted)
+                          setNotice(
+                            method === "inviteUser"
+                              ? "Upload access granted. Share your handle with the collaborator."
+                              : "Upload access revoked. Existing tokens expire within one hour.",
+                          );
+                      })
+                    }
+                  >
+                    {title}
+                  </button>
+                ))}
+              </div>
+              <div className="mt-6 border-t border-line pt-5">
+                <button
+                  className={secondary}
+                  disabled={pending}
+                  onClick={() =>
+                    void perform((signal) => listCollaborators(signal))
+                  }
+                >
+                  Refresh collaborators
+                </button>
+                <label
+                  className="mt-4 block text-sm"
+                  htmlFor="collaborator-filter"
+                >
+                  Search collaborators
+                </label>
+                <input
+                  id="collaborator-filter"
+                  type="search"
+                  className={field}
+                  value={collaboratorSearch}
+                  onChange={(event) =>
+                    setCollaboratorSearch(event.target.value)
+                  }
+                  placeholder="Filter by handle, name, or DID"
+                />
+                <div className="mt-4 overflow-x-auto rounded-lg border border-line">
+                  <table
+                    className="w-full table-fixed text-left text-sm"
+                    aria-label="Collaborators"
+                  >
+                    <thead className="border-b border-line bg-raised text-xs text-muted">
+                      <tr>
+                        <th scope="col" className="px-4 py-3 font-medium">
+                          Collaborator
+                        </th>
+                        <th scope="col" className="px-4 py-3 font-medium">
+                          Access
+                        </th>
+                        <th scope="col" className="px-4 py-3 font-medium">
+                          <span className="sr-only">Actions</span>
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-line">
+                      {collaborators
+                        .filter((did) =>
+                          [
+                            did,
+                            collaboratorProfiles[did]?.handle,
+                            collaboratorProfiles[did]?.displayName,
+                          ]
+                            .join(" ")
+                            .toLowerCase()
+                            .includes(collaboratorSearch.toLowerCase()),
+                        )
+                        .map((did) => (
+                          <tr key={did}>
+                            <td className="max-w-sm px-4 py-3">
+                              <p className="break-all">
+                                {collaboratorProfiles[did]?.handle
+                                  ? `@${collaboratorProfiles[did].handle}`
+                                  : did}
+                              </p>
+                              {collaboratorProfiles[did]?.displayName && (
+                                <p className="mt-1 text-xs text-muted">
+                                  {collaboratorProfiles[did].displayName}
+                                </p>
+                              )}
+                              {collaboratorProfiles[did]?.handle && (
+                                <p className="mt-1 break-all font-mono text-xs text-muted">
+                                  {did}
+                                </p>
+                              )}
+                            </td>
+                            <td className="px-4 py-3 text-xs text-muted">
+                              Upload
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              <button
+                                className={secondary}
+                                aria-label={`Remove ${collaboratorProfiles[did]?.handle ?? did}`}
+                                disabled={pending}
+                                onClick={() =>
+                                  void perform(async (signal) => {
+                                    await cacheRequest(
+                                      account,
+                                      "revokeUser",
+                                      { actor: did },
+                                      signal,
+                                    );
+                                    await listCollaborators(signal);
+                                    if (!signal.aborted)
+                                      setNotice(
+                                        "Upload access revoked. Existing tokens expire within one hour.",
+                                      );
+                                  })
+                                }
+                              >
+                                Remove
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      {collaboratorsLoaded &&
+                        collaborators.filter((did) =>
+                          [
+                            did,
+                            collaboratorProfiles[did]?.handle,
+                            collaboratorProfiles[did]?.displayName,
+                          ]
+                            .join(" ")
+                            .toLowerCase()
+                            .includes(collaboratorSearch.toLowerCase()),
+                        ).length === 0 && (
+                          <tr>
+                            <td
+                              colSpan={3}
+                              className="px-4 py-8 text-center text-muted"
+                            >
+                              {collaborators.length === 0
+                                ? "No invited collaborators."
+                                : "No matching collaborators."}
+                            </td>
+                          </tr>
+                        )}
+                    </tbody>
+                  </table>
+                </div>
+                {collaboratorCursor && (
+                  <p className="mt-3 text-xs text-muted">
+                    Search filters loaded collaborators. Load more to search
+                    additional entries.
+                  </p>
+                )}
+                {collaboratorCursor && (
+                  <button
+                    className={`${secondary} mt-4`}
+                    disabled={pending}
+                    onClick={() =>
+                      void perform((signal) => listCollaborators(signal, true))
+                    }
+                  >
+                    More collaborators
+                  </button>
+                )}
+              </div>
+            </section>
+            <div hidden={panel !== "storage"}>
+              <CacheObjects account={account} />
+            </div>
+            <section
+              hidden={panel !== "ci"}
+              className="rounded-xl border border-line bg-panel p-6 sm:p-8"
+            >
+              <h2 className="text-xl">CI credentials</h2>
+              <p className="mt-3 text-sm leading-6 text-muted">
+                Create a revocable credential for your own cache. Save it in
+                your CI secret store and exchange it for a fresh upload token on
+                every run. Credentials expire after 90 days.
+              </p>
+              <form
+                className="mt-5"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void perform(async (signal) => {
+                    setCredential(undefined);
+                    const value = await cacheRequest<NewCredential>(
+                      account,
+                      "createCredential",
+                      { label: label.trim() },
+                      signal,
+                    );
+                    if (!signal.aborted) {
+                      setCredential(value);
+                      setLabel("");
+                    }
+                    await list(signal);
+                  });
+                }}
               >
-                Create CI credential
-              </button>
-            </form>
-            {credential && (
-              <div className="mt-5">
-                <p className="text-sm">
-                  Copy this credential now. Its secret will not be shown again.
-                </p>
-                <Secret
-                  key={credential.id}
-                  value={credential.credential}
-                  label="CI credential"
+                <label className="text-sm" htmlFor="credential-label">
+                  Credential name
+                </label>
+                <input
+                  className={field}
+                  id="credential-label"
+                  value={label}
+                  maxLength={80}
+                  onChange={(e) => setLabel(e.target.value)}
+                  placeholder="Release pipeline"
+                  disabled={pending}
+                  required
                 />
                 <button
-                  className="mt-3 text-xs text-muted underline"
-                  onClick={() => setCredential(undefined)}
+                  className={`${button} mt-4`}
+                  disabled={pending || !label.trim()}
                 >
-                  Dismiss secret
+                  Create CI credential
                 </button>
-              </div>
-            )}
-            <div className="mt-6 border-t border-line pt-5">
-              <button
-                className={secondary}
-                disabled={pending}
-                onClick={() => void perform(list)}
-              >
-                Refresh credentials
-              </button>
-              {credentials.length > 0 && (
-                <ul className="mt-4 divide-y divide-line">
-                  {credentials.map((item) => (
-                    <li
-                      key={item.id}
-                      className="flex flex-wrap items-center justify-between gap-3 py-4"
-                    >
-                      <div className="min-w-0">
-                        <p className="break-words text-sm">{item.label}</p>
-                        <p className="mt-1 text-xs text-muted">
-                          {!item.active
-                            ? "Revoked"
-                            : Date.parse(item.expiresAt) <= Date.now()
-                              ? "Expired"
-                              : `Expires ${new Date(item.expiresAt).toLocaleDateString()}`}
-                        </p>
-                      </div>
-                      {item.active && (
-                        <button
-                          className={secondary}
-                          disabled={pending}
-                          onClick={() =>
-                            void perform(async (signal) => {
-                              await cacheRequest(
-                                account,
-                                "revokeCredential",
-                                { id: item.id },
-                                signal,
-                              );
-                              if (credential?.id === item.id)
-                                setCredential(undefined);
-                              await list(signal);
-                              if (!signal.aborted)
-                                setNotice(
-                                  "CI credential revoked. Existing upload tokens expire within one hour.",
-                                );
-                            })
-                          }
-                        >
-                          Revoke {item.label}
-                        </button>
-                      )}
-                    </li>
-                  ))}
-                </ul>
+              </form>
+              {credential && (
+                <div className="mt-5">
+                  <p className="text-sm">
+                    Copy this credential now. Its secret will not be shown
+                    again.
+                  </p>
+                  <Secret
+                    key={credential.id}
+                    value={credential.credential}
+                    label="CI credential"
+                  />
+                  <button
+                    className="mt-3 text-xs text-muted underline"
+                    onClick={() => setCredential(undefined)}
+                  >
+                    Dismiss secret
+                  </button>
+                </div>
               )}
-            </div>
-            <a
-              className="mt-5 inline-block text-sm text-accent underline"
-              href="https://docs.fluentci.io/registry/cache/"
-            >
-              CI setup and token renewal instructions
-            </a>
-          </section>
-        </>
-      )}
+              <div className="mt-6 border-t border-line pt-5">
+                <button
+                  className={secondary}
+                  disabled={pending}
+                  onClick={() => void perform(list)}
+                >
+                  Refresh credentials
+                </button>
+                {credentials.length > 0 && (
+                  <ul className="mt-4 divide-y divide-line">
+                    {credentials.map((item) => (
+                      <li
+                        key={item.id}
+                        className="flex flex-wrap items-center justify-between gap-3 py-4"
+                      >
+                        <div className="min-w-0">
+                          <p className="break-words text-sm">{item.label}</p>
+                          <p className="mt-1 text-xs text-muted">
+                            {!item.active
+                              ? "Revoked"
+                              : Date.parse(item.expiresAt) <= Date.now()
+                                ? "Expired"
+                                : `Expires ${new Date(item.expiresAt).toLocaleDateString()}`}
+                          </p>
+                        </div>
+                        {item.active && (
+                          <button
+                            className={secondary}
+                            disabled={pending}
+                            onClick={() =>
+                              void perform(async (signal) => {
+                                await cacheRequest(
+                                  account,
+                                  "revokeCredential",
+                                  { id: item.id },
+                                  signal,
+                                );
+                                if (credential?.id === item.id)
+                                  setCredential(undefined);
+                                await list(signal);
+                                if (!signal.aborted)
+                                  setNotice(
+                                    "CI credential revoked. Existing upload tokens expire within one hour.",
+                                  );
+                              })
+                            }
+                          >
+                            Revoke {item.label}
+                          </button>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+              <a
+                className="mt-5 inline-block text-sm text-accent underline"
+                href="https://docs.fluentci.io/registry/cache/"
+              >
+                CI setup and token renewal instructions
+              </a>
+            </section>
+          </>
+        )}
+      </div>
     </div>
   );
 }
