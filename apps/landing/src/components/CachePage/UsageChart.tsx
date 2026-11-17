@@ -135,7 +135,9 @@ export function UsageChart({
                   >
                     <title>
                       {day.date}: {value(day.sample)}
-                      {day.sample ? ` · ${day.sample.keyCount} keys` : ""}
+                      {day.sample && metric === "bytes"
+                        ? ` · ${day.sample.keyCount} keys`
+                        : ""}
                     </title>
                   </rect>
                   {(width > 550 || index % 3 === 0 || index === 13) && (
@@ -155,7 +157,7 @@ export function UsageChart({
           </svg>
           <p className="text-xs text-muted" aria-live="polite">
             {dayLabel(days[active].date)} · {value(days[active].sample)}
-            {days[active].sample
+            {days[active].sample && metric === "bytes"
               ? ` · ${days[active].sample!.keyCount.toLocaleString()} keys`
               : ""}{" "}
             · UTC
