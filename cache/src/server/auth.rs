@@ -58,7 +58,7 @@ fn scoped_authorized(
     scope: &str,
     owner_only: bool,
 ) -> Result<()> {
-    if app.config.token.is_some() && authorized(app, headers, false).is_ok() {
+    if (!owner_only || app.config.token.is_some()) && authorized(app, headers, false).is_ok() {
         return Ok(());
     }
     let token = headers
