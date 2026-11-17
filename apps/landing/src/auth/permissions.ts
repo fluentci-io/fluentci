@@ -1,4 +1,8 @@
 export const cacheMethods = [
+  "listKeys",
+  "deleteKey",
+  "clearCache",
+  "listCollaborators",
   "createToken",
   "inviteUser",
   "revokeUser",

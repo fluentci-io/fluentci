@@ -11,6 +11,10 @@ import {
 } from "../../cache/client";
 import { SiteHeader } from "../SiteHeader";
 import { SiteFooter } from "../SiteFooter";
+import { CacheObjects } from "./CacheObjects";
+import { HandleSuggestions } from "../HandleSuggestions";
+import { useHandleSuggestions } from "../SignInDialog/useHandleSuggestions";
+import { getProfiles, type Profile } from "../../registry/client";
 import { Copy } from "../Copy";
 
 const field =
@@ -86,6 +90,12 @@ function CacheSettings({ account }: { account: Account }) {
     hasCachePermissions(account.agent.session.token.scope),
   );
   const [owner, setOwner] = useState("");
+  const [collaborators, setCollaborators] = useState<string[]>([]);
+  const [collaboratorProfiles, setCollaboratorProfiles] = useState<
+    Record<string, Profile>
+  >({});
+  const [collaboratorCursor, setCollaboratorCursor] = useState<string>();
+  const [collaboratorsLoaded, setCollaboratorsLoaded] = useState(false);
   const [actor, setActor] = useState("");
   const [label, setLabel] = useState("");
   const [upload, setUpload] = useState<UploadToken>();
@@ -139,6 +149,27 @@ function CacheSettings({ account }: { account: Account }) {
       signal,
     );
     if (!signal.aborted) setCredentials(data.credentials);
+  };
+  const listCollaborators = async (signal: AbortSignal, more = false) => {
+    const data = await cacheRequest<{ actors: string[]; cursor?: string }>(
+      account,
+      "listCollaborators",
+      more && collaboratorCursor ? { cursor: collaboratorCursor } : {},
+      signal,
+    );
+    if (signal.aborted) return;
+    setCollaborators((values) =>
+      more ? [...values, ...data.actors] : data.actors,
+    );
+    setCollaboratorCursor(data.cursor);
+    setCollaboratorsLoaded(true);
+    try {
+      const profiles = await getProfiles(data.actors, signal);
+      if (!signal.aborted)
+        setCollaboratorProfiles((values) => ({ ...values, ...profiles }));
+    } catch {
+      /* DIDs remain usable if profile lookup is unavailable. */
+    }
   };
   const reauthorize = async () => {
     if (account.profile?.handle) {
@@ -262,12 +293,9 @@ function CacheSettings({ account }: { account: Account }) {
             <label className="mt-5 block text-sm" htmlFor="cache-actor">
               Collaborator handle or DID
             </label>
-            <input
-              className={field}
-              id="cache-actor"
+            <CollaboratorInput
               value={actor}
-              onChange={(e) => setActor(e.target.value)}
-              placeholder="teammate.example"
+              change={setActor}
               disabled={pending}
             />
             <div className="mt-4 flex flex-wrap gap-3">
@@ -289,6 +317,7 @@ function CacheSettings({ account }: { account: Account }) {
                         { actor: actor.trim().replace(/^@/, "") },
                         signal,
                       );
+                      await listCollaborators(signal);
                       if (!signal.aborted)
                         setNotice(
                           method === "inviteUser"
@@ -302,7 +331,71 @@ function CacheSettings({ account }: { account: Account }) {
                 </button>
               ))}
             </div>
+            <div className="mt-6 border-t border-line pt-5">
+              <button
+                className={secondary}
+                disabled={pending}
+                onClick={() =>
+                  void perform((signal) => listCollaborators(signal))
+                }
+              >
+                Refresh collaborators
+              </button>
+              {collaboratorsLoaded && collaborators.length === 0 && (
+                <p className="mt-4 text-sm text-muted">
+                  No invited collaborators.
+                </p>
+              )}
+              <ul className="mt-4 space-y-3">
+                {collaborators.map((did) => (
+                  <li
+                    key={did}
+                    className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-line p-3"
+                  >
+                    <span className="min-w-0 break-all text-sm">
+                      {collaboratorProfiles[did]?.handle
+                        ? `@${collaboratorProfiles[did].handle}`
+                        : did}
+                    </span>
+                    <button
+                      className={secondary}
+                      aria-label={`Remove ${collaboratorProfiles[did]?.handle ?? did}`}
+                      disabled={pending}
+                      onClick={() =>
+                        void perform(async (signal) => {
+                          await cacheRequest(
+                            account,
+                            "revokeUser",
+                            { actor: did },
+                            signal,
+                          );
+                          await listCollaborators(signal);
+                          if (!signal.aborted)
+                            setNotice(
+                              "Upload access revoked. Existing tokens expire within one hour.",
+                            );
+                        })
+                      }
+                    >
+                      Remove
+                    </button>
+                  </li>
+                ))}
+              </ul>
+              {collaboratorCursor && (
+                <button
+                  className={`${secondary} mt-4`}
+                  disabled={pending}
+                  onClick={() =>
+                    void perform((signal) => listCollaborators(signal, true))
+                  }
+                >
+                  More collaborators
+                </button>
+              )}
+            </div>
           </section>
+          <CacheObjects account={account} />
           <section className="rounded-xl border border-line bg-panel p-6 sm:p-8">
             <h2 className="text-xl">CI credentials</h2>
             <p className="mt-3 text-sm leading-6 text-muted">
@@ -433,5 +526,91 @@ function CacheSettings({ account }: { account: Account }) {
         </>
       )}
     </div>
+  );
+}
+
+function CollaboratorInput({
+  value,
+  change,
+  disabled,
+}: {
+  value: string;
+  change: (value: string) => void;
+  disabled: boolean;
+}) {
+  const [suggest, setSuggest] = useState(false);
+  const [active, setActive] = useState(-1);
+  const input = useRef<HTMLInputElement>(null);
+  const suggestions = useHandleSuggestions(
+    value,
+    suggest && !disabled && !value.startsWith("did:"),
+  );
+  const show =
+    suggest &&
+    !disabled &&
+    (suggestions.loading || suggestions.items.length > 0);
+  const select = (profile: Profile) => {
+    change(profile.handle);
+    setSuggest(false);
+    setActive(-1);
+    input.current?.focus();
+  };
+  return (
+    <>
+      <input
+        ref={input}
+        className={field}
+        id="cache-actor"
+        value={value}
+        role="combobox"
+        aria-autocomplete="list"
+        aria-expanded={show}
+        aria-controls="cache-invite-suggestions"
+        aria-activedescendant={
+          show && active >= 0
+            ? `cache-invite-suggestions-option-${active}`
+            : undefined
+        }
+        onChange={(event) => {
+          change(event.target.value.replace(/^@+/, ""));
+          setSuggest(true);
+          setActive(-1);
+        }}
+        onKeyDown={(event) => {
+          if (!show) return;
+          if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+            event.preventDefault();
+            setActive((index) =>
+              suggestions.items.length
+                ? (index +
+                    (event.key === "ArrowDown" ? 1 : -1) +
+                    suggestions.items.length) %
+                  suggestions.items.length
+                : -1,
+            );
+          } else if (event.key === "Enter" && suggestions.items[active]) {
+            event.preventDefault();
+            select(suggestions.items[active]);
+          } else if (event.key === "Escape") {
+            event.preventDefault();
+            setSuggest(false);
+          }
+        }}
+        placeholder="teammate.example"
+        autoComplete="off"
+        autoCapitalize="none"
+        spellCheck={false}
+        disabled={disabled}
+      />
+      {show && (
+        <HandleSuggestions
+          id="cache-invite-suggestions"
+          items={suggestions.items}
+          loading={suggestions.loading}
+          active={active}
+          select={select}
+        />
+      )}
+    </>
   );
 }

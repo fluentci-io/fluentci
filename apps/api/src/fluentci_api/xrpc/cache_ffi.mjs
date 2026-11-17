@@ -31,7 +31,7 @@ export async function createToken(server, request, allowed) {
     throw new XRPCError(403, 'The cache owner must invite you first', 'AccessDenied');
   return mintToken(server, owner, actor);
 }
-export function mintToken(server, owner, actor) {
+export function mintToken(server, owner, actor, scope = 'cache:upload') {
   const { base, key } = settings(server);
   const cache = createHash('sha256').update(owner).digest('hex');
   const now = Math.floor(Date.now() / 1000);
@@ -43,7 +43,7 @@ export function mintToken(server, owner, actor) {
       aud: 'fluentci-cache',
       sub: actor,
       cache,
-      scope: 'cache:upload',
+      scope,
       iat: now,
       nbf: now,
       exp,
@@ -70,4 +70,47 @@ export async function membership(server, request, active, grant) {
     throw new XRPCError(400, 'Owners always have upload access', 'InvalidRequest');
   await grant(owner, actor, active);
   return { encoding: 'application/json', body: { owner, actor, active } };
+}
+
+export async function manageCache(server, request, action) {
+  if (action === 'clear' && request.input.body.confirm !== true)
+    throw new XRPCError(400, 'Confirm cache clearing', 'InvalidRequest');
+  const actor = request.auth.credentials.did;
+  const minted = mintToken(server, actor, actor, 'cache:manage').body;
+  try {
+    const response = await (server.options.cacheFetch ?? fetch)(`${minted.cacheUrl}/_admin`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${minted.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...request.input.body, action }),
+      signal: AbortSignal.timeout(305000),
+      redirect: 'error',
+    });
+    if (!response.ok) {
+      if (response.status === 400)
+        throw new XRPCError(400, 'Invalid cache key or pagination', 'InvalidRequest');
+      throw new Error('Cache management unavailable');
+    }
+    const data = await response.json();
+    if (data.cursor === null) delete data.cursor;
+    return { encoding: 'application/json', body: data, headers: { 'Cache-Control': 'no-store' } };
+  } catch (error) {
+    if (error instanceof XRPCError) throw error;
+    throw new XRPCError(
+      503,
+      'Cache management failed; refresh to check the current state before retrying',
+      'CacheUnavailable',
+    );
+  }
+}
+
+export async function listCollaborators(request, list) {
+  const rows = (
+    await list(request.auth.credentials.did, request.input.body.cursor ?? '')
+  ).toArray();
+  const actors = rows.slice(0, 100).map((row) => row.actor);
+  return {
+    encoding: 'application/json',
+    body: { actors, ...(rows.length > 100 ? { cursor: actors.at(-1) } : {}) },
+    headers: { 'Cache-Control': 'no-store' },
+  };
 }

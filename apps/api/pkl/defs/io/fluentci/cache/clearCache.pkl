@@ -1,0 +1,27 @@
+amends "../../../../schema/lexicon.pkl"
+
+id = "io.fluentci.cache.clearCache"
+description = "Owner-only cache management. Requires a method-scoped service-auth token."
+defs = new Mapping {
+ ["main"] = new Procedure {
+  input = new Body {
+   encoding = "application/json"
+   schema = new ObjectField {
+    required = List("confirm")
+    properties = new Mapping {
+     ["confirm"] = new BooleanField {}
+    }
+   }
+  }
+  output = new Body {
+   encoding = "application/json"
+   schema = new ObjectField {
+    required = List("deleted")
+    properties = new Mapping {
+     ["deleted"] = new IntegerField { minimum = 0 }
+    }
+   }
+  }
+  errors = List(new Error { name = "AuthRequired" }, new Error { name = "CacheUnavailable" }, new Error { name = "InvalidRequest" })
+ }
+}

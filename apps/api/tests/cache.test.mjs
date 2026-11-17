@@ -18,7 +18,7 @@ const { register } =
 const did = 'did:plc:abcdefghijklmnopqrstuvwx';
 const other = 'did:plc:zyxwvutsrqponmlkjihgfedcb';
 
-async function fixture(t, invalid = false) {
+async function fixture(t, invalid = false, options = {}) {
   const directory = mkdtempSync(join(tmpdir(), 'cache-api-test-'));
   const connection = await nativeDb.open({ url: `file:${join(directory, 'registry.sqlite')}` });
   const keypair = await Secp256k1Keypair.create();
@@ -30,6 +30,7 @@ async function fixture(t, invalid = false) {
     resolveActor: async (actor) => (actor === 'owner.test' ? did : actor),
     cachePublicUrl: invalid ? 'http://cache.example' : 'https://cache.example',
     cacheTokenPrivateKeyFile: keyFile,
+    ...options,
   });
   register(instance, connection);
   const http = runtime.app(instance).listen(0, '127.0.0.1');
@@ -109,6 +110,9 @@ test('account cache tokens require method-scoped auth, owner grants and respect 
   assert.equal((await call('createToken', other, { owner: did })).status, 403);
   assert.equal((await call('inviteUser', did, { actor: other })).status, 200);
   assert.equal((await call('inviteUser', did, { actor: other })).status, 200);
+  const collaborators = await call('listCollaborators');
+  assert.deepEqual((await collaborators.json()).actors, [other]);
+  assert.deepEqual((await (await call('listCollaborators', other)).json()).actors, [did]);
   const sharedResponse = await call('createToken', other, { owner: 'owner.test' });
   assert.equal(sharedResponse.status, 200);
   const shared = await sharedResponse.json();
@@ -116,6 +120,7 @@ test('account cache tokens require method-scoped auth, owner grants and respect 
   assert.equal(JSON.parse(Buffer.from(shared.token.split('.')[1], 'base64url')).sub, other);
   assert.equal((await call('revokeUser', did, { actor: other })).status, 200);
   assert.equal((await call('createToken', other, { owner: did })).status, 403);
+  assert.deepEqual((await (await call('listCollaborators')).json()).actors, []);
   assert.equal((await call('createToken', did)).status, 200);
   assert.equal((await call('revokeUser', did, { actor: did })).status, 400);
   const rows = await connection.client.execute('SELECT * FROM cache_members');
@@ -183,4 +188,70 @@ test('CI credentials are shown once, hashed at rest, owner scoped, expiring and 
     (await call('createToken', did, {}, { lxm: 'io.fluentci.cache.exchangeCredential' })).status,
     401,
   );
+});
+
+test('owner storage procedures sign management scope and cannot select a different cache', async (t) => {
+  const seen = [];
+  const { call } = await fixture(t, false, {
+    cacheFetch: async (url, options) => {
+      const claims = JSON.parse(
+        Buffer.from(options.headers.Authorization.slice(7).split('.')[1], 'base64url'),
+      );
+      seen.push({ url, claims, input: JSON.parse(options.body) });
+      return Response.json(
+        JSON.parse(options.body).action === 'list'
+          ? {
+              keys: [{ key: 'generic/a', size: 8, lastModified: new Date().toISOString() }],
+              cursor: null,
+              totalBytes: 8,
+              totalKeys: 1,
+            }
+          : { deleted: 1 },
+      );
+    },
+  });
+  for (const method of ['listKeys', 'deleteKey', 'clearCache', 'listCollaborators']) {
+    assert.equal(
+      (
+        await call(
+          method,
+          null,
+          method === 'deleteKey'
+            ? { key: 'generic/a' }
+            : method === 'clearCache'
+              ? { confirm: true }
+              : {},
+        )
+      ).status,
+      401,
+    );
+  }
+  const list = await call('listKeys', did, { prefix: 'generic/', limit: 20 });
+  assert.equal(list.status, 200);
+  assert.equal(list.headers.get('cache-control'), 'no-store');
+  assert.equal((await list.json()).totalBytes, 8);
+  assert.equal(seen[0].claims.scope, 'cache:manage');
+  assert.equal(seen[0].claims.sub, did);
+  assert.equal(
+    seen[0].url,
+    `https://cache.example/accounts/${createHash('sha256').update(did).digest('hex')}/_admin`,
+  );
+  assert.equal((await call('clearCache', did, { confirm: false })).status, 400);
+  assert.equal(seen.length, 1);
+  assert.equal((await call('deleteKey', did, { key: 'generic/a' })).status, 200);
+  assert.equal(seen[1].input.action, 'delete');
+  assert.equal((await call('clearCache', other, { confirm: true })).status, 200);
+  assert.equal(seen[2].claims.sub, other);
+  assert.notEqual(seen[2].url, seen[0].url);
+});
+
+test('storage procedure reports failures without exposing backend details', async (t) => {
+  const { call } = await fixture(t, false, {
+    cacheFetch: async () => {
+      throw Error('private backend details');
+    },
+  });
+  const response = await call('listKeys');
+  assert.equal(response.status, 503);
+  assert.doesNotMatch(await response.text(), /private backend details/);
 });

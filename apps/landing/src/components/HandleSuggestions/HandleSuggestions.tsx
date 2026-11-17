@@ -2,11 +2,13 @@ import { UserIcon } from "../UserIcon";
 import { httpUrl, type Profile } from "../../registry/client";
 import { Skeleton } from "../Skeleton";
 export function HandleSuggestions({
+  id = "handle-suggestions",
   items,
   loading,
   active,
   select,
 }: {
+  id?: string;
   items: Profile[];
   loading: boolean;
   active: number;
@@ -14,7 +16,7 @@ export function HandleSuggestions({
 }) {
   return (
     <div
-      id="handle-suggestions"
+      id={id}
       role="listbox"
       aria-label="Suggested accounts"
       className="mt-2 max-h-60 overflow-y-auto rounded-lg border border-line bg-paper p-1"
@@ -31,7 +33,11 @@ export function HandleSuggestions({
       ) : (
         items.map((profile, index) => (
           <button
-            id={`handle-option-${index}`}
+            id={
+              id === "handle-suggestions"
+                ? `handle-option-${index}`
+                : `${id}-option-${index}`
+            }
             type="button"
             role="option"
             aria-selected={index === active}

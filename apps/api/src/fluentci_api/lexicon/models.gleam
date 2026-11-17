@@ -8,17 +8,25 @@ import gleam/option.{type Option, None, Some}
 
 pub const com_atproto_repo_strong_ref = "com.atproto.repo.strongRef"
 
+pub const cache_clear_cache = "io.fluentci.cache.clearCache"
+
 pub const cache_create_credential = "io.fluentci.cache.createCredential"
 
 pub const cache_create_token = "io.fluentci.cache.createToken"
 
 pub const cache_defs = "io.fluentci.cache.defs"
 
+pub const cache_delete_key = "io.fluentci.cache.deleteKey"
+
 pub const cache_exchange_credential = "io.fluentci.cache.exchangeCredential"
 
 pub const cache_invite_user = "io.fluentci.cache.inviteUser"
 
+pub const cache_list_collaborators = "io.fluentci.cache.listCollaborators"
+
 pub const cache_list_credentials = "io.fluentci.cache.listCredentials"
+
+pub const cache_list_keys = "io.fluentci.cache.listKeys"
 
 pub const cache_revoke_credential = "io.fluentci.cache.revokeCredential"
 
@@ -55,6 +63,30 @@ pub fn encode_com_atproto_repo_strong_ref(
     #("uri", json.string(value.uri)),
     #("cid", json.string(value.cid)),
   ]
+
+  json.object(fields)
+}
+
+pub type CacheClearCacheInput {
+  CacheClearCacheInput(confirm: Bool)
+}
+
+pub fn encode_cache_clear_cache_input(
+  value: CacheClearCacheInput,
+) -> json.Json {
+  let fields = [#("confirm", json.bool(value.confirm))]
+
+  json.object(fields)
+}
+
+pub type CacheClearCacheOutput {
+  CacheClearCacheOutput(deleted: Int)
+}
+
+pub fn encode_cache_clear_cache_output(
+  value: CacheClearCacheOutput,
+) -> json.Json {
+  let fields = [#("deleted", json.int(value.deleted))]
 
   json.object(fields)
 }
@@ -159,6 +191,42 @@ pub fn encode_cache_credential_view(value: CacheCredentialView) -> json.Json {
   json.object(fields)
 }
 
+pub type CacheKeyView {
+  CacheKeyView(key: String, size: Int, last_modified: String)
+}
+
+pub fn encode_cache_key_view(value: CacheKeyView) -> json.Json {
+  let fields = [
+    #("key", json.string(value.key)),
+    #("size", json.int(value.size)),
+    #("lastModified", json.string(value.last_modified)),
+  ]
+
+  json.object(fields)
+}
+
+pub type CacheDeleteKeyInput {
+  CacheDeleteKeyInput(key: String)
+}
+
+pub fn encode_cache_delete_key_input(value: CacheDeleteKeyInput) -> json.Json {
+  let fields = [#("key", json.string(value.key))]
+
+  json.object(fields)
+}
+
+pub type CacheDeleteKeyOutput {
+  CacheDeleteKeyOutput(deleted: Int)
+}
+
+pub fn encode_cache_delete_key_output(
+  value: CacheDeleteKeyOutput,
+) -> json.Json {
+  let fields = [#("deleted", json.int(value.deleted))]
+
+  json.object(fields)
+}
+
 pub type CacheExchangeCredentialInput {
   CacheExchangeCredentialInput
 }
@@ -221,6 +289,40 @@ pub fn encode_cache_invite_user_output(
   json.object(fields)
 }
 
+pub type CacheListCollaboratorsInput {
+  CacheListCollaboratorsInput(cursor: Option(String))
+}
+
+pub fn encode_cache_list_collaborators_input(
+  value: CacheListCollaboratorsInput,
+) -> json.Json {
+  let fields = []
+  let fields =
+    list.append(fields, case value.cursor {
+      None -> []
+      Some(item) -> [#("cursor", json.string(item))]
+    })
+  json.object(fields)
+}
+
+pub type CacheListCollaboratorsOutput {
+  CacheListCollaboratorsOutput(actors: List(String), cursor: Option(String))
+}
+
+pub fn encode_cache_list_collaborators_output(
+  value: CacheListCollaboratorsOutput,
+) -> json.Json {
+  let fields = [
+    #("actors", json.array(value.actors, fn(item) { json.string(item) })),
+  ]
+  let fields =
+    list.append(fields, case value.cursor {
+      None -> []
+      Some(item) -> [#("cursor", json.string(item))]
+    })
+  json.object(fields)
+}
+
 pub type CacheListCredentialsInput {
   CacheListCredentialsInput
 }
@@ -249,6 +351,57 @@ pub fn encode_cache_list_credentials_output(
     ),
   ]
 
+  json.object(fields)
+}
+
+pub type CacheListKeysInput {
+  CacheListKeysInput(
+    prefix: Option(String),
+    cursor: Option(String),
+    limit: Option(Int),
+  )
+}
+
+pub fn encode_cache_list_keys_input(value: CacheListKeysInput) -> json.Json {
+  let fields = []
+  let fields =
+    list.append(fields, case value.prefix {
+      None -> []
+      Some(item) -> [#("prefix", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.cursor {
+      None -> []
+      Some(item) -> [#("cursor", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.limit {
+      None -> []
+      Some(item) -> [#("limit", json.int(item))]
+    })
+  json.object(fields)
+}
+
+pub type CacheListKeysOutput {
+  CacheListKeysOutput(
+    keys: List(CacheKeyView),
+    cursor: Option(String),
+    total_bytes: Int,
+    total_keys: Int,
+  )
+}
+
+pub fn encode_cache_list_keys_output(value: CacheListKeysOutput) -> json.Json {
+  let fields = [
+    #("keys", json.array(value.keys, fn(item) { encode_cache_key_view(item) })),
+    #("totalBytes", json.int(value.total_bytes)),
+    #("totalKeys", json.int(value.total_keys)),
+  ]
+  let fields =
+    list.append(fields, case value.cursor {
+      None -> []
+      Some(item) -> [#("cursor", json.string(item))]
+    })
   json.object(fields)
 }
 

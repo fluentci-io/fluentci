@@ -90,24 +90,28 @@ async function mock(page: Page) {
         active: !revoked,
       };
       const body =
-        method === "createToken"
-          ? {
-              token,
-              cacheUrl: "https://cache.example/accounts/account",
-              expiresAt: new Date(Date.now() + 3600000).toISOString(),
-              owner: did,
-            }
-          : method === "createCredential"
-            ? { ...credential, credential: secret, owner: did }
-            : method === "listCredentials"
-              ? { credentials: [credential] }
-              : method === "revokeCredential"
-                ? ((revoked = true), { revoked: true })
-                : {
-                    owner: did,
-                    actor: "did:plc:invited",
-                    active: method === "inviteUser",
-                  };
+        method === "listKeys"
+          ? { keys: [], totalKeys: 0, totalBytes: 0 }
+          : method === "listCollaborators"
+            ? { actors: [] }
+            : method === "createToken"
+              ? {
+                  token,
+                  cacheUrl: "https://cache.example/accounts/account",
+                  expiresAt: new Date(Date.now() + 3600000).toISOString(),
+                  owner: did,
+                }
+              : method === "createCredential"
+                ? { ...credential, credential: secret, owner: did }
+                : method === "listCredentials"
+                  ? { credentials: [credential] }
+                  : method === "revokeCredential"
+                    ? ((revoked = true), { revoked: true })
+                    : {
+                        owner: did,
+                        actor: "did:plc:invited",
+                        active: method === "inviteUser",
+                      };
       await route.fulfill({ json: body });
     },
   );
@@ -159,7 +163,7 @@ test("cache exchanges method-scoped service tokens, invites users, renews and cl
       .getByRole("status")
       .filter({ hasText: /Upload access|CI credential revoked/ }),
   ).toContainText("Upload access granted");
-  expect(calls.at(-1)).toEqual({
+  expect(calls.findLast((call) => call.method === "inviteUser")).toEqual({
     method: "inviteUser",
     body: { actor: "teammate.example" },
   });
@@ -231,4 +235,135 @@ test("CI credential secret appears once and owner can revoke it", async ({
     path: `/tmp/fluentci-cache-${test.info().project.name}.png`,
     fullPage: true,
   });
+});
+
+test("cache invitations suggest handles and listed collaborators can be removed", async ({
+  page,
+}) => {
+  await session(page);
+  await mock(page);
+  const collaborator = "did:plc:abcdefghijklmnopqrstuvwx";
+  let invited = false;
+  await page.route(
+    "https://public.api.bsky.app/xrpc/app.bsky.actor.searchActorsTypeahead?*",
+    (route) =>
+      route.fulfill({
+        json: {
+          actors: [
+            {
+              did: collaborator,
+              handle: "teammate.example",
+              displayName: "Teammate",
+            },
+          ],
+        },
+      }),
+  );
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.cache.inviteUser",
+    async (route) => {
+      expect(route.request().postDataJSON()).toEqual({
+        actor: "teammate.example",
+      });
+      invited = true;
+      await route.fulfill({
+        json: { owner: did, actor: collaborator, active: true },
+      });
+    },
+  );
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.cache.listCollaborators",
+    (route) =>
+      route.fulfill({ json: { actors: invited ? [collaborator] : [] } }),
+  );
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.cache.revokeUser",
+    async (route) => {
+      expect(route.request().postDataJSON()).toEqual({ actor: collaborator });
+      invited = false;
+      await route.fulfill({
+        json: { owner: did, actor: collaborator, active: false },
+      });
+    },
+  );
+  await page.goto("/cache");
+  const input = page.getByLabel("Collaborator handle or DID");
+  await input.fill("team");
+  await expect(
+    page.getByRole("option", { name: /teammate.example/ }),
+  ).toBeVisible();
+  await input.press("ArrowDown");
+  await input.press("Enter");
+  await expect(input).toHaveValue("teammate.example");
+  await page.getByRole("button", { name: "Invite user", exact: true }).click();
+  await page
+    .getByRole("button", { name: `Remove ${collaborator}`, exact: true })
+    .click();
+  await expect(page.getByText("No invited collaborators.")).toBeVisible();
+});
+
+test("cache storage shows usage, deletes selected keys, and requires CLEAR confirmation", async ({
+  page,
+}) => {
+  await session(page);
+  await mock(page);
+  let keys = [
+    { key: "generic/a", size: 2048, lastModified: new Date().toISOString() },
+  ];
+  let cleared = false;
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.cache.listKeys",
+    (route) =>
+      route.fulfill({
+        json: {
+          keys,
+          totalKeys: keys.length,
+          totalBytes: keys.reduce((sum, key) => sum + key.size, 0),
+        },
+      }),
+  );
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.cache.deleteKey",
+    async (route) => {
+      expect(route.request().postDataJSON()).toEqual({ key: "generic/a" });
+      keys = [];
+      await route.fulfill({ json: { deleted: 1 } });
+    },
+  );
+  await page.route(
+    "https://api.fluentci.io/xrpc/io.fluentci.cache.clearCache",
+    async (route) => {
+      expect(route.request().postDataJSON()).toEqual({ confirm: true });
+      cleared = true;
+      keys = [];
+      await route.fulfill({ json: { deleted: 0 } });
+    },
+  );
+  await page.goto("/cache");
+  await page.getByRole("button", { name: "Explore keys", exact: true }).click();
+  await expect(page.getByLabel("Cache usage")).toHaveText(
+    "2.0 KiB used · 1 keys",
+  );
+  await page
+    .getByRole("button", { name: "Delete generic/a", exact: true })
+    .click();
+  await page.getByRole("button", { name: "Cancel", exact: true }).click();
+  await expect(page.getByText("generic/a", { exact: true })).toBeVisible();
+  await page
+    .getByRole("button", { name: "Delete generic/a", exact: true })
+    .click();
+  await page
+    .getByRole("button", { name: "Confirm deletion", exact: true })
+    .click();
+  await expect(page.getByLabel("Cache usage")).toHaveText("0 B used · 0 keys");
+  await page.getByRole("button", { name: "Clear cache", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Confirm deletion", exact: true }),
+  ).toBeDisabled();
+  expect(cleared).toBe(false);
+  await page.getByLabel("Type CLEAR to confirm").fill("CLEAR");
+  await page
+    .getByRole("button", { name: "Confirm deletion", exact: true })
+    .click();
+  await expect.poll(() => cleared).toBe(true);
 });

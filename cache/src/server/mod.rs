@@ -6,7 +6,7 @@ use self::{
 use crate::Config;
 use axum::{
     Router,
-    routing::{any, get},
+    routing::{any, get, post},
 };
 use object_store::ObjectStore;
 use std::sync::Arc;
@@ -16,6 +16,7 @@ mod auth;
 mod download;
 mod error;
 mod key;
+mod manage;
 mod ops;
 mod routes;
 mod upload;
@@ -50,9 +51,11 @@ pub fn router(config: Config, store: Arc<dyn ObjectStore>) -> anyhow::Result<Rou
         metrics: Metrics::default(),
     });
     Ok(Router::new()
+        .route("/", get(|| async { include_str!("welcome.txt") }))
         .route("/healthz", get(|| async { "ok\n" }))
         .route("/readyz", get(ready))
         .route("/metrics", get(metrics))
+        .route("/accounts/{account}/_admin", post(manage::handle))
         .route("/{*key}", any(handle))
         .with_state(app))
 }

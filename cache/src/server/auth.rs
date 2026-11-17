@@ -51,12 +51,14 @@ struct UploadClaims {
     sub: String,
 }
 
-pub(super) fn upload_authorized(
+fn scoped_authorized(
     app: &App,
     headers: &HeaderMap,
     account: Option<&str>,
+    scope: &str,
+    owner_only: bool,
 ) -> Result<()> {
-    if authorized(app, headers, false).is_ok() {
+    if app.config.token.is_some() && authorized(app, headers, false).is_ok() {
         return Ok(());
     }
     let token = headers
@@ -81,8 +83,9 @@ pub(super) fn upload_authorized(
         validation.leeway = 0;
         if let Ok(data) = decode::<UploadClaims>(&token, key, &validation)
             && data.claims.cache == account
-            && data.claims.scope == "cache:upload"
+            && data.claims.scope == scope
             && data.claims.sub.starts_with("did:")
+            && (!owner_only || hex::encode(Sha256::digest(data.claims.sub.as_bytes())) == account)
         {
             return Ok(());
         }
@@ -91,4 +94,16 @@ pub(super) fn upload_authorized(
         StatusCode::UNAUTHORIZED,
         "authentication required\n",
     ))
+}
+
+pub(super) fn upload_authorized(
+    app: &App,
+    headers: &HeaderMap,
+    account: Option<&str>,
+) -> Result<()> {
+    scoped_authorized(app, headers, account, "cache:upload", false)
+}
+
+pub(super) fn manage_authorized(app: &App, headers: &HeaderMap, account: &str) -> Result<()> {
+    scoped_authorized(app, headers, Some(account), "cache:manage", true)
 }

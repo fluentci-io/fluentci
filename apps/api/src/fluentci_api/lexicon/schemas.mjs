@@ -1,12 +1,16 @@
 // Generated from pkl/defs by scripts/lexicons.mjs. DO NOT EDIT.
 export const ids = {
   com_atproto_repo_strong_ref: 'com.atproto.repo.strongRef',
+  cache_clear_cache: 'io.fluentci.cache.clearCache',
   cache_create_credential: 'io.fluentci.cache.createCredential',
   cache_create_token: 'io.fluentci.cache.createToken',
   cache_defs: 'io.fluentci.cache.defs',
+  cache_delete_key: 'io.fluentci.cache.deleteKey',
   cache_exchange_credential: 'io.fluentci.cache.exchangeCredential',
   cache_invite_user: 'io.fluentci.cache.inviteUser',
+  cache_list_collaborators: 'io.fluentci.cache.listCollaborators',
   cache_list_credentials: 'io.fluentci.cache.listCredentials',
+  cache_list_keys: 'io.fluentci.cache.listKeys',
   cache_revoke_credential: 'io.fluentci.cache.revokeCredential',
   cache_revoke_user: 'io.fluentci.cache.revokeUser',
   like: 'io.fluentci.like',
@@ -39,6 +43,52 @@ export const schemas = [
             format: 'cid',
           },
         },
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.clearCache',
+    description: 'Owner-only cache management. Requires a method-scoped service-auth token.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['confirm'],
+            properties: {
+              confirm: {
+                type: 'boolean',
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['deleted'],
+            properties: {
+              deleted: {
+                type: 'integer',
+                minimum: 0,
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+          {
+            name: 'InvalidRequest',
+          },
+        ],
       },
     },
   },
@@ -194,6 +244,71 @@ export const schemas = [
           },
         },
       },
+      keyView: {
+        type: 'object',
+        required: ['key', 'size', 'lastModified'],
+        properties: {
+          key: {
+            type: 'string',
+          },
+          size: {
+            type: 'integer',
+            minimum: 0,
+          },
+          lastModified: {
+            type: 'string',
+            format: 'datetime',
+          },
+        },
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.deleteKey',
+    description: 'Owner-only cache management. Requires a method-scoped service-auth token.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['key'],
+            properties: {
+              key: {
+                type: 'string',
+                minLength: 1,
+                maxLength: 2048,
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['deleted'],
+            properties: {
+              deleted: {
+                type: 'integer',
+                minimum: 0,
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+          {
+            name: 'InvalidRequest',
+          },
+        ],
+      },
     },
   },
   {
@@ -304,6 +419,59 @@ export const schemas = [
   },
   {
     lexicon: 1,
+    id: 'io.fluentci.cache.listCollaborators',
+    description: 'Owner-only cache management. Requires a method-scoped service-auth token.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: [],
+            properties: {
+              cursor: {
+                type: 'string',
+                maxLength: 2048,
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['actors'],
+            properties: {
+              actors: {
+                type: 'array',
+                items: {
+                  type: 'string',
+                  format: 'did',
+                },
+              },
+              cursor: {
+                type: 'string',
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+          {
+            name: 'InvalidRequest',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
     id: 'io.fluentci.cache.listCredentials',
     description: 'Owner-only: list up to 100 latest CI credentials without secret values.',
     defs: {
@@ -339,6 +507,76 @@ export const schemas = [
           },
           {
             name: 'CacheUnavailable',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.listKeys',
+    description: 'Owner-only cache management. Requires a method-scoped service-auth token.',
+    defs: {
+      main: {
+        type: 'procedure',
+        input: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: [],
+            properties: {
+              prefix: {
+                type: 'string',
+                maxLength: 2048,
+              },
+              cursor: {
+                type: 'string',
+                maxLength: 2048,
+              },
+              limit: {
+                type: 'integer',
+                minimum: 1,
+                maximum: 200,
+              },
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['keys', 'totalBytes', 'totalKeys'],
+            properties: {
+              keys: {
+                type: 'array',
+                items: {
+                  type: 'ref',
+                  ref: 'io.fluentci.cache.defs#keyView',
+                },
+              },
+              cursor: {
+                type: 'string',
+              },
+              totalBytes: {
+                type: 'integer',
+                minimum: 0,
+              },
+              totalKeys: {
+                type: 'integer',
+                minimum: 0,
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AuthRequired',
+          },
+          {
+            name: 'CacheUnavailable',
+          },
+          {
+            name: 'InvalidRequest',
           },
         ],
       },

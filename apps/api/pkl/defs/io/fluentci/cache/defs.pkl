@@ -19,4 +19,12 @@ defs = new Mapping {
       }
     }
   }
+ ["keyView"] = new ObjectField {
+ required = List("key", "size", "lastModified")
+ properties = new Mapping {
+  ["key"] = new StringField {}
+  ["size"] = new IntegerField { minimum = 0 }
+  ["lastModified"] = new StringField { format = "datetime" }
+ }
+ }
 }

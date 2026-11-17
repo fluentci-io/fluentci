@@ -119,3 +119,30 @@ All methods are JSON POST requests under
 return metadata only, with up to the latest 100 entries. A user may create CI
 credentials for their own cache; an invitation alone does not grant management
 of the owner's CI credentials.
+
+## Explore storage and manage collaborators
+
+On the cache page, enter a collaborator's handle to see account suggestions.
+Select an account with the mouse or arrow keys and Enter, then invite them.
+Use **Refresh collaborators** to list users with upload access and **Remove** to
+revoke a grant. Existing upload tokens still expire within one hour.
+
+Under **Cache storage**, choose **Explore keys** to view keys, byte sizes and
+modification dates. Filter by a key prefix and use **More keys** for further
+pages. Total bytes and key count cover your entire account cache. They are
+computed from object metadata, so large caches take longer and concurrent
+uploads can change the totals.
+
+Only owners can manage storage. Delete individual objects after confirmation,
+or use **Clear cache** and type `CLEAR` to remove all objects in your own cache.
+Other accounts and legacy shared storage are unaffected. Invited users and CI
+upload credentials cannot list or delete storage. Deletions are permanent at the
+origin; public CDN copies may remain until their cached responses expire. Pause
+uploads when clearing a cache if you need it to remain empty.
+
+The owner-only JSON procedures are `io.fluentci.cache.listKeys` (optional
+`prefix`, `cursor`, `limit` up to 200), `io.fluentci.cache.deleteKey` (`key`),
+`io.fluentci.cache.clearCache` (`confirm: true`) and
+`io.fluentci.cache.listCollaborators` (optional `cursor`). Each requires its own
+method-scoped service-auth JWT. Storage management needs S3 list and delete
+permissions in addition to upload permissions.

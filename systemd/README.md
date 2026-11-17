@@ -81,6 +81,15 @@ state directory; the rest of the filesystem is read-only. A different storage
 location requires ownership for `fluentci-cache` and a `ReadWritePaths=` unit
 override. The default listener is loopback port 8080; terminate HTTPS at a reverse
 proxy and allow streaming PUT requests up to the configured size and timeout.
+The production host's Caddy container uses host networking. Add the
+[`caddy-cache.Caddyfile`](caddy-cache.Caddyfile) entry to
+`/pds/caddy/etc/caddy/Caddyfile`, validate it with
+`docker exec caddy caddy validate --config /etc/caddy/Caddyfile`, then reload with
+`docker exec caddy caddy reload --config /etc/caddy/Caddyfile`. The service URL is
+`https://cache.fluentci.io`; its separate public read origin is
+`https://cache-cdn.fluentci.io`. Never configure the read origin to point back to
+the cache service itself.
+
 The service allows 330 seconds to drain transfers on shutdown. Increase
 `TimeoutStopSec` when increasing the cache's 300-second transfer timeout.
 

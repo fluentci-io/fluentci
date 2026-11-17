@@ -1,0 +1,50 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.cache.clearCache",
+  "description": "Owner-only cache management. Requires a method-scoped service-auth token.",
+  "defs": {
+    "main": {
+      "type": "procedure",
+      "input": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "confirm"
+          ],
+          "properties": {
+            "confirm": {
+              "type": "boolean"
+            }
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "deleted"
+          ],
+          "properties": {
+            "deleted": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AuthRequired"
+        },
+        {
+          "name": "CacheUnavailable"
+        },
+        {
+          "name": "InvalidRequest"
+        }
+      ]
+    }
+  }
+}

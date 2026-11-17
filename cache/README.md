@@ -556,3 +556,14 @@ Revoking membership prevents new tokens immediately; previously issued tokens
 remain usable until their one-hour expiry. Restarting the cache with a new
 verification key invalidates all tokens signed with the previous key. Upload
 token signing is separate from Nix narinfo signing.
+
+
+Owners can also browse keys and usage, delete individual keys, clear their own
+cache, and list invited collaborators through the authenticated API and landing
+UI. See [cache management](../docs/site/registry/cache.md#explore-storage-and-manage-collaborators).
+The API signs a separate owner-only `cache:manage` token when proxying these
+requests to `POST /accounts/<owner-hash>/_admin`. Upload and CI tokens cannot
+manage storage. S3 credentials must allow listing and deletion. Usage scans
+metadata in the owner's prefix; operations are bounded by the configured timeout.
+Clear operations may partially finish before a backend failure or timeout; refresh
+the listing before retrying. CDN cached responses are not purged by origin deletion.

@@ -30,6 +30,27 @@
           "type": "boolean"
         }
       }
+    },
+    "keyView": {
+      "type": "object",
+      "required": [
+        "key",
+        "size",
+        "lastModified"
+      ],
+      "properties": {
+        "key": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "lastModified": {
+          "type": "string",
+          "format": "datetime"
+        }
+      }
     }
   }
 }
