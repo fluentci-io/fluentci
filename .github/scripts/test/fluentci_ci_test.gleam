@@ -145,6 +145,14 @@ pub fn typed_setup_and_environment_validation_test() {
   setup.parse("{\"environment\":{}}") |> result.is_error |> should.be_true
 }
 
+pub fn internal_cache_result_is_not_a_public_setup_result_test() {
+  setup.parse(
+    "{\"cacheHostResult\":{\"binDir\":\"/tools/bin\",\"environment\":[]}}",
+  )
+  |> result.is_error
+  |> should.be_true
+}
+
 pub fn github_paths_multiline_values_and_validation_before_writes_test() {
   let prior_path = native.env("GITHUB_PATH")
   let prior_env = native.env("GITHUB_ENV")

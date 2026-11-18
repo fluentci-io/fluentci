@@ -45,6 +45,9 @@ jobs:
         run: |
           fluentci --check-update=false modules cache --json
           fluentci --check-update=false modules rust --json
+      - name: Verify cache host and protocol behavior
+        working-directory: .fluentci/cache
+        run: npm test
       - name: Build Studio assets before compiling the CLI
         run: fluentci --check-update=false run studio build
       - name: Share build inputs with platform jobs

@@ -32,7 +32,9 @@ try {
     });
     result = { outcome: "success" };
   } else throw Error("Unknown cache operation");
-  console.log(JSON.stringify(result));
+  // Host stdout is also streamed by the engine. Keep this internal result from
+  // looking like the public setup result consumed by CI environment exporters.
+  console.log(JSON.stringify({ cacheHostResult: result }));
 } catch (error) {
   console.error(error.message);
   process.exitCode = 1;

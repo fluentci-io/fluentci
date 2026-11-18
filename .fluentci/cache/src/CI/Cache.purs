@@ -40,7 +40,9 @@ invoke operation url input = do
   let bootstrap = "import {gunzipSync} from 'node:zlib';await import('data:text/javascript;base64,'+gunzipSync(Buffer.from(process.argv.slice(3).join(''),'base64')).toString('base64'));"
   output <- P.pipeline ("fluentci-cache-" <> operation) # P.exec ([ "node", "--input-type=module", "--eval", bootstrap, operation, stringify (encodeInput input) ] <> payloadChunks hostProgram) # P.stdout >>= unwrap
   let last = fromMaybe "" (A.last (S.split (Pattern "\n") (S.trim output)))
-  either (throw <<< show) pure (Parser.jsonParser last)
+  json <- either (throw <<< show) pure (Parser.jsonParser last)
+  envelope <- either (throw <<< show) pure (decodeJson json :: Either _ { cacheHostResult :: Json })
+  pure envelope.cacheHostResult
 
 foreign import encodeInput :: forall row. row -> Json
 

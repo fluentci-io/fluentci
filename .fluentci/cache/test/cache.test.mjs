@@ -10,6 +10,8 @@ import {
 } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { fromAff } from "../output/Control.Promise/index.js";
 import * as Generic from "../output/CI.Cache.Generic/index.js";
 import * as Connection from "../output/CI.Cache.Connection/index.js";
@@ -119,4 +121,28 @@ test("generic cache streams files and directories with zstd, gzip and no compres
   await mkdir(unsafe);
   await symlink(existing, join(unsafe, "link"));
   await assert.rejects(IO.pack(unsafe)("gzip")(), /symbolic/);
+});
+
+// Run the real host boundary without invoking FluentCI or installing sccache.
+// The engine streams host stdout before emitting the module's public result.
+test("internal setup output cannot be mistaken for the public environment result", async (t) => {
+  const root = await mkdtemp(join(tmpdir(), "cache-host-result-"));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  const directory = join(root, "config");
+  const host = new URL("../host.mjs", import.meta.url).href;
+  const { stdout } = await promisify(execFile)(process.execPath, [
+    "--input-type=module", "--eval", `await import(${JSON.stringify(host)})`,
+    "setup", JSON.stringify({ protocol: "generic", configDir: directory }),
+  ], { env: { ...process.env, ...env } });
+  const lines = stdout.trim().split("\n");
+  assert.equal(lines.length, 1);
+  const envelope = JSON.parse(lines[0]);
+  assert.equal(envelope.environment, undefined);
+  assert.equal(envelope.binDir, undefined);
+  assert.equal(envelope.cacheHostResult.protocol, "generic");
+  assert.equal(envelope.cacheHostResult.binDir, directory);
+  assert.ok(envelope.cacheHostResult.environment.some(
+    (item) => item.name === "FLUENTCI_GENERIC_CACHE_URL",
+  ));
+  assert.ok(!stdout.includes(env.FLUENTCI_CACHE_TOKEN));
 });
