@@ -24,16 +24,17 @@ connection env explicit = do
   let legacy = A.length parts == 2 && actor == "accounts" && H.matches "^[a-f0-9]{64}$" (H.part 1 parts)
   let alias = A.length parts == 1 && (H.matches "^did:plc:[a-z2-7]{24}$" actor || H.matches "^did:web:[A-Za-z0-9._:%-]+$" actor || H.matches "^@?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$" actor)
   H.ensureA (url.protocol == "https:" && url.username == "" && url.password == "" && url.search == "" && url.hash == "" && (legacy || alias)) "Cache URL must be an HTTPS account base without a protocol suffix, query or credentials"
-  pure { base: url.base, origin: url.origin, host: url.host, actor: if legacy then H.part 1 parts else actor, token }
+  let c = { base: url.base, origin: url.origin, host: url.host, actor: if legacy then H.part 1 parts else actor, token }
+  owner <- ownerDid c
+  pure (c { base = url.origin <> "/" <> S.replaceAll (Pattern "%3A") (S.Replacement ":") (IO.encode owner), actor = owner })
 
-accountId :: Connection -> Aff String
-accountId c
-  | H.matches "^[a-f0-9]{64}$" c.actor = pure c.actor
-  | H.matches "^did:" c.actor = pure (IO.sha256 c.actor)
+ownerDid :: Connection -> Aff String
+ownerDid c
+  | H.matches "^did:" c.actor = pure c.actor
   | otherwise = do
       response <- H.lookupResponse IO.hooks ("https://api.fluentci.io/xrpc/io.fluentci.cache.resolveAccount?actor=" <> IO.encode c.actor)
       H.ensureA (H.success (H.responseStatus response)) "Could not resolve cache owner"
       text <- toAffE (H.responseText response 16384.0)
-      value <- liftEffect (IO.cacheId text)
-      H.ensureA (H.matches "^[a-f0-9]{64}$" value) "Invalid resolved cache owner"
+      value <- liftEffect (IO.cacheOwner text)
+      H.ensureA (H.matches "^did:(plc|web):" value) "Invalid resolved cache owner"
       pure value

@@ -32,8 +32,25 @@ export function cacheInstructions(
 ): CacheInstructions[] {
   const base = cacheUrl.replace(/\/$/, "");
   const host = new URL(base).host;
-  const account =
-    canonicalCacheUrl.split("/accounts/")[1]?.split("/")[0] ?? "OWNER_HASH";
+  const candidate = decodeURIComponent(
+    new URL(canonicalCacheUrl).pathname.split("/").filter(Boolean).at(-1) ?? "",
+  );
+  const didCandidate = decodeURIComponent(
+    new URL(base).pathname.split("/").filter(Boolean).at(-1) ?? "",
+  );
+  const account = candidate.startsWith("did:")
+    ? candidate
+    : didCandidate.startsWith("did:")
+      ? didCandidate
+      : "OWNER_DID";
+  const registryAccount = account.startsWith("did:plc:")
+    ? "did-plc-" + account.slice(8)
+    : account.startsWith("did:web:")
+      ? "did-web-" +
+        Array.from(new TextEncoder().encode(account.slice(8)), (byte) =>
+          byte.toString(16).padStart(2, "0"),
+        ).join("")
+      : "REGISTRY_ENCODED_DID";
   return [
     {
       id: "bazel",
@@ -80,7 +97,7 @@ export TURBO_TEAM='${account}'
 bunx turbo run build --cache=remote:rw`,
         },
       ],
-      note: "TURBO_TEAM must match the cache owner's hash. Artifact signature headers are preserved; if your project enables signatures, configure the same TURBO_REMOTE_CACHE_SIGNATURE_KEY for every trusted client. Verified with Turborepo 2.11.10.",
+      note: "TURBO_TEAM must match the cache owner's DID. Artifact signature headers are preserved; if your project enables signatures, configure the same TURBO_REMOTE_CACHE_SIGNATURE_KEY for every trusted client. Verified with Turborepo 2.11.10.",
       reference: "https://turborepo.dev/docs/core-concepts/remote-caching",
     },
     {
@@ -107,7 +124,7 @@ bunx nx run my-project:build`,
         {
           title: "Authenticate and build",
           code: `export FLUENTCI_CACHE_REGISTRY='${host}'
-export FLUENTCI_CACHE_REF="$FLUENTCI_CACHE_REGISTRY/accounts/${account}/buildkit/my-project:cache"
+export FLUENTCI_CACHE_REF="$FLUENTCI_CACHE_REGISTRY/accounts/${registryAccount}/buildkit/my-project:cache"
 printf '%s' "$FLUENTCI_CACHE_TOKEN" | docker login "$FLUENTCI_CACHE_REGISTRY" --username ci --password-stdin
 docker buildx build \\
   --cache-from "type=registry,ref=$FLUENTCI_CACHE_REF" \\

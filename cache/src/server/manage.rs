@@ -85,7 +85,8 @@ pub(super) async fn handle(
 
 async fn manage(app: &App, account: &str, input: Input) -> Result<Value> {
     let root = format!("accounts/{account}/");
-    let prefix = StorePath::from(format!("accounts/{account}"));
+    let prefix =
+        StorePath::parse(format!("accounts/{account}")).expect("validated cache storage path");
     match input.action.as_str() {
         "revokeToken" => {
             if uuid::Uuid::parse_str(&input.id).is_err() {

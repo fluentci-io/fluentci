@@ -87,6 +87,8 @@ async fn inner(
                 if matches!(name.as_ref(), "teamId" | "slug")
                     && value != account
                     && value != format!("team_{account}")
+                    && value != super::aliases::legacy_account(account)
+                    && value != format!("team_{}", super::aliases::legacy_account(account))
                 {
                     return Err(Failure(
                         StatusCode::FORBIDDEN,

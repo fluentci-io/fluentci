@@ -32,7 +32,7 @@ setup env explicit protocol directory repository = do
   H.ensureA (A.elem protocol [ "nix", "bazel", "bazel-grpc", "turbo", "nx", "buildkit", "sccache", "go", "gradle", "maven", "generic" ]) "Unknown cache protocol"
   H.ensureA (S.trim directory /= "") "Set a configuration directory"
   destination <- liftEffect (IO.pathAbsolute directory)
-  account <- if A.elem protocol [ "bazel-grpc", "turbo", "buildkit" ] then C.accountId c else pure ""
+  account <- if A.elem protocol [ "bazel-grpc", "turbo", "buildkit" ] then C.ownerDid c else pure ""
   let common = [ variable "FLUENTCI_CACHE_URL" c.base ]
   plan <- case protocol of
     "nix" -> do
@@ -53,7 +53,7 @@ setup env explicit protocol directory repository = do
     "maven" -> pure { variables: [], secrets: [], files: [ file "extensions.xml" "<extensions><extension><groupId>org.apache.maven.extensions</groupId><artifactId>maven-build-cache-extension</artifactId><version>1.3.0</version></extension></extensions>\n", file "maven-build-cache-config.xml" ("<cache xmlns=\"http://maven.apache.org/BUILD-CACHE-CONFIG/1.4.0\"><configuration><enabled>true</enabled><remote enabled=\"true\" id=\"fluentci-cache\" transport=\"resolver\"><url>" <> c.base <> "/maven/</url></remote></configuration></cache>\n"), file "settings.xml" "<settings><servers><server><id>fluentci-cache</id><username>ci</username><password>${env.FLUENTCI_CACHE_TOKEN}</password></server></servers></settings>\n" ], note: "Merge extensions.xml and maven-build-cache-config.xml into .mvn/. Merge settings.xml into Maven settings. Run mvn verify -Dmaven.build.cache.remote.save.enabled=true. Generated files contain environment references, never token values." }
     "buildkit" -> do
       H.ensureA (H.matches "^[a-z0-9][a-z0-9._/-]*:[A-Za-z0-9_][A-Za-z0-9_.-]*$" repository && not (S.contains (Pattern "..") repository)) "Set a valid BuildKit repository:tag"
-      let ref = c.host <> "/accounts/" <> account <> "/" <> repository
+      let ref = c.host <> "/accounts/" <> IO.registryAccount account <> "/" <> repository
       pure { variables: [ variable "FLUENTCI_CACHE_REGISTRY" c.host, variable "FLUENTCI_CACHE_REF" ref ], secrets: [], files: [ { name: "buildkit.sh", executable: true, text: "#!/bin/sh\nset -eu\nprintf '%s' \"$FLUENTCI_CACHE_TOKEN\" | docker login " <> quote c.host <> " --username ci --password-stdin\nexec docker buildx build --cache-from " <> quote ("type=registry,ref=" <> ref) <> " --cache-to " <> quote ("type=registry,ref=" <> ref <> ",mode=max") <> " \"$@\"\n" } ], note: "Run buildkit.sh . with a Buildx driver supporting registry cache. Docker stores credentials in its normal credential store." }
     "bazel" -> pure (bazel c destination (c.base <> "/bazel") "")
     "bazel-grpc" -> pure (bazel c destination ("grpcs://" <> c.host) ("build --remote_instance_name=accounts/" <> account <> "\n"))

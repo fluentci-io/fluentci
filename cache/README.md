@@ -10,16 +10,18 @@ Use `https://cache.fluentci.io/did:plc:YOUR_DID` as a stable account base URL,
 or `https://cache.fluentci.io/your.handle` as a readable alias. The
 `https://cache.fluentci.io/@your.handle` form works too. HTTP endpoints
 append their protocol path, such as `/nix`, `/bazel`, `/gradle`, or `/turbo`.
-Both aliases resolve to the existing `accounts/SHA256(owner-DID)` namespace.
+Both handle forms resolve to the `accounts/<owner-did>` storage namespace.
 Existing `/accounts/<owner-hash>` URLs, artifacts, and upload tokens keep working.
-No storage migration is required.
+Existing storage is copied to DID namespaces by the migration described below.
 
 DID URLs resolve locally; handles are verified through the public
 `io.fluentci.cache.resolveAccount` query and cached for 60 seconds. Writes remain
-scoped to the DID owner's hash and require the same upload token. Use DID URLs
-in CI because a handle can change ownership. OCI repository names and gRPC
-instance names retain the hash identifier; token responses expose it through
-`canonicalCacheUrl` and the cache page fills it into the relevant examples.
+scoped to the owner DID and require the same upload token. Use DID URLs
+in CI because a handle can change ownership. Both token response URLs use the
+owner DID. gRPC instance names use `accounts/<owner-did>`. OCI repository names
+use the reversible `did-plc-YOUR_DID` form because colons are forbidden there;
+`did:web` suffixes are UTF-8 hex encoded after `did-web-`. Stored keys always use
+the full DID. Legacy hash URLs are resolved through retained token-owner records.
 
 The resolver defaults to
 `https://api.fluentci.io/xrpc/io.fluentci.cache.resolveAccount`; configure
@@ -66,8 +68,8 @@ No FluentCI CLI, Studio build, database, or external service is needed for the f
 | Generic | `/generic/` | Arbitrary hierarchical keys over GET/HEAD/PUT |
 | Turborepo | `/<DID-or-handle>/turbo/` | HTTP artifact cache, signature headers, status, and events |
 | Nx | `/<DID-or-handle>/nx/` | Self-hosted HTTP cache; immutable artifact uploads |
-| Bazel gRPC | instance `accounts/<owner-hash>` | ActionCache, CAS, Capabilities, and resumable ByteStream |
-| BuildKit | `/v2/accounts/<owner-hash>/<repository>/` | OCI registry cache manifests, indexes, and resumable blob uploads |
+| Bazel gRPC | instance `accounts/<owner-did>` | ActionCache, CAS, Capabilities, and resumable ByteStream |
+| BuildKit | `/v2/accounts/<registry-encoded-did>/<repository>/` | OCI registry cache manifests, indexes, and resumable blob uploads |
 
 Nix's binary-cache download format is supported; the Cachix service API, Cachix CLI upload protocol, server-side NAR generation, and signing are not implemented. Publish signed `.narinfo` and NAR files produced by Nix. This is a cache server, not a remote executor, Maven Central proxy, or Go module proxy. Bazel gRPC provides cache services only, without remote execution. The OCI interface supports BuildKit cache push/pull, not a general image registry management API.
 
@@ -203,12 +205,12 @@ Both commands need `FLUENTCI_CACHE_TOKEN` unless read-only. The memory backend r
 
 Use the stable DID URL and upload token from your cache settings. The hash for protocol-specific identifiers is available in `canonicalCacheUrl`. The URL for
 Turborepo is `https://cache.fluentci.io/did:plc:YOUR_DID/turbo` (`TURBO_API`),
-with `TURBO_TOKEN` set to your token and `TURBO_TEAM` set to the owner hash.
+with `TURBO_TOKEN` set to your token and `TURBO_TEAM` set to the owner DID.
 Nx uses `NX_SELF_HOSTED_REMOTE_CACHE_SERVER=https://cache.fluentci.io/did:plc:YOUR_DID/nx`
 and `NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN` for its token.
 
 Bazel gRPC uses `--remote_cache=grpcs://cache.fluentci.io`,
-`--remote_instance_name=accounts/<owner-hash>`, and
+`--remote_instance_name=accounts/<owner-did>`, and
 `--remote_header="Authorization=Bearer $FLUENTCI_CACHE_TOKEN"`. Terminate TLS
 at a proxy that forwards gRPC with HTTP/2; see
 [`systemd/caddy-cache.Caddyfile`](../systemd/caddy-cache.Caddyfile).
@@ -218,8 +220,8 @@ For BuildKit, log in with your upload token as the password:
 ```sh
 printf '%s' "$FLUENTCI_CACHE_TOKEN" | docker login cache.fluentci.io --username ci --password-stdin
 docker buildx build \
-  --cache-from type=registry,ref=cache.fluentci.io/accounts/OWNER_HASH/buildkit/project:cache \
-  --cache-to type=registry,ref=cache.fluentci.io/accounts/OWNER_HASH/buildkit/project:cache,mode=max .
+  --cache-from type=registry,ref=cache.fluentci.io/accounts/did-plc-YOUR_DID/buildkit/project:cache \
+  --cache-to type=registry,ref=cache.fluentci.io/accounts/did-plc-YOUR_DID/buildkit/project:cache,mode=max .
 ```
 
 Resumable OCI and gRPC sessions use temporary disk space and do not survive
@@ -611,7 +613,7 @@ continue to work.
 Reads are public with `public_read = true`, including account caches. S3 reads
 use the configured `cdn_url` anonymously: it must point to the bucket root,
 with the configured storage prefix accessible through the CDN. Account objects
-are stored under `<prefix>/accounts/<owner-hash>/<protocol>/<key>`. Direct CDN
+are stored under `<prefix>/accounts/<owner-did>/<protocol>/<key>`. Direct CDN
 reads also remain public; invitations do not grant or restrict read access. A
 public CDN is still public if the cache server's `public_read` is set to false.
 Use the cache server URL for generated `nix-cache-info` responses.
@@ -624,7 +626,7 @@ token signing is separate from Nix narinfo signing.
 Individual upload tokens can be revoked from the cache page or `revokeToken`.
 The API records identifiers and metadata for newly issued tokens, including CI
 exchanges, but never stores their secrets. Older tokens retain their original signed expiry and should be replaced once.
-The cache stores revocation markers under `<prefix>/_revocations/<owner-hash>/`,
+The cache stores revocation markers under `<prefix>/_revocations/<owner-did>/`,
 outside the artifact namespace. Every JWT upload checks the marker through
 authenticated origin storage; failures reject the upload rather than bypassing
 revocation. Cache replicas sharing that prefix share revocation state. Clearing
@@ -637,7 +639,7 @@ Owners can also browse keys and usage, delete individual keys, clear their own
 cache, and list invited collaborators through the authenticated API and landing
 UI. See [cache management](../docs/site/registry/cache.md#explore-storage-and-manage-collaborators).
 The API signs a separate owner-only `cache:manage` token when proxying these
-requests to `POST /accounts/<owner-hash>/_admin`. Upload and CI tokens cannot
+requests to `POST /accounts/<owner-did>/_admin`. Upload and CI tokens cannot
 manage storage. S3 credentials must allow listing and deletion. Usage scans
 metadata in the owner's prefix; operations are bounded by the configured timeout.
 Clear operations may partially finish before a backend failure or timeout; refresh
@@ -667,3 +669,21 @@ archives for one year. Set status ranges 400–599 to **No store** (`-1` through
 the API) in both eligible rules, and retain query strings in cache keys. Purge
 existing CDN errors after changing rules. Keep authenticated API and management
 responses uncached. Do not apply long archive TTLs to mutable protocol keys.
+
+### Migrate existing hash namespaces
+
+With the API dependencies installed and Node 24+, inventory verified cache owners
+and storage keys before copying. The script reads the database without changing
+it: ownership columns already contain DIDs.
+
+```sh
+node cache/scripts/migrate-did-keys.mjs --env-file /etc/fluentci/cache.env --database /var/lib/fluentci/registry.sqlite
+node cache/scripts/migrate-did-keys.mjs --env-file /etc/fluentci/cache.env --database /var/lib/fluentci/registry.sqlite --apply
+```
+
+The migration copies objects server-side, rewrites NX/Turborepo pointer metadata,
+checks copied sizes and ETags, and migrates token revocation markers. It retains
+source objects and writes a report for rollback. Unresolved orphan namespaces are
+reported and retained without assigning them to another owner. Briefly stop cache
+writes, run a final incremental copy, then start the DID-aware API and cache
+service together. Existing upload tokens and hash URLs remain compatible.

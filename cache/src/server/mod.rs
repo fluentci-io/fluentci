@@ -6,7 +6,7 @@ use self::{
 use crate::Config;
 use axum::{
     Router,
-    routing::{any, get, post},
+    routing::{any, get},
 };
 use object_store::ObjectStore;
 use std::sync::Arc;
@@ -70,9 +70,6 @@ pub fn router(config: Config, store: Arc<dyn ObjectStore>) -> anyhow::Result<Rou
         .route("/healthz", get(|| async { "ok\n" }))
         .route("/readyz", get(ready))
         .route("/metrics", get(metrics))
-        .route("/accounts/{account}/_admin", post(manage::handle))
-        .route("/accounts/{account}/nx/v1/cache/{hash}", any(monorepo::nx))
-        .route("/accounts/{account}/turbo/{*rest}", any(monorepo::turbo))
         .route("/{*key}", any(handle))
         .with_state(app.clone())
         .merge(grpc::router(app.clone()))

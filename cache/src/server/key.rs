@@ -40,7 +40,7 @@ impl Key {
 
 pub(super) fn key(raw: &str) -> Result<Key> {
     if raw.len() > 2048
-        || raw.contains(['\\', '\0', '%'])
+        || raw.contains(['\\', '\0'])
         || raw.chars().any(char::is_control)
         || raw
             .split('/')
@@ -52,11 +52,7 @@ pub(super) fn key(raw: &str) -> Result<Key> {
         let (id, rest) = scoped
             .split_once('/')
             .ok_or(Failure(StatusCode::BAD_REQUEST, "account key required\n"))?;
-        if id.len() != 64
-            || !id
-                .bytes()
-                .all(|b| b.is_ascii_digit() || (b'a'..=b'f').contains(&b))
-        {
+        if !super::aliases::valid_did(id) {
             return Err(Failure(
                 StatusCode::BAD_REQUEST,
                 "invalid account namespace\n",
@@ -66,6 +62,9 @@ pub(super) fn key(raw: &str) -> Result<Key> {
     } else {
         (None, raw)
     };
+    if raw.contains('%') {
+        return Err(Failure(StatusCode::BAD_REQUEST, "invalid cache key\n"));
+    }
     let (namespace, rest) = raw.split_once('/').unwrap_or((raw, ""));
     let (namespace, rest) = match namespace {
         "nix" => ("nix", rest),

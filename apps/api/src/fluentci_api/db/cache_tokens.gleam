@@ -53,3 +53,9 @@ pub fn revoke(db: Db, owner: String, id: String) -> Promise(Nil) {
   ))
   Nil
 }
+
+// Token records retain owners even after revocation, allowing legacy cache
+// hashes to resolve without trusting a caller-supplied owner identity.
+pub fn owners(db: Db) -> Promise(List(c.Row)) {
+  all(db, from(c.table()))
+}

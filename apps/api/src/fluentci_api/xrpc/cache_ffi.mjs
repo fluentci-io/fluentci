@@ -3,9 +3,15 @@ import { readFileSync } from 'node:fs';
 import { XRPCError } from '@atproto/xrpc-server';
 import { resolveActor, resolveCacheOwner } from '../node/runtime_ffi.mjs';
 
-export async function resolveAccount(server, request) {
+export async function resolveAccount(server, request, owners) {
   try {
-    const owner = await resolveCacheOwner(server, request.params.actor);
+    const actor = request.params.actor.replace(/^@/, '');
+    const owner = /^[a-f0-9]{64}$/.test(actor)
+      ? (await owners())
+          .toArray()
+          .find((row) => createHash('sha256').update(row.owner).digest('hex') === actor)?.owner
+      : await resolveCacheOwner(server, actor);
+    if (!owner) throw new Error('Unknown legacy cache account');
     return {
       encoding: 'application/json',
       body: { owner, cacheId: createHash('sha256').update(owner).digest('hex') },
@@ -52,7 +58,7 @@ export async function issueToken(server, owner, actor, save) {
 }
 export function mintToken(server, owner, actor, scope = 'cache:upload') {
   const { base, key } = settings(server);
-  const cache = createHash('sha256').update(owner).digest('hex');
+  const cache = owner;
   const now = Math.floor(Date.now() / 1000);
   const exp = scope === 'cache:manage' ? now + 3600 : undefined;
   const id = randomUUID();
@@ -79,7 +85,7 @@ export function mintToken(server, owner, actor, scope = 'cache:upload') {
       token,
       ...(exp === undefined ? {} : { expiresAt: new Date(exp * 1000).toISOString() }),
       cacheUrl: `${base}/${encodeURIComponent(owner).replaceAll('%3A', ':')}`,
-      canonicalCacheUrl: `${base}/accounts/${cache}`,
+      canonicalCacheUrl: `${base}/${encodeURIComponent(owner).replaceAll('%3A', ':')}`,
       owner,
     },
     headers: { 'Cache-Control': 'no-store' },

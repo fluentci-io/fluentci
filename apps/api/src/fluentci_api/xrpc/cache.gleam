@@ -12,7 +12,11 @@ import fluentci_api/schema/cache_usage as usage
 import gleam/javascript/promise.{type Promise}
 
 @external(javascript, "./cache_ffi.mjs", "resolveAccount")
-fn resolve_account(server: Server, request: Request) -> Promise(Output)
+fn resolve_account(
+  server: Server,
+  request: Request,
+  owners: fn() -> Promise(List(token.Row)),
+) -> Promise(Output)
 
 @external(javascript, "./cache_ffi.mjs", "createToken")
 fn create_token(
@@ -66,7 +70,7 @@ fn usage_history(
 
 pub fn register(server: Server, db: Db) -> Nil {
   runtime.method(server, models.cache_resolve_account, fn(request) {
-    resolve_account(server, request)
+    resolve_account(server, request, fn() { cache_tokens.owners(db) })
   })
   let record = fn(owner, date, bytes, keys, observed) {
     cache_usage.record(db, owner, date, bytes, keys, observed)

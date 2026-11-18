@@ -36,7 +36,7 @@ fn request(method: &str, path: &str, body: &str) -> Request<Body> {
 #[tokio::test]
 async fn nx_uploads_are_immutable_and_account_scoped() {
     let app = app();
-    let account = "a".repeat(64);
+    let account = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa".to_owned();
     let path = format!("/accounts/{account}/nx/v1/cache/1234567890");
     assert_eq!(
         app.clone()
@@ -61,10 +61,14 @@ async fn nx_uploads_are_immutable_and_account_scoped() {
         .unwrap();
     assert_eq!(to_bytes(response.into_body(), 1024).await.unwrap(), "first");
     assert_eq!(
-        app.oneshot(request("GET", &path.replace(&account, &"b".repeat(64)), ""))
-            .await
-            .unwrap()
-            .status(),
+        app.oneshot(request(
+            "GET",
+            &path.replace(&account, "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb"),
+            ""
+        ))
+        .await
+        .unwrap()
+        .status(),
         StatusCode::NOT_FOUND
     );
 }
@@ -72,7 +76,7 @@ async fn nx_uploads_are_immutable_and_account_scoped() {
 #[tokio::test]
 async fn turbo_preserves_signatures_metadata_and_range_reads() {
     let app = app();
-    let account = "a".repeat(64);
+    let account = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa".to_owned();
     let base = format!("/accounts/{account}/turbo/v8/artifacts");
     let path = format!("{base}/abcdef0123?slug={account}");
     let mut put = request("PUT", &path, "0123456789");
@@ -156,7 +160,7 @@ async fn turbo_preserves_signatures_metadata_and_range_reads() {
 #[tokio::test]
 async fn monorepo_writes_require_tokens_and_reject_invalid_metadata() {
     let app = app();
-    let account = "a".repeat(64);
+    let account = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa".to_owned();
     let path = format!("/accounts/{account}/turbo/artifacts/abcdef");
     let mut bad = request("PUT", &path, "x");
     bad.headers_mut().remove(header::AUTHORIZATION);

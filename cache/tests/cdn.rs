@@ -9,7 +9,6 @@ use axum::{
 use clap::Parser;
 use fluentci_cache::{Config, config::Backend, router};
 use object_store::{ObjectStore, memory::InMemory, path::Path};
-use sha2::{Digest, Sha256};
 use std::sync::{Arc, Mutex};
 use tower::ServiceExt;
 
@@ -227,7 +226,10 @@ fn file_and_memory_backends_keep_reading_the_supplied_store() {
 #[tokio::test]
 async fn account_reads_are_public_through_configured_cdn() {
     let (app, writes, cdn, server) = fixture(true).await;
-    let key = format!("/accounts/{}/generic/public", "a".repeat(64));
+    let key = format!(
+        "/accounts/{}/generic/public",
+        "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa"
+    );
     assert_eq!(
         cdn.origin
             .clone()
@@ -271,7 +273,7 @@ async fn public_nix_reads_redirect_without_waiting_for_saturated_transfer_slots(
         .oneshot(request("GET", "/generic/key", Body::empty()))
         .await
         .unwrap();
-    let account = "a".repeat(64);
+    let account = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa".to_owned();
     for path in [
         "/nix/hash.narinfo".to_owned(),
         "/hash.narinfo".to_owned(),
@@ -380,7 +382,7 @@ async fn private_nix_reads_never_redirect_to_public_cdn() {
 }
 
 #[tokio::test]
-async fn did_aliases_preserve_legacy_cdn_targets_without_consuming_transfer_slots() {
+async fn did_aliases_use_did_cdn_targets_without_consuming_transfer_slots() {
     let (app, writes, cdn, server) = fixture(true).await;
     let held = app
         .clone()
@@ -394,16 +396,15 @@ async fn did_aliases_preserve_legacy_cdn_targets_without_consuming_transfer_slot
         ),
         ("did:web:example.com%3A8443", "did:web:example.com%253A8443"),
     ] {
-        let hash = hex::encode(Sha256::digest(owner.as_bytes()));
         writes
             .put(
-                &Path::from(format!("accounts/{hash}/nix/test.narinfo")),
+                &Path::parse(format!("accounts/{owner}/nix/test.narinfo")).unwrap(),
                 "cached".into(),
             )
             .await
             .unwrap();
         let mut location = None;
-        for base in [format!("/{segment}"), format!("/accounts/{hash}")] {
+        for base in [format!("/{segment}"), format!("/accounts/{segment}")] {
             let response = app
                 .clone()
                 .oneshot(request(
@@ -419,7 +420,7 @@ async fn did_aliases_preserve_legacy_cdn_targets_without_consuming_transfer_slot
                 reqwest::Url::parse(target.to_str().unwrap())
                     .unwrap()
                     .path()
-                    .ends_with(&format!("/accounts/{hash}/nix/test.narinfo"))
+                    .ends_with(&format!("/accounts/{segment}/nix/test.narinfo"))
             );
             if let Some(previous) = location {
                 assert_eq!(target, previous);

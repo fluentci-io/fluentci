@@ -1,5 +1,6 @@
 import * as Setup from "./output/CI.Cache.Setup/index.js";
 import * as Generic from "./output/CI.Cache.Generic/index.js";
+import * as Connection from "./output/CI.Cache.Connection/index.js";
 import { fromAff } from "./output/Control.Promise/index.js";
 import { build } from "./run.mjs";
 const operation = process.argv[1];
@@ -27,9 +28,17 @@ try {
       ),
     )();
   else if (operation === "nixBuild") {
-    await build(env, undefined, undefined, {
-      flake: input.flake ?? ".#default",
-    });
+    const connection = await fromAff(
+      Connection.connection(env)(input.url ?? ""),
+    )();
+    await build(
+      { ...env, FLUENTCI_CACHE_URL: connection.base },
+      undefined,
+      undefined,
+      {
+        flake: input.flake ?? ".#default",
+      },
+    );
     result = { outcome: "success" };
   } else throw Error("Unknown cache operation");
   // Host stdout is also streamed by the engine. Keep this internal result from

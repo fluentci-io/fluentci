@@ -42,7 +42,7 @@ export const parseUrl = (value) => () => {
 export const sha256 = (value) =>
   createHash("sha256").update(value).digest("hex");
 export const encode = (value) => encodeURIComponent(value);
-export const cacheId = (text) => () => JSON.parse(text).cacheId ?? "";
+export const cacheOwner = (text) => () => JSON.parse(text).owner ?? "";
 export const setValue = (env) => (key) => (value) => ({ ...env, [key]: value });
 export const toJson = (value) => JSON.stringify(value);
 export const pathAbsolute = (value) => () => resolve(value);
@@ -420,3 +420,13 @@ async function runSccache(executable, args, ignoreExit) {
     );
   });
 }
+
+// OCI repository names disallow colons; preserve the DID reversibly.
+export const registryAccount = (did) =>
+  did.startsWith("did:plc:")
+    ? "did-plc-" + did.slice(8)
+    : did.startsWith("did:web:")
+      ? "did-web-" + Buffer.from(did.slice(8), "utf8").toString("hex")
+      : (() => {
+          throw Error("Expected cache owner DID");
+        })();

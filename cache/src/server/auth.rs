@@ -91,7 +91,8 @@ fn scoped_authorized(
         validation.validate_nbf = true;
         validation.leeway = 0;
         if let Ok(data) = decode::<UploadClaims>(&token, key, &validation)
-            && data.claims.cache == account
+            && (data.claims.cache == account
+                || data.claims.cache == super::aliases::legacy_account(account))
             && data.claims.scope == scope
             && data.claims.sub.starts_with("did:")
             && (owner_only
@@ -101,7 +102,7 @@ fn scoped_authorized(
                     .jti
                     .as_ref()
                     .is_some_and(|id| uuid::Uuid::parse_str(id).is_ok()))
-            && (!owner_only || hex::encode(Sha256::digest(data.claims.sub.as_bytes())) == account)
+            && (!owner_only || data.claims.sub == account)
         {
             return Ok(data.claims.jti);
         }
@@ -143,8 +144,9 @@ pub(super) fn manage_authorized(app: &App, headers: &HeaderMap, account: &str) -
 }
 
 pub(super) fn revocation_path(account: &str, id: &str) -> Path {
-    Path::from(format!(
+    Path::parse(format!(
         "_revocations/{account}/{}",
         hex::encode(Sha256::digest(id.as_bytes()))
     ))
+    .expect("validated cache storage path")
 }

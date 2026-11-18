@@ -28,7 +28,7 @@ async fn node_signed_tokens_are_account_scoped_and_public_reads_need_no_token() 
     config.upload_token_public_key_file = Some(pem);
     let store = Arc::new(InMemory::new());
     let app = router(config.clone(), store.clone()).unwrap();
-    let account = "a".repeat(64);
+    let account = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa".to_owned();
     let path = format!("/accounts/{account}/generic/object");
     let token = fixture["valid"].as_str().unwrap();
     let send = |method: &str, path: &str, auth: Option<String>| {
@@ -64,7 +64,10 @@ async fn node_signed_tokens_are_account_scoped_and_public_reads_need_no_token() 
     );
     for denied in [
         "/generic/object".to_string(),
-        format!("/accounts/{}/generic/object", "b".repeat(64)),
+        format!(
+            "/accounts/{}/generic/object",
+            "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb"
+        ),
         "/metrics".into(),
         "/readyz".into(),
     ] {

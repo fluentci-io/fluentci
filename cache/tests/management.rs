@@ -32,7 +32,10 @@ async fn owner_management_paginates_totals_and_deletes_only_own_cache() {
         format!("{base}/generic/b"),
         format!("{base}/gradle/c"),
         "generic/shared".into(),
-        format!("accounts/{}/generic/other", "b".repeat(64)),
+        format!(
+            "accounts/{}/generic/other",
+            "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb"
+        ),
     ] {
         store.put(&Path::from(key), "data".into()).await.unwrap();
     }
@@ -63,10 +66,14 @@ async fn owner_management_paginates_totals_and_deletes_only_own_cache() {
         );
     }
     assert_eq!(
-        send(&"b".repeat(64), token(), json!({"action":"list"}))
-            .await
-            .unwrap()
-            .status(),
+        send(
+            "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb",
+            token(),
+            json!({"action":"list"})
+        )
+        .await
+        .unwrap()
+        .status(),
         StatusCode::UNAUTHORIZED
     );
     let first = send(
@@ -139,7 +146,7 @@ async fn owner_management_paginates_totals_and_deletes_only_own_cache() {
         store
             .head(&Path::from(format!(
                 "accounts/{}/generic/other",
-                "b".repeat(64)
+                "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb"
             )))
             .await
             .is_ok()
@@ -175,7 +182,10 @@ async fn public_read_only_cache_does_not_expose_management_without_admin_configu
         .oneshot(
             Request::builder()
                 .method("POST")
-                .uri(format!("/accounts/{}/_admin", "a".repeat(64)))
+                .uri(format!(
+                    "/accounts/{}/_admin",
+                    "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa"
+                ))
                 .header(header::CONTENT_TYPE, "application/json")
                 .body(Body::from("{\"action\":\"list\"}"))
                 .unwrap(),

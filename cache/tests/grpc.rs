@@ -48,7 +48,7 @@ async fn fixture() -> Fixture {
     Fixture {
         url,
         token: data["valid"].as_str().unwrap().into(),
-        account: "a".repeat(64),
+        account: "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa".to_owned(),
         store,
         task,
     }
@@ -187,7 +187,7 @@ async fn grpc_cas_action_cache_and_account_auth_interoperate() {
     let denied = ac
         .update_action_result(auth(
             re::UpdateActionResultRequest {
-                instance_name: format!("accounts/{}", "b".repeat(64)),
+                instance_name: format!("accounts/{}", "did:plc:bbbbbbbbbbbbbbbbbbbbbbbb"),
                 action_digest: Some(action.clone()),
                 action_result: Some(result),
                 ..Default::default()

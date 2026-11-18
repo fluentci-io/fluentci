@@ -52,7 +52,10 @@ async fn upload(app: &axum::Router, base: &str, data: &[u8]) -> String {
 #[tokio::test]
 async fn registry_resumes_uploads_and_validates_blob_digests() {
     let app = app();
-    let base = format!("/v2/accounts/{}/buildkit/project", "a".repeat(64));
+    let base = format!(
+        "/v2/accounts/{}/buildkit/project",
+        "did-plc-aaaaaaaaaaaaaaaaaaaaaaaa"
+    );
     let hash = format!("sha256:{}", hex::encode(Sha256::digest(b"artifact")));
     assert_eq!(
         app.clone()
@@ -147,7 +150,7 @@ async fn registry_resumes_uploads_and_validates_blob_digests() {
 #[tokio::test]
 async fn registry_publishes_buildkit_manifests_indexes_tags_and_cross_repository_mounts() {
     let app = app();
-    let account = "a".repeat(64);
+    let account = "did-plc-aaaaaaaaaaaaaaaaaaaaaaaa".to_owned();
     let base = format!("/v2/accounts/{account}/source");
     let data = b"{}";
     let blob = upload(&app, &base, data).await;
@@ -234,7 +237,10 @@ async fn registry_rejects_bad_credentials_and_abort_releases_staging_budget() {
         Options::parse_from(["test", "--backend", "memory", "--token", "admin"]).config;
     config.staging_limit = 4;
     let app = router(config, Arc::new(InMemory::new())).unwrap();
-    let base = format!("/v2/accounts/{}/project", "a".repeat(64));
+    let base = format!(
+        "/v2/accounts/{}/project",
+        "did-plc-aaaaaaaaaaaaaaaaaaaaaaaa"
+    );
     let mut invalid = request("GET", "/v2/", "");
     invalid
         .headers_mut()

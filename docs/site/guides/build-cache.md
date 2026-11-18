@@ -26,7 +26,7 @@ https://cache.fluentci.io/@your.handle
 Use the DID URL for CI: changing or transferring a handle does not change the DID.
 Handle aliases are verified against the DID document and cached for up to 60
 seconds. Existing `/accounts/OWNER_HASH` URLs continue to work with the same
-artifacts and tokens; no migration or token replacement is required.
+artifacts and tokens after the server migrates their storage to DID namespaces.
 
 Copy your stable URL from the cache page:
 
@@ -35,10 +35,11 @@ export FLUENTCI_CACHE_URL='https://cache.fluentci.io/did:plc:YOUR_DID'
 export FLUENTCI_CACHE_TOKEN='PASTE_UPLOAD_TOKEN'
 ```
 
-The API also returns `canonicalCacheUrl` with the existing hash namespace. Use
-its `OWNER_HASH` for Bazel gRPC instance names, Turborepo team identifiers, and
-OCI/BuildKit repository names. The cache page fills these protocol identifiers
-automatically while using your DID URL for HTTP endpoints.
+Both `cacheUrl` and `canonicalCacheUrl` use the owner DID. Bazel gRPC instance
+names and Turborepo team identifiers also use the owner DID. OCI repository names
+cannot contain colons, so BuildKit uses the reversible form `did-plc-YOUR_DID`
+(or `did-web-` followed by the hexadecimal UTF-8 bytes of the did:web suffix).
+Stored object keys always use the complete DID, including for BuildKit.
 
 Use HTTPS. Keep upload tokens in your terminal or CI secret store and revoke them
 when no longer needed. Do not distribute the cache server's administrator token.
@@ -50,10 +51,10 @@ cache client password.
 | Client                      | Append to your account URL                 | Upload authentication                |
 | --------------------------- | ------------------------------------------ | ------------------------------------ |
 | Bazel HTTP cache            | `/bazel`                                   | Bearer header                        |
-| Bazel gRPC                  | instance `accounts/OWNER_HASH`             | Bearer metadata                      |
+| Bazel gRPC                  | instance `accounts/OWNER_DID`             | Bearer metadata                      |
 | Turborepo                   | `/turbo`                                   | `TURBO_TOKEN`                        |
 | Nx                          | `/nx`                                      | Access-token environment variable    |
-| BuildKit / Docker Buildx    | OCI registry `/v2/accounts/OWNER_HASH/...` | Docker login password                |
+| BuildKit / Docker Buildx    | OCI registry `/v2/accounts/did-plc-YOUR_DID/...` | Docker login password                |
 | sccache WebDAV              | `/sccache/`                                | Bearer token                         |
 | Go helper                   | Nothing; helper adds `/gocache`            | `FLUENTCI_CACHE_TOKEN`               |
 | Gradle HTTP build cache     | `/gradle/`                                 | Basic-auth password                  |
@@ -95,7 +96,7 @@ Use Bazel's gRPC cache services with an account-scoped instance.
 ```sh
 bazel build //... \
   --remote_cache='grpcs://cache.fluentci.io' \
-  --remote_instance_name='accounts/OWNER_HASH' \
+  --remote_instance_name='accounts/did:plc:YOUR_DID' \
   --remote_header="Authorization=Bearer $FLUENTCI_CACHE_TOKEN"
 ```
 
@@ -112,11 +113,11 @@ Share Turborepo artifacts through the HTTP remote cache.
 ```sh
 export TURBO_API="$FLUENTCI_CACHE_URL/turbo"
 export TURBO_TOKEN="$FLUENTCI_CACHE_TOKEN"
-export TURBO_TEAM='OWNER_HASH'
+export TURBO_TEAM='did:plc:YOUR_DID'
 bunx turbo run build --cache=remote:rw
 ```
 
-TURBO_TEAM must match the cache owner's hash. Artifact signature headers are preserved; if your project enables signatures, configure the same TURBO_REMOTE_CACHE_SIGNATURE_KEY for every trusted client. Verified with Turborepo 2.11.10.
+TURBO_TEAM must match the cache owner's DID. Artifact signature headers are preserved; if your project enables signatures, configure the same TURBO_REMOTE_CACHE_SIGNATURE_KEY for every trusted client. Verified with Turborepo 2.11.10.
 
 [Turborepo reference](https://turborepo.dev/docs/core-concepts/remote-caching).
 
@@ -144,7 +145,7 @@ Export and restore BuildKit cache using the OCI registry interface.
 
 ```sh
 export FLUENTCI_CACHE_REGISTRY='cache.fluentci.io'
-export FLUENTCI_CACHE_REF="$FLUENTCI_CACHE_REGISTRY/accounts/OWNER_HASH/buildkit/my-project:cache"
+export FLUENTCI_CACHE_REF="$FLUENTCI_CACHE_REGISTRY/accounts/did-plc-YOUR_DID/buildkit/my-project:cache"
 printf '%s' "$FLUENTCI_CACHE_TOKEN" | docker login "$FLUENTCI_CACHE_REGISTRY" --username ci --password-stdin
 docker buildx build \
   --cache-from "type=registry,ref=$FLUENTCI_CACHE_REF" \

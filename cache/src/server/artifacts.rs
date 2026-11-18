@@ -54,7 +54,8 @@ pub(super) fn pointer(account: &str, protocol: &str, hash: &str) -> Result<Path>
     if !valid_hash(hash) {
         return Err(Failure(StatusCode::BAD_REQUEST, "invalid artifact hash\n"));
     }
-    Ok(Path::from(format!("accounts/{account}/{protocol}/{hash}")))
+    Ok(Path::parse(format!("accounts/{account}/{protocol}/{hash}"))
+        .expect("validated cache storage path"))
 }
 
 pub(super) async fn metadata(
@@ -137,10 +138,11 @@ pub(super) async fn put(
 ) -> Result<()> {
     let (account, protocol, hash) = target;
     let index = pointer(account, protocol, hash)?;
-    let path = Path::from(format!(
+    let path = Path::parse(format!(
         "accounts/{account}/_artifacts/{protocol}/{hash}/{}",
         uuid::Uuid::new_v4()
-    ));
+    ))
+    .expect("validated cache storage path");
     let mut pending = PendingObject {
         store: app.store.clone(),
         path: path.clone(),

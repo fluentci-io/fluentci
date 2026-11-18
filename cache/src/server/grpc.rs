@@ -128,7 +128,8 @@ fn empty(value: &re::Digest) -> bool {
 }
 
 fn cas_path(account: &str, value: &re::Digest) -> Path {
-    Path::from(format!("accounts/{account}/bazel/cas/{}", value.hash))
+    Path::parse(format!("accounts/{account}/bazel/cas/{}", value.hash))
+        .expect("validated cache storage path")
 }
 
 fn digest_function(function: i32) -> Result<(), Status> {
@@ -149,11 +150,12 @@ impl Cache {
             .strip_prefix("accounts/")
             .and_then(|s| s.strip_suffix("/bazel").or(Some(s)))
             .ok_or_else(|| {
-                Status::invalid_argument("set remote_instance_name to accounts/<owner-hash>")
+                Status::invalid_argument("set remote_instance_name to accounts/<owner-did>")
             })?;
+        let account = self.app.aliases.account(account).await.map_err(failure)?;
         key(&format!("accounts/{account}/generic/check")).map_err(failure)?;
         if write {
-            upload_authorized(&self.app, headers, Some(account))
+            upload_authorized(&self.app, headers, Some(&account))
                 .await
                 .map_err(failure)?;
             if self.app.config.read_only {
@@ -162,7 +164,7 @@ impl Cache {
         } else {
             authorized(&self.app, headers, true).map_err(failure)?;
         }
-        Ok(account.into())
+        Ok(account)
     }
 
     async fn account<T: Sync>(
@@ -284,10 +286,10 @@ impl re::action_cache_server::ActionCache for Cache {
         let result = self
             .app
             .reader
-            .get(&Path::from(format!(
-                "accounts/{account}/bazel/ac/{}",
-                value.hash
-            )))
+            .get(
+                &Path::parse(format!("accounts/{account}/bazel/ac/{}", value.hash))
+                    .expect("validated cache storage path"),
+            )
             .await
             .map_err(backend)?;
         if result.meta.size > BATCH_LIMIT as u64 {
@@ -354,7 +356,8 @@ impl re::action_cache_server::ActionCache for Cache {
         self.app
             .store
             .put(
-                &Path::from(format!("accounts/{account}/bazel/ac/{}", value.hash)),
+                &Path::parse(format!("accounts/{account}/bazel/ac/{}", value.hash))
+                    .expect("validated cache storage path"),
                 Bytes::from(bytes).into(),
             )
             .await

@@ -90,7 +90,7 @@ async fn duplicate_hash_addressed_nars_succeed_without_consuming_body_and_requir
         format!("/nar/{}.nar.xz", "b".repeat(52)),
         format!(
             "/accounts/{}/nix/nar/{}.nar.zst",
-            "a".repeat(64),
+            "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa",
             "c".repeat(52)
         ),
     ] {

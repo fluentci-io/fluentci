@@ -18,7 +18,8 @@ import * as Connection from "../output/CI.Cache.Connection/index.js";
 import * as Sccache from "../output/CI.Cache.Sccache/index.js";
 import * as IO from "../src/CI/Cache/IO.js";
 const env = {
-  FLUENTCI_CACHE_URL: "https://cache.fluentci.io/@example.com",
+  FLUENTCI_CACHE_URL:
+    "https://cache.fluentci.io/did:plc:abcdefghijklmnopqrstuvwx",
   FLUENTCI_CACHE_TOKEN: "fixture-token",
 };
 const run = (aff) => fromAff(aff)();
@@ -34,10 +35,12 @@ test("URL and environment-only token are mandatory before I/O", async () => {
   assert.equal(
     (
       await run(
-        Connection.connection(env)("https://cache.fluentci.io/example.org"),
+        Connection.connection(env)(
+          "https://cache.fluentci.io/did:web:example.org",
+        ),
       )
     ).base,
-    "https://cache.fluentci.io/example.org",
+    "https://cache.fluentci.io/did:web:example.org",
   );
   for (const url of [
     "http://cache.fluentci.io/example.com",
@@ -130,10 +133,17 @@ test("internal setup output cannot be mistaken for the public environment result
   t.after(() => rm(root, { recursive: true, force: true }));
   const directory = join(root, "config");
   const host = new URL("../host.mjs", import.meta.url).href;
-  const { stdout } = await promisify(execFile)(process.execPath, [
-    "--input-type=module", "--eval", `await import(${JSON.stringify(host)})`,
-    "setup", JSON.stringify({ protocol: "generic", configDir: directory }),
-  ], { env: { ...process.env, ...env } });
+  const { stdout } = await promisify(execFile)(
+    process.execPath,
+    [
+      "--input-type=module",
+      "--eval",
+      `await import(${JSON.stringify(host)})`,
+      "setup",
+      JSON.stringify({ protocol: "generic", configDir: directory }),
+    ],
+    { env: { ...process.env, ...env } },
+  );
   const lines = stdout.trim().split("\n");
   assert.equal(lines.length, 1);
   const envelope = JSON.parse(lines[0]);
@@ -141,23 +151,69 @@ test("internal setup output cannot be mistaken for the public environment result
   assert.equal(envelope.binDir, undefined);
   assert.equal(envelope.cacheHostResult.protocol, "generic");
   assert.equal(envelope.cacheHostResult.binDir, directory);
-  assert.ok(envelope.cacheHostResult.environment.some(
-    (item) => item.name === "FLUENTCI_GENERIC_CACHE_URL",
-  ));
+  assert.ok(
+    envelope.cacheHostResult.environment.some(
+      (item) => item.name === "FLUENTCI_GENERIC_CACHE_URL",
+    ),
+  );
   assert.ok(!stdout.includes(env.FLUENTCI_CACHE_TOKEN));
 });
 
 test("sccache endpoint joins rooted probe and artifact paths without empty key segments", () => {
-  const settings = Object.fromEntries(Sccache.environment(env.FLUENTCI_CACHE_URL)("/tools/sccache")
-    .map(({ name, value }) => [name, value]));
+  const settings = Object.fromEntries(
+    Sccache.environment(env.FLUENTCI_CACHE_URL)("/tools/sccache").map(
+      ({ name, value }) => [name, value],
+    ),
+  );
   const endpoint = settings.SCCACHE_WEBDAV_ENDPOINT;
   assert.equal(endpoint, env.FLUENTCI_CACHE_URL + "/sccache");
   for (const key of [".sccache_check", "a/b/c/compiler-cache-key"]) {
     // OpenDAL concatenates the endpoint with its rooted key prefix and path.
-    const url = new URL(endpoint + "/" + settings.SCCACHE_WEBDAV_KEY_PREFIX + key);
-    assert.equal(url.pathname, "/@example.com/sccache/fluentci/" + key);
-    assert.ok(url.pathname.split("/").slice(1).every((part) => part.length > 0));
+    const url = new URL(
+      endpoint + "/" + settings.SCCACHE_WEBDAV_KEY_PREFIX + key,
+    );
+    assert.equal(
+      url.pathname,
+      "/did:plc:abcdefghijklmnopqrstuvwx/sccache/fluentci/" + key,
+    );
+    assert.ok(
+      url.pathname
+        .split("/")
+        .slice(1)
+        .every((part) => part.length > 0),
+    );
   }
   assert.equal(settings.SCCACHE_WEBDAV_DISABLE_CREATE_DIR, "true");
   assert.equal(settings.RUSTC_WRAPPER, "/tools/sccache");
+});
+
+test("handle and legacy URL inputs generate owner DID URLs", async (t) => {
+  const previous = globalThis.fetch;
+  const owner = "did:plc:abcdefghijklmnopqrstuvwx";
+  globalThis.fetch = async (url) => {
+    assert.equal(
+      new URL(url).pathname,
+      "/xrpc/io.fluentci.cache.resolveAccount",
+    );
+    return Response.json({ owner, cacheId: "a".repeat(64) });
+  };
+  t.after(() => {
+    globalThis.fetch = previous;
+  });
+  for (const actor of [
+    "owner.test",
+    "@owner.test",
+    "accounts/" + "a".repeat(64),
+  ]) {
+    const connection = await run(
+      Connection.connection(env)("https://cache.fluentci.io/" + actor),
+    );
+    assert.equal(connection.actor, owner);
+    assert.equal(connection.base, "https://cache.fluentci.io/" + owner);
+  }
+  assert.equal(IO.registryAccount(owner), "did-plc-abcdefghijklmnopqrstuvwx");
+  assert.equal(
+    IO.registryAccount("did:web:example.com"),
+    "did-web-" + Buffer.from("example.com").toString("hex"),
+  );
 });

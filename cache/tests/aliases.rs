@@ -8,7 +8,7 @@ use axum::{
 };
 use clap::Parser;
 use fluentci_cache::{Config, router};
-use object_store::memory::InMemory;
+use object_store::{ObjectStore, memory::InMemory, path::Path};
 use serde_json::{Value, json};
 use std::{
     collections::HashMap,
@@ -37,7 +37,7 @@ fn request(method: &str, path: &str, token: Option<&str>, body: &str) -> Request
 }
 
 #[tokio::test]
-async fn did_handle_and_legacy_urls_share_storage_without_changing_token_scope() {
+async fn did_handle_and_legacy_urls_store_under_did_with_legacy_token_scope() {
     let fixture: Value = serde_json::from_str(include_str!("fixtures/alias-tokens.json")).unwrap();
     let owner = fixture["owner"].as_str().unwrap();
     let hash = fixture["cache"].as_str().unwrap();
@@ -51,7 +51,10 @@ async fn did_handle_and_legacy_urls_share_storage_without_changing_token_scope()
             let identity = identity.clone();
             seen.fetch_add(1, Ordering::SeqCst);
             async move {
-                if query.get("actor").map(String::as_str) == Some("owner.test") {
+                if query.get("actor").map(String::as_str) == Some("owner.test")
+                    || query.get("actor").map(String::as_str)
+                        == Some(identity["cacheId"].as_str().unwrap())
+                {
                     Json(identity).into_response()
                 } else {
                     StatusCode::NOT_FOUND.into_response()
@@ -72,7 +75,8 @@ async fn did_handle_and_legacy_urls_share_storage_without_changing_token_scope()
     config.allow_http = true;
     config.identity_resolver_url = url;
     config.upload_token_public_key_file = Some(public_key);
-    let app = router(config, Arc::new(InMemory::new())).unwrap();
+    let store = Arc::new(InMemory::new());
+    let app = router(config, store.clone()).unwrap();
     let aliases = [
         format!("/{owner}"),
         "/@owner.test".into(),
@@ -116,12 +120,24 @@ async fn did_handle_and_legacy_urls_share_storage_without_changing_token_scope()
     }
     assert_eq!(
         calls.load(Ordering::SeqCst),
-        1,
+        2,
         "verified handles cached for request bursts"
+    );
+    assert!(
+        store
+            .head(&Path::from(format!("accounts/{owner}/generic/key")))
+            .await
+            .is_ok()
+    );
+    assert!(
+        store
+            .head(&Path::from(format!("accounts/{hash}/generic/key")))
+            .await
+            .is_err()
     );
     for base in [
         "/did:plc:bbbbbbbbbbbbbbbbbbbbbbbb".to_owned(),
-        format!("/accounts/{}", "b".repeat(64)),
+        "/accounts/did:plc:bbbbbbbbbbbbbbbbbbbbbbbb".to_owned(),
     ] {
         assert_eq!(
             app.clone()

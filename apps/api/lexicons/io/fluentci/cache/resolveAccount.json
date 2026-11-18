@@ -1,7 +1,7 @@
 {
   "lexicon": 1,
   "id": "io.fluentci.cache.resolveAccount",
-  "description": "Resolve a cache owner's DID or verified handle to the existing storage namespace. Public; does not grant upload access.",
+  "description": "Resolve a cache owner's DID, verified handle, or legacy hash to its DID. The cacheId is retained for legacy compatibility. Public; does not grant upload access.",
   "defs": {
     "main": {
       "type": "query",
@@ -13,8 +13,7 @@
         "properties": {
           "actor": {
             "type": "string",
-            "maxLength": 2048,
-            "format": "at-identifier"
+            "maxLength": 2048
           }
         }
       },

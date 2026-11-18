@@ -71,7 +71,8 @@ fn digest(value: &str) -> Result<&str> {
 }
 
 fn object(account: &str, repo: &str, kind: &str, value: &str) -> Path {
-    Path::from(format!("accounts/{account}/oci/{repo}/{kind}/{value}"))
+    Path::parse(format!("accounts/{account}/oci/{repo}/{kind}/{value}"))
+        .expect("validated cache storage path")
 }
 
 fn blob(account: &str, repo: &str, hash: &str) -> Path {
@@ -79,6 +80,7 @@ fn blob(account: &str, repo: &str, hash: &str) -> Path {
 }
 
 fn api_blob(account: &str, repo: &str, hash: &str) -> String {
+    let account = super::aliases::registry_account(account);
     format!("/v2/accounts/{account}/{repo}/blobs/sha256:{hash}")
 }
 
@@ -173,17 +175,18 @@ async fn handle(
     let result = async {
         let rest = rest.strip_prefix("accounts/").ok_or(Failure(
             StatusCode::BAD_REQUEST,
-            "use accounts/<owner-hash>/<repository>\n",
+            "use accounts/<registry-encoded-did>/<repository>\n",
         ))?;
         let (account, rest) = rest
             .split_once('/')
             .ok_or(Failure(StatusCode::BAD_REQUEST, "repository required\n"))?;
+        let account = registry.app.aliases.account(account).await?;
         key(&format!("accounts/{account}/generic/check"))?;
         let read = matches!(*request.method(), Method::GET | Method::HEAD);
         if read {
             authorized(&registry.app, request.headers(), true)?;
         } else {
-            upload_authorized(&registry.app, request.headers(), Some(account)).await?;
+            upload_authorized(&registry.app, request.headers(), Some(&account)).await?;
             if registry.app.config.read_only {
                 return Err(Failure(StatusCode::FORBIDDEN, "cache is read-only\n"));
             }
@@ -196,7 +199,7 @@ async fn handle(
             .map_err(|_| Failure(StatusCode::SERVICE_UNAVAILABLE, "cache busy; retry later\n"))?;
         tokio::time::timeout(
             Duration::from_secs(registry.app.config.timeout),
-            dispatch(&registry, account, rest, request, permit),
+            dispatch(&registry, &account, rest, request, permit),
         )
         .await
         .map_err(|_| Failure(StatusCode::GATEWAY_TIMEOUT, "registry request timed out\n"))?
@@ -301,7 +304,10 @@ fn session_reply(
     set(
         &mut response,
         "location",
-        &format!("/v2/accounts/{account}/{repo}/blobs/uploads/{id}"),
+        &format!(
+            "/v2/accounts/{}/{repo}/blobs/uploads/{id}",
+            super::aliases::registry_account(account)
+        ),
     )?;
     set(&mut response, "docker-upload-uuid", id)?;
     set(
@@ -319,13 +325,16 @@ async fn upload_request(
     id: &str,
     request: Request,
 ) -> Result<Response> {
-    upload_authorized(&registry.app, request.headers(), Some(account)).await?;
+    upload_authorized(&registry.app, request.headers(), Some(&account)).await?;
     let parameters = query(&request)?;
     let method = request.method().clone();
     if method == Method::POST && id.is_empty() {
         if let (Some(value), Some(source)) = (parameters.get("mount"), parameters.get("from")) {
             let hash = digest(value)?;
-            if let Some(source) = source.strip_prefix(&format!("accounts/{account}/")) {
+            if let Some(source) = source.strip_prefix(&format!(
+                "accounts/{}/",
+                super::aliases::registry_account(account)
+            )) {
                 repository(source)?;
                 if registry
                     .app
@@ -767,7 +776,10 @@ async fn manifest(
     set(
         &mut response,
         "location",
-        &format!("/v2/accounts/{account}/{repo}/manifests/sha256:{actual}"),
+        &format!(
+            "/v2/accounts/{}/{repo}/manifests/sha256:{actual}",
+            super::aliases::registry_account(account)
+        ),
     )?;
     set(
         &mut response,
@@ -786,7 +798,7 @@ async fn tags(
     if *request.method() != Method::GET {
         return Ok(reply(StatusCode::METHOD_NOT_ALLOWED));
     }
-    upload_authorized(&registry.app, request.headers(), Some(account)).await?;
+    upload_authorized(&registry.app, request.headers(), Some(&account)).await?;
     let parameters = query(&request)?;
     let limit = parameters
         .get("n")
@@ -817,13 +829,14 @@ async fn tags(
         names.pop_last();
     }
     let last = names.last().cloned();
-    let mut response=Json(json!({"name":format!("accounts/{account}/{repo}"),"tags":names.into_iter().collect::<Vec<_>>()})).into_response();
+    let mut response=Json(json!({"name":format!("accounts/{}/{repo}", super::aliases::registry_account(account)),"tags":names.into_iter().collect::<Vec<_>>()})).into_response();
     if more && let Some(last) = last {
         set(
             &mut response,
             "link",
             &format!(
-                "</v2/accounts/{account}/{repo}/tags/list?n={limit}&last={last}>; rel=\"next\""
+                "</v2/accounts/{}/{repo}/tags/list?n={limit}&last={last}>; rel=\"next\"",
+                super::aliases::registry_account(account)
             ),
         )?;
     }

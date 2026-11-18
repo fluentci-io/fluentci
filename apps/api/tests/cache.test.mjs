@@ -90,10 +90,9 @@ test('account cache tokens require method-scoped auth, owner grants and respect 
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'no-store');
   const own = await response.json();
-  const hash = createHash('sha256').update(did).digest('hex');
   assert.equal(own.owner, did);
   assert.equal(own.cacheUrl, `https://cache.example/${did}`);
-  assert.equal(own.canonicalCacheUrl, `https://cache.example/accounts/${hash}`);
+  assert.equal(own.canonicalCacheUrl, `https://cache.example/${did}`);
   const [header, payload, signature] = own.token.split('.');
   assert.equal(
     verify(
@@ -106,7 +105,7 @@ test('account cache tokens require method-scoped auth, owner grants and respect 
   );
   const claims = JSON.parse(Buffer.from(payload, 'base64url'));
   assert.equal(claims.sub, did);
-  assert.equal(claims.cache, hash);
+  assert.equal(claims.cache, did);
   assert.equal(claims.scope, 'cache:upload');
   assert.equal(claims.exp, undefined);
   assert.equal(own.expiresAt, undefined);
@@ -241,10 +240,7 @@ test('owner storage procedures sign management scope and cannot select a differe
   assert.equal((await list.json()).totalBytes, 8);
   assert.equal(seen[0].claims.scope, 'cache:manage');
   assert.equal(seen[0].claims.sub, did);
-  assert.equal(
-    seen[0].url,
-    `https://cache.example/accounts/${createHash('sha256').update(did).digest('hex')}/_admin`,
-  );
+  assert.equal(seen[0].url, `https://cache.example/${did}/_admin`);
   assert.equal((await call('clearCache', did, { confirm: false })).status, 400);
   assert.equal(seen.length, 1);
   assert.equal((await call('deleteKey', did, { key: 'generic/a' })).status, 200);
@@ -426,7 +422,7 @@ test('persistent-token migration preserves legacy expiry and accepts new tokens 
 
 test('public cache identity resolution verifies handles against DID documents', async (t) => {
   const { resolve } = await fixture(t);
-  for (const actor of [did, 'owner.test']) {
+  for (const actor of [did, 'owner.test', '@owner.test']) {
     const response = await resolve(actor);
     assert.equal(response.status, 200);
     assert.deepEqual(await response.json(), {
@@ -439,4 +435,14 @@ test('public cache identity resolution verifies handles against DID documents', 
     resolveIdentity: async () => ({ handle: 'changed.test' }),
   });
   assert.equal((await mismatched.resolve('owner.test')).status, 404);
+});
+
+test('legacy cache hashes resolve from retained token owners', async (t) => {
+  const { call, resolve } = await fixture(t);
+  await call('createToken');
+  const hash = createHash('sha256').update(did).digest('hex');
+  const response = await resolve(hash);
+  assert.equal(response.status, 200);
+  assert.deepEqual(await response.json(), { owner: did, cacheId: hash });
+  assert.equal((await resolve('f'.repeat(64))).status, 404);
 });
