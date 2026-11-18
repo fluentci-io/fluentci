@@ -57,9 +57,17 @@ export function CachePage() {
           ) : account ? (
             <CacheSettings key={account.did} account={account} />
           ) : (
-            <button className={`${button} mt-8`} onClick={openSignIn}>
-              Sign in to manage cache
-            </button>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <button className={button} onClick={openSignIn}>
+                Sign in to manage cache
+              </button>
+              <a
+                className="text-link text-sm"
+                href="https://docs.fluentci.io/guides/build-cache/"
+              >
+                Read the cache setup guide
+              </a>
+            </div>
           )}
         </div>
       </main>
