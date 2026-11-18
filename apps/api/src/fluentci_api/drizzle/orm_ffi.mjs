@@ -216,9 +216,9 @@ export function deleteCount(connection, table, condition) {
 }
 export function evaluate(connection, condition) {
   return serialized(connection, async () => {
-    const row = await connection.db
-      .select({ value: d.sql`case when ${condition} then 1 else 0 end` })
-      .get();
+    const row = await connection.db.get(
+      d.sql`select case when ${condition} then 1 else 0 end as value`,
+    );
     return Boolean(row.value);
   });
 }
