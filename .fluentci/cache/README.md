@@ -5,6 +5,14 @@ and streaming generic HTTP cache save/restore. Requires FluentCI 0.17.8+ and
 Node.js 24+. The component embeds its compiled host helper; consumers need only
 `plugin.wasm`, without this checkout, node_modules, or sibling files.
 
+## Building and publishing
+
+`npm run build` installs this module's dependencies from `package-lock.json`
+with `npm ci --include=dev` before packaging. FluentCI publishing invokes this
+same build, so `esbuild`, `tar` and the module's other build dependencies do not
+need a separate manual installation. The development dependencies are needed
+even when `NODE_ENV=production` is set.
+
 ## Required credentials
 
 Set `FLUENTCI_CACHE_TOKEN` through your CI secret provider. It is required for
