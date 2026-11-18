@@ -117,8 +117,8 @@ export async function manageCache(server, request, action, record = async () => 
       },
     );
     if (!response.ok) {
-      if (response.status === 400)
-        throw new XRPCError(400, 'Invalid cache key or pagination', 'InvalidRequest');
+      if (response.status === 400 || response.status === 422)
+        throw new XRPCError(400, 'Invalid cache key, search, sort or pagination', 'InvalidRequest');
       throw new Error('Cache management unavailable');
     }
     const data = await response.json();

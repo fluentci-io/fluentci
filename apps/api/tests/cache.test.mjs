@@ -262,6 +262,15 @@ test('storage procedure reports failures without exposing backend details', asyn
   assert.doesNotMatch(await response.text(), /private backend details/);
 });
 
+test('cache validation errors are reported as invalid requests rather than outages', async (t) => {
+  const { call } = await fixture(t, false, {
+    cacheFetch: async () => new Response('private backend validation', { status: 422 }),
+  });
+  const response = await call('listKeys', did, { search: 'sccache' });
+  assert.equal(response.status, 400);
+  assert.equal((await response.json()).error, 'InvalidRequest');
+});
+
 test('cache usage history stores daily owner-scoped snapshots and returns only the last 30 UTC days', async (t) => {
   const { call, connection } = await fixture(t, false, {
     cacheFetch: async () =>
