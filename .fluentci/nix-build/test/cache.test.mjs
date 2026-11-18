@@ -16,6 +16,7 @@ import {
   build,
   configuration,
   uploadFiles,
+  uploadFile,
   requireSignatures,
 } from "../run.mjs";
 
@@ -44,6 +45,96 @@ test("public cache reads preserve GitHub authentication and do not expose upload
   );
   assert.equal(config.nixEnv.FLUENTCI_CACHE_TOKEN, undefined);
   assert.equal(config.nixEnv.FLUENTCI_NIX_SIGNING_KEY, undefined);
+});
+
+test("transient upload failures retry with complete fresh streams and bounded backoff", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "fluentci-upload-retry-"));
+  try {
+    const file = join(directory, "payload.nar.xz");
+    await writeFile(file, "complete payload");
+    const bodies = [];
+    const waits = [];
+    let attempts = 0;
+    await uploadFile(
+      file,
+      "https://cache.example/nix/nar/payload",
+      "private-token",
+      async (_url, options) => {
+        let text = "";
+        for await (const chunk of options.body) text += chunk;
+        bodies.push(text);
+        attempts++;
+        if (attempts === 1) return new Response(null, { status: 408 });
+        if (attempts === 2) throw new TypeError("fetch failed");
+        if (attempts === 3)
+          return new Response(null, {
+            status: 429,
+            headers: { "retry-after": "3" },
+          });
+        return new Response(null, { status: 201 });
+      },
+      {
+        wait: async (ms) => {
+          waits.push(ms);
+        },
+      },
+    );
+    assert.deepEqual(bodies, Array(4).fill("complete payload"));
+    assert.deepEqual(waits, [1000, 2000, 4000]);
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
+});
+
+test("retry exhaustion fails without publishing narinfo, while authentication failures do not retry", async () => {
+  const directory = await mkdtemp(
+    join(tmpdir(), "fluentci-upload-retry-limit-"),
+  );
+  try {
+    await mkdir(join(directory, "nar"));
+    await writeFile(join(directory, "nar/payload.nar.xz"), "payload");
+    await writeFile(join(directory, "payload.narinfo"), "metadata");
+    const requests = [];
+    await assert.rejects(
+      uploadFiles(
+        directory,
+        "https://cache.example/nix",
+        "private-token",
+        async (url, options) => {
+          options.body.destroy();
+          requests.push(url);
+          return new Response(null, { status: 504 });
+        },
+        undefined,
+        { wait: async () => {} },
+      ),
+      /HTTP 504/,
+    );
+    assert.equal(requests.length, 4);
+    assert.ok(requests.every((url) => url.endsWith(".nar.xz")));
+    for (const status of [400, 401, 403, 413]) {
+      let attempts = 0;
+      await assert.rejects(
+        uploadFile(
+          join(directory, "nar/payload.nar.xz"),
+          "https://cache.example/nix/nar/payload",
+          "private-token",
+          async (_url, options) => {
+            options.body.destroy();
+            attempts++;
+            return new Response(null, { status });
+          },
+          {
+            wait: async () => assert.fail("must not retry permanent failures"),
+          },
+        ),
+        new RegExp(`HTTP ${status}`),
+      );
+      assert.equal(attempts, 1);
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("partial credentials and mismatched signing keys fail before building", () => {

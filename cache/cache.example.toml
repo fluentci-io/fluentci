@@ -17,7 +17,7 @@ staging_limit = 21474836480             # bytes: 20 GiB shared by resumable uplo
 # staging_directory = "/var/lib/fluentci-cache/uploads" # writable disk, not a small tmpfs
 concurrency = 128                      # active object transfers; excess requests get 503
 # Upload deadline, backend response deadline, and download idle timeout (seconds).
-timeout = 300
+timeout = 7200                         # allow large Nix archives up to 2 hours
 nix_priority = 40
 # Prefer the FLUENTCI_CACHE_TOKEN environment variable instead of storing a token here.
 # token = "replace-me"

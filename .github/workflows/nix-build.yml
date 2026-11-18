@@ -67,7 +67,7 @@ jobs:
   build:
     name: Build FluentCI (${{ matrix.system }})
     needs: prepare
-    timeout-minutes: 120
+    timeout-minutes: 360
     strategy:
       fail-fast: false
       matrix:

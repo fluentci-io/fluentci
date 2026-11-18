@@ -159,7 +159,10 @@ removed locally after upload while metadata is retained for reference checks.
 Every export is signed with the private key. Before uploading, the helper checks
 for the configured key's signature on every narinfo and asks Nix to verify those
 signatures. It uploads NARs before narinfo metadata, with at most four concurrent
-HTTP uploads. Upload failures cancel the build client and fail CI; private keys
+HTTP uploads. Transient HTTP 408/425/429/5xx errors and transport timeouts retry
+up to three times with fresh file streams and bounded backoff. Each attempt has
+a 125-minute deadline; the production cache service allows two hours per upload.
+Permanent errors or exhausted retries cancel the build client and fail CI; private keys
 and exported files are cleaned up. The workflow limits Nix HTTP connections to 16.
 Signing keys are temporary files outside the checkout and are removed after
 publishing. Credentials never appear in command arguments. The workflow

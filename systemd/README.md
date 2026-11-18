@@ -44,7 +44,6 @@ For a different checkout location or Node.js path, run
 `ExecStart` (clear `ExecStart` before setting its replacement). After deploying
 and rebuilding updates, run `sudo systemctl restart fluentci-api.service`.
 
-
 ## Build cache service
 
 `fluentci-cache.service` runs the standalone cache binary as its own system user.
@@ -90,8 +89,18 @@ The production host's Caddy container uses host networking. Add the
 `https://cache-cdn.fluentci.io`. Never configure the read origin to point back to
 the cache service itself.
 
-The service allows 330 seconds to drain transfers on shutdown. Increase
-`TimeoutStopSec` when increasing the cache's 300-second transfer timeout.
+For large Nix archives, use `FLUENTCI_CACHE_TIMEOUT=7200` in
+`/etc/fluentci/cache.env`, or `timeout = 7200` in the TOML configuration. This
+limits the entire upload, including receiving the body and writing to object
+storage. The compiled default remains 300 seconds. The example configuration
+allows two hours, and the service allows 7230 seconds to drain transfers on
+shutdown. Keep `TimeoutStopSec` longer than the configured transfer timeout.
+Restart `fluentci-cache.service` after changing its environment.
+
+The Nix CI uploader allows 125 minutes per HTTP attempt and retries transient
+HTTP 408/425/429/5xx failures and transport timeouts up to three times, reopening
+the file for each attempt. Authentication and other permanent errors fail
+immediately. NAR metadata is published only after all payload uploads succeed.
 
 For updates, stage the new binary as `/usr/local/bin/fluentci-cache.new`, rename
 it over `/usr/local/bin/fluentci-cache`, then restart the service. This avoids

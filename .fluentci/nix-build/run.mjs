@@ -114,14 +114,80 @@ const batches = (values, size = 100) =>
     values.slice(index * size, (index + 1) * size),
   );
 
+const RETRYABLE_UPLOAD_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
+
+export async function uploadFile(
+  path,
+  url,
+  token,
+  fetcher = fetch,
+  { wait = delay, maxAttempts = 4, timeoutMs = 125 * 60 * 1000 } = {},
+) {
+  const size = String((await stat(path)).size);
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    const body = createReadStream(path);
+    let retryAfter = 0;
+    let failure;
+    let retryable = false;
+    try {
+      const response = await fetcher(url, {
+        method: "PUT",
+        redirect: "error",
+        signal: AbortSignal.timeout(timeoutMs),
+        headers: { Authorization: `Bearer ${token}`, "Content-Length": size },
+        body,
+        duplex: "half",
+      });
+      await response.body?.cancel();
+      if (response.ok) return;
+      failure = Error(
+        `Cache upload failed for ${path.split("/").at(-1)}: HTTP ${response.status}`,
+      );
+      retryable = RETRYABLE_UPLOAD_STATUSES.has(response.status);
+      const header = response.headers?.get("retry-after");
+      if (header) {
+        const seconds = Number(header);
+        retryAfter = Number.isFinite(seconds)
+          ? seconds * 1000
+          : Date.parse(header) - Date.now();
+      }
+    } catch (error) {
+      // Fetch transport errors and deadlines are safe to retry: cache PUTs
+      // publish atomically under a deterministic key.
+      failure = Error(
+        `Cache upload failed for ${path.split("/").at(-1)}: ${error.name || "transport error"}`,
+      );
+      retryable =
+        error instanceof TypeError ||
+        ["TimeoutError", "AbortError"].includes(error.name) ||
+        ["ECONNRESET", "ETIMEDOUT", "EPIPE"].includes(error.code);
+    } finally {
+      // A response may arrive before the server consumes the request body.
+      // Never reuse an exhausted or partially consumed stream on retry.
+      body.destroy();
+    }
+    if (!retryable || attempt === maxAttempts) throw failure;
+    const backoff = Math.min(
+      30_000,
+      Math.max(1000 * 2 ** (attempt - 1), retryAfter || 0),
+    );
+    console.warn(
+      `${failure.message}; retrying (${attempt}/${maxAttempts - 1}) in ${Math.ceil(backoff / 1000)}s`,
+    );
+    await wait(backoff);
+  }
+}
+
 export async function uploadFiles(
   directory,
   cache,
   token,
   fetcher = fetch,
   metadataFiles,
+  options,
 ) {
-  // Publish payloads completely before making any narinfo visible to readers.
+  // All payloads must finish successfully before any corresponding narinfo is
+  // published, including when an individual payload needs retries.
   const nars = (await readdir(join(directory, "nar"))).map(
     (file) => `nar/${file}`,
   );
@@ -131,25 +197,15 @@ export async function uploadFiles(
   for (const files of [nars, infos]) {
     for (const group of batches(files, 4)) {
       const results = await Promise.allSettled(
-        group.map(async (file) => {
-          const path = join(directory, file);
-          const response = await fetcher(`${cache}/${file}`, {
-            method: "PUT",
-            redirect: "error",
-            signal: AbortSignal.timeout(600_000),
-            headers: {
-              Authorization: `Bearer ${token}`,
-              "Content-Length": String((await stat(path)).size),
-            },
-            body: createReadStream(path),
-            duplex: "half",
-          });
-          await response.body?.cancel();
-          if (!response.ok)
-            throw Error(
-              `Cache upload failed for ${file}: HTTP ${response.status}`,
-            );
-        }),
+        group.map((file) =>
+          uploadFile(
+            join(directory, file),
+            `${cache}/${file}`,
+            token,
+            fetcher,
+            options,
+          ),
+        ),
       );
       const failure = results.find((result) => result.status === "rejected");
       if (failure) throw failure.reason;
