@@ -6,6 +6,7 @@ use clap::Parser;
 use fluentci_cache::{Config, router};
 use object_store::local::LocalFileSystem;
 use serde_json::{Value, json};
+use sha2::{Digest, Sha256};
 use std::sync::Arc;
 use tower::ServiceExt;
 
@@ -49,6 +50,18 @@ async fn revocation_survives_restart_and_clear_and_denies_every_upload_adapter()
     let manage = fixture["manage"].as_str().unwrap();
     let base = format!("/accounts/{account}");
     let path = format!("{base}/generic/artifact");
+    let old_marker = object_store::path::Path::parse(format!(
+        "_revocations/{}/{}",
+        hex::encode(Sha256::digest(account.as_bytes())),
+        hex::encode(Sha256::digest(fixture["id"].as_str().unwrap().as_bytes()))
+    ))
+    .unwrap();
+    store.put(&old_marker, "revoked".into()).await.unwrap();
+    assert_eq!(
+        send(&app, "PUT", &path, upload, "data").await,
+        StatusCode::UNAUTHORIZED
+    );
+    store.delete(&old_marker).await.unwrap();
     for name in ["missingId", "expired"] {
         assert_eq!(
             send(&app, "PUT", &path, fixture[name].as_str().unwrap(), "data").await,

@@ -119,22 +119,29 @@ pub(super) async fn upload_authorized(
     account: Option<&str>,
 ) -> Result<()> {
     if let Some(id) = scoped_authorized(app, headers, account, "cache:upload", false)? {
-        let path = revocation_path(account.unwrap_or_default(), &id);
-        match tokio::time::timeout(
-            std::time::Duration::from_secs(app.config.timeout),
-            app.store.head(&path),
-        )
-        .await
-        {
-            Ok(Err(object_store::Error::NotFound { .. })) => {}
-            Ok(Ok(_)) => return Err(Failure(StatusCode::UNAUTHORIZED, "upload token revoked\n")),
-            _ => {
-                return Err(Failure(
+        let owner = account.unwrap_or_default();
+        let paths = [
+            revocation_path(owner, &id),
+            revocation_path(&super::aliases::legacy_account(owner), &id),
+        ];
+        // Read-only legacy lookup preserves revocations from retained old tokens,
+        // even when the owner has no surviving database record to migrate.
+        futures_util::future::try_join_all(paths.iter().map(|path| async {
+            match tokio::time::timeout(
+                std::time::Duration::from_secs(app.config.timeout),
+                app.store.head(path),
+            )
+            .await
+            {
+                Ok(Err(object_store::Error::NotFound { .. })) => Ok(()),
+                Ok(Ok(_)) => Err(Failure(StatusCode::UNAUTHORIZED, "upload token revoked\n")),
+                _ => Err(Failure(
                     StatusCode::SERVICE_UNAVAILABLE,
                     "token status unavailable\n",
-                ));
+                )),
             }
-        }
+        }))
+        .await?;
     }
     Ok(())
 }
