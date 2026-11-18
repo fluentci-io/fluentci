@@ -32,7 +32,6 @@ fluentci run desktop build --target aarch64-apple-darwin
 fluentci run desktop package --target aarch64-apple-darwin --version v0.17.2
 fluentci run release build-prepared --target x86_64-unknown-linux-gnu
 fluentci run release package --target x86_64-unknown-linux-gnu --version v0.17.2
-fluentci run setup-cachix@0.2.1 setup --version 1.14.0 --cache fluentci
 fluentci run nix-build build
 ```
 

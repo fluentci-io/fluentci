@@ -243,7 +243,7 @@ Use Maven 3.9+ and the Maven Build Cache Extension. The extension stores build r
   <configuration>
     <enabled>true</enabled>
     <remote enabled="true" id="fluentci-cache" transport="resolver">
-      <url>https://cache.fluentci.io/accounts/OWNER_HASH/maven/</url>
+      <url>https://cache.fluentci.io/did:plc:YOUR_DID/maven/</url>
     </remote>
   </configuration>
 </cache>
@@ -280,7 +280,7 @@ Use the token to upload NAR files and signed narinfo. Nix consumers read publicl
 ### Consumer configuration in nix.conf
 
 ```text
-extra-substituters = https://cache.fluentci.io/accounts/OWNER_HASH/nix
+extra-substituters = https://cache.fluentci.io/did:plc:YOUR_DID/nix
 extra-trusted-public-keys = my-cache-1:YOUR_NIX_PUBLIC_KEY
 ```
 

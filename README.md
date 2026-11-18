@@ -165,23 +165,23 @@ brew install --cask fluentci-io/tap/fluentci-studio
 See [Homebrew's tap trust documentation](https://docs.brew.sh/Tap-Trust) for
 details about `brew trust`.
 
-### Install with Nix and Cachix
+### Install with Nix and FluentCI Cache
 
 With [Nix installed](https://nix.dev/install-nix) and the `nix-command` and
-`flakes` experimental features enabled, install Cachix, enable the FluentCI
-binary cache, then install FluentCI from the upstream GitHub flake:
+`flakes` experimental features enabled, install FluentCI using the public
+FluentCI binary cache:
 
 ```sh
-nix profile install nixpkgs#cachix
-cachix use fluentci
-nix profile install github:fluentci-io/fluentci
+nix profile install github:fluentci-io/fluentci \
+  --option extra-substituters 'https://cache.fluentci.io/did:plc:7vdlgi2bflelz7mmuxoqjfcr/nix' \
+  --option extra-trusted-public-keys 'fluentci-1:4tqCkJ2IiKYDSV8pXo2WXHW/KQPtAlUBYZE8k1x4FCA='
 fluentci --version
 ```
 
-The `fluentci` cache provides available prebuilt Nix outputs. Nix builds missing
-outputs from source. Downloading from this public cache does not require
-`CACHIX_AUTH_TOKEN`; the token is needed for CI uploads. See the
-[Cachix setup instructions](https://docs.cachix.org/getting-started) for details.
+The stable DID URL provides available prebuilt Nix outputs; missing outputs build
+from source. Public reads require no upload token. Nix verifies artifacts using
+the public key above, and binary reads redirect directly to the CDN. See the
+[cache client setup guide](./docs/site/guides/build-cache.md).
 
 The flake supports `x86_64-linux`, `aarch64-linux`, and `aarch64-darwin`, and
 installs the CLI with embedded Studio assets.
@@ -725,19 +725,22 @@ The standalone [FluentCI Cache server](./cache/README.md) supports Nix, sccache,
 Go, Maven Build Cache, Gradle, Bazel HTTP and gRPC, Turborepo, Nx, BuildKit OCI,
 and generic HTTP artifacts. Account caches provide public reads, scoped upload
 tokens, individual token revocation, collaborators, and storage management.
+New account URLs use `https://cache.fluentci.io/did:plc:YOUR_DID` for stable CI
+configuration or `https://cache.fluentci.io/@your.handle` for readability.
+Existing hash URLs remain valid and access the same artifacts with the same tokens.
 See the [client setup guide](./docs/site/guides/build-cache.md) and
 [deployment guide](./docs/site/development/build-cache.md).
 
 The embedded engine supports local and remote caches. Configure remote storage
 with the same variables used by FluentCI Engine:
 
-| Variable                      | Purpose                                           |
-| ----------------------------- | ------------------------------------------------- |
-| `FLUENTCI_CACHE_GCS_BUCKET`   | Google Cloud Storage bucket                       |
-| `FLUENTCI_CACHE_S3_ENDPOINT`  | S3-compatible endpoint, including R2              |
-| `FLUENTCI_CACHE_S3_BUCKET`    | S3-compatible bucket                              |
-| `FLUENTCI_CACHE_CDN_ENDPOINT` | Optional CDN endpoint for downloading cached data |
-| `FLUENTCI_CACHE_DOWNLOAD_JOBS` | Parallel CDN download workers, 1–32 (default 4) |
+| Variable                       | Purpose                                           |
+| ------------------------------ | ------------------------------------------------- |
+| `FLUENTCI_CACHE_GCS_BUCKET`    | Google Cloud Storage bucket                       |
+| `FLUENTCI_CACHE_S3_ENDPOINT`   | S3-compatible endpoint, including R2              |
+| `FLUENTCI_CACHE_S3_BUCKET`     | S3-compatible bucket                              |
+| `FLUENTCI_CACHE_CDN_ENDPOINT`  | Optional CDN endpoint for downloading cached data |
+| `FLUENTCI_CACHE_DOWNLOAD_JOBS` | Parallel CDN download workers, 1–32 (default 4)   |
 
 GCS uses `GOOGLE_APPLICATION_CREDENTIALS`. S3-compatible storage uses
 `AWS_ACCESS_KEY_ID` and `AWS_SECRET_ACCESS_KEY`.

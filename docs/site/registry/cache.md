@@ -27,7 +27,7 @@ Configure your cache client with the returned URL and a bearer token or a
 Basic-auth password. For the Go helper:
 
 ```sh
-export FLUENTCI_CACHE_URL='https://cache.example/did:plc:YOUR_DID'
+export FLUENTCI_CACHE_URL='https://cache.fluentci.io/did:plc:YOUR_DID'
 export FLUENTCI_CACHE_TOKEN='UPLOAD_TOKEN'
 export GOCACHEPROG='fluentci-cache gocache'
 go build ./...

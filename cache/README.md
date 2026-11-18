@@ -63,8 +63,8 @@ No FluentCI CLI, Studio build, database, or external service is needed for the f
 | Gradle | `/gradle/` | HTTP build cache GET/PUT |
 | Bazel | `/` or `/bazel/` | HTTP remote cache `/ac/<sha256>` and `/cas/<sha256>` |
 | Generic | `/generic/` | Arbitrary hierarchical keys over GET/HEAD/PUT |
-| Turborepo | `/accounts/<owner-hash>/turbo/` | HTTP artifact cache, signature headers, status, and events |
-| Nx | `/accounts/<owner-hash>/nx/` | Self-hosted HTTP cache; immutable artifact uploads |
+| Turborepo | `/<DID-or-@handle>/turbo/` | HTTP artifact cache, signature headers, status, and events |
+| Nx | `/<DID-or-@handle>/nx/` | Self-hosted HTTP cache; immutable artifact uploads |
 | Bazel gRPC | instance `accounts/<owner-hash>` | ActionCache, CAS, Capabilities, and resumable ByteStream |
 | BuildKit | `/v2/accounts/<owner-hash>/<repository>/` | OCI registry cache manifests, indexes, and resumable blob uploads |
 
@@ -199,10 +199,10 @@ Both commands need `FLUENTCI_CACHE_TOKEN` unless read-only. The memory backend r
 
 ### Account-scoped adapters
 
-Use the owner hash and upload token from your cache settings. The URL for
-Turborepo is `https://cache.fluentci.io/accounts/<owner-hash>/turbo` (`TURBO_API`),
+Use the stable DID URL and upload token from your cache settings. The hash for protocol-specific identifiers is available in `canonicalCacheUrl`. The URL for
+Turborepo is `https://cache.fluentci.io/did:plc:YOUR_DID/turbo` (`TURBO_API`),
 with `TURBO_TOKEN` set to your token and `TURBO_TEAM` set to the owner hash.
-Nx uses `NX_SELF_HOSTED_REMOTE_CACHE_SERVER=https://cache.fluentci.io/accounts/<owner-hash>/nx`
+Nx uses `NX_SELF_HOSTED_REMOTE_CACHE_SERVER=https://cache.fluentci.io/did:plc:YOUR_DID/nx`
 and `NX_SELF_HOSTED_REMOTE_CACHE_ACCESS_TOKEN` for its token.
 
 Bazel gRPC uses `--remote_cache=grpcs://cache.fluentci.io`,
@@ -226,14 +226,14 @@ directory with sufficient capacity. Expired sessions are reclaimed on subsequent
 writes. Replaced Turborepo payloads remain until owner cleanup or bucket lifecycle
 rules remove them; no automatic garbage collector is provided.
 
-Examples use `https://cache.example.com`. Use `http://127.0.0.1:8080` for local testing. Insecure HTTP may need an explicit opt-in in individual clients.
+Examples use `https://cache.fluentci.io/did:plc:YOUR_DID`; replace it with the stable URL from your cache page. You can also use `https://cache.fluentci.io/@your.handle`. Use `http://127.0.0.1:8080` for local testing. Insecure HTTP may need an explicit opt-in in individual clients.
 
 ### Bazel
 
 `.bazelrc`:
 
 ```text
-build --remote_cache=https://cache.example.com/bazel
+build --remote_cache=https://cache.fluentci.io/did:plc:YOUR_DID/bazel
 ```
 
 On a trusted writer, supply the token through your CI secret mechanism:
@@ -248,7 +248,7 @@ For consumers that must not upload, use `--remote_upload_local_results=false`. S
 ### sccache
 
 ```sh
-export SCCACHE_WEBDAV_ENDPOINT='https://cache.example.com/sccache/'
+export SCCACHE_WEBDAV_ENDPOINT='https://cache.fluentci.io/did:plc:YOUR_DID/sccache/'
 export SCCACHE_WEBDAV_TOKEN="$FLUENTCI_CACHE_TOKEN"
 export SCCACHE_WEBDAV_DISABLE_CREATE_DIR=true
 export SCCACHE_WEBDAV_KEY_PREFIX='my-project/'
@@ -263,7 +263,7 @@ Use a sccache build with its WebDAV backend enabled. Disable PROPFIND/MKCOL dire
 Install or copy the release binary to an absolute path available to Go:
 
 ```sh
-export FLUENTCI_CACHE_URL='https://cache.example.com'
+export FLUENTCI_CACHE_URL='https://cache.fluentci.io/did:plc:YOUR_DID'
 export FLUENTCI_CACHE_TOKEN='...'
 export GOCACHEPROG='/absolute/path/fluentci-cache gocache'
 go build ./...
@@ -292,7 +292,7 @@ import org.gradle.caching.http.HttpBuildCache
 buildCache {
     local { isEnabled = true }
     remote<HttpBuildCache> {
-        url = uri("https://cache.example.com/gradle/")
+        url = uri("https://cache.fluentci.io/did:plc:YOUR_DID/gradle/")
         isPush = System.getenv("FLUENTCI_CACHE_TOKEN") != null
         credentials {
             username = "ci"
@@ -331,7 +331,7 @@ In `.mvn/maven-build-cache-config.xml`:
   <configuration>
     <enabled>true</enabled>
     <remote enabled="true" id="fluentci-cache" transport="resolver">
-      <url>https://cache.example.com/maven/</url>
+      <url>https://cache.fluentci.io/did:plc:YOUR_DID/maven/</url>
     </remote>
   </configuration>
 </cache>
@@ -364,14 +364,14 @@ Maven Resolver controls the extension's hierarchical object layout and transport
 Configure consumers:
 
 ```text
-extra-substituters = https://cache.example.com/nix
-extra-trusted-public-keys = cache.example.com-1:YOUR_PUBLIC_KEY
+extra-substituters = https://cache.fluentci.io/did:plc:YOUR_DID/nix
+extra-trusted-public-keys = fluentci-1:YOUR_PUBLIC_KEY
 ```
 
 Generate a signing key once and keep its private part with the publisher:
 
 ```sh
-nix-store --generate-binary-cache-key cache.example.com-1 cache-private.pem cache-public.pem
+nix-store --generate-binary-cache-key fluentci-1 cache-private.pem cache-public.pem
 ```
 
 Export a closure into a local binary-cache directory, then publish NARs before their `.narinfo` metadata. With absolute paths in `NIX_SIGNING_KEY` and `STORE_PATH`:
@@ -387,12 +387,12 @@ cd "$export_dir"
 find nar -type f -print | while IFS= read -r file; do
   curl --fail-with-body \
     -H "Authorization: Bearer $FLUENTCI_CACHE_TOKEN" \
-    --upload-file "$file" "https://cache.example.com/nix/$file" || exit 1
+    --upload-file "$file" "https://cache.fluentci.io/did:plc:YOUR_DID/nix/$file" || exit 1
 done
 find . -maxdepth 1 -name '*.narinfo' -print | while IFS= read -r file; do
   curl --fail-with-body \
     -H "Authorization: Bearer $FLUENTCI_CACHE_TOKEN" \
-    --upload-file "$file" "https://cache.example.com/nix/${file#./}" || exit 1
+    --upload-file "$file" "https://cache.fluentci.io/did:plc:YOUR_DID/nix/${file#./}" || exit 1
 done
 ```
 
@@ -408,10 +408,10 @@ Choose your own stable keys and payload format:
 curl --fail-with-body \
   -H "Authorization: Bearer $FLUENTCI_CACHE_TOKEN" \
   --upload-file artifact.tar.zst \
-  https://cache.example.com/generic/project/platform/build-key
+  https://cache.fluentci.io/did:plc:YOUR_DID/generic/project/platform/build-key
 curl --fail-with-body \
   -o artifact.tar.zst \
-  https://cache.example.com/generic/project/platform/build-key
+  https://cache.fluentci.io/did:plc:YOUR_DID/generic/project/platform/build-key
 ```
 
 The server does not automatically compress, deserialize, or execute uploaded data.
@@ -593,7 +593,7 @@ curl --fail-with-body https://api.fluentci.io/xrpc/io.fluentci.cache.createToken
 ```
 
 New upload tokens have no expiration and remain valid until revoked. The returned `cacheUrl` has the form
-`https://cache.fluentci.io/accounts/<sha256-of-owner-did>`; append the usual
+`https://cache.fluentci.io/did:plc:YOUR_DID`; append the usual
 protocol path. For example, upload to `$CACHE_URL/generic/example` with
 `Authorization: Bearer $UPLOAD_TOKEN`, or use the token as a Basic-auth password
 with any username. The Go helper accepts that URL as `FLUENTCI_CACHE_URL` and the
