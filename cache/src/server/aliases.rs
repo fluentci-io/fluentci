@@ -199,7 +199,13 @@ mod tests {
         ] {
             let encoded = registry_account(did);
             assert!(!encoded.contains(':'));
-            assert_eq!(aliases.account(&encoded).await.unwrap(), did);
+            assert_eq!(
+                aliases
+                    .account(&encoded)
+                    .await
+                    .unwrap_or_else(|_| panic!("registry DID decoding failed")),
+                did
+            );
         }
     }
 }

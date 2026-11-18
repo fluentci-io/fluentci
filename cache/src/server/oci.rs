@@ -325,7 +325,7 @@ async fn upload_request(
     id: &str,
     request: Request,
 ) -> Result<Response> {
-    upload_authorized(&registry.app, request.headers(), Some(&account)).await?;
+    upload_authorized(&registry.app, request.headers(), Some(account)).await?;
     let parameters = query(&request)?;
     let method = request.method().clone();
     if method == Method::POST && id.is_empty() {
@@ -798,7 +798,7 @@ async fn tags(
     if *request.method() != Method::GET {
         return Ok(reply(StatusCode::METHOD_NOT_ALLOWED));
     }
-    upload_authorized(&registry.app, request.headers(), Some(&account)).await?;
+    upload_authorized(&registry.app, request.headers(), Some(account)).await?;
     let parameters = query(&request)?;
     let limit = parameters
         .get("n")
