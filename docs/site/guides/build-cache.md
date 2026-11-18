@@ -48,19 +48,19 @@ cache client password.
 
 ## Supported protocols
 
-| Client                      | Append to your account URL                 | Upload authentication                |
-| --------------------------- | ------------------------------------------ | ------------------------------------ |
-| Bazel HTTP cache            | `/bazel`                                   | Bearer header                        |
-| Bazel gRPC                  | instance `accounts/OWNER_DID`             | Bearer metadata                      |
-| Turborepo                   | `/turbo`                                   | `TURBO_TOKEN`                        |
-| Nx                          | `/nx`                                      | Access-token environment variable    |
+| Client                      | Append to your account URL                       | Upload authentication                |
+| --------------------------- | ------------------------------------------------ | ------------------------------------ |
+| Bazel HTTP cache            | `/bazel`                                         | Bearer header                        |
+| Bazel gRPC                  | instance `accounts/OWNER_DID`                    | Bearer metadata                      |
+| Turborepo                   | `/turbo`                                         | `TURBO_TOKEN`                        |
+| Nx                          | `/nx`                                            | Access-token environment variable    |
 | BuildKit / Docker Buildx    | OCI registry `/v2/accounts/did-plc-YOUR_DID/...` | Docker login password                |
-| sccache WebDAV              | `/sccache/`                                | Bearer token                         |
-| Go helper                   | Nothing; helper adds `/gocache`            | `FLUENTCI_CACHE_TOKEN`               |
-| Gradle HTTP build cache     | `/gradle/`                                 | Basic-auth password                  |
-| Maven Build Cache Extension | `/maven/`                                  | Maven server password                |
-| Nix binary cache            | `/nix`                                     | Bearer header on PUT                 |
-| Generic HTTP                | `/generic/<key>`                           | Bearer header or Basic-auth password |
+| sccache WebDAV              | `/sccache/`                                      | Bearer token                         |
+| Go helper                   | Nothing; helper adds `/gocache`                  | `FLUENTCI_CACHE_TOKEN`               |
+| Gradle HTTP build cache     | `/gradle/`                                       | Basic-auth password                  |
+| Maven Build Cache Extension | `/maven/`                                        | Maven server password                |
+| Nix binary cache            | `/nix`                                           | Bearer header on PUT                 |
+| Generic HTTP                | `/generic/<key>`                                 | Bearer header or Basic-auth password |
 
 Reads are public when the server's public-read configuration and CDN are set up.
 The production service is `https://cache.fluentci.io`; its read origin is
