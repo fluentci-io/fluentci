@@ -83,6 +83,88 @@ async fn all_protocols_round_trip_and_head() {
 }
 
 #[tokio::test]
+async fn duplicate_hash_addressed_nars_succeed_without_consuming_body_and_require_auth() {
+    let app = app();
+    for path in [
+        format!("/nix/nar/{}.nar.zst", "a".repeat(52)),
+        format!("/nar/{}.nar.xz", "b".repeat(52)),
+        format!(
+            "/accounts/{}/nix/nar/{}.nar.zst",
+            "a".repeat(64),
+            "c".repeat(52)
+        ),
+    ] {
+        assert_eq!(
+            app.clone()
+                .oneshot(request("PUT", &path, "original"))
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::CREATED
+        );
+        let unread = stream::once(async {
+            panic!("duplicate upload body must not be read");
+            #[allow(unreachable_code)]
+            Ok::<_, io::Error>(bytes::Bytes::new())
+        });
+        assert_eq!(
+            app.clone()
+                .oneshot(request("PUT", &path, Body::from_stream(unread)))
+                .await
+                .unwrap()
+                .status(),
+            StatusCode::OK
+        );
+        assert_eq!(
+            bytes(
+                app.clone()
+                    .oneshot(request("GET", &path, Body::empty()))
+                    .await
+                    .unwrap()
+            )
+            .await,
+            "original"
+        );
+        let unauthorized = Request::builder()
+            .method("PUT")
+            .uri(&path)
+            .body(Body::empty())
+            .unwrap();
+        assert_eq!(
+            app.clone().oneshot(unauthorized).await.unwrap().status(),
+            StatusCode::UNAUTHORIZED
+        );
+    }
+    for path in [
+        "/nix/package.narinfo",
+        "/gradle/task",
+        "/generic/key",
+        "/nix/nar/named-payload.nar.zst",
+    ] {
+        for body in ["first", "updated"] {
+            assert_eq!(
+                app.clone()
+                    .oneshot(request("PUT", path, body))
+                    .await
+                    .unwrap()
+                    .status(),
+                StatusCode::CREATED
+            );
+        }
+        assert_eq!(
+            bytes(
+                app.clone()
+                    .oneshot(request("GET", path, Body::empty()))
+                    .await
+                    .unwrap()
+            )
+            .await,
+            "updated"
+        );
+    }
+}
+
+#[tokio::test]
 async fn public_reads_and_token_required_writes() {
     let app = app();
     for auth in [None, Some("Bearer wrong"), Some("Basic !!!")] {

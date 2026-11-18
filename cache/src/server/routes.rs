@@ -2,7 +2,7 @@ use super::{
     App,
     auth::{authorized, upload_authorized},
     download::download,
-    error::{Failure, Result},
+    error::{Failure, Result, backend_error},
     key::key,
     upload::upload,
 };
@@ -89,6 +89,18 @@ async fn handle_inner(app: &Arc<App>, raw: &str, request: Request) -> Result<Res
     }
     if !read && app.config.read_only {
         return Err(Failure(StatusCode::FORBIDDEN, "cache is read-only\n"));
+    }
+    // Authenticate first, then avoid reading a duplicate immutable NAR body.
+    // Narinfo and mutable protocol keys must retain normal replacement behavior.
+    if method == Method::PUT && key.is_immutable_nix_payload() {
+        match tokio::time::timeout(Duration::from_secs(10), app.store.head(&key.path))
+            .await
+            .map_err(|_| Failure(StatusCode::GATEWAY_TIMEOUT, "cache lookup timed out\n"))?
+        {
+            Ok(_) => return Ok(StatusCode::OK.into_response()),
+            Err(object_store::Error::NotFound { .. }) => {}
+            Err(error) => return Err(backend_error(error)),
+        }
     }
     if key.nix_info {
         if !read {

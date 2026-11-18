@@ -64,10 +64,10 @@ function fixture(t) {
   const bin = join(directory, "bin");
   mkdirSync(bin);
   mkdirSync(join(directory, "webui"));
-  mkdirSync(join(directory, ".fluentci/nix-build"), { recursive: true });
+  mkdirSync(join(directory, ".fluentci/nix-build/dist"), { recursive: true });
   writeFileSync(
-    join(directory, ".fluentci/nix-build/run.mjs"),
-    readFileSync(join(root, ".fluentci/nix-build/run.mjs")),
+    join(directory, ".fluentci/nix-build/dist/nix-cache-host.mjs"),
+    readFileSync(join(root, ".fluentci/nix-build/dist/nix-cache-host.mjs")),
   );
 
   const log = join(directory, "commands.jsonl");

@@ -297,6 +297,11 @@ and account namespace; Nix downloads directly from the CDN. Discovery
 (`nix-cache-info`) stays on the service and uploads still require a token.
 Private reads stay on the authenticated proxy path.
 
+Existing hash-addressed NAR payloads are immutable. Authenticated duplicate PUTs
+return `200` without consuming the upload body. Narinfo remains replaceable so
+signatures and compression metadata can be updated. The CI publisher checks for
+existing entries before compression and only uploads missing paths.
+
 ### Export a signed closure, then upload NAR files before metadata
 
 ```sh

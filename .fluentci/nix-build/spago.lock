@@ -5,12 +5,24 @@
         "path": "./",
         "core": {
           "dependencies": [
+            "aff",
+            "aff-promise",
+            "arrays",
             "effect",
             "either",
+            "exceptions",
             "fluentci",
             "fluentci-ci-common",
             "foldable-traversable",
-            "prelude"
+            "foreign-object",
+            "integers",
+            "maybe",
+            "numbers",
+            "ordered-collections",
+            "prelude",
+            "refs",
+            "strings",
+            "tuples"
           ]
         },
         "test": {
@@ -713,6 +725,21 @@
         "unsafe-coerce"
       ]
     },
+    "aff-promise": {
+      "type": "registry",
+      "version": "4.0.0",
+      "integrity": "sha256-Jgp3y+NWuuAmwz2V3LlWoX+AvxqfVglY77N5zTw8xnI=",
+      "dependencies": [
+        "aff",
+        "control",
+        "effect",
+        "either",
+        "exceptions",
+        "foreign",
+        "prelude",
+        "transformers"
+      ]
+    },
     "argonaut-codecs": {
       "type": "registry",
       "version": "9.1.0",
@@ -953,6 +980,22 @@
         "orders",
         "prelude",
         "tuples"
+      ]
+    },
+    "foreign": {
+      "type": "registry",
+      "version": "7.0.1",
+      "integrity": "sha256-g9B+pe+2gOcf3PVrSkgG5y9tZ1WtTygbtwprlT6fBbg=",
+      "dependencies": [
+        "either",
+        "functions",
+        "integers",
+        "lists",
+        "maybe",
+        "prelude",
+        "strings",
+        "transformers",
+        "unsafe-coerce"
       ]
     },
     "foreign-object": {

@@ -1,430 +1,63 @@
-import { spawn } from "node:child_process";
-import { createPrivateKey, createPublicKey } from "node:crypto";
-import { createReadStream } from "node:fs";
-import {
-  mkdtemp,
-  mkdir,
-  writeFile,
-  readdir,
-  rm,
-  stat,
-  readFile,
-} from "node:fs/promises";
-import { setTimeout as delay } from "node:timers/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
+// JavaScript interoperability entry point. Publisher logic is PureScript.
+import * as Publisher from "./output/CI.CacheHost/index.js";
+import { fromAff } from "./output/Control.Promise/index.js";
+import { commandRaw } from "./src/CI/CacheHost.js";
 import { pathToFileURL } from "node:url";
 
+const promise = (aff) => fromAff(aff)();
+export const command = commandRaw;
 export function configuration(env) {
-  const base = env.FLUENTCI_CACHE_URL?.trim();
-  const publicKey = env.FLUENTCI_NIX_PUBLIC_KEY?.trim();
-  const token = env.FLUENTCI_CACHE_TOKEN?.trim();
-  const signingKey = env.FLUENTCI_NIX_SIGNING_KEY?.trim();
-  if (Boolean(base) !== Boolean(publicKey))
-    throw Error("Set both FLUENTCI_CACHE_URL and FLUENTCI_NIX_PUBLIC_KEY");
-  if (Boolean(token) !== Boolean(signingKey))
-    throw Error(
-      "Signed uploads require both FLUENTCI_CACHE_TOKEN and FLUENTCI_NIX_SIGNING_KEY",
-    );
-  if (token && !base)
-    throw Error("Upload credentials require cache URL and public key");
-  let cache;
-  if (base) {
-    const url = new URL(base);
-    const segments = url.pathname.replace(/\/$/, "").split("/").slice(1);
-    let accountUrl =
-      segments.length === 2 &&
-      segments[0] === "accounts" &&
-      /^[a-f0-9]{64}$/.test(segments[1]);
-    if (segments.length === 1) {
-      const actor = decodeURIComponent(segments[0]);
-      accountUrl =
-        /^did:plc:[a-z2-7]{24}$/.test(actor) ||
-        /^did:web:[A-Za-z0-9._:%-]+$/.test(actor) ||
-        /^@?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(
-          actor,
-        );
-    }
-    if (
-      url.protocol !== "https:" ||
-      url.username ||
-      url.password ||
-      url.search ||
-      url.hash ||
-      !accountUrl
-    )
-      throw Error(
-        "FLUENTCI_CACHE_URL must be an HTTPS account URL without /nix",
-      );
-    if (!/^[\w.-]+:[A-Za-z0-9+/]{43}=$/.test(publicKey))
-      throw Error(
-        "FLUENTCI_NIX_PUBLIC_KEY must contain the full Nix public key",
-      );
-    cache = base.replace(/\/$/, "") + "/nix";
-  }
-  if (signingKey) {
-    const match = /^([\w.-]+):([A-Za-z0-9+/]{86}==)$/.exec(signingKey);
-    if (!match)
-      throw Error(
-        "FLUENTCI_NIX_SIGNING_KEY must contain a Nix private key, not a path",
-      );
-    const bytes = Buffer.from(match[2], "base64");
-    const key = createPrivateKey({
-      key: Buffer.concat([
-        Buffer.from("302e020100300506032b657004220420", "hex"),
-        bytes.subarray(0, 32),
-      ]),
-      format: "der",
-      type: "pkcs8",
-    });
-    const derived = createPublicKey(key)
-      .export({ format: "der", type: "spki" })
-      .subarray(-32);
-    if (
-      `${match[1]}:${derived.toString("base64")}` !== publicKey ||
-      !derived.equals(bytes.subarray(32))
-    )
-      throw Error("Nix signing key does not match FLUENTCI_NIX_PUBLIC_KEY");
-    if (/[\r\n]/.test(token)) throw Error("Invalid upload token");
-  }
-  const nixEnv = { ...env };
-  if (cache)
-    nixEnv.NIX_CONFIG = [
-      env.NIX_CONFIG || "",
-      "http-connections = 16",
-      `extra-substituters = ${cache}`,
-      `extra-trusted-public-keys = ${publicKey}`,
-    ].join("\n");
-  // The build and its subprocesses do not need upload credentials.
-  delete nixEnv.FLUENTCI_CACHE_TOKEN;
-  delete nixEnv.FLUENTCI_NIX_SIGNING_KEY;
-  return { cache, publicKey, token, signingKey, nixEnv };
+  const result = Publisher.configuration(env)();
+  return { ...result, cache: result.cache || undefined };
 }
-
-export function command(program, args, env, capture = false, signal) {
-  return new Promise((resolve, reject) => {
-    const child = spawn(program, args, {
-      env,
-      signal,
-      stdio: ["ignore", capture ? "pipe" : "inherit", "inherit"],
-    });
-    let output = "";
-    child.stdout?.setEncoding("utf8");
-    child.stdout?.on("data", (chunk) => {
-      output += chunk;
-    });
-    child.on("error", reject);
-    child.on("close", (code) =>
-      code === 0
-        ? resolve(output)
-        : reject(Error(`${program} failed (${code})`)),
-    );
-  });
-}
-
-const lines = (text) => text.trim().split(/\s+/).filter(Boolean);
-const batches = (values, size = 100) =>
-  Array.from({ length: Math.ceil(values.length / size) }, (_, index) =>
-    values.slice(index * size, (index + 1) * size),
+export function uploadFile(path, url, token, fetcher = fetch, options = {}) {
+  return promise(
+    Publisher.uploadFile({ ...options, fetcher })(path)(url)(token)(
+      options.maxAttempts ?? 4,
+    )(options.timeoutMs ?? 125 * 60 * 1000),
   );
-
-const RETRYABLE_UPLOAD_STATUSES = new Set([408, 425, 429, 500, 502, 503, 504]);
-
-export async function uploadFile(
-  path,
-  url,
-  token,
-  fetcher = fetch,
-  { wait = delay, maxAttempts = 4, timeoutMs = 125 * 60 * 1000 } = {},
-) {
-  const size = String((await stat(path)).size);
-  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    const body = createReadStream(path);
-    let retryAfter = 0;
-    let failure;
-    let retryable = false;
-    try {
-      const response = await fetcher(url, {
-        method: "PUT",
-        redirect: "error",
-        signal: AbortSignal.timeout(timeoutMs),
-        headers: { Authorization: `Bearer ${token}`, "Content-Length": size },
-        body,
-        duplex: "half",
-      });
-      await response.body?.cancel();
-      if (response.ok) return;
-      failure = Error(
-        `Cache upload failed for ${path.split("/").at(-1)}: HTTP ${response.status}`,
-      );
-      retryable = RETRYABLE_UPLOAD_STATUSES.has(response.status);
-      const header = response.headers?.get("retry-after");
-      if (header) {
-        const seconds = Number(header);
-        retryAfter = Number.isFinite(seconds)
-          ? seconds * 1000
-          : Date.parse(header) - Date.now();
-      }
-    } catch (error) {
-      // Fetch transport errors and deadlines are safe to retry: cache PUTs
-      // publish atomically under a deterministic key.
-      failure = Error(
-        `Cache upload failed for ${path.split("/").at(-1)}: ${error.name || "transport error"}`,
-      );
-      retryable =
-        error instanceof TypeError ||
-        ["TimeoutError", "AbortError"].includes(error.name) ||
-        ["ECONNRESET", "ETIMEDOUT", "EPIPE"].includes(error.code);
-    } finally {
-      // A response may arrive before the server consumes the request body.
-      // Never reuse an exhausted or partially consumed stream on retry.
-      body.destroy();
-    }
-    if (!retryable || attempt === maxAttempts) throw failure;
-    const backoff = Math.min(
-      30_000,
-      Math.max(1000 * 2 ** (attempt - 1), retryAfter || 0),
-    );
-    console.warn(
-      `${failure.message}; retrying (${attempt}/${maxAttempts - 1}) in ${Math.ceil(backoff / 1000)}s`,
-    );
-    await wait(backoff);
-  }
 }
-
-export async function uploadFiles(
+export function uploadFiles(
   directory,
   cache,
   token,
   fetcher = fetch,
   metadataFiles,
-  options,
+  options = {},
 ) {
-  // All payloads must finish successfully before any corresponding narinfo is
-  // published, including when an individual payload needs retries.
-  const nars = (await readdir(join(directory, "nar"))).map(
-    (file) => `nar/${file}`,
+  return promise(
+    Publisher.uploadFiles({ ...options, fetcher })(directory)(cache)(token)(
+      metadataFiles ?? [],
+    )(options.maxAttempts ?? 4)(options.timeoutMs ?? 125 * 60 * 1000),
   );
-  const infos =
-    metadataFiles ??
-    (await readdir(directory)).filter((file) => file.endsWith(".narinfo"));
-  for (const files of [nars, infos]) {
-    for (const group of batches(files, 4)) {
-      const results = await Promise.allSettled(
-        group.map((file) =>
-          uploadFile(
-            join(directory, file),
-            `${cache}/${file}`,
-            token,
-            fetcher,
-            options,
-          ),
-        ),
-      );
-      const failure = results.find((result) => result.status === "rejected");
-      if (failure) throw failure.reason;
-    }
-  }
 }
-
-export async function requireSignatures(directory, publicKey) {
-  const keyName = publicKey.split(":")[0];
-  const files = (await readdir(directory)).filter((file) =>
-    file.endsWith(".narinfo"),
+export function requireSignatures(directory, publicKey, metadataFiles) {
+  return promise(
+    Publisher.requireSignatures(directory)(publicKey)(metadataFiles ?? []),
   );
-  if (!files.length) throw Error("Nix export contains no signed metadata");
-  for (const file of files) {
-    const text = await readFile(join(directory, file), "utf8");
-    const signed = text.split("\n").some((line) => {
-      const prefix = `Sig: ${keyName}:`;
-      if (!line.startsWith(prefix)) return false;
-      const signature = line.slice(prefix.length).trim();
-      return /^[A-Za-z0-9+/]{86}==$/.test(signature);
-    });
-    if (!signed) throw Error(`Refusing unsigned Nix metadata: ${file}`);
-  }
 }
-
-export async function build(
+export function seedAvailablePaths(directory, paths, cache, fetcher = fetch) {
+  return promise(
+    Publisher.seedAvailablePaths({ fetcher })(directory)(paths)(cache),
+  );
+}
+export function build(
   env = process.env,
   run = command,
   upload = uploadFiles,
-  { pollIntervalMs = 2000 } = {},
+  options = {},
 ) {
-  const config = configuration(env);
-  console.log(
-    config.cache
-      ? `Nix cache: ${config.cache}`
-      : "No FluentCI cache configured; using default Nix substituters",
+  return promise(
+    Publisher.build({ ...options, run, upload })(env)(
+      options.pollIntervalMs ?? 2000,
+    ),
   );
-  const buildArgs = ["build", "--no-write-lock-file", "--json", ".#fluentci"];
-  if (!config.token) {
-    await run("nix", buildArgs, config.nixEnv, true);
-    console.log("No upload credentials; cache is read-only");
-    return;
-  }
-  const directory = await mkdtemp(
-    join(env.RUNNER_TEMP || tmpdir(), "fluentci-nix-"),
-  );
-  const controller = new AbortController();
-  let building;
-  try {
-    const keyPath = join(directory, "signing.key");
-    await writeFile(keyPath, config.signingKey + "\n", { mode: 0o600 });
-    const published = new Set();
-    const publishedMetadata = new Set();
-    const exportDir = join(directory, "cache");
-    await mkdir(exportDir);
-    const allPaths = async () =>
-      lines(await run("nix", ["path-info", "--all"], config.nixEnv, true));
-    const seen = new Set(await allPaths());
-    const publish = async (candidates) => {
-      const unique = [...new Set(candidates)].filter(
-        (path) => !path.endsWith(".drv") && !published.has(path),
-      );
-      for (const batch of batches(unique)) {
-        const metadata = JSON.parse(
-          await run(
-            "nix",
-            ["path-info", "--json", ...batch],
-            config.nixEnv,
-            true,
-          ),
-        );
-        const entries = Array.isArray(metadata)
-          ? metadata
-          : Object.entries(metadata).map(([path, info]) => ({ path, ...info }));
-        const paths = entries
-          .filter((info) => !info.signatures?.length)
-          .map((info) => info.path);
-        if (!paths.length) continue;
-        const destination = pathToFileURL(exportDir);
-        destination.searchParams.set("secret-key", keyPath);
-        // Export references recursively: a binary cache rejects a path whose
-        // references have no narinfo in the destination. Keep those narinfos
-        // between batches so common dependencies are exported only once.
-        await run(
-          "nix",
-          ["copy", "--to", destination.href, ...paths],
-          config.nixEnv,
-        );
-        const metadataFiles = (await readdir(exportDir)).filter(
-          (file) => file.endsWith(".narinfo") && !publishedMetadata.has(file),
-        );
-        if (!metadataFiles.length) continue;
-        const exportedPaths = [];
-        for (const file of metadataFiles) {
-          const text = await readFile(join(exportDir, file), "utf8");
-          const path = /^StorePath: (.+)$/m.exec(text)?.[1];
-          if (!path) throw Error(`Invalid exported Nix metadata: ${file}`);
-          exportedPaths.push(path);
-        }
-        await requireSignatures(exportDir, config.publicKey);
-        for (const exportedBatch of batches(exportedPaths)) {
-          await run(
-            "nix",
-            [
-              "store",
-              "verify",
-              "--store",
-              pathToFileURL(exportDir).href,
-              "--no-contents",
-              "--sigs-needed",
-              "1",
-              "--trusted-public-keys",
-              config.publicKey,
-              ...exportedBatch,
-            ],
-            config.nixEnv,
-          );
-        }
-        await upload(
-          exportDir,
-          config.cache,
-          config.token,
-          undefined,
-          metadataFiles,
-        );
-        exportedPaths.forEach((path) => published.add(path));
-        metadataFiles.forEach((file) => publishedMetadata.add(file));
-        // Remote payloads are now durable. Retain local metadata for future
-        // reference checks, while releasing large compressed NAR files.
-        await rm(join(exportDir, "nar"), { recursive: true, force: true });
-        await mkdir(join(exportDir, "nar"));
-        console.log(
-          `Published ${exportedPaths.length} signed store paths (${published.size} total)`,
-        );
-      }
-    };
-    const scan = async () => {
-      const current = await allPaths();
-      const fresh = current.filter((path) => !seen.has(path));
-      current.forEach((path) => seen.add(path));
-      await publish(fresh);
-    };
-    let done = false;
-    // Capture rejection immediately; watcher failures cancel the build client,
-    // while build failures still drain completed artifacts into the cache.
-    building = Promise.resolve()
-      .then(() => run("nix", buildArgs, config.nixEnv, true, controller.signal))
-      .then(
-        (value) => ({ value }),
-        (error) => ({ error }),
-      )
-      .finally(() => {
-        done = true;
-      });
-    console.log(
-      "Watching Nix store; publishing newly built paths during the build",
-    );
-    while (!done) {
-      await scan();
-      if (!done) {
-        const pause = new AbortController();
-        try {
-          await Promise.race([
-            building,
-            delay(pollIntervalMs, undefined, { signal: pause.signal }),
-          ]);
-        } finally {
-          pause.abort();
-        }
-      }
-    }
-    const outcome = await building;
-    await scan();
-    if (outcome.error) throw outcome.error;
-    const built = JSON.parse(outcome.value);
-    const roots = built
-      .flatMap((result) => [result.drvPath, ...Object.values(result.outputs)])
-      .filter(Boolean);
-    if (roots.length) {
-      const closure = lines(
-        await run(
-          "nix-store",
-          ["--query", "--requisites", "--include-outputs", ...roots],
-          config.nixEnv,
-          true,
-        ),
-      );
-      await publish(closure);
-    }
-    console.log(`Nix cache uploads complete: ${published.size} signed paths`);
-  } catch (error) {
-    controller.abort();
-    if (building) await building;
-    throw error;
-  } finally {
-    await rm(directory, { recursive: true, force: true });
-  }
 }
-
 if (
   process.argv[1] &&
   import.meta.url === pathToFileURL(process.argv[1]).href
 ) {
   build().catch((error) => {
-    // Do not print fetch causes or request options containing credentials.
     console.error(error.message);
     process.exitCode = 1;
   });

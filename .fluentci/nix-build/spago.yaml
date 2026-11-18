@@ -1,14 +1,24 @@
 package:
   name: fluentci-ci-nix-build
   dependencies:
-    [
-      effect,
-      either,
-      fluentci,
-      prelude,
-      foldable-traversable,
-      fluentci-ci-common,
-    ]
+    - aff
+    - aff-promise
+    - arrays
+    - effect
+    - either
+    - exceptions
+    - fluentci
+    - fluentci-ci-common
+    - foldable-traversable
+    - foreign-object
+    - integers
+    - maybe
+    - numbers
+    - ordered-collections
+    - prelude
+    - refs
+    - strings
+    - tuples
 workspace:
   packageSet:
     registry: 81.11.0

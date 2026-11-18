@@ -9,5 +9,5 @@ test("component invokes the host helper without credential arguments", () => {
   const commands = f.calls
     .filter(([name]) => name === "with_exec")
     .map(([, value]) => JSON.parse(value));
-  assert.deepEqual(commands[0], ["'node'", "'.fluentci/nix-build/run.mjs'"]);
+  assert.deepEqual(commands[0], ["'node'", "'.fluentci/nix-build/dist/nix-cache-host.mjs'"]);
 });

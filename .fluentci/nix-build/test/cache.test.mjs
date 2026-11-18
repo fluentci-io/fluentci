@@ -18,6 +18,7 @@ import {
   uploadFiles,
   uploadFile,
   requireSignatures,
+  seedAvailablePaths,
 } from "../run.mjs";
 
 const { privateKey, publicKey } = generateKeyPairSync("ed25519");
@@ -45,6 +46,53 @@ test("public cache reads preserve GitHub authentication and do not expose upload
   );
   assert.equal(config.nixEnv.FLUENTCI_CACHE_TOKEN, undefined);
   assert.equal(config.nixEnv.FLUENTCI_NIX_SIGNING_KEY, undefined);
+});
+
+test("availability checks reuse upstream and FluentCI metadata without uploading payloads", async () => {
+  const directory = await mkdtemp(join(tmpdir(), "fluentci-availability-"));
+  const upstream = `/nix/store/${"a".repeat(32)}-upstream`;
+  const cached = `/nix/store/${"b".repeat(32)}-cached`;
+  const missing = `/nix/store/${"c".repeat(32)}-missing`;
+  const calls = [];
+  try {
+    const available = await seedAvailablePaths(
+      directory,
+      [upstream, cached, missing],
+      "https://cache.example/nix",
+      async (url, options) => {
+        calls.push(url);
+        assert.equal(options.headers?.Authorization, undefined);
+        assert.equal(options.method, undefined);
+        const present =
+          url === `https://cache.nixos.org/${"a".repeat(32)}.narinfo`
+            ? upstream
+            : url === `https://cache.example/nix/${"b".repeat(32)}.narinfo`
+              ? cached
+              : undefined;
+        return present
+          ? new Response(`StorePath: ${present}\nURL: nar/test.nar.zst\n`)
+          : new Response(null, { status: 404 });
+      },
+    );
+    assert.deepEqual(available.sort(), [upstream, cached].sort());
+    assert.equal(calls.length, 5);
+    assert.equal(
+      await readFile(join(directory, `${"a".repeat(32)}.narinfo`), "utf8"),
+      `StorePath: ${upstream}\nURL: nar/test.nar.zst\n`,
+    );
+    await assert.rejects(access(join(directory, `${"c".repeat(32)}.narinfo`)));
+    await assert.rejects(
+      seedAvailablePaths(
+        directory,
+        [missing],
+        "https://cache.example/nix",
+        async () => new Response(`StorePath: ${upstream}\n`),
+      ),
+      /invalid store metadata/,
+    );
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 });
 
 test("transient upload failures retry with complete fresh streams and bounded backoff", async () => {
@@ -233,12 +281,17 @@ test("exports intermediate unsigned outputs, excludes signed substitutes, and re
     assert.ok(args.includes("/nix/store/cargo-artifacts"));
     assert.ok(!args.includes("/nix/store/public-dependency"));
   };
-  await build(env, run, async (directory, cache, token) => {
-    assert.equal(directory, exportPath);
-    assert.equal(cache, `${env.FLUENTCI_CACHE_URL}/nix`);
-    assert.equal(token, env.FLUENTCI_CACHE_TOKEN);
-    throw Error("upload rejected");
-  }).then(
+  await build(
+    env,
+    run,
+    async (directory, cache, token) => {
+      assert.equal(directory, exportPath);
+      assert.equal(cache, `${env.FLUENTCI_CACHE_URL}/nix`);
+      assert.equal(token, env.FLUENTCI_CACHE_TOKEN);
+      throw Error("upload rejected");
+    },
+    { lookup: async () => [] },
+  ).then(
     () => assert.fail("must fail on upload error"),
     (error) => assert.match(error.message, /upload rejected/),
   );
@@ -318,6 +371,7 @@ test("watcher publishes during the build, deduplicates paths, and drains after a
   let uploads = 0;
   let keyPath;
   const run = async (program, args) => {
+    if (program === "nix-store") return "/nix/store/artifact";
     if (args.includes("--all")) {
       if (++scans === 1) return "/nix/store/preexisting";
       return "/nix/store/preexisting\n/nix/store/artifact\n/nix/store/source.drv";
@@ -350,7 +404,7 @@ test("watcher publishes during the build, deduplicates paths, and drains after a
         rejectBuild(Error("later compilation failed"));
         building = false;
       },
-      { pollIntervalMs: 1 },
+      { pollIntervalMs: 1, lookup: async () => [] },
     ),
     /later compilation failed/,
   );
@@ -364,6 +418,7 @@ test("upload failure cancels the running Nix build and cleans its private key", 
   let aborted = false;
   let keyPath;
   const run = async (program, args, _env, _capture, signal) => {
+    if (program === "nix-store") return "/nix/store/artifact";
     if (args.includes("--all"))
       return ++scans === 1 ? "" : "/nix/store/artifact";
     if (args[0] === "build")
@@ -394,7 +449,7 @@ test("upload failure cancels the running Nix build and cleans its private key", 
       async () => {
         throw Error("HTTP 401");
       },
-      { pollIntervalMs: 1 },
+      { pollIntervalMs: 1, lookup: async () => [] },
     ),
     /HTTP 401/,
   );

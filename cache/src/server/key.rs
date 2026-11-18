@@ -11,6 +11,24 @@ pub(super) struct Key {
 }
 
 impl Key {
+    pub(super) fn is_immutable_nix_payload(&self) -> bool {
+        let parts: Vec<_> = self.path.as_ref().split('/').collect();
+        let offset = if self.account.is_some() { 2 } else { 0 };
+        if !self.is_nix() || parts.len() != offset + 3 || parts[offset + 1] != "nar" {
+            return false;
+        }
+        let file = parts[offset + 2];
+        [".nar.zst", ".nar.xz", ".nar.bz2", ".nar.gz", ".nar"]
+            .iter()
+            .find_map(|suffix| file.strip_suffix(suffix))
+            .is_some_and(|hash| {
+                hash.len() == 52
+                    && hash
+                        .bytes()
+                        .all(|byte| b"0123456789abcdfghijklmnpqrsvwxyz".contains(&byte))
+            })
+    }
+
     pub(super) fn is_nix(&self) -> bool {
         self.path
             .as_ref()

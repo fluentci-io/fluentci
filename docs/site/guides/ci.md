@@ -118,18 +118,29 @@ nix-store --generate-binary-cache-key fluentci-1 nix-private.key nix-public.key
 
 Public reads require only the two variables. Uploads require both secrets.
 With no cache configuration the build uses default Nix substituters; incomplete
-configuration fails. During a build, the helper polls the valid Nix store every
-two seconds and publishes newly added unsigned paths, including intermediate
-Crane Cargo artifacts. It drains pending uploads at the end and checks the final
-closure for paths it has not published. Completed artifacts remain cached if a
-later build step fails. Each selected artifact is exported with its references,
-including upstream dependencies, so the published cache has a complete closure.
-Already published paths are reused between batches. Compressed payloads are
-removed locally after upload while metadata is retained for reference checks.
+configuration fails. Cache selection, retries, signing policy, scheduling, and
+publishing are implemented in PureScript (`CI.CacheHost`); a small JavaScript FFI
+provides Node process, streaming HTTP, filesystem, URL, JSON, and crypto operations.
+The build packages this host program beside the Wasm component.
+
+During a build the publisher polls every two seconds. Before exporting paths,
+it checks `cache.nixos.org` and the FluentCI cache for existing narinfo. Verified
+remote metadata satisfies reference validity in the temporary export cache, so
+already available dependencies do not need to be recompressed or uploaded.
+Only missing artifacts are signed and exported with Zstandard level 3. Shared
+references are deduplicated across batches, and verification only examines new
+metadata. Public upstream dependencies remain available through Nix's default
+substituters; `extra-substituters` adds FluentCI without replacing them.
+
+Compilation and publishing run concurrently. The job drains pending uploads
+before finishing, preserving completed artifacts even if compilation later fails.
+Logs report build completion separately from cache lookup, export/verification,
+and upload time. Compressed payloads are removed locally after upload while
+metadata remains available for reference checks.
 
 Every export is signed with the private key. Before uploading, the helper checks
-for the configured key's signature on every narinfo and asks Nix to verify those
-signatures. It uploads NARs before narinfo metadata, with at most four concurrent
+for the configured key's signature on each new narinfo and asks Nix to verify those
+signatures. It uploads NARs before narinfo metadata, with at most 16 concurrent
 HTTP uploads. Transient HTTP 408/425/429/5xx errors and transport timeouts retry
 up to three times with fresh file streams and bounded backoff. Each attempt has
 a 125-minute deadline; the production cache service allows two hours per upload.
