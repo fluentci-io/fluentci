@@ -52,6 +52,27 @@
         }
       }
     },
+    "protocolUsage": {
+      "type": "object",
+      "required": [
+        "protocol",
+        "bytes",
+        "keyCount"
+      ],
+      "properties": {
+        "protocol": {
+          "type": "string"
+        },
+        "bytes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "keyCount": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
     "usageSample": {
       "type": "object",
       "required": [
@@ -77,6 +98,13 @@
         "observedAt": {
           "type": "string",
           "format": "datetime"
+        },
+        "protocols": {
+          "type": "array",
+          "items": {
+            "type": "ref",
+            "ref": "io.fluentci.cache.defs#protocolUsage"
+          }
         }
       }
     },

@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { UsageChart } from "./UsageChart";
-import { formatBytes, type UsageSample } from "../../cache/usage";
+import {
+  formatBytes,
+  cacheTypes,
+  type UsageSample,
+  type ProtocolUsage,
+} from "../../cache/usage";
 import type { Account } from "../../auth/client";
 import { cacheRequest } from "../../cache/client";
 import { Skeleton } from "../Skeleton";
@@ -13,6 +18,8 @@ type Listing = {
   cursor?: string;
   totalBytes: number;
   totalKeys: number;
+  matchedKeys?: number;
+  protocols?: ProtocolUsage[];
 };
 const button =
   "rounded-lg border border-line px-3 py-2 text-sm hover:bg-raised disabled:opacity-50";
@@ -24,49 +31,152 @@ export function CacheObjects({ account }: { account: Account }) {
   const [listing, setListing] = useState<Listing>();
   const [search, setSearch] = useState("");
   const [prefix, setPrefix] = useState("");
+  const [cursor, setCursor] = useState("");
+  const [sort, setSort] = useState<"key" | "size" | "lastModified">("key");
+  const [direction, setDirection] = useState<"asc" | "desc">("asc");
+  const [previous, setPrevious] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [remove, setRemove] = useState<string>();
   const [confirm, setConfirm] = useState("");
   const lifetime = useRef<AbortController>();
+  const filters = useRef<HTMLFormElement>(null);
+  const [filterHeight, setFilterHeight] = useState(0);
+  useEffect(() => {
+    const element = filters.current;
+    if (!element) return;
+    const measure = () =>
+      setFilterHeight(Math.ceil(element.getBoundingClientRect().height));
+    const observer = new ResizeObserver(measure);
+    measure();
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
   useEffect(() => {
     const controller = new AbortController();
     lifetime.current = controller;
-    setPending(true);
-    void cacheRequest<Listing>(account, "listKeys", {}, controller.signal)
-      .then(async (result) => {
-        if (controller.signal.aborted) return;
-        setListing(result);
-        try {
-          const history = await cacheRequest<{ samples: UsageSample[] }>(
-            account,
-            "getUsageHistory",
-            {},
-            controller.signal,
-          );
-          if (!controller.signal.aborted) {
-            setSamples(history.samples);
-            setHistoryError("");
-          }
-        } catch {
-          if (!controller.signal.aborted)
-            setHistoryError("Usage history unavailable");
+    setCursor("");
+    setPrevious([]);
+    setSamples(undefined);
+    void cacheRequest<{ samples: UsageSample[] }>(
+      account,
+      "getUsageHistory",
+      {},
+      controller.signal,
+    )
+      .then((history) => {
+        if (!controller.signal.aborted) {
+          setSamples(history.samples);
+          setHistoryError("");
         }
       })
-      .catch((reason) => {
+      .catch(() => {
         if (!controller.signal.aborted)
-          setError(
-            reason instanceof Error ? reason.message : "Cache request failed",
-          );
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) setPending(false);
+          setHistoryError("Usage history unavailable");
       });
     return () => controller.abort();
   }, [account]);
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setError("");
+    const timer = window.setTimeout(
+      () => {
+        void cacheRequest<Listing>(
+          account,
+          "listKeys",
+          {
+            prefix,
+            search: search.trim(),
+            cursor,
+            limit: 100,
+            sort,
+            direction,
+          },
+          controller.signal,
+        )
+          .then(async (result) => {
+            if (controller.signal.aborted) return;
+            setListing(result);
+            try {
+              const history = await cacheRequest<{ samples: UsageSample[] }>(
+                account,
+                "getUsageHistory",
+                {},
+                controller.signal,
+              );
+              if (!controller.signal.aborted) {
+                setSamples(history.samples);
+                setHistoryError("");
+              }
+            } catch {
+              if (!controller.signal.aborted)
+                setHistoryError("Usage history unavailable");
+            }
+          })
+          .catch((reason) => {
+            if (!controller.signal.aborted)
+              setError(
+                reason instanceof Error
+                  ? reason.message
+                  : "Cache request failed",
+              );
+          })
+          .finally(() => {
+            if (!controller.signal.aborted) setLoading(false);
+          });
+      },
+      search ? 250 : 0,
+    );
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [account, prefix, search, cursor, sort, direction]);
+  function changeFilter(value: string, kind: "search" | "prefix") {
+    if (kind === "search") setSearch(value);
+    else setPrefix(value);
+    setCursor("");
+    setPrevious([]);
+    setListing(undefined);
+  }
+  function sortBy(column: typeof sort) {
+    setDirection(
+      column === sort
+        ? direction === "asc"
+          ? "desc"
+          : "asc"
+        : column === "key"
+          ? "asc"
+          : "desc",
+    );
+    setSort(column);
+    setCursor("");
+    setPrevious([]);
+    setListing(undefined);
+  }
+  function sortLabel(column: typeof sort, label: string) {
+    return (
+      <button
+        type="button"
+        className="inline-flex items-center gap-2 text-left hover:text-ink"
+        disabled={pending}
+        onClick={() => sortBy(column)}
+      >
+        {label}
+        <span
+          aria-hidden="true"
+          className={sort === column ? "text-accent" : "text-muted opacity-50"}
+        >
+          {sort === column ? (direction === "asc" ? "↑" : "↓") : "↕"}
+        </span>
+      </button>
+    );
+  }
   async function work(run: (signal: AbortSignal) => Promise<void>) {
-    if (pending || !lifetime.current) return;
+    if (pending || loading || !lifetime.current) return;
     const signal = lifetime.current.signal;
     setPending(true);
     setError("");
@@ -82,21 +192,21 @@ export function CacheObjects({ account }: { account: Account }) {
       if (!signal.aborted) setPending(false);
     }
   }
-  async function load(signal: AbortSignal, more = false) {
+  async function load(signal: AbortSignal) {
     const result = await cacheRequest<Listing>(
       account,
       "listKeys",
       {
         prefix,
-        ...(more && listing?.cursor ? { cursor: listing.cursor } : {}),
+        search: search.trim(),
+        cursor,
+        limit: 100,
+        sort,
+        direction,
       },
       signal,
     );
-    if (!signal.aborted)
-      setListing((previous) => ({
-        ...result,
-        keys: more ? [...(previous?.keys ?? []), ...result.keys] : result.keys,
-      }));
+    if (!signal.aborted) setListing(result);
     try {
       const history = await cacheRequest<{ samples: UsageSample[] }>(
         account,
@@ -122,7 +232,7 @@ export function CacheObjects({ account }: { account: Account }) {
         <h2 className="text-xl">Cache entries</h2>
         <button
           className={`${button} text-red-400`}
-          disabled={pending}
+          disabled={pending || loading}
           onClick={() => {
             setRemove("*");
             setConfirm("");
@@ -159,7 +269,11 @@ export function CacheObjects({ account }: { account: Account }) {
         samples={samples}
         error={historyError || (!listing ? error : "")}
       />
-      <form onSubmit={submit} className="mt-5 space-y-3">
+      <form
+        ref={filters}
+        onSubmit={submit}
+        className="sticky top-0 z-20 mt-5 space-y-3 bg-panel py-3"
+      >
         <div className="flex flex-wrap gap-3">
           <label className="min-w-0 flex-1 text-sm" htmlFor="cache-search">
             Search cache entries
@@ -172,12 +286,41 @@ export function CacheObjects({ account }: { account: Account }) {
                 type="search"
                 className={`${field} pl-10`}
                 value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Quick filter by key"
+                onChange={(event) => changeFilter(event.target.value, "search")}
+                disabled={pending}
+                placeholder="Search all cache keys"
+                maxLength={2048}
               />
             </span>
           </label>
-          <button className={`${button} self-end`} disabled={pending}>
+          <label className="self-end text-sm" htmlFor="cache-type">
+            Cache type
+            <select
+              id="cache-type"
+              className={`${field} mt-2`}
+              value={prefix}
+              disabled={pending}
+              onChange={(event) => changeFilter(event.target.value, "prefix")}
+            >
+              <option value="">All types</option>
+              {Object.entries(cacheTypes).map(([key, type]) => (
+                <option
+                  key={key}
+                  value={`${key === "buildkit" ? "oci" : key}/`}
+                >
+                  {type.label}
+                </option>
+              ))}
+              {prefix &&
+                !Object.keys(cacheTypes).some(
+                  (key) => prefix === `${key === "buildkit" ? "oci" : key}/`,
+                ) && <option value={prefix}>Custom prefix</option>}
+            </select>
+          </label>
+          <button
+            className={`${button} self-end`}
+            disabled={pending || loading}
+          >
             Refresh entries
           </button>
         </div>
@@ -194,31 +337,62 @@ export function CacheObjects({ account }: { account: Account }) {
               id="cache-prefix"
               className={`${field} pl-10`}
               value={prefix}
-              onChange={(event) => setPrefix(event.target.value)}
+              onChange={(event) => changeFilter(event.target.value, "prefix")}
+              disabled={pending}
               placeholder="generic/ or bazel/"
               maxLength={2048}
             />
           </div>
         </details>
       </form>
-      <div className="mt-5 overflow-x-auto rounded-lg border border-line">
+      <div className="mt-5 rounded-lg border border-line">
         <table
           className="w-full table-fixed text-left text-sm"
           aria-label="Cache entries"
         >
-          <thead className="border-b border-line bg-raised text-xs text-muted">
+          <thead
+            style={{ top: filterHeight }}
+            className="sticky z-10 border-b border-line bg-raised text-xs text-muted"
+          >
             <tr>
-              <th scope="col" className="px-4 py-3 font-medium">
-                Key
-              </th>
-              <th scope="col" className="w-20 px-2 py-3 font-medium sm:px-4">
-                Size
+              <th
+                scope="col"
+                aria-sort={
+                  sort === "key"
+                    ? direction === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
+                className="px-4 py-3 font-medium"
+              >
+                {sortLabel("key", "Key")}
               </th>
               <th
                 scope="col"
+                aria-sort={
+                  sort === "size"
+                    ? direction === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
+                className="w-20 px-2 py-3 font-medium sm:px-4"
+              >
+                {sortLabel("size", "Size")}
+              </th>
+              <th
+                scope="col"
+                aria-sort={
+                  sort === "lastModified"
+                    ? direction === "asc"
+                      ? "ascending"
+                      : "descending"
+                    : "none"
+                }
                 className="hidden w-36 px-4 py-3 font-medium sm:table-cell"
               >
-                Updated
+                {sortLabel("lastModified", "Updated")}
               </th>
               <th scope="col" className="w-20 px-2 py-3 font-medium sm:px-4">
                 <span className="sr-only">Actions</span>
@@ -229,65 +403,82 @@ export function CacheObjects({ account }: { account: Account }) {
             {!listing && !error && (
               <CacheTableSkeleton columns={4} label="Loading cache entries" />
             )}
-            {(listing?.keys ?? [])
-              .filter((entry) =>
-                entry.key.toLowerCase().includes(search.toLowerCase()),
-              )
-              .map((entry) => (
-                <tr key={entry.key}>
-                  <td className="max-w-md px-4 py-3">
-                    <code className="break-all font-mono text-xs">
-                      {entry.key}
-                    </code>
-                  </td>
-                  <td className="whitespace-nowrap px-2 py-3 text-xs text-muted sm:px-4">
-                    {formatBytes(entry.size)}
-                  </td>
-                  <td className="hidden whitespace-nowrap px-4 py-3 text-xs text-muted sm:table-cell">
-                    {new Date(entry.lastModified).toLocaleString()}
-                  </td>
-                  <td className="px-2 py-3 text-right sm:px-4">
-                    <button
-                      className={button}
-                      disabled={pending}
-                      aria-label={`Delete ${entry.key}`}
-                      onClick={() => {
-                        setRemove(entry.key);
-                        setConfirm("");
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            {listing &&
-              listing.keys.filter((entry) =>
-                entry.key.toLowerCase().includes(search.toLowerCase()),
-              ).length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-4 py-8 text-center text-muted">
-                    No matching cache keys.
-                  </td>
-                </tr>
-              )}
+            {(listing?.keys ?? []).map((entry) => (
+              <tr key={entry.key}>
+                <td className="max-w-md px-4 py-3">
+                  <code className="break-all font-mono text-xs">
+                    {entry.key}
+                  </code>
+                </td>
+                <td className="whitespace-nowrap px-2 py-3 text-xs text-muted sm:px-4">
+                  {formatBytes(entry.size)}
+                </td>
+                <td className="hidden whitespace-nowrap px-4 py-3 text-xs text-muted sm:table-cell">
+                  {new Date(entry.lastModified).toLocaleString()}
+                </td>
+                <td className="px-2 py-3 text-right sm:px-4">
+                  <button
+                    className={button}
+                    disabled={pending || loading}
+                    aria-label={`Delete ${entry.key}`}
+                    onClick={() => {
+                      setRemove(entry.key);
+                      setConfirm("");
+                    }}
+                  >
+                    Delete
+                  </button>
+                </td>
+              </tr>
+            ))}
+            {listing && listing.keys.length === 0 && (
+              <tr>
+                <td colSpan={4} className="px-4 py-8 text-center text-muted">
+                  No matching cache keys.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
       </div>
-      {listing?.cursor && (
-        <div className="mt-4 flex flex-wrap items-center gap-3">
+      <nav
+        className="mt-4 flex flex-wrap items-center justify-between gap-3"
+        aria-label="Cache entries pagination"
+      >
+        <p className="text-xs text-muted" aria-live="polite">
+          {listing
+            ? `Page ${previous.length + 1}${listing.matchedKeys !== undefined ? ` of ${Math.max(1, Math.ceil(listing.matchedKeys / 100))} · ${listing.matchedKeys.toLocaleString()} matching keys` : ""}`
+            : loading
+              ? "Loading entries…"
+              : "No entries loaded"}
+        </p>
+        <div className="flex gap-2">
           <button
             className={button}
-            disabled={pending}
-            onClick={() => void work((signal) => load(signal, true))}
+            disabled={pending || loading || previous.length === 0}
+            onClick={() => {
+              setCursor(previous[previous.length - 1]);
+              setPrevious((values) => values.slice(0, -1));
+              setListing(undefined);
+            }}
           >
-            More keys
+            Previous
           </button>
-          <p className="text-xs text-muted">
-            Search filters loaded entries. Load more to search additional keys.
-          </p>
+          <button
+            className={button}
+            disabled={pending || loading || !listing?.cursor}
+            onClick={() => {
+              if (listing?.cursor) {
+                setPrevious((values) => [...values, cursor]);
+                setCursor(listing.cursor);
+                setListing(undefined);
+              }
+            }}
+          >
+            Next
+          </button>
         </div>
-      )}
+      </nav>
       {remove !== undefined && (
         <div
           className="mt-4 rounded-lg border border-line p-4"
@@ -335,7 +526,7 @@ export function CacheObjects({ account }: { account: Account }) {
             </button>
             <button
               className={button}
-              disabled={pending}
+              disabled={pending || loading}
               onClick={() => setRemove(undefined)}
             >
               Cancel

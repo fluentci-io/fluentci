@@ -53,7 +53,7 @@ fn manage_cache(
   server: Server,
   request: Request,
   action: String,
-  record: fn(String, String, Int, Int, String) -> Promise(Nil),
+  record: fn(String, String, Int, Int, String, String) -> Promise(Nil),
 ) -> Promise(Output)
 
 @external(javascript, "./cache_ffi.mjs", "listCollaborators")
@@ -72,8 +72,8 @@ pub fn register(server: Server, db: Db) -> Nil {
   runtime.method(server, models.cache_resolve_account, fn(request) {
     resolve_account(server, request, fn() { cache_tokens.owners(db) })
   })
-  let record = fn(owner, date, bytes, keys, observed) {
-    cache_usage.record(db, owner, date, bytes, keys, observed)
+  let record = fn(owner, date, bytes, keys, observed, protocols) {
+    cache_usage.record(db, owner, date, bytes, keys, observed, protocols)
   }
   runtime.method(server, models.cache_get_usage_history, fn(request) {
     usage_history(request, fn(owner, after, before) {

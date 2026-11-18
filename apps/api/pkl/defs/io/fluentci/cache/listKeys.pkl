@@ -10,7 +10,10 @@ defs = new Mapping {
     required = List()
     properties = new Mapping {
      ["prefix"] = new StringField { maxLength = 2048 }
-["cursor"] = new StringField { maxLength = 2048 }
+["search"] = new StringField { maxLength = 2048 }
+["cursor"] = new StringField { maxLength = 8192 }
+["sort"] = new StringField { enum = List("key", "size", "lastModified") }
+["direction"] = new StringField { enum = List("asc", "desc") }
 ["limit"] = new IntegerField { minimum = 1
  maximum = 200 }
     }
@@ -25,6 +28,8 @@ defs = new Mapping {
 ["cursor"] = new StringField {}
 ["totalBytes"] = new IntegerField { minimum = 0 }
 ["totalKeys"] = new IntegerField { minimum = 0 }
+["matchedKeys"] = new IntegerField { minimum = 0 }
+["protocols"] = new ArrayField { items = new RefField { ref = "io.fluentci.cache.defs#protocolUsage" } }
     }
    }
   }

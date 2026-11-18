@@ -53,6 +53,9 @@ pub struct Config {
     pub prefix: String,
     #[arg(long, env = "FLUENTCI_CACHE_DIRECTORY", default_value = "./cache-data")]
     pub directory: PathBuf,
+    /// SQLite key index file. Omit to use an isolated in-memory SQLite index.
+    #[arg(long, env = "FLUENTCI_CACHE_INDEX_FILE")]
+    pub index_file: Option<PathBuf>,
     /// Bearer token, or password with any Basic-auth username. Never logged.
     #[arg(long, env = "FLUENTCI_CACHE_TOKEN", hide_env_values = true)]
     pub token: Option<String>,

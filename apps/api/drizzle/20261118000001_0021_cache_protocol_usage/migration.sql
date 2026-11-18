@@ -1,0 +1,1 @@
+ALTER TABLE cache_usage ADD COLUMN protocols TEXT NOT NULL DEFAULT '[]';

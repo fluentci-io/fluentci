@@ -272,6 +272,23 @@ export const schemas = [
           },
         },
       },
+      protocolUsage: {
+        type: 'object',
+        required: ['protocol', 'bytes', 'keyCount'],
+        properties: {
+          protocol: {
+            type: 'string',
+          },
+          bytes: {
+            type: 'integer',
+            minimum: 0,
+          },
+          keyCount: {
+            type: 'integer',
+            minimum: 0,
+          },
+        },
+      },
       usageSample: {
         type: 'object',
         required: ['date', 'bytes', 'keyCount', 'observedAt'],
@@ -292,6 +309,13 @@ export const schemas = [
           observedAt: {
             type: 'string',
             format: 'datetime',
+          },
+          protocols: {
+            type: 'array',
+            items: {
+              type: 'ref',
+              ref: 'io.fluentci.cache.defs#protocolUsage',
+            },
           },
         },
       },
@@ -638,9 +662,21 @@ export const schemas = [
                 type: 'string',
                 maxLength: 2048,
               },
-              cursor: {
+              search: {
                 type: 'string',
                 maxLength: 2048,
+              },
+              cursor: {
+                type: 'string',
+                maxLength: 8192,
+              },
+              sort: {
+                type: 'string',
+                enum: ['key', 'size', 'lastModified'],
+              },
+              direction: {
+                type: 'string',
+                enum: ['asc', 'desc'],
               },
               limit: {
                 type: 'integer',
@@ -673,6 +709,17 @@ export const schemas = [
               totalKeys: {
                 type: 'integer',
                 minimum: 0,
+              },
+              matchedKeys: {
+                type: 'integer',
+                minimum: 0,
+              },
+              protocols: {
+                type: 'array',
+                items: {
+                  type: 'ref',
+                  ref: 'io.fluentci.cache.defs#protocolUsage',
+                },
               },
             },
           },

@@ -383,3 +383,17 @@ See [storage management](/registry/cache/#explore-storage-and-manage-collaborato
 The standalone `fluentci-cache` server supports S3-compatible, file, and memory
 storage. See [deploy the cache server](/development/build-cache/) for systemd,
 R2/S3 settings, CDN configuration, and signing-key setup.
+
+## Find cache entries and inspect storage usage
+
+In the cache page, **Search cache entries** queries all indexed keys, including
+entries outside the current page. Select **Cache type** to show Nix, generic,
+sccache or another protocol. Use **Previous** and **Next** at the bottom to
+navigate the matching results; changing a filter returns to page one. Click
+**Key**, **Size** or **Updated** to sort all matching entries and click again to
+reverse the order. Filters and table headers stay visible while scrolling.
+
+The last-month chart stacks storage by cache type using consistent colors.
+Hover or focus a day for its date and per-type bytes or key counts. Older daily
+snapshots with no recorded breakdown appear as **Unclassified**. These are
+storage measurements, not CDN request or cache-hit metrics.

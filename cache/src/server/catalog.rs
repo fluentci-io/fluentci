@@ -1,4 +1,5 @@
 //! Metadata-only account index. R2 reconciliation never blocks a warm listing.
+use super::catalog_db::{Index, Page};
 use async_trait::async_trait;
 use chrono::Utc;
 use futures_util::{TryStreamExt, stream::BoxStream};
@@ -6,7 +7,7 @@ use object_store::{
     GetOptions, GetResult, ListResult, MultipartUpload, ObjectMeta, ObjectStore,
     PutMultipartOptions, PutOptions, PutPayload, PutResult, Result, path::Path,
 };
-use serde_json::{Value, json};
+use serde_json::Value;
 use std::{
     collections::BTreeMap,
     fmt,
@@ -30,10 +31,12 @@ struct State {
     scanning: bool,
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub(super) struct Catalog {
     state: RwLock<State>,
     refresh: Mutex<()>,
+    index_write: Mutex<()>,
+    index: Index,
 }
 
 fn apply(accounts: &mut BTreeMap<String, Account>, path: &Path, meta: Option<ObjectMeta>) {
@@ -55,6 +58,15 @@ fn apply(accounts: &mut BTreeMap<String, Account>, path: &Path, meta: Option<Obj
 }
 
 impl Catalog {
+    fn new(file: Option<&std::path::Path>) -> anyhow::Result<Self> {
+        Ok(Self {
+            state: RwLock::new(State::default()),
+            refresh: Mutex::new(()),
+            index_write: Mutex::new(()),
+            index: Index::new(file)?,
+        })
+    }
+
     pub(super) fn lookup(&self, path: &Path) -> Option<ObjectMeta> {
         let (account, relative) = path.as_ref().strip_prefix("accounts/")?.split_once('/')?;
         self.state
@@ -67,11 +79,17 @@ impl Catalog {
             .cloned()
     }
 
-    fn change(&self, path: &Path, meta: Option<ObjectMeta>) {
-        let mut state = self.state.write().unwrap();
-        apply(&mut state.accounts, path, meta.clone());
-        if state.scanning {
-            state.changes.insert(path.clone(), meta);
+    async fn change(&self, path: &Path, meta: Option<ObjectMeta>) {
+        {
+            let mut state = self.state.write().unwrap();
+            apply(&mut state.accounts, path, meta.clone());
+            if state.scanning {
+                state.changes.insert(path.clone(), meta.clone());
+            }
+        }
+        let _write = self.index_write.lock().await;
+        if let Err(error) = self.index.change(path, meta.as_ref()).await {
+            tracing::error!(%error, "cache metadata update failed; reconciliation will retry");
         }
     }
 
@@ -94,8 +112,6 @@ impl Catalog {
             Ok(accounts)
         };
         let result = tokio::time::timeout(Duration::from_secs(120), scan).await;
-        let mut state = self.state.write().unwrap();
-        state.scanning = false;
         let result = match result {
             Ok(result) => result,
             Err(error) => Err(object_store::Error::Generic {
@@ -103,53 +119,74 @@ impl Catalog {
                 source: Box::new(error),
             }),
         };
-        match result {
-            Ok(mut accounts) => {
-                for (path, meta) in std::mem::take(&mut state.changes) {
-                    apply(&mut accounts, &path, meta);
-                }
-                state.accounts = accounts;
-                state.ready = true;
-                Ok(())
-            }
+        let mut accounts = match result {
+            Ok(accounts) => accounts,
             Err(error) => {
+                let mut state = self.state.write().unwrap();
+                state.scanning = false;
                 state.changes.clear();
-                Err(error)
+                return Err(error);
+            }
+        };
+        let _write = self.index_write.lock().await;
+        {
+            let state = self.state.read().unwrap();
+            for (path, meta) in &state.changes {
+                apply(&mut accounts, path, meta.clone());
             }
         }
+        let objects = accounts
+            .values()
+            .flat_map(|account| account.entries.values().cloned())
+            .collect();
+        let result = self.index.replace(objects).await;
+        let mut state = self.state.write().unwrap();
+        state.scanning = false;
+        for (path, meta) in std::mem::take(&mut state.changes) {
+            apply(&mut accounts, &path, meta);
+        }
+        if result.is_ok() {
+            state.accounts = accounts;
+            state.ready = true;
+        }
+        result
     }
 
+    #[cfg(test)]
     pub(super) async fn page(
         &self,
         store: &dyn ObjectStore,
         account: &str,
         prefix: &str,
+        search: &str,
         cursor: &str,
         limit: usize,
     ) -> Result<Value> {
-        if !self.state.read().unwrap().ready {
+        self.sorted_page(
+            store,
+            account,
+            &Page {
+                prefix,
+                search,
+                cursor,
+                limit,
+                sort: "key",
+                direction: "asc",
+            },
+        )
+        .await
+    }
+
+    pub(super) async fn sorted_page(
+        &self,
+        store: &dyn ObjectStore,
+        account: &str,
+        page: &Page<'_>,
+    ) -> Result<Value> {
+        if !self.index.ready().await? {
             self.reconcile(store, true).await?;
         }
-        let state = self.state.read().unwrap();
-        let Some(account) = state.accounts.get(account) else {
-            return Ok(json!({"keys": [], "cursor": null, "totalBytes": 0, "totalKeys": 0}));
-        };
-        let start = prefix.max(cursor);
-        let mut matches = account
-            .entries
-            .range(start.to_owned()..)
-            .take_while(|(key, _)| key.starts_with(prefix))
-            .filter(|(key, _)| key.as_str() > cursor);
-        let mut keys = Vec::with_capacity(limit);
-        for (key, meta) in matches.by_ref().take(limit) {
-            keys.push(json!({"key": key, "size": meta.size, "lastModified": meta.last_modified.to_rfc3339()}));
-        }
-        let cursor = matches
-            .next()
-            .and_then(|_| keys.last().map(|key| key["key"].clone()));
-        Ok(
-            json!({"keys": keys, "cursor": cursor, "totalBytes": account.bytes, "totalKeys": account.entries.len()}),
-        )
+        self.index.page(account, page).await
     }
 }
 
@@ -160,8 +197,11 @@ pub(super) struct IndexedStore {
 }
 
 impl IndexedStore {
-    pub(super) fn new(inner: Arc<dyn ObjectStore>) -> (Arc<Self>, Arc<Catalog>) {
-        let catalog = Arc::new(Catalog::default());
+    pub(super) fn new(
+        inner: Arc<dyn ObjectStore>,
+        file: Option<&std::path::Path>,
+    ) -> anyhow::Result<(Arc<Self>, Arc<Catalog>)> {
+        let catalog = Arc::new(Catalog::new(file)?);
         let weak = Arc::downgrade(&catalog);
         let source = inner.clone();
         tokio::spawn(async move {
@@ -173,13 +213,13 @@ impl IndexedStore {
                 tokio::time::sleep(Duration::from_secs(60)).await;
             }
         });
-        (
+        Ok((
             Arc::new(Self {
                 inner,
                 catalog: catalog.clone(),
             }),
             catalog,
-        )
+        ))
     }
 }
 
@@ -210,7 +250,8 @@ impl ObjectStore for IndexedStore {
         let size = data.content_length() as u64;
         let result = self.inner.put_opts(path, data, options).await?;
         self.catalog
-            .change(path, Some(written(path, size, &result)));
+            .change(path, Some(written(path, size, &result)))
+            .await;
         Ok(result)
     }
 
@@ -233,7 +274,7 @@ impl ObjectStore for IndexedStore {
 
     async fn delete(&self, path: &Path) -> Result<()> {
         self.inner.delete(path).await?;
-        self.catalog.change(path, None);
+        self.catalog.change(path, None).await;
         Ok(())
     }
 
@@ -248,14 +289,14 @@ impl ObjectStore for IndexedStore {
     async fn copy(&self, from: &Path, to: &Path) -> Result<()> {
         self.inner.copy(from, to).await?;
         let meta = self.inner.head(to).await?;
-        self.catalog.change(to, Some(meta));
+        self.catalog.change(to, Some(meta)).await;
         Ok(())
     }
 
     async fn copy_if_not_exists(&self, from: &Path, to: &Path) -> Result<()> {
         self.inner.copy_if_not_exists(from, to).await?;
         let meta = self.inner.head(to).await?;
-        self.catalog.change(to, Some(meta));
+        self.catalog.change(to, Some(meta)).await;
         Ok(())
     }
 }
@@ -281,7 +322,8 @@ impl MultipartUpload for IndexedUpload {
     async fn complete(&mut self) -> Result<PutResult> {
         let result = self.inner.complete().await?;
         self.catalog
-            .change(&self.path, Some(written(&self.path, self.size, &result)));
+            .change(&self.path, Some(written(&self.path, self.size, &result)))
+            .await;
         Ok(result)
     }
 
@@ -306,7 +348,7 @@ mod tests {
             .put(&Path::from("accounts/b/generic/private"), "private".into())
             .await
             .unwrap();
-        let catalog = Arc::new(Catalog::default());
+        let catalog = Arc::new(Catalog::new(None).unwrap());
         catalog.reconcile(backend.as_ref(), false).await.unwrap();
         let store = IndexedStore {
             inner: backend.clone(),
@@ -314,7 +356,7 @@ mod tests {
         };
         let empty = InMemory::new();
         // An unrelated empty backend proves warm requests perform no storage listing.
-        let page = catalog.page(&empty, "a", "", "", 1).await.unwrap();
+        let page = catalog.page(&empty, "a", "", "", "", 1).await.unwrap();
         assert_eq!(page["totalBytes"], 3);
         assert_eq!(page["totalKeys"], 1);
         store
@@ -327,22 +369,28 @@ mod tests {
             .unwrap();
         upload.put_part("part".into()).await.unwrap();
         assert_eq!(
-            catalog.page(&empty, "a", "", "", 1).await.unwrap()["totalKeys"],
+            catalog.page(&empty, "a", "", "", "", 1).await.unwrap()["totalKeys"],
             1
         );
         upload.complete().await.unwrap();
-        let first = catalog.page(&empty, "a", "generic/", "", 1).await.unwrap();
+        let first = catalog
+            .page(&empty, "a", "generic/", "", "", 1)
+            .await
+            .unwrap();
         assert_eq!(first["totalBytes"], 13);
         assert_eq!(first["totalKeys"], 2);
         assert_eq!(first["cursor"], "generic/a");
         let next = catalog
-            .page(&empty, "a", "generic/", "generic/a", 1)
+            .page(&empty, "a", "generic/", "", "generic/a", 1)
             .await
             .unwrap();
         assert_eq!(next["keys"][0]["key"], "generic/b");
         assert!(next["cursor"].is_null());
         assert!(
-            catalog.page(&empty, "a", "absent/", "", 1).await.unwrap()["keys"]
+            catalog
+                .page(&empty, "a", "absent/", "", "", 1)
+                .await
+                .unwrap()["keys"]
                 .as_array()
                 .unwrap()
                 .is_empty()
@@ -351,7 +399,7 @@ mod tests {
             .delete(&Path::from("accounts/a/generic/a"))
             .await
             .unwrap();
-        let page = catalog.page(&empty, "a", "", "", 100).await.unwrap();
+        let page = catalog.page(&empty, "a", "", "", "", 100).await.unwrap();
         assert_eq!(page["totalBytes"], 4);
         assert_eq!(page["totalKeys"], 1);
         // An out-of-band change becomes visible after background reconciliation.
@@ -361,8 +409,83 @@ mod tests {
             .unwrap();
         catalog.reconcile(backend.as_ref(), false).await.unwrap();
         assert_eq!(
-            catalog.page(&empty, "a", "", "", 100).await.unwrap()["totalKeys"],
+            catalog.page(&empty, "a", "", "", "", 100).await.unwrap()["totalKeys"],
             2
         );
+    }
+    #[tokio::test]
+    async fn sqlite_search_covers_all_keys_and_keeps_account_pagination_isolated() {
+        let backend = Arc::new(InMemory::new());
+        for (key, body) in [
+            ("accounts/a/generic/first", "generic"),
+            ("accounts/a/sccache/fluentci/one", "one"),
+            ("accounts/a/sccache/fluentci/two", "two"),
+            ("accounts/b/sccache/fluentci/private", "private"),
+        ] {
+            backend.put(&Path::from(key), body.into()).await.unwrap();
+        }
+        let catalog = Catalog::new(None).unwrap();
+        catalog.reconcile(backend.as_ref(), false).await.unwrap();
+        let empty = InMemory::new();
+        let first = catalog
+            .page(&empty, "a", "", "SCCACHE", "", 1)
+            .await
+            .unwrap();
+        assert_eq!(first["matchedKeys"], 2);
+        assert_eq!(first["keys"][0]["key"], "sccache/fluentci/one");
+        assert_eq!(first["protocols"].as_array().unwrap().len(), 2);
+        let next = catalog
+            .page(
+                &empty,
+                "a",
+                "",
+                "sccache",
+                first["cursor"].as_str().unwrap(),
+                1,
+            )
+            .await
+            .unwrap();
+        assert_eq!(next["keys"][0]["key"], "sccache/fluentci/two");
+        assert!(next["cursor"].is_null());
+        for search in ["private", r#"" OR sccache"#, "%"] {
+            assert_eq!(
+                catalog
+                    .page(&empty, "a", "", search, "", 100)
+                    .await
+                    .unwrap()["matchedKeys"],
+                0
+            );
+        }
+        assert_eq!(
+            catalog
+                .page(&empty, "a", "generic/", "sccache", "", 100)
+                .await
+                .unwrap()["matchedKeys"],
+            0
+        );
+        assert_eq!(
+            catalog.page(&empty, "a", "", "on", "", 100).await.unwrap()["matchedKeys"],
+            1
+        );
+    }
+
+    #[tokio::test]
+    async fn sqlite_index_reopens_without_listing_the_object_store() {
+        let directory = tempfile::tempdir().unwrap();
+        let file = directory.path().join("index.sqlite3");
+        let backend = InMemory::new();
+        backend
+            .put(&Path::from("accounts/a/sccache/key"), "cached".into())
+            .await
+            .unwrap();
+        let catalog = Catalog::new(Some(&file)).unwrap();
+        catalog.reconcile(&backend, false).await.unwrap();
+        let reopened = Catalog::new(Some(&file)).unwrap();
+        let page = reopened
+            .page(&InMemory::new(), "a", "sccache/", "", "", 100)
+            .await
+            .unwrap();
+        assert_eq!(page["matchedKeys"], 1);
+        assert_eq!(page["totalBytes"], 6);
     }
 }

@@ -648,19 +648,24 @@ the listing before retrying. CDN cached responses are not purged by origin delet
 
 ### Fast storage listings
 
-`io.fluentci.cache.listKeys` uses an account-isolated metadata index in the cache
-service. Pagination seeks directly to the requested prefix/cursor; byte and key
-counts are maintained incrementally. Warm requests do not list objects in S3/R2
-and do not compete with upload transfer slots.
+`io.fluentci.cache.listKeys` queries an account-isolated SQLite metadata index
+through SQLx and Tokio, with SeaQuery for parameterized queries. `prefix` uses
+the account/key index; `search` performs case-insensitive substring matching
+through FTS5's trigram tokenizer (one- and two-character searches use a literal
+substring query). Search operators and SQL wildcard characters are treated as
+literal text. Both filters run before cursor pagination, which returns
+`matchedKeys` and account-wide `protocols` storage totals. `sort` accepts `key`,
+`size` or `lastModified`; `direction` accepts `asc` or `desc`. Sorting uses
+SQLite ordering with the key as a stable tie-breaker and cursor pagination.
+Changing filters or sort order must reset the cursor.
 
-The index warms in the background when the service starts. A request arriving
-before this first scan finishes waits for it. Successful writes, multipart
-commits, copies, and deletions update the index immediately across all protocols.
-An asynchronous reconciliation runs every 60 seconds to discover bucket lifecycle
-changes or writes made outside this service. During reconciliation, requests keep
-using the current index; concurrent service mutations override scan results.
-The index contains metadata only and is rebuilt after restart. Multiple service
-instances discover each other's changes on the next reconciliation.
+Set `FLUENTCI_CACHE_INDEX_FILE=/var/lib/fluentci-cache/metadata.sqlite3` (or
+`--index-file`) for a persistent WAL-mode index that can serve warm listings
+immediately after restart. Without it, each server uses an isolated in-memory
+SQLite database. The index contains metadata only, never object payloads or
+upload tokens. It is populated from object storage, reconciled in the background,
+and updated after uploads, multipart commits, copies and deletions. Concurrent
+changes are retained while reconciliation scans storage.
 
 
 For Cloudflare, scope cache rules to `cache-cdn.fluentci.io`: bypass by default,
@@ -687,3 +692,8 @@ source objects and writes a report for rollback. Unresolved orphan namespaces ar
 reported and retained without assigning them to another owner. Briefly stop cache
 writes, run a final incremental copy, then start the DID-aware API and cache
 service together. Existing upload tokens and hash URLs remain compatible.
+
+Daily usage snapshots retain per-protocol bytes and key counts. The landing cache
+page uses stacked protocol colors, a legend and hover breakdowns over the last
+30 days. Historical totals recorded before protocol snapshots remain
+unclassified; their distribution is not reconstructed from today's storage.

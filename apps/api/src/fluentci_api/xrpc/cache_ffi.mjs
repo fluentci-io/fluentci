@@ -124,7 +124,14 @@ export async function manageCache(server, request, action, record = async () => 
     const data = await response.json();
     if (action === 'list') {
       const observed = new Date().toISOString();
-      await record(actor, observed.slice(0, 10), data.totalBytes, data.totalKeys, observed);
+      await record(
+        actor,
+        observed.slice(0, 10),
+        data.totalBytes,
+        data.totalKeys,
+        observed,
+        JSON.stringify(data.protocols ?? []),
+      );
     }
     if (data.cursor === null) delete data.cursor;
     return { encoding: 'application/json', body: data, headers: { 'Cache-Control': 'no-store' } };
@@ -171,6 +178,7 @@ export async function usageHistory(request, query) {
         bytes: row.bytes,
         keyCount: row.key_count,
         observedAt: row.observed_at,
+        protocols: JSON.parse(row.protocols ?? '[]'),
       })),
     },
     headers: { 'Cache-Control': 'no-store' },

@@ -27,6 +27,14 @@ defs = new Mapping {
   ["lastModified"] = new StringField { format = "datetime" }
  }
  }
+  ["protocolUsage"] = new ObjectField {
+    required = List("protocol", "bytes", "keyCount")
+    properties = new Mapping {
+      ["protocol"] = new StringField {}
+      ["bytes"] = new IntegerField { minimum = 0 }
+      ["keyCount"] = new IntegerField { minimum = 0 }
+    }
+  }
   ["usageSample"] = new ObjectField {
     required = List("date", "bytes", "keyCount", "observedAt")
     properties = new Mapping {
@@ -35,6 +43,7 @@ defs = new Mapping {
       ["bytes"] = new IntegerField { minimum = 0 }
       ["keyCount"] = new IntegerField { minimum = 0 }
       ["observedAt"] = new StringField { format = "datetime" }
+      ["protocols"] = new ArrayField { items = new RefField { ref = "io.fluentci.cache.defs#protocolUsage" } }
     }
   }
   ["uploadTokenView"] = new ObjectField {

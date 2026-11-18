@@ -11,6 +11,7 @@ import {
 } from "../../cache/client";
 import { SiteHeader } from "../SiteHeader";
 import { SiteFooter } from "../SiteFooter";
+import { ScrollToTop } from "./ScrollToTop";
 import { TokenInstructions } from "./TokenInstructions";
 import { CacheObjects } from "./CacheObjects";
 import { HandleSuggestions } from "../HandleSuggestions";
@@ -72,6 +73,7 @@ export function CachePage() {
         </div>
       </main>
       <SiteFooter />
+      <ScrollToTop />
     </div>
   );
 }
@@ -108,6 +110,7 @@ function CacheSettings({ account }: { account: Account }) {
   );
   const [panel, setPanel] = useState("storage");
   const [collaboratorSearch, setCollaboratorSearch] = useState("");
+  const [collaboratorDescending, setCollaboratorDescending] = useState(false);
   const [collaborators, setCollaborators] = useState<string[]>([]);
   const [collaboratorProfiles, setCollaboratorProfiles] = useState<
     Record<string, Profile>
@@ -136,6 +139,20 @@ function CacheSettings({ account }: { account: Account }) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const collaboratorFilters = useRef<HTMLDivElement>(null);
+  const [collaboratorFilterHeight, setCollaboratorFilterHeight] = useState(0);
+  useEffect(() => {
+    const element = collaboratorFilters.current;
+    if (!element) return;
+    const measure = () =>
+      setCollaboratorFilterHeight(
+        Math.ceil(element.getBoundingClientRect().height),
+      );
+    const observer = new ResizeObserver(measure);
+    measure();
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [panel, authorized]);
   const lifetime = useRef<AbortController>();
   useEffect(() => {
     const controller = new AbortController();
@@ -438,45 +455,70 @@ function CacheSettings({ account }: { account: Account }) {
                 ))}
               </div>
               <div className="mt-6 border-t border-line pt-5">
-                <button
-                  className={secondary}
-                  disabled={pending}
-                  onClick={() =>
-                    void perform((signal) => listCollaborators(signal))
-                  }
+                <div
+                  ref={collaboratorFilters}
+                  className="sticky top-0 z-20 bg-panel py-3"
                 >
-                  Refresh collaborators
-                </button>
-                <label
-                  className="mt-4 block text-sm"
-                  htmlFor="collaborator-filter"
-                >
-                  Search collaborators
-                </label>
-                <div className="relative">
-                  <span className="pointer-events-none absolute bottom-0 left-4 top-2 flex items-center text-muted">
-                    <SearchIcon />
-                  </span>
-                  <input
-                    id="collaborator-filter"
-                    type="search"
-                    className={`${field} pl-11`}
-                    value={collaboratorSearch}
-                    onChange={(event) =>
-                      setCollaboratorSearch(event.target.value)
+                  <button
+                    className={secondary}
+                    disabled={pending}
+                    onClick={() =>
+                      void perform((signal) => listCollaborators(signal))
                     }
-                    placeholder="Filter by handle, name, or DID"
-                  />
+                  >
+                    Refresh collaborators
+                  </button>
+                  <label
+                    className="mt-4 block text-sm"
+                    htmlFor="collaborator-filter"
+                  >
+                    Search collaborators
+                  </label>
+                  <div className="relative">
+                    <span className="pointer-events-none absolute bottom-0 left-4 top-2 flex items-center text-muted">
+                      <SearchIcon />
+                    </span>
+                    <input
+                      id="collaborator-filter"
+                      type="search"
+                      className={`${field} pl-11`}
+                      value={collaboratorSearch}
+                      onChange={(event) =>
+                        setCollaboratorSearch(event.target.value)
+                      }
+                      placeholder="Filter by handle, name, or DID"
+                    />
+                  </div>
                 </div>
-                <div className="mt-4 overflow-x-auto rounded-lg border border-line">
+                <div className="mt-4 rounded-lg border border-line">
                   <table
                     className="w-full table-fixed text-left text-sm"
                     aria-label="Collaborators"
                   >
-                    <thead className="border-b border-line bg-raised text-xs text-muted">
+                    <thead
+                      style={{ top: collaboratorFilterHeight }}
+                      className="sticky z-10 border-b border-line bg-raised text-xs text-muted"
+                    >
                       <tr>
-                        <th scope="col" className="px-4 py-3 font-medium">
-                          Collaborator
+                        <th
+                          scope="col"
+                          aria-sort={
+                            collaboratorDescending ? "descending" : "ascending"
+                          }
+                          className="px-4 py-3 font-medium"
+                        >
+                          <button
+                            type="button"
+                            className="inline-flex items-center gap-2 hover:text-ink"
+                            onClick={() =>
+                              setCollaboratorDescending((value) => !value)
+                            }
+                          >
+                            Collaborator{" "}
+                            <span aria-hidden="true" className="text-accent">
+                              {collaboratorDescending ? "↓" : "↑"}
+                            </span>
+                          </button>
                         </th>
                         <th scope="col" className="px-4 py-3 font-medium">
                           Access
@@ -493,7 +535,17 @@ function CacheSettings({ account }: { account: Account }) {
                           label="Loading collaborators"
                         />
                       )}
-                      {collaborators
+                      {[...collaborators]
+                        .sort((a, b) => {
+                          const left = collaboratorProfiles[a]?.handle ?? a;
+                          const right = collaboratorProfiles[b]?.handle ?? b;
+                          return (
+                            (left.localeCompare(right, undefined, {
+                              sensitivity: "base",
+                            }) || a.localeCompare(b)) *
+                            (collaboratorDescending ? -1 : 1)
+                          );
+                        })
                         .filter((did) =>
                           [
                             did,

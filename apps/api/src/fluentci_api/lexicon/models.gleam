@@ -224,12 +224,27 @@ pub fn encode_cache_key_view(value: CacheKeyView) -> json.Json {
   json.object(fields)
 }
 
+pub type CacheProtocolUsage {
+  CacheProtocolUsage(protocol: String, bytes: Int, key_count: Int)
+}
+
+pub fn encode_cache_protocol_usage(value: CacheProtocolUsage) -> json.Json {
+  let fields = [
+    #("protocol", json.string(value.protocol)),
+    #("bytes", json.int(value.bytes)),
+    #("keyCount", json.int(value.key_count)),
+  ]
+
+  json.object(fields)
+}
+
 pub type CacheUsageSample {
   CacheUsageSample(
     date: String,
     bytes: Int,
     key_count: Int,
     observed_at: String,
+    protocols: Option(List(CacheProtocolUsage)),
   )
 }
 
@@ -240,7 +255,16 @@ pub fn encode_cache_usage_sample(value: CacheUsageSample) -> json.Json {
     #("keyCount", json.int(value.key_count)),
     #("observedAt", json.string(value.observed_at)),
   ]
-
+  let fields =
+    list.append(fields, case value.protocols {
+      None -> []
+      Some(item) -> [
+        #(
+          "protocols",
+          json.array(item, fn(item) { encode_cache_protocol_usage(item) }),
+        ),
+      ]
+    })
   json.object(fields)
 }
 
@@ -465,7 +489,10 @@ pub fn encode_cache_list_credentials_output(
 pub type CacheListKeysInput {
   CacheListKeysInput(
     prefix: Option(String),
+    search: Option(String),
     cursor: Option(String),
+    sort: Option(String),
+    direction: Option(String),
     limit: Option(Int),
   )
 }
@@ -478,9 +505,24 @@ pub fn encode_cache_list_keys_input(value: CacheListKeysInput) -> json.Json {
       Some(item) -> [#("prefix", json.string(item))]
     })
   let fields =
+    list.append(fields, case value.search {
+      None -> []
+      Some(item) -> [#("search", json.string(item))]
+    })
+  let fields =
     list.append(fields, case value.cursor {
       None -> []
       Some(item) -> [#("cursor", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.sort {
+      None -> []
+      Some(item) -> [#("sort", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.direction {
+      None -> []
+      Some(item) -> [#("direction", json.string(item))]
     })
   let fields =
     list.append(fields, case value.limit {
@@ -496,6 +538,8 @@ pub type CacheListKeysOutput {
     cursor: Option(String),
     total_bytes: Int,
     total_keys: Int,
+    matched_keys: Option(Int),
+    protocols: Option(List(CacheProtocolUsage)),
   )
 }
 
@@ -509,6 +553,21 @@ pub fn encode_cache_list_keys_output(value: CacheListKeysOutput) -> json.Json {
     list.append(fields, case value.cursor {
       None -> []
       Some(item) -> [#("cursor", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.matched_keys {
+      None -> []
+      Some(item) -> [#("matchedKeys", json.int(item))]
+    })
+  let fields =
+    list.append(fields, case value.protocols {
+      None -> []
+      Some(item) -> [
+        #(
+          "protocols",
+          json.array(item, fn(item) { encode_cache_protocol_usage(item) }),
+        ),
+      ]
     })
   json.object(fields)
 }

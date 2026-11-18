@@ -15,9 +15,28 @@
               "type": "string",
               "maxLength": 2048
             },
-            "cursor": {
+            "search": {
               "type": "string",
               "maxLength": 2048
+            },
+            "cursor": {
+              "type": "string",
+              "maxLength": 8192
+            },
+            "sort": {
+              "type": "string",
+              "enum": [
+                "key",
+                "size",
+                "lastModified"
+              ]
+            },
+            "direction": {
+              "type": "string",
+              "enum": [
+                "asc",
+                "desc"
+              ]
             },
             "limit": {
               "type": "integer",
@@ -54,6 +73,17 @@
             "totalKeys": {
               "type": "integer",
               "minimum": 0
+            },
+            "matchedKeys": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "protocols": {
+              "type": "array",
+              "items": {
+                "type": "ref",
+                "ref": "io.fluentci.cache.defs#protocolUsage"
+              }
             }
           }
         }

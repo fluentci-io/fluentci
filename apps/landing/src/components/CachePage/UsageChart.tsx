@@ -1,5 +1,11 @@
 import { useEffect, useId, useRef, useState } from "react";
-import { formatBytes, usageDays, type UsageSample } from "../../cache/usage";
+import {
+  formatBytes,
+  usageDays,
+  usageSegments,
+  protocolStyle,
+  type UsageSample,
+} from "../../cache/usage";
 import { CacheChartSkeleton } from "./CacheSkeleton";
 
 export function UsageChart({
@@ -24,6 +30,13 @@ export function UsageChart({
     return () => observer.disconnect();
   }, []);
   const days = usageDays(samples ?? []);
+  const protocols = [
+    ...new Set(
+      days.flatMap((day) =>
+        usageSegments(day.sample, metric).map((part) => part.protocol),
+      ),
+    ),
+  ].sort();
   const maximum = Math.max(1, ...days.map((day) => day.sample?.[metric] ?? 0));
   const left = 54,
     plot = width - left - 8,
@@ -122,9 +135,8 @@ export function UsageChart({
                 </g>
               ))}
               {days.map((day, index) => {
-                const height = day.sample
-                  ? Math.max(2, (day.sample[metric] / maximum) * 145)
-                  : 2;
+                const segments = usageSegments(day.sample, metric);
+                let stacked = 0;
                 return (
                   <g key={day.date}>
                     <rect
@@ -138,21 +150,38 @@ export function UsageChart({
                       aria-hidden="true"
                       pointerEvents="none"
                     />
-                    <rect
-                      x={left + index * step + step * 0.17}
-                      y={baseline - height}
-                      width={Math.max(1, step * 0.66)}
-                      height={height}
-                      rx="2"
-                      className={
-                        day.sample
-                          ? "fill-accent"
-                          : "fill-current text-muted opacity-30"
-                      }
-                      opacity={active === null || active === index ? 1 : 0.55}
-                      aria-hidden="true"
-                      pointerEvents="none"
-                    />
+                    {segments.length ? (
+                      segments.map((part) => {
+                        const height = (part.value / maximum) * 145;
+                        stacked += height;
+                        return (
+                          <rect
+                            key={part.protocol}
+                            x={left + index * step + step * 0.17}
+                            y={baseline - stacked}
+                            width={Math.max(1, step * 0.66)}
+                            height={height}
+                            fill={protocolStyle(part.protocol).color}
+                            opacity={
+                              active === null || active === index ? 1 : 0.55
+                            }
+                            aria-hidden="true"
+                            pointerEvents="none"
+                          />
+                        );
+                      })
+                    ) : (
+                      <rect
+                        x={left + index * step + step * 0.17}
+                        y={baseline - 2}
+                        width={Math.max(1, step * 0.66)}
+                        height={2}
+                        rx="2"
+                        className="fill-current text-muted opacity-30"
+                        aria-hidden="true"
+                        pointerEvents="none"
+                      />
+                    )}
                     <rect
                       x={left + index * step}
                       y={25}
@@ -199,12 +228,12 @@ export function UsageChart({
               <div
                 id={tooltipId}
                 role="tooltip"
-                className="pointer-events-none absolute z-10 w-40 rounded-lg border border-line bg-paper px-3 py-2 text-xs shadow-lg"
+                className="pointer-events-none absolute z-10 w-56 rounded-lg border border-line bg-paper px-3 py-2 text-xs shadow-lg"
                 style={{
                   left: Math.max(
-                    80,
+                    112,
                     Math.min(
-                      width - 80,
+                      width - 112,
                       cursor?.x ?? left + (active + 0.5) * step,
                     ),
                   ),
@@ -223,12 +252,50 @@ export function UsageChart({
                   {dayLabel(days[active].date)} · UTC
                 </p>
                 <p className="mt-1 text-muted">{value(days[active].sample)}</p>
+                <dl className="mt-2 space-y-1">
+                  {usageSegments(days[active].sample, metric).map((part) => (
+                    <div
+                      key={part.protocol}
+                      className="flex items-center justify-between gap-3"
+                    >
+                      <dt className="flex items-center gap-2">
+                        <span
+                          className="size-2 rounded-sm"
+                          style={{
+                            backgroundColor: protocolStyle(part.protocol).color,
+                          }}
+                        />
+                        {protocolStyle(part.protocol).label}
+                      </dt>
+                      <dd>
+                        {metric === "bytes"
+                          ? formatBytes(part.value)
+                          : part.value.toLocaleString()}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
               </div>
             )}
           </div>
+          <ul
+            className="mt-2 flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted"
+            aria-label="Cache type legend"
+          >
+            {protocols.map((protocol) => (
+              <li key={protocol} className="flex items-center gap-1.5">
+                <span
+                  className="size-2 rounded-sm"
+                  style={{ backgroundColor: protocolStyle(protocol).color }}
+                />
+                {protocolStyle(protocol).label}
+              </li>
+            ))}
+          </ul>
           <p className="mt-2 text-xs leading-6 text-muted">
             Daily storage snapshots. Days without a recorded measurement show no
-            data. This chart does not count CDN requests or cache hits.
+            data. Older totals without a cache-type breakdown are unclassified.
+            This chart does not count CDN requests or cache hits.
           </p>
         </>
       )}

@@ -16,6 +16,7 @@ mod aliases;
 mod artifacts;
 mod auth;
 mod catalog;
+mod catalog_db;
 mod download;
 mod error;
 mod grpc;
@@ -52,7 +53,7 @@ pub fn router(config: Config, store: Arc<dyn ObjectStore>) -> anyhow::Result<Rou
                 .map_err(anyhow::Error::from)
         })
         .transpose()?;
-    let (store, catalog) = catalog::IndexedStore::new(store);
+    let (store, catalog) = catalog::IndexedStore::new(store, config.index_file.as_deref())?;
     let store: Arc<dyn ObjectStore> = store;
     let app = Arc::new(App {
         catalog,

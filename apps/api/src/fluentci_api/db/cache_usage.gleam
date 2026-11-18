@@ -14,6 +14,7 @@ pub fn record(
   bytes: Int,
   keys: Int,
   observed: String,
+  protocols: String,
 ) -> Promise(Nil) {
   use tx <- transaction(db)
   let owners = o.table()
@@ -30,6 +31,7 @@ pub fn record(
       set(u.bytes(t), bytes),
       set(u.key_count(t), keys),
       set(u.observed_at(t), observed),
+      set(u.protocols(t), protocols),
     ])
       |> on_conflict_do_update_columns(
         [u.owner(t), u.date(t)],
@@ -37,6 +39,7 @@ pub fn record(
           set(u.bytes(t), bytes),
           set(u.key_count(t), keys),
           set(u.observed_at(t), observed),
+          set(u.protocols(t), protocols),
         ],
         and([]),
       ),

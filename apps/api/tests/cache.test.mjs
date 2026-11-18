@@ -234,10 +234,11 @@ test('owner storage procedures sign management scope and cannot select a differe
       401,
     );
   }
-  const list = await call('listKeys', did, { prefix: 'generic/', limit: 20 });
+  const list = await call('listKeys', did, { prefix: 'generic/', search: 'a', limit: 20 });
   assert.equal(list.status, 200);
   assert.equal(list.headers.get('cache-control'), 'no-store');
   assert.equal((await list.json()).totalBytes, 8);
+  assert.equal(seen[0].input.search, 'a');
   assert.equal(seen[0].claims.scope, 'cache:manage');
   assert.equal(seen[0].claims.sub, did);
   assert.equal(seen[0].url, `https://cache.example/${did}/_admin`);
@@ -263,7 +264,13 @@ test('storage procedure reports failures without exposing backend details', asyn
 
 test('cache usage history stores daily owner-scoped snapshots and returns only the last 30 UTC days', async (t) => {
   const { call, connection } = await fixture(t, false, {
-    cacheFetch: async () => Response.json({ keys: [], totalBytes: 2048, totalKeys: 2 }),
+    cacheFetch: async () =>
+      Response.json({
+        keys: [],
+        totalBytes: 2048,
+        totalKeys: 2,
+        protocols: [{ protocol: 'sccache', bytes: 2048, keyCount: 2 }],
+      }),
   });
   const usage =
     await import('../build/dev/javascript/fluentci_api/fluentci_api/db/cache_usage.mjs');
@@ -273,9 +280,17 @@ test('cache usage history stores daily owner-scoped snapshots and returns only t
     return value.toISOString().slice(0, 10);
   };
   for (let offset = -30; offset < 0; offset++) {
-    await usage.record(connection, did, date(offset), 200, 2, `${date(offset)}T12:00:00.000Z`);
+    await usage.record(
+      connection,
+      did,
+      date(offset),
+      200,
+      2,
+      `${date(offset)}T12:00:00.000Z`,
+      '[]',
+    );
   }
-  await usage.record(connection, other, date(-1), 999, 9, `${date(-1)}T12:00:00.000Z`);
+  await usage.record(connection, other, date(-1), 999, 9, `${date(-1)}T12:00:00.000Z`, '[]');
   assert.equal((await call('listKeys')).status, 200);
   assert.equal((await call('getUsageHistory', null)).status, 401);
   const response = await call('getUsageHistory');
@@ -285,6 +300,10 @@ test('cache usage history stores daily owner-scoped snapshots and returns only t
     output.samples.map((sample) => [sample.date, sample.bytes, sample.keyCount]),
     [...Array.from({ length: 29 }, (_, index) => [date(-29 + index), 200, 2]), [date(0), 2048, 2]],
   );
+  assert.deepEqual(output.samples.at(-1).protocols, [
+    { protocol: 'sccache', bytes: 2048, keyCount: 2 },
+  ]);
+  assert.deepEqual(output.samples[0].protocols, []);
   assert.equal((await call('listKeys')).status, 200);
   assert.equal((await (await call('getUsageHistory')).json()).samples.length, 30);
   assert.deepEqual(

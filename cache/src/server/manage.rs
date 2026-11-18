@@ -29,6 +29,12 @@ pub(super) struct Input {
     #[serde(default)]
     prefix: String,
     #[serde(default)]
+    search: String,
+    #[serde(default = "sort_key")]
+    sort: String,
+    #[serde(default = "sort_ascending")]
+    direction: String,
+    #[serde(default)]
     cursor: String,
     #[serde(default = "page_size")]
     limit: usize,
@@ -38,6 +44,14 @@ pub(super) struct Input {
     confirm: bool,
     #[serde(default)]
     id: String,
+}
+
+fn sort_key() -> String {
+    "key".into()
+}
+
+fn sort_ascending() -> String {
+    "asc".into()
 }
 
 fn page_size() -> usize {
@@ -105,18 +119,27 @@ async fn manage(app: &App, account: &str, input: Input) -> Result<Value> {
             if input.limit == 0
                 || input.limit > 200
                 || input.prefix.len() > 2048
-                || input.cursor.len() > 2048
+                || input.cursor.len() > 8192
+                || input.search.len() > 2048
             {
                 return Err(Failure(StatusCode::BAD_REQUEST, "invalid pagination\n"));
             }
+            let page = super::catalog_db::Page {
+                prefix: &input.prefix,
+                search: input.search.trim(),
+                cursor: &input.cursor,
+                limit: input.limit,
+                sort: &input.sort,
+                direction: &input.direction,
+            };
+            if !super::catalog_db::valid_page(&page) {
+                return Err(Failure(
+                    StatusCode::BAD_REQUEST,
+                    "invalid cache sort or cursor\n",
+                ));
+            }
             app.catalog
-                .page(
-                    app.store.as_ref(),
-                    account,
-                    &input.prefix,
-                    &input.cursor,
-                    input.limit,
-                )
+                .sorted_page(app.store.as_ref(), account, &page)
                 .await
                 .map_err(backend_error)
         }
