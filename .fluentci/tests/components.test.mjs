@@ -16,6 +16,7 @@ const modules = [
   "desktop",
   "nix-build",
   "cachix",
+  "cache",
 ];
 
 for (const module of modules) {

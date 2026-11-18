@@ -47,6 +47,12 @@ sdk = "purescript"
 runtime = "component"
 
 [[modules]]
+name = "cache"
+path = ".fluentci/cache"
+sdk = "purescript"
+runtime = "component"
+
+[[modules]]
 name = "cachix"
 path = ".fluentci/cachix"
 sdk = "purescript"

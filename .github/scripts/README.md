@@ -53,3 +53,7 @@ escript .github/scripts/fluentci_ci test
 Tests generate data fixtures; they do not launch FluentCI, install tools or boot
 VMs. Real BSD and Alpine smoke tests remain in the release workflow. All runtime
 verification runs in CI.
+
+`build-bsd-cli` prepares the pinned native BSD compiler and builds the locked
+release CLI using prepared Studio assets. It omits release smoke tests, stripping,
+packaging and publishing, and is used only by the manual cache build workflow.

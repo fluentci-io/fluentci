@@ -331,10 +331,21 @@ fn package(
 }
 
 pub fn build() -> Result(Nil, String) {
-  use tag <- result.try(c.env("RELEASE_VERSION"))
+  build_mode(True)
+}
+
+pub fn build_cli() -> Result(Nil, String) {
+  build_mode(False)
+}
+
+fn build_mode(release: Bool) -> Result(Nil, String) {
+  let tag = native.env("RELEASE_VERSION")
   use target <- result.try(c.env("TARGET"))
   use selected <- result.try(c.env("BSD_RUST_VERSION"))
-  use _ <- result.try(c.tag(tag))
+  use _ <- result.try(case release {
+    True -> c.tag(tag)
+    False -> Ok(Nil)
+  })
   use curl <- result.try(case native.platform(), target {
     "freebsd", "x86_64-unknown-freebsd" -> Ok("/usr/local/bin/curl")
     "netbsd", "x86_64-unknown-netbsd" -> Ok("/usr/pkg/bin/curl")
@@ -384,18 +395,23 @@ pub fn build() -> Result(Nil, String) {
     ["build", "--release", "--locked", "-p", "fluentci"],
     root,
   ))
-  let binary = native.env("CARGO_TARGET_DIR") <> "/release/fluentci"
-  use _ <- result.try(c.stream("strip", ["-s", binary], root))
-  use _ <- result.try(case native.platform() {
-    "netbsd" -> c.stream("/usr/sbin/paxctl", ["-M", "+m", binary], root)
-    _ -> Ok(Nil)
-  })
-  use _ <- result.try(c.stream(binary, ["--version"], root))
-  use _ <- result.try(c.stream(binary, ["--help"], root))
-  use _ <- result.try(smoke(binary, root <> "/.release-smoke"))
-  let runtime = case native.platform() {
-    "openbsd" -> "Extism 1.21.1 / Wasmtime 41.0.4 (OpenBSD compatibility)"
-    _ -> "Extism 1.41.0 / Wasmtime 49.0.5 (NetBSD signal backport)"
+  case release {
+    False -> Ok(Nil)
+    True -> {
+      let binary = native.env("CARGO_TARGET_DIR") <> "/release/fluentci"
+      use _ <- result.try(c.stream("strip", ["-s", binary], root))
+      use _ <- result.try(case native.platform() {
+        "netbsd" -> c.stream("/usr/sbin/paxctl", ["-M", "+m", binary], root)
+        _ -> Ok(Nil)
+      })
+      use _ <- result.try(c.stream(binary, ["--version"], root))
+      use _ <- result.try(c.stream(binary, ["--help"], root))
+      use _ <- result.try(smoke(binary, root <> "/.release-smoke"))
+      let runtime = case native.platform() {
+        "openbsd" -> "Extism 1.21.1 / Wasmtime 41.0.4 (OpenBSD compatibility)"
+        _ -> "Extism 1.41.0 / Wasmtime 49.0.5 (NetBSD signal backport)"
+      }
+      package(binary, output, tag, target, runtime)
+    }
   }
-  package(binary, output, tag, target, runtime)
 }

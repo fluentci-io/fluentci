@@ -1,1 +1,8 @@
-export { format, lint, test, check, build } from "./output/CI.Rust/index.js";
+export {
+  format,
+  lint,
+  test,
+  check,
+  build,
+  buildPrepared,
+} from "./output/CI.Rust/index.js";

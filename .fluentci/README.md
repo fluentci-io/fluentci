@@ -265,3 +265,20 @@ helpers that set `allowSubstitutes = false`. Exact outputs available in the
 configured FluentCI binary cache are restored rather than rebuilt. The negative
 narinfo cache TTL is zero so misses cannot hide outputs uploaded later in the job.
 Store paths, platform, and trusted signatures must still match.
+
+
+The reusable `cache` component is authored in `../fluentci-modules/caching/cache`.
+`.fluentci/cache` carries a self-contained CI copy until its registry release is
+published. Its host policy and archive primitives are identical; the CI entry
+uses tools already provisioned by the workflow. It supports protocol setup,
+signed watched Nix builds, and compressed generic HTTP save/restore.
+
+The **Cache build test** workflow is manual-only (`cache-build.yml`) and builds
+all nine currently shipped CLI targets, including the three BSD systems. It uses
+`vars.FLUENTCI_CACHE_URL` and `secrets.FLUENTCI_CACHE_TOKEN`; no additional secret
+is needed. Choose `auto` for sccache on Linux/macOS or `generic` to exercise HTTP
+archive caching. BSD always restores/saves its Cargo target directory through the
+generic backend. Compression can be zstd (default), gzip, or none. The workflow
+shares prepared inputs using a short-lived Actions artifact; it does not package,
+publish, upload release assets, or create a release. Existing CI and release
+workflows are unchanged.

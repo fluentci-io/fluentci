@@ -30,6 +30,7 @@ pub fn dispatch(args: List(String)) -> Result(Nil, String) {
       artifacts.verify_bsd(directory, tag, target)
     ["prepare-bsd-release"] -> bsd.prepare()
     ["build-bsd-release"] -> bsd.build()
+    ["build-bsd-cli"] -> bsd.build_cli()
     ["bsd-rust-cache"] -> bsd.cache()
     ["smoke-bsd-release", binary, fixtures] -> bsd.smoke(binary, fixtures)
     ["registry-artifact", reference] -> {

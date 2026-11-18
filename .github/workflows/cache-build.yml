@@ -1,0 +1,253 @@
+name: Cache build test
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend:
+        description: Native compiler cache (auto) or force generic HTTP caching
+        type: choice
+        options: [auto, generic]
+        default: auto
+      compression:
+        description: Generic HTTP archive compression (restore detects the saved format)
+        type: choice
+        options: [zstd, gzip, none]
+        default: zstd
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cache-build-test-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  FLUENTCI_VERSION: v0.17.8
+
+jobs:
+  prepare:
+    name: Prepare cache component and Studio assets
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
+      - uses: ./.github/actions/setup-ci-scripts
+      - name: Set up Bun
+        run: fluentci --check-update=false run setup-bun@v0.2.0 setup --version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
+      - name: Set up Node
+        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
+      - name: Set up PureScript
+        run: fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
+      - name: Compile the PureScript cache and Rust build components
+        run: |
+          fluentci --check-update=false modules cache --json
+          fluentci --check-update=false modules rust --json
+      - name: Build Studio assets before compiling the CLI
+        run: fluentci --check-update=false run studio build
+      - name: Share build inputs with platform jobs
+        uses: actions/upload-artifact@v4
+        with:
+          name: cache-build-inputs
+          path: |
+            .fluentci/cache/dist/plugin.wasm
+            .fluentci/rust/dist/plugin.wasm
+            .github/scripts/fluentci_ci
+            webui/dist/
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 1
+
+  native:
+    name: Build ${{ matrix.target }}
+    needs: prepare
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 180
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: ubuntu-24.04
+            target: x86_64-unknown-linux-musl
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+          - runner: macos-latest
+            target: x86_64-apple-darwin
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+    env:
+      FLUENTCI_CACHE_URL: ${{ vars.FLUENTCI_CACHE_URL }}
+      FLUENTCI_CACHE_TOKEN: ${{ secrets.FLUENTCI_CACHE_TOKEN }}
+      SCCACHE_WEBDAV_TOKEN: ${{ secrets.FLUENTCI_CACHE_TOKEN }}
+      CARGO_BUILD_JOBS: "2"
+      CARGO_INCREMENTAL: "0"
+      TARGET: ${{ matrix.target }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: cache-build-inputs
+          path: .
+      - name: Set up Node
+        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
+      - name: Set up Rust
+        run: fluentci --check-update=false run setup-rust@0.2.2 setup --toolchain stable --targets "$TARGET" | escript .github/scripts/fluentci_ci export-setup-env
+      - name: Configure FluentCI cache through PureScript
+        run: |
+          protocol=sccache
+          if [ '${{ inputs.backend }}' = generic ]; then protocol=generic; fi
+          fluentci --check-update=false run --wasm .fluentci/cache/dist/plugin.wasm setup --protocol "$protocol" --config-dir "$RUNNER_TEMP/fluentci-cache-config" | escript .github/scripts/fluentci_ci export-setup-env
+      - name: Compute generic cache key
+        id: key
+        run: |
+          compiler=$(rustc --version | tr -cd 'A-Za-z0-9._-')
+          printf 'value=rust-target/%s/%s/%s\n' "$TARGET" "$compiler" '${{ hashFiles('Cargo.lock', 'Cargo.toml', 'engine/**/Cargo.toml') }}' >> "$GITHUB_OUTPUT"
+      - name: Restore generic fallback
+        if: inputs.backend == 'generic' || env.FLUENTCI_RUST_CACHE_BACKEND == 'generic'
+        run: fluentci --check-update=false run --wasm .fluentci/cache/dist/plugin.wasm restore --key '${{ steps.key.outputs.value }}' --path target
+      - name: Install Linux build prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install --yes build-essential cmake pkg-config musl-tools
+      - name: Build CLI with prepared Studio assets
+        env:
+          CARGO_TARGET_X86_64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+          CARGO_TARGET_AARCH64_UNKNOWN_LINUX_MUSL_LINKER: musl-gcc
+          CC_x86_64_unknown_linux_musl: ${{ matrix.target == 'x86_64-unknown-linux-musl' && 'musl-gcc' || '' }}
+          CC_aarch64_unknown_linux_musl: ${{ matrix.target == 'aarch64-unknown-linux-musl' && 'musl-gcc' || '' }}
+        run: fluentci --check-update=false run --wasm .fluentci/rust/dist/plugin.wasm build-prepared --target "$TARGET"
+      - name: Save generic fallback
+        if: success() && (inputs.backend == 'generic' || env.FLUENTCI_RUST_CACHE_BACKEND == 'generic')
+        run: fluentci --check-update=false run --wasm .fluentci/cache/dist/plugin.wasm save --key '${{ steps.key.outputs.value }}' --path target --compression '${{ inputs.compression }}'
+      - name: Show compiler cache statistics
+        if: always() && env.FLUENTCI_RUST_CACHE_BACKEND == 'sccache'
+        run: '"$RUSTC_WRAPPER" --show-stats'
+
+  bsd:
+    name: Build ${{ matrix.os }} with generic HTTP cache
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 240
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: freebsd
+            version: "14.3"
+            target: x86_64-unknown-freebsd
+          - os: netbsd
+            version: "11.0"
+            target: x86_64-unknown-netbsd
+          - os: openbsd
+            version: "7.8"
+            target: x86_64-unknown-openbsd
+    env:
+      FLUENTCI_CACHE_URL: ${{ vars.FLUENTCI_CACHE_URL }}
+      FLUENTCI_CACHE_TOKEN: ${{ secrets.FLUENTCI_CACHE_TOKEN }}
+      BSD_RUST_VERSION: "1.99.1"
+      TARGET: ${{ matrix.target }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: fluentci-io/setup-fluentci@next
+        with:
+          version: ${{ env.FLUENTCI_VERSION }}
+      - uses: actions/download-artifact@v4
+        with:
+          name: cache-build-inputs
+          path: .
+      - name: Set up Node for generic HTTP caching
+        run: fluentci --check-update=false run setup-node@v0.2.0 setup --version 24.22.2 | escript .github/scripts/fluentci_ci export-setup-env
+      - name: Compute BSD cache key
+        run: printf 'CACHE_KEY=rust-bsd/%s/%s/1.99.1/%s\n' '${{ matrix.os }}' '${{ matrix.version }}' '${{ hashFiles('Cargo.lock', 'Cargo.toml', 'engine/**/Cargo.toml') }}' >> "$GITHUB_ENV"
+      - name: Restore BSD Cargo artifacts from FluentCI
+        run: fluentci --check-update=false run --wasm .fluentci/cache/dist/plugin.wasm restore --key "$CACHE_KEY" --path .ci-cache/bsd-rust/target
+      - name: Build FreeBSD CLI
+        if: matrix.os == 'freebsd'
+        uses: vmactions/freebsd-vm@c46abacb49f09938ca4e1702d15d836285d694cc
+        with:
+          release: ${{ matrix.version }}
+          arch: x86_64
+          mem: 8192
+          cpu: 2
+          copyback: true
+          envs: "TARGET BSD_RUST_VERSION FLUENTCI_VERSION"
+          prepare: |
+            set -eu
+            export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+            # FluentCI executes setup commands through Bash; bootstrap it first.
+            pkg install -y bash curl
+            curl -fsSL https://raw.githubusercontent.com/fluentci-io/fluentci/main/install.sh | sh
+          run: |
+            set -eu
+            export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup </dev/null
+            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup </dev/null
+            escript .github/scripts/fluentci_ci prepare-bsd-release </dev/null
+            escript .github/scripts/fluentci_ci build-bsd-cli </dev/null
+      - name: Build NetBSD CLI
+        if: matrix.os == 'netbsd'
+        uses: vmactions/netbsd-vm@c8a0d7ddb84619a7a8cc4e652efa7950b3fd9f92
+        with:
+          release: ${{ matrix.version }}
+          arch: x86_64
+          mem: 8192
+          cpu: 2
+          copyback: true
+          envs: "TARGET BSD_RUST_VERSION FLUENTCI_VERSION"
+          prepare: |
+            set -eu
+            export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+            if [ ! -x /usr/pkg/bin/pkgin ]; then /usr/sbin/pkg_add pkgin; fi
+            repositories=$(sed -n 's/^PKG_PATH=//p' /etc/pkg_install.conf)
+            test -n "$repositories"
+            printf '%s\n' "$repositories" | tr ';' '\n' > /usr/pkg/etc/pkgin/repositories.conf
+            /usr/pkg/bin/pkgin -y update
+            # FluentCI executes setup commands through Bash; bootstrap it first.
+            /usr/pkg/bin/pkgin -y install bash curl
+            curl -fsSL https://raw.githubusercontent.com/fluentci-io/fluentci/main/install.sh | sh
+          run: |
+            set -eu
+            export PATH="$HOME/.local/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup </dev/null
+            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup </dev/null
+            escript .github/scripts/fluentci_ci prepare-bsd-release </dev/null
+            escript .github/scripts/fluentci_ci build-bsd-cli </dev/null
+      - name: Build OpenBSD CLI
+        if: matrix.os == 'openbsd'
+        uses: vmactions/openbsd-vm@f1ca8bc8ecc5b6ef7218e5b914836e067e1546d3
+        with:
+          release: ${{ matrix.version }}
+          arch: x86_64
+          mem: 8192
+          cpu: 2
+          copyback: true
+          envs: "TARGET BSD_RUST_VERSION FLUENTCI_VERSION"
+          prepare: |
+            set -eu
+            export PATH=/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin
+            # FluentCI executes setup commands through Bash; bootstrap it first.
+            pkg_add -I bash curl
+            mkdir -p "$HOME/.local/bin"
+            # Bootstrap from the shared installer's verified release asset path.
+            curl -fsSL https://raw.githubusercontent.com/fluentci-io/fluentci/main/install.sh | sh
+          run: |
+            set -eu
+            # OpenBSD exposes unversioned OTP executables in this branch prefix.
+            export PATH="$HOME/.local/bin:/usr/local/lib/erlang27/bin:/usr/local/bin:/usr/local/sbin:/usr/pkg/bin:/usr/pkg/sbin:/usr/bin:/usr/sbin:/bin:/sbin"
+            fluentci --check-update=false run @fluentci.io/setup-erlang@0.2.0 setup --version 27 --package-name erlang%27 </dev/null
+            fluentci --check-update=false run @fluentci.io/setup-gleam@0.2.0 setup </dev/null
+            escript .github/scripts/fluentci_ci prepare-bsd-release </dev/null
+            escript .github/scripts/fluentci_ci build-bsd-cli </dev/null
+      - name: Save BSD Cargo artifacts to FluentCI
+        run: fluentci --check-update=false run --wasm .fluentci/cache/dist/plugin.wasm save --key "$CACHE_KEY" --path .ci-cache/bsd-rust/target --compression '${{ inputs.compression }}'

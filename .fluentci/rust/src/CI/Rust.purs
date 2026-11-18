@@ -1,8 +1,8 @@
-module CI.Rust (format, lint, test, check, build) where
+module CI.Rust (format, lint, test, check, build, buildPrepared) where
 
 import Prelude
 import CI.Studio as Studio
-import CI.Support (run)
+import CI.Support (run, requiredArgument)
 import Effect (Effect)
 
 -- | Check Rust formatting across the workspace.
@@ -33,3 +33,13 @@ check = do
 -- | Build Studio and the CLI in locked release mode.
 build :: Effect Unit
 build = Studio.build *> run "rust-build" [ [ "cargo", "build", "--release", "--locked" ] ]
+
+-- | Build the CLI for a target using Studio assets prepared by another job.
+-- | @param target Rust target triple for the native build runner.
+buildPrepared :: { target :: String } -> Effect Unit
+buildPrepared args = do
+  target <- requiredArgument "target" args.target
+  run "rust-build-prepared"
+    [ [ "test", "-s", "webui/dist/index.html" ]
+    , [ "cargo", "build", "--release", "--locked", "--target", target ]
+    ]

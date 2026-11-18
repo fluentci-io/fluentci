@@ -1,0 +1,243 @@
+{
+  "name": "cache",
+  "runtime": "component",
+  "exports": {
+    "setup": {
+      "description": "Configure a FluentCI cache protocol using required environment credentials.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "protocol": {
+            "type": "string",
+            "description": "Cache protocol to configure. Allowed values: nix, bazel, bazel-grpc, turbo, nx, buildkit, sccache, go, gradle, maven, generic.",
+            "enum": [
+              "nix",
+              "bazel",
+              "bazel-grpc",
+              "turbo",
+              "nx",
+              "buildkit",
+              "sccache",
+              "go",
+              "gradle",
+              "maven",
+              "generic"
+            ]
+          },
+          "url": {
+            "type": "string",
+            "description": "HTTPS account base URL; overrides FLUENTCI_CACHE_URL. One of this argument or the environment variable is required."
+          },
+          "configDir": {
+            "type": "string",
+            "description": "Fresh output directory; defaults to .fluentci/cache/PROTOCOL. Existing directories are rejected."
+          },
+          "repository": {
+            "type": "string",
+            "description": "BuildKit repository and tag. Default: \"buildkit/default:cache\".",
+            "default": "buildkit/default:cache"
+          }
+        },
+        "required": [
+          "protocol"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "protocol": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string"
+          },
+          "configDir": {
+            "type": "string"
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "environment": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name",
+                "value"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "binDir": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "protocol",
+          "url",
+          "configDir",
+          "files",
+          "environment",
+          "binDir"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "nixBuild": {
+      "description": "Build a Nix installable while reusing and publishing signed FluentCI cache outputs.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "HTTPS account base URL; overrides FLUENTCI_CACHE_URL. One of this argument or the environment variable is required."
+          },
+          "flake": {
+            "type": "string",
+            "description": "Nix installable to build. Default: \".#default\".",
+            "default": ".#default"
+          }
+        },
+        "required": [],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "outcome": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "outcome"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "save": {
+      "description": "Compress and upload a file or directory to the generic HTTP cache.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Safe slash-separated cache key."
+          },
+          "path": {
+            "type": "string",
+            "description": "File or directory to cache."
+          },
+          "url": {
+            "type": "string",
+            "description": "HTTPS account base URL; overrides FLUENTCI_CACHE_URL. One of this argument or the environment variable is required."
+          },
+          "compression": {
+            "type": "string",
+            "description": "Archive compression; restore detects it automatically. Default: \"zstd\". Allowed values: zstd, gzip, none.",
+            "enum": [
+              "zstd",
+              "gzip",
+              "none"
+            ],
+            "default": "zstd"
+          }
+        },
+        "required": [
+          "key",
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "hit": {
+            "type": "boolean"
+          },
+          "bytes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "path",
+          "hit",
+          "bytes"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "restore": {
+      "description": "Download, verify and restore a generic HTTP cache entry without replacing files on failure.",
+      "input": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string",
+            "description": "Safe slash-separated cache key."
+          },
+          "path": {
+            "type": "string",
+            "description": "Destination file or directory; cannot be the current directory or filesystem root."
+          },
+          "url": {
+            "type": "string",
+            "description": "HTTPS account base URL; overrides FLUENTCI_CACHE_URL. One of this argument or the environment variable is required."
+          },
+          "required": {
+            "type": "boolean",
+            "description": "Fail if the cache key is missing; otherwise return hit=false. Default: false.",
+            "default": false
+          }
+        },
+        "required": [
+          "key",
+          "path"
+        ],
+        "additionalProperties": false
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "path": {
+            "type": "string"
+          },
+          "hit": {
+            "type": "boolean"
+          },
+          "bytes": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "path",
+          "hit",
+          "bytes"
+        ],
+        "additionalProperties": false
+      }
+    }
+  }
+}
