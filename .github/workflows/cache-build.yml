@@ -96,6 +96,8 @@ jobs:
       - uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Set up Erlang and Gleam CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - uses: actions/download-artifact@v4
         with:
           name: cache-build-inputs
@@ -162,6 +164,8 @@ jobs:
       - uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
+      - name: Set up Erlang and Gleam CI helpers
+        uses: ./.github/actions/setup-ci-scripts
       - uses: actions/download-artifact@v4
         with:
           name: cache-build-inputs
