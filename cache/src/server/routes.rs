@@ -129,9 +129,9 @@ async fn handle_inner(app: &Arc<App>, raw: &str, request: Request) -> Result<Res
         );
         return Ok(response);
     }
-    // Public Nix reads need no backend connection or transfer permit. Redirect
-    // even misses to the CDN, which returns the real 404 instead of a busy 503.
-    // Private reads keep the authenticated proxy path.
+    // Version CDN URLs with committed object metadata: an old CDN 404 must not
+    // conceal a newly published output. Missing objects never reach the CDN.
+    // Reads still bypass transfer permits; warm metadata comes from the index.
     if read && key.is_nix() && app.config.public_read && matches!(app.config.backend, Backend::S3) {
         let mut url =
             reqwest::Url::parse(app.config.cdn_url.as_deref().expect("validated S3 CDN URL"))
@@ -142,7 +142,22 @@ async fn handle_inner(app: &Arc<App>, raw: &str, request: Request) -> Result<Res
             segments.extend(app.config.prefix.split('/').filter(|part| !part.is_empty()));
             segments.extend(key.path.as_ref().split('/'));
         }
-        return Ok(Redirect::temporary(url.as_str()).into_response());
+        let meta = match app.catalog.lookup(&key.path) {
+            Some(meta) => meta,
+            None => tokio::time::timeout(Duration::from_secs(10), app.store.head(&key.path))
+                .await
+                .map_err(|_| Failure(StatusCode::GATEWAY_TIMEOUT, "cache lookup timed out\n"))?
+                .map_err(backend_error)?,
+        };
+        let version = meta
+            .e_tag
+            .unwrap_or_else(|| meta.last_modified.to_rfc3339());
+        url.query_pairs_mut().append_pair("v", &version);
+        let mut response = Redirect::temporary(url.as_str()).into_response();
+        response
+            .headers_mut()
+            .insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
+        return Ok(response);
     }
     let permit = app
         .permits

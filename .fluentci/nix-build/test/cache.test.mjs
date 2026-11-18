@@ -39,6 +39,9 @@ test("public cache reads preserve GitHub authentication and do not expose upload
     /access-tokens = github.com=test-github-token/,
   );
   assert.match(config.nixEnv.NIX_CONFIG, /http-connections = 16/);
+  assert.match(config.nixEnv.NIX_CONFIG, /\nsubstitute = true\n/);
+  assert.match(config.nixEnv.NIX_CONFIG, /\nnarinfo-cache-negative-ttl = 0\n/);
+  assert.match(config.nixEnv.NIX_CONFIG, /\nalways-allow-substitutes = true\n/);
   assert.match(config.nixEnv.NIX_CONFIG, /extra-substituters = https:.*\/nix/);
   assert.match(
     config.nixEnv.NIX_CONFIG,

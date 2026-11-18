@@ -15,7 +15,6 @@ use object_store::path::Path as StorePath;
 use serde::Deserialize;
 use serde_json::{Value, json};
 use std::{
-    collections::BTreeMap,
     sync::{
         Arc,
         atomic::{AtomicU64, Ordering},
@@ -58,10 +57,13 @@ pub(super) async fn handle(
         if app.config.read_only && input.action != "list" {
             return Err(Failure(StatusCode::FORBIDDEN, "cache is read-only\n"));
         }
-        let _permit =
-            app.permits.clone().try_acquire_owned().map_err(|_| {
+        let _permit = if input.action == "list" {
+            None
+        } else {
+            Some(app.permits.clone().try_acquire_owned().map_err(|_| {
                 Failure(StatusCode::SERVICE_UNAVAILABLE, "cache busy; retry later\n")
-            })?;
+            })?)
+        };
         tokio::time::timeout(
             Duration::from_secs(app.config.timeout),
             manage(&app, &account, input),
@@ -106,36 +108,16 @@ async fn manage(app: &App, account: &str, input: Input) -> Result<Value> {
             {
                 return Err(Failure(StatusCode::BAD_REQUEST, "invalid pagination\n"));
             }
-            let mut stream = app.store.list(Some(&prefix));
-            let mut page = BTreeMap::new();
-            let mut total_bytes = 0_u64;
-            let mut total_keys = 0_u64;
-            while let Some(meta) = stream.try_next().await.map_err(backend_error)? {
-                let path = meta.location.to_string();
-                let Some(relative) = path.strip_prefix(&root) else {
-                    continue;
-                };
-                total_bytes = total_bytes.saturating_add(meta.size);
-                total_keys += 1;
-                if relative.starts_with(&input.prefix) && relative > input.cursor.as_str() {
-                    page.insert(relative.to_owned(), json!({"key": relative, "size": meta.size, "lastModified": meta.last_modified.to_rfc3339()}));
-                    if page.len() > input.limit + 1 {
-                        page.pop_last();
-                    }
-                }
-            }
-            let more = page.len() > input.limit;
-            if more {
-                page.pop_last();
-            }
-            let cursor = if more {
-                page.last_key_value().map(|(key, _)| key.clone())
-            } else {
-                None
-            };
-            Ok(
-                json!({"keys": page.into_values().collect::<Vec<_>>(), "cursor": cursor, "totalBytes": total_bytes, "totalKeys": total_keys}),
-            )
+            app.catalog
+                .page(
+                    app.store.as_ref(),
+                    account,
+                    &input.prefix,
+                    &input.cursor,
+                    input.limit,
+                )
+                .await
+                .map_err(backend_error)
         }
         "delete" => {
             // Validate every path segment, then retain the stored namespace verbatim.

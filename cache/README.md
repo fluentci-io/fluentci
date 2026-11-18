@@ -177,7 +177,7 @@ CDN GET:     https://cdn.example.com/assets/fluentci-cache/v1/bazel/cas/<digest>
 S3 key:      fluentci-cache/v1/bazel/cas/<digest>
 ```
 
-Leading bucket/origin paths belong in `cdn_url`; do not repeat `prefix` there. A trailing slash is optional. CDN requests are anonymous: neither the client's cache token nor AWS credentials are forwarded. Public Nix GET/HEAD requests return a temporary (307) redirect directly to the configured CDN, including the storage prefix and account path. These reads and local Nix discovery do not acquire transfer slots, so concurrent Nix lookups cannot hit the server transfer limit. Nix follows redirects for metadata and NAR downloads; missing objects return the CDN's 404. Uploads remain authenticated on the service. Private Nix reads and other protocols proxy bytes through the service. Nix discovery is still generated locally. There is no S3 fallback if the CDN returns a miss or fails.
+Leading bucket/origin paths belong in `cdn_url`; do not repeat `prefix` there. A trailing slash is optional. CDN requests are anonymous: neither the client's cache token nor AWS credentials are forwarded. Public Nix GET/HEAD requests return a temporary (307) redirect directly to the configured CDN, including the storage prefix, account path, and an object ETag version query. This avoids stale CDN misses hiding a newly published object. These reads and local Nix discovery do not acquire transfer slots, so concurrent Nix lookups cannot hit the server transfer limit. The metadata index supplies known object versions; uncatalogued objects use an origin HEAD lookup. Nix follows redirects for metadata and NAR downloads; missing objects return a service 404 before reaching the CDN. Uploads remain authenticated on the service. Private Nix reads and other protocols proxy bytes through the service. Nix discovery is still generated locally. There is no S3 fallback if the CDN returns a miss or fails.
 
 The CDN must return 404 for missing objects and support GET, HEAD, `Content-Length`, and single byte ranges; preserve ETags when possible and serve the exact uploaded bytes without transformations. Configure its origin access separately so it can read the bucket. Disable negative caching and configure revalidation or invalidation for mutable action entries, Gradle keys, and narinfo: successful S3 writes do not invalidate CDN entries. `public_read = false` authenticates requests to this server, but the required public CDN still exposes the artifacts directly.
 
@@ -642,3 +642,28 @@ manage storage. S3 credentials must allow listing and deletion. Usage scans
 metadata in the owner's prefix; operations are bounded by the configured timeout.
 Clear operations may partially finish before a backend failure or timeout; refresh
 the listing before retrying. CDN cached responses are not purged by origin deletion.
+
+
+### Fast storage listings
+
+`io.fluentci.cache.listKeys` uses an account-isolated metadata index in the cache
+service. Pagination seeks directly to the requested prefix/cursor; byte and key
+counts are maintained incrementally. Warm requests do not list objects in S3/R2
+and do not compete with upload transfer slots.
+
+The index warms in the background when the service starts. A request arriving
+before this first scan finishes waits for it. Successful writes, multipart
+commits, copies, and deletions update the index immediately across all protocols.
+An asynchronous reconciliation runs every 60 seconds to discover bucket lifecycle
+changes or writes made outside this service. During reconciliation, requests keep
+using the current index; concurrent service mutations override scan results.
+The index contains metadata only and is rebuilt after restart. Multiple service
+instances discover each other's changes on the next reconciliation.
+
+
+For Cloudflare, scope cache rules to `cache-cdn.fluentci.io`: bypass by default,
+cache successful `.narinfo` responses for 60 seconds, and successful `/nix/nar/`
+archives for one year. Set status ranges 400–599 to **No store** (`-1` through
+the API) in both eligible rules, and retain query strings in cache keys. Purge
+existing CDN errors after changing rules. Keep authenticated API and management
+responses uncached. Do not apply long archive TTLs to mutable protocol keys.

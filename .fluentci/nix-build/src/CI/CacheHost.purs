@@ -104,7 +104,7 @@ configuration env = do
     ensure (part 0 pieces <> ":" <> derived.publicKey == publicKey && derived.embeddedMatches) "Nix signing key does not match FLUENTCI_NIX_PUBLIC_KEY"
     ensure (not (matches "[\\r\\n]" token)) "Invalid upload token"
   let cache = if base == "" then "" else trimSlash base <> "/nix"
-  let nixConfig = if cache == "" then "" else envValue env "NIX_CONFIG" <> "\nhttp-connections = 16\nextra-substituters = " <> cache <> "\nextra-trusted-public-keys = " <> publicKey
+  let nixConfig = if cache == "" then "" else envValue env "NIX_CONFIG" <> "\nhttp-connections = 16\nsubstitute = true\nnarinfo-cache-negative-ttl = 0\nalways-allow-substitutes = true\nextra-substituters = " <> cache <> "\nextra-trusted-public-keys = " <> publicKey
   pure { cache, publicKey, token, signingKey, nixEnv: envForNix env nixConfig }
 
 chunks :: forall a. Int -> Array a -> Array (Array a)

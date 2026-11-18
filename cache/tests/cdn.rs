@@ -279,6 +279,18 @@ async fn public_nix_reads_redirect_without_waiting_for_saturated_transfer_slots(
         format!("/accounts/{account}/nix/hash.narinfo"),
         format!("/accounts/{account}/nix/nar/payload.nar.xz"),
     ] {
+        let canonical = if path.starts_with("/accounts/") || path.starts_with("/nix/") {
+            path.clone()
+        } else {
+            format!("/nix{path}")
+        };
+        writes
+            .put(
+                &Path::from(canonical.trim_start_matches('/')),
+                "cached".into(),
+            )
+            .await
+            .unwrap();
         for method in ["GET", "HEAD"] {
             let response = app
                 .clone()
@@ -302,7 +314,8 @@ async fn public_nix_reads_redirect_without_waiting_for_saturated_transfer_slots(
             assert_eq!(url.path(), format!("/bucket/team/cache{canonical}"));
             assert!(url.username().is_empty());
             assert!(url.password().is_none());
-            assert!(url.query().is_none());
+            assert!(url.query_pairs().any(|(key, _)| key == "v"));
+            assert_eq!(response.headers()[header::CACHE_CONTROL], "no-store");
         }
     }
     for path in [
@@ -323,7 +336,14 @@ async fn public_nix_reads_redirect_without_waiting_for_saturated_transfer_slots(
         );
     }
     assert_eq!(cdn.requests.lock().unwrap().len(), 1);
-    assert!(writes.head(&Path::from("nix/hash.narinfo")).await.is_err());
+    assert_eq!(
+        app.clone()
+            .oneshot(request("GET", "/nix/absent.narinfo", Body::empty()))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::NOT_FOUND
+    );
     drop(held);
     // Uploads still go to the write store, never to the public CDN.
     let response = app
@@ -361,7 +381,7 @@ async fn private_nix_reads_never_redirect_to_public_cdn() {
 
 #[tokio::test]
 async fn did_aliases_preserve_legacy_cdn_targets_without_consuming_transfer_slots() {
-    let (app, _, cdn, server) = fixture(true).await;
+    let (app, writes, cdn, server) = fixture(true).await;
     let held = app
         .clone()
         .oneshot(request("GET", "/generic/key", Body::empty()))
@@ -375,6 +395,13 @@ async fn did_aliases_preserve_legacy_cdn_targets_without_consuming_transfer_slot
         ("did:web:example.com%3A8443", "did:web:example.com%253A8443"),
     ] {
         let hash = hex::encode(Sha256::digest(owner.as_bytes()));
+        writes
+            .put(
+                &Path::from(format!("accounts/{hash}/nix/test.narinfo")),
+                "cached".into(),
+            )
+            .await
+            .unwrap();
         let mut location = None;
         for base in [format!("/{segment}"), format!("/accounts/{hash}")] {
             let response = app
@@ -389,9 +416,9 @@ async fn did_aliases_preserve_legacy_cdn_targets_without_consuming_transfer_slot
             assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
             let target = response.headers()[header::LOCATION].clone();
             assert!(
-                target
-                    .to_str()
+                reqwest::Url::parse(target.to_str().unwrap())
                     .unwrap()
+                    .path()
                     .ends_with(&format!("/accounts/{hash}/nix/test.narinfo"))
             );
             if let Some(previous) = location {

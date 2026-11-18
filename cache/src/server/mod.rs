@@ -15,6 +15,7 @@ use tokio::sync::Semaphore;
 mod aliases;
 mod artifacts;
 mod auth;
+mod catalog;
 mod download;
 mod error;
 mod grpc;
@@ -29,6 +30,7 @@ mod upload;
 
 struct App {
     aliases: aliases::Aliases,
+    catalog: Arc<catalog::Catalog>,
     config: Config,
     upload_key: Option<jsonwebtoken::DecodingKey>,
     staging: Arc<staging::Budget>,
@@ -50,7 +52,10 @@ pub fn router(config: Config, store: Arc<dyn ObjectStore>) -> anyhow::Result<Rou
                 .map_err(anyhow::Error::from)
         })
         .transpose()?;
+    let (store, catalog) = catalog::IndexedStore::new(store);
+    let store: Arc<dyn ObjectStore> = store;
     let app = Arc::new(App {
+        catalog,
         aliases: aliases::Aliases::new(&config.identity_resolver_url)?,
         upload_key,
         staging: staging::Budget::new(config.staging_limit, config.staging_directory.clone())?,

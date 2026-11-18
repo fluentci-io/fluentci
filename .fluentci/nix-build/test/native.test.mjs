@@ -1,9 +1,22 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, readFile, readdir, realpath, rm } from "node:fs/promises";
+import {
+  mkdtemp,
+  readFile,
+  readdir,
+  realpath,
+  rm,
+  writeFile,
+} from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { build, command, requireSignatures } from "../dist/nix-cache-host.mjs";
+import { createHash } from "node:crypto";
+import {
+  build,
+  command,
+  configuration,
+  requireSignatures,
+} from "../dist/nix-cache-host.mjs";
 
 test(
   "native watcher exports referenced paths recursively and reuses metadata after deleting payloads",
@@ -225,6 +238,114 @@ test(
         },
       );
       assert.equal(newUploads, 1);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  },
+);
+
+test(
+  "exact cached derivations restore even when substitution is disabled by the derivation",
+  { skip: process.env.FLUENTCI_TEST_NIX !== "1", timeout: 30000 },
+  async () => {
+    const root = await realpath(
+      await mkdtemp(join(tmpdir(), "fluentci-substitute-")),
+    );
+    const env = {
+      ...process.env,
+      NIX_CONFIG: "experimental-features = nix-command flakes\nsubstituters =",
+    };
+    try {
+      const source = `local?root=${root}/source`,
+        target = `local?root=${root}/target`;
+      const content = "exact cached result\n";
+      await writeFile(`${root}/cached`, content);
+      const output = (
+        await command(
+          "nix-store",
+          ["--store", source, "--add-fixed", "sha256", `${root}/cached`],
+          env,
+          true,
+        )
+      ).trim();
+      await command(
+        "nix-store",
+        [
+          "--generate-binary-cache-key",
+          "test",
+          `${root}/private`,
+          `${root}/public`,
+        ],
+        env,
+        true,
+      );
+      const publicKey = (await readFile(`${root}/public`, "utf8")).trim();
+      await command(
+        "nix",
+        [
+          "--store",
+          source,
+          "copy",
+          "--to",
+          `file://${root}/binary?secret-key=${root}/private`,
+          output,
+        ],
+        env,
+        true,
+      );
+      const system = (
+        await command(
+          "nix",
+          ["eval", "--raw", "--impure", "--expr", "builtins.currentSystem"],
+          env,
+          true,
+        )
+      ).trim();
+      const expr = `builtins.derivation { name = "cached"; system = "${system}"; builder = "/nonexistent-builder"; allowSubstitutes = false; outputHashMode = "flat"; outputHashAlgo = "sha256"; outputHash = "${createHash("sha256").update(content).digest("hex")}"; }`;
+      const args = [
+        "--store",
+        target,
+        "build",
+        "--no-link",
+        "--json",
+        "--max-jobs",
+        "0",
+        "--expr",
+        expr,
+      ];
+      const options = configuration({
+        ...env,
+        FLUENTCI_CACHE_URL: "https://cache.fluentci.io/@example.com",
+        FLUENTCI_NIX_PUBLIC_KEY: publicKey,
+      }).nixEnv;
+      options.NIX_CONFIG = options.NIX_CONFIG.replace(
+        /extra-substituters = .*/,
+        `extra-substituters = file://${root}/binary`,
+      );
+      let failed = false;
+      try {
+        await command(
+          "nix",
+          args,
+          {
+            ...options,
+            NIX_CONFIG: options.NIX_CONFIG.replace(
+              "always-allow-substitutes = true",
+              "always-allow-substitutes = false",
+            ),
+          },
+          true,
+        );
+      } catch {
+        failed = true;
+      }
+      if (!failed)
+        throw Error("Expected disabled substitution to require a build");
+      const result = JSON.parse(await command("nix", args, options, true));
+      if (result[0].outputs.out !== output) throw Error("Wrong cached output");
+      console.log(
+        "PASS: exact existing output restored with allowSubstitutes=false and an unusable builder; no build was possible.",
+      );
     } finally {
       await rm(root, { recursive: true, force: true });
     }

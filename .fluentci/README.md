@@ -258,3 +258,10 @@ the same setup modules, and invoke helpers with `escript`; they do not need
 Node.js or a compiler matching the host's Gleam source syntax. Minimal native
 package/bootstrap commands remain inline because FluentCI must exist before it
 can install the toolchains. See [.github/scripts](../.github/scripts/README.md).
+
+
+Nix CI enables `substitute` and `always-allow-substitutes`, including dependency
+helpers that set `allowSubstitutes = false`. Exact outputs available in the
+configured FluentCI binary cache are restored rather than rebuilt. The negative
+narinfo cache TTL is zero so misses cannot hide outputs uploaded later in the job.
+Store paths, platform, and trusted signatures must still match.
