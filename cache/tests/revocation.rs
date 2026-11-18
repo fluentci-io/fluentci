@@ -4,7 +4,7 @@ use axum::{
 };
 use clap::Parser;
 use fluentci_cache::{Config, router};
-use object_store::local::LocalFileSystem;
+use object_store::{ObjectStore, local::LocalFileSystem};
 use serde_json::{Value, json};
 use sha2::{Digest, Sha256};
 use std::sync::Arc;

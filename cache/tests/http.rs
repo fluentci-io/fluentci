@@ -9,7 +9,13 @@ use fluentci_cache::{Config, router};
 use futures_util::stream;
 use object_store::{ObjectStore, memory::InMemory};
 use sha2::{Digest, Sha256};
-use std::{io, sync::Arc};
+use std::{
+    io,
+    sync::{
+        Arc,
+        atomic::{AtomicUsize, Ordering},
+    },
+};
 use tower::ServiceExt;
 
 #[derive(Parser)]
@@ -83,7 +89,54 @@ async fn all_protocols_round_trip_and_head() {
 }
 
 #[tokio::test]
-async fn duplicate_hash_addressed_nars_succeed_without_consuming_body_and_require_auth() {
+async fn duplicate_nars_enforce_size_and_body_integrity() {
+    let mut config = config();
+    config.max_upload = 8;
+    let app = router(config, Arc::new(InMemory::new())).unwrap();
+    let path = format!("/nix/nar/{}.nar.zst", "a".repeat(52));
+    assert_eq!(
+        app.clone()
+            .oneshot(request("PUT", &path, "original"))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::CREATED
+    );
+    let oversized = stream::iter([
+        Ok::<_, io::Error>(bytes::Bytes::from_static(b"12345678")),
+        Ok(bytes::Bytes::from_static(b"9")),
+    ]);
+    assert_eq!(
+        app.clone()
+            .oneshot(request("PUT", &path, Body::from_stream(oversized)))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::PAYLOAD_TOO_LARGE
+    );
+    let broken =
+        stream::once(async { Err::<bytes::Bytes, _>(io::Error::other("interrupted duplicate")) });
+    assert_eq!(
+        app.clone()
+            .oneshot(request("PUT", &path, Body::from_stream(broken)))
+            .await
+            .unwrap()
+            .status(),
+        StatusCode::BAD_REQUEST
+    );
+    assert_eq!(
+        bytes(
+            app.oneshot(request("GET", &path, Body::empty()))
+                .await
+                .unwrap()
+        )
+        .await,
+        "original"
+    );
+}
+
+#[tokio::test]
+async fn duplicate_hash_addressed_nars_drain_body_without_rewriting_and_require_auth() {
     let app = app();
     for path in [
         format!("/nix/nar/{}.nar.zst", "a".repeat(52)),
@@ -102,19 +155,21 @@ async fn duplicate_hash_addressed_nars_succeed_without_consuming_body_and_requir
                 .status(),
             StatusCode::CREATED
         );
-        let unread = stream::once(async {
-            panic!("duplicate upload body must not be read");
-            #[allow(unreachable_code)]
-            Ok::<_, io::Error>(bytes::Bytes::new())
-        });
+        let consumed = Arc::new(AtomicUsize::new(0));
+        let observed = consumed.clone();
+        let duplicate = stream::iter((0..16).map(move |_| {
+            observed.fetch_add(1, Ordering::Relaxed);
+            Ok::<_, io::Error>(bytes::Bytes::from_static(b"duplicate chunk"))
+        }));
         assert_eq!(
             app.clone()
-                .oneshot(request("PUT", &path, Body::from_stream(unread)))
+                .oneshot(request("PUT", &path, Body::from_stream(duplicate)))
                 .await
                 .unwrap()
                 .status(),
             StatusCode::OK
         );
+        assert_eq!(consumed.load(Ordering::Relaxed), 16);
         assert_eq!(
             bytes(
                 app.clone()

@@ -78,7 +78,7 @@ Nix's binary-cache download format is supported; the Cachix service API, Cachix 
 - `GET` returns `200` with the stored bytes, or `404` for a miss.
 - `HEAD` returns object metadata without the body.
 - `PUT` atomically publishes an object and returns `201`; mutable keys can be replaced.
-- Authenticated re-uploads of an existing hash-addressed Nix NAR return `200` without consuming the request body or rewriting storage. This applies to 52-character Nix base32 payload names (`.nar`, `.nar.xz`, `.nar.zst`, `.nar.gz`, `.nar.bz2`); narinfo and mutable protocol entries retain replacement behavior.
+- Authenticated re-uploads of an existing hash-addressed Nix NAR discard the request body and return `200` without rewriting storage. Draining the body prevents HTTP/1 reverse proxies from reporting a broken pipe as `502`. Upload size and time limits still apply. Clients should check for existing artifacts before uploading to avoid duplicate network transfers. This applies to 52-character Nix base32 payload names (`.nar`, `.nar.xz`, `.nar.zst`, `.nar.gz`, `.nar.bz2`); narinfo and mutable protocol entries retain replacement behavior.
 - Every PUT requires a valid account-scoped upload token or the configured administrator token, including requests from localhost.
 - `Authorization: Bearer <token>` and Basic authentication with `<token>` as the password are accepted. The Basic username is ignored.
 - Single byte ranges return `206`; invalid or unsatisfiable ranges return `416`.

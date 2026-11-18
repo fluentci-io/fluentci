@@ -16,6 +16,25 @@ use std::sync::atomic::Ordering;
 
 const PART_SIZE: usize = 8 * 1024 * 1024;
 
+/// Consume duplicate uploads so HTTP/1 proxies can finish forwarding the body.
+/// Dropping an unread body can reset the connection before they read our success.
+pub(super) async fn discard_duplicate(app: &App, body: Body) -> Result<()> {
+    let mut stream = body.into_data_stream();
+    let mut size = 0_u64;
+    while let Some(chunk) = stream.next().await {
+        let chunk =
+            chunk.map_err(|_| Failure(StatusCode::BAD_REQUEST, "incomplete request body\n"))?;
+        size = size
+            .checked_add(chunk.len() as u64)
+            .filter(|size| *size <= app.config.max_upload)
+            .ok_or(Failure(
+                StatusCode::PAYLOAD_TOO_LARGE,
+                "upload exceeds limit\n",
+            ))?;
+    }
+    Ok(())
+}
+
 /// Aborts uncommitted multipart uploads on errors, disconnects, or cancellation.
 struct PendingUpload(Option<Box<dyn MultipartUpload>>);
 
