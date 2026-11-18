@@ -1752,21 +1752,37 @@ test('Jetstream cleanup preserves FluentCI participants and checkpoints while re
       args: [actor],
     });
   await connection.client.execute("INSERT INTO jetstream_events(id) VALUES ('legacy-unscoped-id')");
+  const storedPackage = async () =>
+    (
+      await connection.client.execute({
+        sql: 'SELECT name,description,event_time FROM plugin_records WHERE author=? AND name=?',
+        args: [did, 'kept-participant'],
+      })
+    ).rows;
+  const originalPackage = await storedPackage();
+  assert.equal(originalPackage.length, 1);
   const checkpoint = await db.cursor(connection);
   assert.deepEqual(await participants.inventory(connection), [1, 1, 3]);
   assert.deepEqual(await participants.cleanup(connection), [1, 1]);
   assert.deepEqual(await participants.inventory(connection), [0, 0, 3]);
   assert.equal(await db.cursor(connection), checkpoint);
+  assert.deepEqual(await storedPackage(), originalPackage);
   assert.equal(
-    (await db.get_package(connection, 'kept-participant', '1.0.0', did)).name,
-    'kept-participant',
+    (
+      await connection.client.execute({
+        sql: 'SELECT active FROM accounts WHERE did=?',
+        args: [did],
+      })
+    ).rows[0].active,
+    0,
+  );
+  await assert.rejects(
+    db.get_package(connection, 'kept-participant', '1.0.0', did),
+    (error) => error.customErrorName === 'PackageNotFound',
   );
   // Replay after clearing opaque legacy IDs cannot overwrite newer record state.
   await add(connection, event('kept-participant', '1.0.0', 90, did, { description: 'stale' }));
-  assert.notEqual(
-    (await db.get_package(connection, 'kept-participant', '1.0.0', did)).description,
-    'stale',
-  );
+  assert.deepEqual(await storedPackage(), originalPackage);
 });
 
 test('FluentCI commits create missing accounts without overwriting observed status', async (t) => {
