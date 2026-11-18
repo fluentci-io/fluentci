@@ -15,6 +15,13 @@ Guest preparation first installs Bash and curl using the native package manager.
 Bash must be available before FluentCI can execute either setup module. It then
 calls both setup modules before running any helper.
 
+CLI and desktop release jobs use the PureScript FluentCI cache module with
+`vars.FLUENTCI_CACHE_URL` and `secrets.FLUENTCI_CACHE_TOKEN`. Linux and macOS use
+sccache; BSD Cargo target artifacts use generic HTTP restore/save on the Linux
+host. BSD toolchains and registry downloads retain their separate GitHub cache.
+The cache component is compiled from the workflow revision in an isolated tools
+directory, so rebuilding an old source tag still uses the current cache setup.
+
 For a BSD-only release recovery, dispatch the Release workflow from `main` with
 `tag` set to the existing release, `source-ref` set to the corrected commit, and
 `bsd-only` enabled. This rebuilds shared inputs and BSD assets while skipping

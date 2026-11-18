@@ -19,8 +19,9 @@ concurrency:
 
 env:
   RELEASE_VERSION: ${{ github.event.release.tag_name || inputs.tag || format('manual-{0}', github.run_number) }}
-  FLUENTCI_VERSION: 'v0.17.3'
+  FLUENTCI_VERSION: 'v0.17.8'
   DESKTOP_MODULE: .fluentci/desktop/dist/plugin.wasm
+  CACHE_MODULE: .fluentci/cache/dist/plugin.wasm
 
 jobs:
   prepare:
@@ -55,6 +56,17 @@ jobs:
         shell: bash
         run: |
           fluentci --check-update=false run setup-purescript@v0.2.0 setup --version 0.15.16 --spago-version 1.0.5 --node-version 24.22.2 --bun-version 1.4.3 | escript .github/scripts/fluentci_ci export-setup-env
+      - name: Build the FluentCI cache component
+        id: cache-module
+        uses: ./.github/actions/build-cache-module
+      - name: Share the FluentCI cache component
+        uses: actions/upload-artifact@v4
+        with:
+          name: fluentci-cache-module
+          path: ${{ steps.cache-module.outputs.artifact }}
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 7
       - name: Compile the desktop module with FluentCI
         run: fluentci --check-update=false modules desktop --json
       - name: Verify desktop packaging and cleanup safeguards
@@ -87,6 +99,10 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: '11.0'
       CARGO_BUILD_JOBS: '2'
       CARGO_TERM_COLOR: always
+      FLUENTCI_CACHE_URL: ${{ vars.FLUENTCI_CACHE_URL }}
+      FLUENTCI_CACHE_TOKEN: ${{ secrets.FLUENTCI_CACHE_TOKEN }}
+      SCCACHE_WEBDAV_TOKEN: ${{ secrets.FLUENTCI_CACHE_TOKEN }}
+      CARGO_INCREMENTAL: '0'
     steps:
       - uses: actions/checkout@v4
         with:
@@ -124,12 +140,34 @@ jobs:
           path: .fluentci/desktop/dist
       - name: Verify the downloaded desktop module
         run: test -s "$DESKTOP_MODULE"
-      - uses: Swatinem/rust-cache@v2
+      - name: Download the FluentCI cache component
+        uses: actions/download-artifact@v4
         with:
-          workspaces: desktop/src-tauri
-          key: desktop-release-${{ matrix.target }}
+          name: fluentci-cache-module
+          path: .fluentci/cache/dist
+      - name: Configure FluentCI compiler caching
+        shell: bash
+        run: fluentci --check-update=false run --wasm "$CACHE_MODULE" setup --protocol sccache --config-dir "$RUNNER_TEMP/fluentci-cache-config" | escript .github/scripts/fluentci_ci export-setup-env
+      - name: Compute generic fallback key
+        id: cache-key
+        shell: bash
+        run: |
+          compiler=$(rustc --version | tr -cd 'A-Za-z0-9._-')
+          printf 'value=rust-desktop/%s/%s/%s/%s/%s\n' '${{ runner.os }}' '${{ runner.arch }}' "$TARGET" "$compiler" '${{ hashFiles('desktop/src-tauri/Cargo.lock', 'desktop/src-tauri/Cargo.toml') }}' >> "$GITHUB_OUTPUT"
+      - name: Restore FluentCI generic fallback
+        if: env.FLUENTCI_RUST_CACHE_BACKEND == 'generic'
+        shell: bash
+        run: fluentci --check-update=false run --wasm "$CACHE_MODULE" restore --key '${{ steps.cache-key.outputs.value }}' --path desktop/src-tauri/target
       - name: Build the desktop app with FluentCI
         run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" build --target "$TARGET"
+      - name: Save FluentCI generic fallback
+        if: success() && env.FLUENTCI_RUST_CACHE_BACKEND == 'generic'
+        shell: bash
+        run: fluentci --check-update=false run --wasm "$CACHE_MODULE" save --key '${{ steps.cache-key.outputs.value }}' --path desktop/src-tauri/target --compression zstd
+      - name: Show compiler cache statistics
+        if: always() && env.FLUENTCI_RUST_CACHE_BACKEND == 'sccache'
+        shell: bash
+        run: '"$RUSTC_WRAPPER" --show-stats'
       - name: Clean intermediate desktop builds with FluentCI
         run: fluentci --check-update=false run --wasm "$DESKTOP_MODULE" clean --target "$TARGET"
       - name: Ad hoc sign, verify, and package the desktop app

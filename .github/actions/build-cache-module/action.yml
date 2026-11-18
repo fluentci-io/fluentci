@@ -1,0 +1,26 @@
+name: Build FluentCI cache component
+description: Compile the cache module from the workflow revision independently of the release source checkout.
+outputs:
+  artifact:
+    description: Absolute path to the compiled cache component.
+    value: ${{ steps.build.outputs.artifact }}
+runs:
+  using: composite
+  steps:
+    - name: Build the workflow's PureScript cache component
+      id: build
+      shell: bash
+      env:
+        WORKFLOW_REVISION: ${{ github.workflow_sha }}
+      run: |
+        set -euo pipefail
+        tools="$RUNNER_TEMP/fluentci-release-cache-tools"
+        mkdir -p "$tools"
+        git fetch origin "$WORKFLOW_REVISION" --depth 1
+        git archive "$WORKFLOW_REVISION" .fluentci/cache .fluentci/scripts templates/inspection engine/crates/components/wit/runtime.wit | tar -x -C "$tools"
+        cd "$tools/.fluentci/cache"
+        npm ci --ignore-scripts
+        npm run build
+        npm test
+        test -s dist/plugin.wasm
+        printf 'artifact=%s/dist/plugin.wasm\n' "$PWD" >> "$GITHUB_OUTPUT"
