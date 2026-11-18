@@ -21,8 +21,8 @@ const modules = [
 
 const kebab = (name) => name.replace(/[A-Z]/g, (letter) => "-" + letter.toLowerCase());
 
-// Assert record fields from the declared cache contract in both generated and
-// decoded WIT, including nested environment records and Boolean transfer hits.
+// Assert generated interface fields against the declared cache contract,
+// including nested environment records and Boolean transfer hits.
 function assertRecord(wit, name, schema) {
   const body = wit.match(new RegExp(`record %?${name}\\s*\\{([^}]*)\\}`));
   assert.ok(body, `missing WIT record ${name}`);
@@ -47,7 +47,9 @@ for (const module of modules) {
     const directory = new URL(`${module}/dist/`, root);
     const bytes = await readFile(new URL("plugin.wasm", directory));
     assert.deepEqual([...bytes.subarray(0, 8)], [0, 97, 115, 109, 13, 0, 1, 0]);
-    // Decode the compiled artifact rather than trusting the generated WIT file.
+    // jco prints only the root package: named interface definitions are omitted.
+    // Check compiled world linkage here and generated interface fields below.
+    // The Rust ABI test inspects the binary's full types against its metadata.
     const wit = await componentWit(bytes);
     assert.match(wit, /fluentci:runtime\/api@0\.1\.0/);
     assert.doesNotMatch(wit, /extism/i);
@@ -78,10 +80,8 @@ for (const module of modules) {
       const result = declared ? `${fn.name}-result` : "unit";
       assert.equal(fn.returnType, result);
       if (declared) {
-        for (const source of [generatedWit, wit]) {
-          assertRecord(source, result, declared.output);
-          assert.match(source, new RegExp(`%?${fn.name}: func\\([^;]*\\) -> ${result};`));
-        }
+        assertRecord(generatedWit, result, declared.output);
+        assert.match(generatedWit, new RegExp(`%?${fn.name}: func\\([^;]*\\) -> ${result};`));
         assert.equal(fn.args.length, Object.keys(declared.input.properties).length);
       }
       assert.ok(fn.description?.trim(), `${module}.${fn.name} needs help text`);
@@ -99,8 +99,7 @@ for (const module of modules) {
         );
         const scalar = expectedType === "boolean" ? "bool" : expectedType;
         const type = required ? scalar : `option<${scalar}>`;
-        for (const source of [generatedWit, wit])
-          assert.match(source, new RegExp(`${arg.name}: ${type}`));
+        assert.match(generatedWit, new RegExp(`${arg.name}: ${type}`));
       }
     }
   });
