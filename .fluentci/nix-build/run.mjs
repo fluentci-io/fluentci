@@ -41,7 +41,7 @@ export function configuration(env) {
       accountUrl =
         /^did:plc:[a-z2-7]{24}$/.test(actor) ||
         /^did:web:[A-Za-z0-9._:%-]+$/.test(actor) ||
-        /^@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(
+        /^@?(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(
           actor,
         );
     }

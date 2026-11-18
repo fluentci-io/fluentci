@@ -431,6 +431,7 @@ test("Nix cache configuration accepts DID and handle aliases while retaining leg
     env.FLUENTCI_CACHE_URL,
     "https://cache.fluentci.io/did:plc:abcdefghijklmnopqrstuvwx",
     "https://cache.fluentci.io/@owner.example",
+    "https://cache.fluentci.io/owner.example",
     "https://cache.fluentci.io/did:web:example.com%253A8443",
   ]) {
     assert.equal(

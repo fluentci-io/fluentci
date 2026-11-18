@@ -16,10 +16,13 @@ export function cacheUrls(cacheUrl: string, owner: string, handle?: string) {
   const url = new URL(cacheUrl);
   const base =
     url.origin +
-    url.pathname.replace(/\/(?:accounts\/[^/]+|did:[^/]+|@[^/]+)\/?$/, "");
+    url.pathname.replace(
+      /\/(?:accounts\/[^/]+|did:[^/]+|@?[^/]+\.[^/]+)\/?$/,
+      "",
+    );
   return {
     did: `${base}/${encodeURIComponent(owner).replace(/%3A/g, ":")}`,
-    handle: handle ? `${base}/@${handle.toLowerCase()}` : undefined,
+    handle: handle ? `${base}/${handle.toLowerCase()}` : undefined,
   };
 }
 

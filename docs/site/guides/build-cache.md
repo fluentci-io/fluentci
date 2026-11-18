@@ -19,6 +19,7 @@ a readable handle alias:
 
 ```text
 https://cache.fluentci.io/did:plc:YOUR_DID
+https://cache.fluentci.io/your.handle
 https://cache.fluentci.io/@your.handle
 ```
 

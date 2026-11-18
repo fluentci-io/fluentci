@@ -726,7 +726,8 @@ Go, Maven Build Cache, Gradle, Bazel HTTP and gRPC, Turborepo, Nx, BuildKit OCI,
 and generic HTTP artifacts. Account caches provide public reads, scoped upload
 tokens, individual token revocation, collaborators, and storage management.
 New account URLs use `https://cache.fluentci.io/did:plc:YOUR_DID` for stable CI
-configuration or `https://cache.fluentci.io/@your.handle` for readability.
+configuration or `https://cache.fluentci.io/your.handle` for readability.
+The `/@your.handle` form is also supported.
 Existing hash URLs remain valid and access the same artifacts with the same tokens.
 See the [client setup guide](./docs/site/guides/build-cache.md) and
 [deployment guide](./docs/site/development/build-cache.md).

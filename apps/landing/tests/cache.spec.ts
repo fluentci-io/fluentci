@@ -431,7 +431,7 @@ test("upload token instructions cover every client without exposing the token in
   });
   await expect(instructions).toContainText(`https://cache.example/${did}`);
   await expect(page.getByLabel("Cache URL", { exact: true })).toHaveValue(
-    "https://cache.example/@owner.example",
+    "https://cache.example/owner.example",
   );
   await expect(
     page.getByLabel("Stable URL for CI", { exact: true }),

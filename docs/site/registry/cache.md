@@ -180,7 +180,7 @@ They do not count direct CDN reads, request traffic, or edge cache hits.
 
 New `cacheUrl` values use the owner's stable DID, such as
 `https://cache.fluentci.io/did:plc:YOUR_DID`. Handle aliases use
-`https://cache.fluentci.io/@your.handle`. Existing `/accounts/<owner-hash>` URLs
+`https://cache.fluentci.io/your.handle` (the `/@your.handle` form works too). Existing `/accounts/<owner-hash>` URLs
 still access the same cache with the same tokens. `canonicalCacheUrl` exposes
 that hash namespace for gRPC instance names, Turborepo team identifiers, and
 OCI repository names.

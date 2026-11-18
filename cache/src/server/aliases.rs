@@ -82,7 +82,10 @@ impl Aliases {
                 return Err(Failure(StatusCode::BAD_REQUEST, "invalid account DID\n"));
             }
             actor.to_owned()
-        } else if let Some(handle) = actor.strip_prefix('@') {
+        } else if let Some(handle) = actor
+            .strip_prefix('@')
+            .or_else(|| valid_handle(actor).then_some(actor))
+        {
             let handle = handle.to_ascii_lowercase();
             if !valid_handle(&handle) {
                 return Err(Failure(StatusCode::BAD_REQUEST, "invalid account handle\n"));

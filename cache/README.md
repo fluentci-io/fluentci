@@ -7,7 +7,8 @@ Writes require a token. Reads are public by default and can be made private at t
 ## Account URLs
 
 Use `https://cache.fluentci.io/did:plc:YOUR_DID` as a stable account base URL,
-or `https://cache.fluentci.io/@your.handle` as a readable alias. HTTP endpoints
+or `https://cache.fluentci.io/your.handle` as a readable alias. The
+`https://cache.fluentci.io/@your.handle` form works too. HTTP endpoints
 append their protocol path, such as `/nix`, `/bazel`, `/gradle`, or `/turbo`.
 Both aliases resolve to the existing `accounts/SHA256(owner-DID)` namespace.
 Existing `/accounts/<owner-hash>` URLs, artifacts, and upload tokens keep working.
@@ -63,8 +64,8 @@ No FluentCI CLI, Studio build, database, or external service is needed for the f
 | Gradle | `/gradle/` | HTTP build cache GET/PUT |
 | Bazel | `/` or `/bazel/` | HTTP remote cache `/ac/<sha256>` and `/cas/<sha256>` |
 | Generic | `/generic/` | Arbitrary hierarchical keys over GET/HEAD/PUT |
-| Turborepo | `/<DID-or-@handle>/turbo/` | HTTP artifact cache, signature headers, status, and events |
-| Nx | `/<DID-or-@handle>/nx/` | Self-hosted HTTP cache; immutable artifact uploads |
+| Turborepo | `/<DID-or-handle>/turbo/` | HTTP artifact cache, signature headers, status, and events |
+| Nx | `/<DID-or-handle>/nx/` | Self-hosted HTTP cache; immutable artifact uploads |
 | Bazel gRPC | instance `accounts/<owner-hash>` | ActionCache, CAS, Capabilities, and resumable ByteStream |
 | BuildKit | `/v2/accounts/<owner-hash>/<repository>/` | OCI registry cache manifests, indexes, and resumable blob uploads |
 
@@ -226,7 +227,7 @@ directory with sufficient capacity. Expired sessions are reclaimed on subsequent
 writes. Replaced Turborepo payloads remain until owner cleanup or bucket lifecycle
 rules remove them; no automatic garbage collector is provided.
 
-Examples use `https://cache.fluentci.io/did:plc:YOUR_DID`; replace it with the stable URL from your cache page. You can also use `https://cache.fluentci.io/@your.handle`. Use `http://127.0.0.1:8080` for local testing. Insecure HTTP may need an explicit opt-in in individual clients.
+Examples use `https://cache.fluentci.io/did:plc:YOUR_DID`; replace it with the stable URL from your cache page. You can also use `https://cache.fluentci.io/your.handle`. Use `http://127.0.0.1:8080` for local testing. Insecure HTTP may need an explicit opt-in in individual clients.
 
 ### Bazel
 

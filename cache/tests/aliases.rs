@@ -76,6 +76,7 @@ async fn did_handle_and_legacy_urls_share_storage_without_changing_token_scope()
     let aliases = [
         format!("/{owner}"),
         "/@owner.test".into(),
+        "/owner.test".into(),
         format!("/accounts/{hash}"),
     ];
     for base in &aliases {
