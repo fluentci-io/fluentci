@@ -437,3 +437,25 @@ pub fn exists(query: Query(a)) -> Condition {
 
 @external(javascript, "./orm_ffi.mjs", "exists")
 fn exists_ffi(query: Raw) -> Condition
+
+// Generic mutation/evaluation bindings; predicates and tables stay in Gleam.
+pub fn delete_count(
+  db: Db,
+  table: Table(a),
+  condition: Condition,
+) -> Promise(Int) {
+  delete_count_ffi(db, table.raw, condition)
+}
+
+@external(javascript, "./orm_ffi.mjs", "deleteCount")
+fn delete_count_ffi(db: Db, table: Raw, condition: Condition) -> Promise(Int)
+
+@external(javascript, "./orm_ffi.mjs", "evaluate")
+pub fn evaluate(db: Db, condition: Condition) -> Promise(Bool)
+
+pub fn value(item: a, codec: Codec(a)) -> Expression(a) {
+  Expression(value_ffi(codec.encode(item)), codec)
+}
+
+@external(javascript, "./orm_ffi.mjs", "value")
+fn value_ffi(item: Dynamic) -> Raw

@@ -207,3 +207,20 @@ export const countDistinctWhere = (table, value, condition) =>
   d.sql`(select count(distinct ${value}) from ${table} where ${condition})`;
 
 export const exists = (query) => d.exists(selection(new QueryBuilder(), query));
+
+export function deleteCount(connection, table, condition) {
+  return serialized(connection, async () => {
+    const result = await connection.db.delete(table).where(condition).run();
+    return Number(result.changes);
+  });
+}
+export function evaluate(connection, condition) {
+  return serialized(connection, async () => {
+    const row = await connection.db
+      .select({ value: d.sql`case when ${condition} then 1 else 0 end` })
+      .get();
+    return Boolean(row.value);
+  });
+}
+
+export const value = (item) => d.sql`${item}`;

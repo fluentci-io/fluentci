@@ -2,6 +2,7 @@
 
 import fluentci_api/db/connection
 import fluentci_api/db/filters
+import fluentci_api/db/participants
 import fluentci_api/drizzle/orm.{
   type Assignment, type Condition, type Query, alias, all, and, asc,
   count_distinct_where, count_rows, desc, eq, eq_columns, exists, from,
@@ -12,7 +13,8 @@ import fluentci_api/drizzle/orm.{
 }
 import fluentci_api/function_metadata
 import fluentci_api/lexicon/models.{
-  RegistryDailyDownload, RegistryListPackagesOutput, RegistryPackageView,
+  RegistryDailyDownload, RegistryListPackagesOutput, RegistryPackageView, like,
+  plugin,
 }
 import fluentci_api/model.{
   type Event, type Package, type Page, Account, Checkpoint, Delete, Like, Unlike,
@@ -682,22 +684,36 @@ fn mutate(db: Db, event: Event) -> Promise(Nil) {
 }
 
 pub fn apply_event(db: Db, event: Event) -> Promise(Nil) {
-  let #(time, id) = case event {
-    Upsert(_, time, id)
-    | Delete(_, _, time, id)
-    | Account(_, _, time, id)
-    | Like(_, _, _, _, _, _, time, id)
-    | Unlike(_, _, time, id) -> #(time, Some(id))
-    Checkpoint(time) -> #(time, None)
+  let #(time, id, actor, collection) = case event {
+    Upsert(package, time, id) -> #(time, Some(id), package.author, plugin)
+    Delete(_, author, time, id) -> #(time, Some(id), author, plugin)
+    Like(_, actor, _, _, _, _, time, id) | Unlike(_, actor, time, id) -> #(
+      time,
+      Some(id),
+      actor,
+      like,
+    )
+    Account(actor, _, time, id) -> #(time, Some(id), actor, "")
+    Checkpoint(time) -> #(time, None, "", "")
   }
   use tx <- transaction(db)
-  let apply = case id {
-    None -> promise.resolve(Nil)
-    Some(id) -> {
+  use relevant <- promise.await(case event {
+    Account(actor, _, _, _) -> participants.tracked(tx, actor)
+    _ -> promise.resolve(True)
+  })
+  let apply = case id, relevant {
+    None, _ | _, False -> promise.resolve(Nil)
+    Some(id), True -> {
       let table = e.table()
       use inserted <- promise.await(all(
         tx,
-        insert(table, [set(e.id(table), id)]) |> on_conflict_do_nothing,
+        insert(table, [
+          set(e.id(table), id),
+          set(e.did(table), actor),
+          set(e.collection(table), collection),
+          set(e.event_time(table), time),
+        ])
+          |> on_conflict_do_nothing,
       ))
       case inserted {
         [] -> promise.resolve(Nil)

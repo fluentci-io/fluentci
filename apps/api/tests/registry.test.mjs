@@ -1691,3 +1691,80 @@ test('catalog totals count filtered latest modules before cursor pagination', as
   assert.equal((await read({ filter: 'topics==caching' })).total, 1);
   assert.equal((await read({ q: 'missing' })).total, 0);
 });
+
+test('unrelated account status and non-FluentCI commits advance only checkpoints', async (t) => {
+  const connection = await fixture(t);
+  await add(connection, { kind: 'account', did, time_us: 100, account: { active: false } });
+  await add(connection, {
+    kind: 'commit',
+    did,
+    time_us: 200,
+    commit: {
+      operation: 'create',
+      collection: 'app.bsky.feed.post',
+      rkey: 'unrelated',
+      record: {},
+    },
+  });
+  assert.equal(
+    (await connection.client.execute('SELECT count(*) AS n FROM accounts')).rows[0].n,
+    0,
+  );
+  assert.equal(
+    (await connection.client.execute('SELECT count(*) AS n FROM jetstream_events')).rows[0].n,
+    0,
+  );
+  assert.equal(await db.cursor(connection), 200);
+  await add(connection, event('participant', '1.0.0', 300));
+  await add(connection, { kind: 'account', did, time_us: 400, account: { active: false } });
+  assert.equal(
+    (await connection.client.execute('SELECT count(*) AS n FROM accounts')).rows[0].n,
+    1,
+  );
+  assert.deepEqual(
+    (
+      await connection.client.execute(
+        'SELECT did, collection FROM jetstream_events ORDER BY event_time',
+      )
+    ).rows.map((r) => [r.did, r.collection]),
+    [
+      [did, 'io.fluentci.plugin'],
+      [did, ''],
+    ],
+  );
+});
+
+test('Jetstream cleanup preserves FluentCI participants and checkpoints while removing global noise', async (t) => {
+  const connection = await fixture(t);
+  const participants =
+    await import('../build/dev/javascript/fluentci_api/fluentci_api/db/participants.mjs');
+  const cacheOwner = 'did:plc:cacheowner';
+  const invited = 'did:plc:invited';
+  const unrelated = 'did:plc:unrelated';
+  await add(connection, event('kept-participant', '1.0.0', 100));
+  await connection.client.execute({
+    sql: 'INSERT INTO cache_members(owner, actor, active) VALUES (?, ?, 0)',
+    args: [cacheOwner, invited],
+  });
+  for (const actor of [did, cacheOwner, invited, unrelated])
+    await connection.client.execute({
+      sql: 'INSERT INTO accounts(did,active,event_time) VALUES (?,0,10)',
+      args: [actor],
+    });
+  await connection.client.execute("INSERT INTO jetstream_events(id) VALUES ('legacy-unscoped-id')");
+  const checkpoint = await db.cursor(connection);
+  assert.deepEqual(await participants.inventory(connection), [1, 1, 3]);
+  assert.deepEqual(await participants.cleanup(connection), [1, 1]);
+  assert.deepEqual(await participants.inventory(connection), [0, 0, 3]);
+  assert.equal(await db.cursor(connection), checkpoint);
+  assert.equal(
+    (await db.get_package(connection, 'kept-participant', '1.0.0', did)).name,
+    'kept-participant',
+  );
+  // Replay after clearing opaque legacy IDs cannot overwrite newer record state.
+  await add(connection, event('kept-participant', '1.0.0', 90, did, { description: 'stale' }));
+  assert.notEqual(
+    (await db.get_package(connection, 'kept-participant', '1.0.0', did)).description,
+    'stale',
+  );
+});

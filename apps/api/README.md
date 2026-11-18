@@ -147,7 +147,25 @@ repository revision. Account events use their publisher DID and sequence/status.
 Events without revision or sequence fall back to their timestamp. Deduplication
 identities, record changes and source checkpoints commit in one transaction, so
 replays remain safe after restarts and failed writes can be retried. The durable
-deduplication ledger retains indexed event identities.
+deduplication ledger retains indexed event identities with the actor DID,
+collection and event timestamp. Only `io.fluentci.plugin` and `io.fluentci.like`
+commits are indexed. Account status events are stored only after the DID has
+recorded FluentCI activity: modules, likes, scoped event history, cache ownership,
+credentials, tokens, collaborators or usage. Revoked/inactive interaction history
+still counts. Unrelated messages advance the source checkpoint without creating
+account or event-ledger rows.
+
+After backing up SQLite, clean previously accumulated global account statuses:
+
+```sh
+node scripts/prune-jetstream.mjs          # inventory, after schema migration
+node scripts/prune-jetstream.mjs --apply  # remove unrelated accounts and legacy IDs
+```
+
+Legacy event IDs are opaque hashes without recoverable actor/lexicon metadata.
+The cleanup removes that old replay-only ledger while preserving module and like
+state, cache records, per-record event timestamps and all source checkpoints.
+Timestamp-ordered mutations remain idempotent when historical events replay.
 
 Multiple connections improve availability; events outside the upstream replay
 retention window still require a separate backfill.
