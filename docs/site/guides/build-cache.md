@@ -294,11 +294,17 @@ extra-trusted-public-keys = my-cache-1:YOUR_NIX_PUBLIC_KEY
 nix-store --generate-binary-cache-key my-cache-1 nix-private.pem nix-public.pem
 ```
 
-With public reads and an S3 backend, Nix metadata and binary reads receive a
-307 redirect to the configured CDN. The redirect includes the storage prefix
-and account namespace; Nix downloads directly from the CDN. Discovery
-(`nix-cache-info`) stays on the service and uploads still require a token.
-Private reads stay on the authenticated proxy path.
+With public reads and an S3 backend, HTTP artifact GET/HEAD requests receive a
+307 redirect to the configured CDN. This covers Nix, generic archives, sccache,
+Gradle, Maven, Go, Bazel HTTP, Nx/Turbo payloads and OCI blobs. The redirect
+includes the storage prefix, DID namespace and an object-version query to avoid
+stale CDN misses. Generic restore follows HTTPS redirects without forwarding its
+upload token to the CDN.
+
+Discovery (`nix-cache-info`), protocol metadata and upload control responses stay
+on the service. Uploads still require a token. Private reads retain the
+authenticated proxy path. Bazel gRPC cannot follow HTTP redirects; use Bazel HTTP
+caching when downloads must go directly to the CDN.
 
 Existing hash-addressed NAR payloads are immutable. Authenticated duplicate PUTs
 return `200` without consuming the upload body. Narinfo remains replaceable so

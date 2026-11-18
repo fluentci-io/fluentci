@@ -191,12 +191,20 @@ async fn handle(
                 return Err(Failure(StatusCode::FORBIDDEN, "cache is read-only\n"));
             }
         }
-        let permit = registry
-            .app
-            .permits
-            .clone()
-            .try_acquire_owned()
-            .map_err(|_| Failure(StatusCode::SERVICE_UNAVAILABLE, "cache busy; retry later\n"))?;
+        let permit = if read && super::download::redirects(&registry.app) {
+            None
+        } else {
+            Some(
+                registry
+                    .app
+                    .permits
+                    .clone()
+                    .try_acquire_owned()
+                    .map_err(|_| {
+                        Failure(StatusCode::SERVICE_UNAVAILABLE, "cache busy; retry later\n")
+                    })?,
+            )
+        };
         tokio::time::timeout(
             Duration::from_secs(registry.app.config.timeout),
             dispatch(&registry, &account, rest, request, permit),
@@ -233,7 +241,7 @@ async fn dispatch(
     account: &str,
     rest: &str,
     request: Request,
-    permit: tokio::sync::OwnedSemaphorePermit,
+    permit: Option<tokio::sync::OwnedSemaphorePermit>,
 ) -> Result<Response> {
     if let Some((repo, tail)) = rest.rsplit_once("/blobs/uploads/") {
         repository(repo)?;

@@ -49,10 +49,13 @@ async fn run(
         if !read && app.config.read_only {
             return Err(Failure(StatusCode::FORBIDDEN, "cache is read-only\n"));
         }
-        let permit =
-            app.permits.clone().try_acquire_owned().map_err(|_| {
+        let permit = if read && super::download::redirects(&app) {
+            None
+        } else {
+            Some(app.permits.clone().try_acquire_owned().map_err(|_| {
                 Failure(StatusCode::SERVICE_UNAVAILABLE, "cache busy; retry later\n")
-            })?;
+            })?)
+        };
         tokio::time::timeout(
             Duration::from_secs(app.config.timeout),
             inner(&app, &account, protocol, &rest, request, permit),
@@ -70,7 +73,7 @@ async fn inner(
     protocol: &str,
     rest: &str,
     request: Request,
-    permit: tokio::sync::OwnedSemaphorePermit,
+    permit: Option<tokio::sync::OwnedSemaphorePermit>,
 ) -> Result<Response> {
     let method = request.method().clone();
     let rest = if protocol == "turbo" {

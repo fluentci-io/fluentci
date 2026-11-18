@@ -84,6 +84,10 @@ before narinfo with 16 workers, retries transient errors and drains uploads
 before success. No keys are generated. Temporary private key files are removed.
 Nix sandboxed derivations use this binary cache rather than remote sccache.
 
+Generic restore follows HTTPS CDN redirects and strips the upload token when
+crossing origins. Public S3-backed artifact reads go directly to the CDN;
+uploads continue through the authenticated cache service.
+
 ## Validation
 
 Builds, tests and generated-file checks run in CI. No local runtime validation

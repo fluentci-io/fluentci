@@ -3,10 +3,11 @@ use super::{
     error::{Failure, Result, backend_error},
     key::Key,
 };
+use crate::config::Backend;
 use axum::{
     body::Body,
     http::{HeaderMap, StatusCode, header},
-    response::{IntoResponse, Response},
+    response::{IntoResponse, Redirect, Response},
 };
 use futures_util::{StreamExt, stream};
 use object_store::{GetOptions, GetRange};
@@ -55,13 +56,48 @@ fn parse_range(value: &str) -> Result<GetRange> {
     Ok(GetRange::Bounded(start..end))
 }
 
+pub(super) fn redirects(app: &App) -> bool {
+    app.config.public_read && matches!(app.config.backend, Backend::S3)
+}
+
+// Check committed metadata before redirecting so cached CDN misses cannot hide new uploads.
+pub(super) async fn cdn_redirect(app: &App, key: &Key) -> Result<Response> {
+    let mut url = reqwest::Url::parse(app.config.cdn_url.as_deref().expect("validated S3 CDN URL"))
+        .expect("validated S3 CDN URL");
+    {
+        let mut segments = url.path_segments_mut().expect("validated HTTP CDN URL");
+        segments.pop_if_empty();
+        segments.extend(app.config.prefix.split('/').filter(|part| !part.is_empty()));
+        segments.extend(key.path.as_ref().split('/'));
+    }
+    let meta = match app.catalog.lookup(&key.path) {
+        Some(meta) => meta,
+        None => tokio::time::timeout(Duration::from_secs(10), app.store.head(&key.path))
+            .await
+            .map_err(|_| Failure(StatusCode::GATEWAY_TIMEOUT, "cache lookup timed out\n"))?
+            .map_err(backend_error)?,
+    };
+    let version = meta
+        .e_tag
+        .unwrap_or_else(|| meta.last_modified.to_rfc3339());
+    url.query_pairs_mut().append_pair("v", &version);
+    let mut response = Redirect::temporary(url.as_str()).into_response();
+    response
+        .headers_mut()
+        .insert(header::CACHE_CONTROL, "no-store".parse().unwrap());
+    Ok(response)
+}
+
 pub(super) async fn download(
     app: &App,
     key: Key,
     headers: &HeaderMap,
     head: bool,
-    permit: OwnedSemaphorePermit,
+    permit: Option<OwnedSemaphorePermit>,
 ) -> Result<Response> {
+    if redirects(app) {
+        return cdn_redirect(app, &key).await;
+    }
     let range = if head {
         None
     } else {

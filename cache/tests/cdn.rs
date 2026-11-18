@@ -239,35 +239,33 @@ async fn account_reads_are_public_through_configured_cdn() {
             .status(),
         StatusCode::CREATED
     );
+    writes
+        .put(
+            &Path::from(key.trim_start_matches('/')),
+            "public artifact".into(),
+        )
+        .await
+        .unwrap();
     let response = app
         .oneshot(Request::builder().uri(&key).body(Body::empty()).unwrap())
         .await
         .unwrap();
-    assert_eq!(response.status(), StatusCode::OK);
-    assert_eq!(
-        to_bytes(response.into_body(), 1024).await.unwrap(),
-        "public artifact"
-    );
+    assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
+    let location = response.headers()[header::LOCATION].to_str().unwrap();
+    assert!(location.contains(&format!("/bucket/team/cache{key}?v=")));
     assert!(
-        writes
-            .head(&Path::from(key.trim_start_matches('/')))
+        to_bytes(response.into_body(), 1024)
             .await
-            .is_err()
-    );
-    assert!(
-        cdn.requests
-            .lock()
             .unwrap()
-            .iter()
-            .all(|(_, path, auth)| path == &format!("/bucket/team/cache{key}") && !auth)
+            .is_empty()
     );
+    assert!(cdn.requests.lock().unwrap().is_empty());
     server.abort();
 }
 
 #[tokio::test]
-async fn public_nix_reads_redirect_without_waiting_for_saturated_transfer_slots() {
+async fn public_http_reads_redirect_without_proxying_artifacts() {
     let (app, writes, cdn, server) = fixture(true).await;
-    // Keep the sole transfer permit until this response is dropped.
     let held = app
         .clone()
         .oneshot(request("GET", "/generic/key", Body::empty()))
@@ -280,6 +278,13 @@ async fn public_nix_reads_redirect_without_waiting_for_saturated_transfer_slots(
         "/nar/payload.nar.xz".to_owned(),
         format!("/accounts/{account}/nix/hash.narinfo"),
         format!("/accounts/{account}/nix/nar/payload.nar.xz"),
+        format!("/accounts/{account}/generic/rust-bsd/openbsd/target"),
+        format!("/accounts/{account}/gradle/key"),
+        format!("/accounts/{account}/sccache/fluentci/.sccache_check"),
+        format!("/accounts/{account}/maven/org/example/artifact.jar"),
+        format!("/accounts/{account}/gocache/key"),
+        format!("/accounts/{account}/bazel/cas/{}", "a".repeat(64)),
+        format!("/accounts/{account}/bazel/ac/{}", "b".repeat(64)),
     ] {
         let canonical = if path.starts_with("/accounts/") || path.starts_with("/nix/") {
             path.clone()
@@ -337,7 +342,7 @@ async fn public_nix_reads_redirect_without_waiting_for_saturated_transfer_slots(
                 .starts_with(b"StoreDir:")
         );
     }
-    assert_eq!(cdn.requests.lock().unwrap().len(), 1);
+    assert!(cdn.requests.lock().unwrap().is_empty());
     assert_eq!(
         app.clone()
             .oneshot(request("GET", "/nix/absent.narinfo", Body::empty()))
@@ -440,7 +445,49 @@ async fn did_aliases_use_did_cdn_targets_without_consuming_transfer_slots() {
             );
         }
     }
-    assert_eq!(cdn.requests.lock().unwrap().len(), 1);
+    assert!(cdn.requests.lock().unwrap().is_empty());
     drop(held);
+    server.abort();
+}
+
+#[tokio::test]
+async fn public_oci_blob_reads_redirect_without_proxying_the_body() {
+    let (app, writes, cdn, server) = fixture(true).await;
+    let account = "did:plc:aaaaaaaaaaaaaaaaaaaaaaaa";
+    let hash = "a".repeat(64);
+    let object = format!("accounts/{account}/oci/build/blobs/sha256/{hash}");
+    writes
+        .put(&Path::parse(&object).unwrap(), "blob".into())
+        .await
+        .unwrap();
+    for method in ["GET", "HEAD"] {
+        let response = app
+            .clone()
+            .oneshot(request(
+                method,
+                &format!("/v2/accounts/did-plc-aaaaaaaaaaaaaaaaaaaaaaaa/build/blobs/sha256:{hash}"),
+                Body::empty(),
+            ))
+            .await
+            .unwrap();
+        assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
+        assert!(
+            response.headers()[header::LOCATION]
+                .to_str()
+                .unwrap()
+                .contains(&format!("/{object}?v="))
+        );
+        assert_eq!(
+            response.headers()["docker-content-digest"],
+            format!("sha256:{hash}")
+        );
+        assert!(
+            to_bytes(response.into_body(), 1024)
+                .await
+                .unwrap()
+                .is_empty()
+        );
+    }
+    assert!(cdn.requests.lock().unwrap().is_empty());
     server.abort();
 }

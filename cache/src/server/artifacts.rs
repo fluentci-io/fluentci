@@ -100,7 +100,7 @@ pub(super) async fn get(
     hash: &str,
     headers: &HeaderMap,
     head: bool,
-    permit: OwnedSemaphorePermit,
+    permit: Option<OwnedSemaphorePermit>,
 ) -> Result<Response> {
     let artifact = metadata(app, account, protocol, hash).await?;
     let key = Key {

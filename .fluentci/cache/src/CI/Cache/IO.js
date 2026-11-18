@@ -137,11 +137,30 @@ export const pack = (path) => (format) => () =>
   })();
 export const download = (url) => (token) => () =>
   (async () => {
-    const response = await fetch(url, {
-      headers: { Authorization: `Bearer ${token}` },
-      redirect: "error",
-      signal: AbortSignal.timeout(125 * 60 * 1000),
-    });
+    const signal = AbortSignal.timeout(125 * 60 * 1000);
+    let current = new URL(url);
+    let headers = { Authorization: `Bearer ${token}` };
+    let response;
+    for (let redirects = 0; ; redirects++) {
+      response = await fetch(current.href, {
+        headers,
+        redirect: "manual",
+        signal,
+      });
+      if (![301, 302, 303, 307, 308].includes(response.status)) break;
+      const location = response.headers.get("location");
+      await response.body?.cancel();
+      if (!location || redirects >= 5)
+        throw Error("Invalid cache download redirect or too many redirects");
+      const next = new URL(location, current);
+      if (next.protocol !== "https:" || next.username || next.password)
+        throw Error(
+          "Cache download redirects must use HTTPS without credentials",
+        );
+      // Public CDN reads must never receive the account's upload token.
+      if (next.origin !== current.origin) headers = {};
+      current = next;
+    }
     if (!response.ok) {
       await response.body?.cancel();
       return { status: response.status, directory: "", file: "" };

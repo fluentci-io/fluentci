@@ -61,7 +61,10 @@ test("generic cache streams files and directories with zstd, gzip and no compres
   const objects = new Map();
   globalThis.fetch = async (url, options = {}) => {
     assert.equal(options.headers.Authorization, "Bearer fixture-token");
-    assert.equal(options.redirect, "error");
+    assert.equal(
+      options.redirect,
+      options.method === "PUT" ? "error" : "manual",
+    );
     if (options.method === "PUT") {
       const chunks = [];
       for await (const part of options.body) chunks.push(part);
@@ -216,4 +219,57 @@ test("handle and legacy URL inputs generate owner DID URLs", async (t) => {
     IO.registryAccount("did:web:example.com"),
     "did-web-" + Buffer.from("example.com").toString("hex"),
   );
+});
+
+test("generic restore follows CDN redirects without forwarding upload tokens", async (t) => {
+  const previous = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async (url, options) => {
+    calls.push({ url, options });
+    assert.equal(options.redirect, "manual");
+    if (calls.length === 1)
+      return new Response(null, {
+        status: 307,
+        headers: { location: "https://cache-cdn.fluentci.io/object?v=1" },
+      });
+    assert.equal(options.headers.Authorization, undefined);
+    return new Response("payload");
+  };
+  t.after(() => {
+    globalThis.fetch = previous;
+  });
+  const result = await IO.download(env.FLUENTCI_CACHE_URL + "/generic/key")(
+    "fixture-token",
+  )();
+  t.after(() => rm(result.directory, { recursive: true, force: true }));
+  assert.equal(calls[0].options.headers.Authorization, "Bearer fixture-token");
+  assert.equal(calls[1].url, "https://cache-cdn.fluentci.io/object?v=1");
+  assert.equal(await readFile(result.file, "utf8"), "payload");
+});
+test("generic restore rejects unsafe redirects and bounds redirect loops", async (t) => {
+  const previous = globalThis.fetch;
+  t.after(() => {
+    globalThis.fetch = previous;
+  });
+  for (const location of [
+    "http://cdn.example/key",
+    "https://user:password@cdn.example/key",
+  ]) {
+    globalThis.fetch = async () =>
+      new Response(null, { status: 307, headers: { location } });
+    await assert.rejects(
+      IO.download(env.FLUENTCI_CACHE_URL + "/generic/key")("fixture-token")(),
+      /HTTPS without credentials/,
+    );
+  }
+  let requests = 0;
+  globalThis.fetch = async () => {
+    requests++;
+    return new Response(null, { status: 307, headers: { location: "/loop" } });
+  };
+  await assert.rejects(
+    IO.download(env.FLUENTCI_CACHE_URL + "/generic/key")("fixture-token")(),
+    /too many redirects/,
+  );
+  assert.equal(requests, 6);
 });
