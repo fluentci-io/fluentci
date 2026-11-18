@@ -32,6 +32,8 @@ pub const cache_list_keys = "io.fluentci.cache.listKeys"
 
 pub const cache_list_tokens = "io.fluentci.cache.listTokens"
 
+pub const cache_resolve_account = "io.fluentci.cache.resolveAccount"
+
 pub const cache_revoke_credential = "io.fluentci.cache.revokeCredential"
 
 pub const cache_revoke_token = "io.fluentci.cache.revokeToken"
@@ -159,6 +161,7 @@ pub type CacheCreateTokenOutput {
     token: String,
     expires_at: Option(String),
     cache_url: String,
+    canonical_cache_url: Option(String),
     owner: String,
   )
 }
@@ -176,6 +179,11 @@ pub fn encode_cache_create_token_output(
     list.append(fields, case value.expires_at {
       None -> []
       Some(item) -> [#("expiresAt", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.canonical_cache_url {
+      None -> []
+      Some(item) -> [#("canonicalCacheUrl", json.string(item))]
     })
   json.object(fields)
 }
@@ -305,6 +313,7 @@ pub type CacheExchangeCredentialOutput {
     token: String,
     expires_at: Option(String),
     cache_url: String,
+    canonical_cache_url: Option(String),
     owner: String,
   )
 }
@@ -322,6 +331,11 @@ pub fn encode_cache_exchange_credential_output(
     list.append(fields, case value.expires_at {
       None -> []
       Some(item) -> [#("expiresAt", json.string(item))]
+    })
+  let fields =
+    list.append(fields, case value.canonical_cache_url {
+      None -> []
+      Some(item) -> [#("canonicalCacheUrl", json.string(item))]
     })
   json.object(fields)
 }
@@ -536,6 +550,33 @@ pub fn encode_cache_list_tokens_output(
       None -> []
       Some(item) -> [#("cursor", json.string(item))]
     })
+  json.object(fields)
+}
+
+pub type CacheResolveAccountParameters {
+  CacheResolveAccountParameters(actor: String)
+}
+
+pub fn encode_cache_resolve_account_parameters(
+  value: CacheResolveAccountParameters,
+) -> json.Json {
+  let fields = [#("actor", json.string(value.actor))]
+
+  json.object(fields)
+}
+
+pub type CacheResolveAccountOutput {
+  CacheResolveAccountOutput(owner: String, cache_id: String)
+}
+
+pub fn encode_cache_resolve_account_output(
+  value: CacheResolveAccountOutput,
+) -> json.Json {
+  let fields = [
+    #("owner", json.string(value.owner)),
+    #("cacheId", json.string(value.cache_id)),
+  ]
+
   json.object(fields)
 }
 

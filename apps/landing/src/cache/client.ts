@@ -7,6 +7,7 @@ export type UploadToken = {
   id: string;
   token: string;
   cacheUrl: string;
+  canonicalCacheUrl?: string;
   expiresAt?: string;
   owner: string;
 };

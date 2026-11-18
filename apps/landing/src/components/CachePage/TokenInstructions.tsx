@@ -27,9 +27,15 @@ function Snippet({ title, code }: { title: string; code: string }) {
     </div>
   );
 }
-export function TokenInstructions({ cacheUrl }: { cacheUrl: string }) {
+export function TokenInstructions({
+  cacheUrl,
+  canonicalCacheUrl,
+}: {
+  cacheUrl: string;
+  canonicalCacheUrl?: string;
+}) {
   const [client, setClient] = useState("bazel");
-  const choices = cacheInstructions(cacheUrl);
+  const choices = cacheInstructions(cacheUrl, canonicalCacheUrl);
   const selected = choices.find((item) => item.id === client)!;
   return (
     <div

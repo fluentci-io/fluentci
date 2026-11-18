@@ -13,6 +13,7 @@ export const ids = {
   cache_list_credentials: 'io.fluentci.cache.listCredentials',
   cache_list_keys: 'io.fluentci.cache.listKeys',
   cache_list_tokens: 'io.fluentci.cache.listTokens',
+  cache_resolve_account: 'io.fluentci.cache.resolveAccount',
   cache_revoke_credential: 'io.fluentci.cache.revokeCredential',
   cache_revoke_token: 'io.fluentci.cache.revokeToken',
   cache_revoke_user: 'io.fluentci.cache.revokeUser',
@@ -199,6 +200,10 @@ export const schemas = [
                 format: 'datetime',
               },
               cacheUrl: {
+                type: 'string',
+                format: 'uri',
+              },
+              canonicalCacheUrl: {
                 type: 'string',
                 format: 'uri',
               },
@@ -401,6 +406,10 @@ export const schemas = [
                 format: 'datetime',
               },
               cacheUrl: {
+                type: 'string',
+                format: 'uri',
+              },
+              canonicalCacheUrl: {
                 type: 'string',
                 format: 'uri',
               },
@@ -730,6 +739,51 @@ export const schemas = [
           },
           {
             name: 'InvalidRequest',
+          },
+        ],
+      },
+    },
+  },
+  {
+    lexicon: 1,
+    id: 'io.fluentci.cache.resolveAccount',
+    description:
+      "Resolve a cache owner's DID or verified handle to the existing storage namespace. Public; does not grant upload access.",
+    defs: {
+      main: {
+        type: 'query',
+        parameters: {
+          type: 'params',
+          required: ['actor'],
+          properties: {
+            actor: {
+              type: 'string',
+              maxLength: 2048,
+              format: 'at-identifier',
+            },
+          },
+        },
+        output: {
+          encoding: 'application/json',
+          schema: {
+            type: 'object',
+            required: ['owner', 'cacheId'],
+            properties: {
+              owner: {
+                type: 'string',
+                format: 'did',
+              },
+              cacheId: {
+                type: 'string',
+                minLength: 64,
+                maxLength: 64,
+              },
+            },
+          },
+        },
+        errors: [
+          {
+            name: 'AccountNotFound',
           },
         ],
       },

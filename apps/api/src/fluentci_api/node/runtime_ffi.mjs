@@ -32,7 +32,8 @@ export function method(server, nsid, handler) {
   const config = { handler: async (request) => handler(request) };
   if (
     nsid === PUBLISH ||
-    (nsid.startsWith('io.fluentci.cache.') && nsid !== 'io.fluentci.cache.exchangeCredential')
+    (nsid.startsWith('io.fluentci.cache.') &&
+      !['io.fluentci.cache.exchangeCredential', 'io.fluentci.cache.resolveAccount'].includes(nsid))
   )
     config.auth = async ({ req }) => {
       const token = /^Bearer ([^ ]+)$/i.exec(req.headers.authorization ?? '')?.[1];
@@ -88,6 +89,18 @@ export async function resolveActor(server, actor) {
   const did = await (server.options.resolveActor ?? resolveAuthor)(actor);
   if (typeof did !== 'string' || !did.startsWith('did:'))
     throw new InvalidRequestError('Actor handle could not be resolved');
+  return did;
+}
+
+export async function resolveCacheOwner(server, actor) {
+  if (actor.startsWith('did:')) return resolveActor(server, actor);
+  const handle = actor.toLowerCase();
+  const did = await resolveActor(server, handle);
+  const data = await (
+    server.options.resolveIdentity ?? ((owner) => identity.did.resolveAtprotoData(owner, true))
+  )(did);
+  if (data.handle?.toLowerCase() !== handle)
+    throw new InvalidRequestError('Handle does not match the DID document');
   return did;
 }
 export async function upload(server, request) {

@@ -12,10 +12,25 @@ export function cacheEnvironment(cacheUrl: string) {
 export FLUENTCI_CACHE_TOKEN='PASTE_UPLOAD_TOKEN'`;
 }
 
-export function cacheInstructions(cacheUrl: string): CacheInstructions[] {
+export function cacheUrls(cacheUrl: string, owner: string, handle?: string) {
+  const url = new URL(cacheUrl);
+  const base =
+    url.origin +
+    url.pathname.replace(/\/(?:accounts\/[^/]+|did:[^/]+|@[^/]+)\/?$/, "");
+  return {
+    did: `${base}/${encodeURIComponent(owner).replace(/%3A/g, ":")}`,
+    handle: handle ? `${base}/@${handle.toLowerCase()}` : undefined,
+  };
+}
+
+export function cacheInstructions(
+  cacheUrl: string,
+  canonicalCacheUrl = cacheUrl,
+): CacheInstructions[] {
   const base = cacheUrl.replace(/\/$/, "");
   const host = new URL(base).host;
-  const account = base.split("/accounts/")[1]?.split("/")[0] ?? "OWNER_HASH";
+  const account =
+    canonicalCacheUrl.split("/accounts/")[1]?.split("/")[0] ?? "OWNER_HASH";
   return [
     {
       id: "bazel",

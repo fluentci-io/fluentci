@@ -9,6 +9,7 @@ use axum::{
 use clap::Parser;
 use fluentci_cache::{Config, config::Backend, router};
 use object_store::{ObjectStore, memory::InMemory, path::Path};
+use sha2::{Digest, Sha256};
 use std::sync::{Arc, Mutex};
 use tower::ServiceExt;
 
@@ -355,5 +356,63 @@ async fn private_nix_reads_never_redirect_to_public_cdn() {
         .unwrap();
     assert_eq!(response.status(), StatusCode::NOT_FOUND);
     assert!(!response.headers().contains_key(header::LOCATION));
+    server.abort();
+}
+
+#[tokio::test]
+async fn did_aliases_preserve_legacy_cdn_targets_without_consuming_transfer_slots() {
+    let (app, _, cdn, server) = fixture(true).await;
+    let held = app
+        .clone()
+        .oneshot(request("GET", "/generic/key", Body::empty()))
+        .await
+        .unwrap();
+    for (owner, segment) in [
+        (
+            "did:plc:abcdefghijklmnopqrstuvwx",
+            "did:plc:abcdefghijklmnopqrstuvwx",
+        ),
+        ("did:web:example.com%3A8443", "did:web:example.com%253A8443"),
+    ] {
+        let hash = hex::encode(Sha256::digest(owner.as_bytes()));
+        let mut location = None;
+        for base in [format!("/{segment}"), format!("/accounts/{hash}")] {
+            let response = app
+                .clone()
+                .oneshot(request(
+                    "GET",
+                    &format!("{base}/nix/test.narinfo"),
+                    Body::empty(),
+                ))
+                .await
+                .unwrap();
+            assert_eq!(response.status(), StatusCode::TEMPORARY_REDIRECT);
+            let target = response.headers()[header::LOCATION].clone();
+            assert!(
+                target
+                    .to_str()
+                    .unwrap()
+                    .ends_with(&format!("/accounts/{hash}/nix/test.narinfo"))
+            );
+            if let Some(previous) = location {
+                assert_eq!(target, previous);
+            }
+            location = Some(target);
+            assert_eq!(
+                app.clone()
+                    .oneshot(request(
+                        "GET",
+                        &format!("{base}/nix/nix-cache-info"),
+                        Body::empty()
+                    ))
+                    .await
+                    .unwrap()
+                    .status(),
+                StatusCode::OK
+            );
+        }
+    }
+    assert_eq!(cdn.requests.lock().unwrap().len(), 1);
+    drop(held);
     server.abort();
 }

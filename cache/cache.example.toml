@@ -25,3 +25,6 @@ nix_priority = 40
 # Optional API-issued account upload tokens (Ed25519 public key; never the private key).
 # upload_token_public_key_file = "/etc/fluentci/cache-upload-public.pem"
 # upload_token_issuer = "did:web:api.fluentci.io"
+
+# Verified handle aliases; DID and legacy hash URLs do not need a lookup.
+# identity_resolver_url = "https://api.fluentci.io/xrpc/io.fluentci.cache.resolveAccount"

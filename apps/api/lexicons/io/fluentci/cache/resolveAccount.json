@@ -1,0 +1,49 @@
+{
+  "lexicon": 1,
+  "id": "io.fluentci.cache.resolveAccount",
+  "description": "Resolve a cache owner's DID or verified handle to the existing storage namespace. Public; does not grant upload access.",
+  "defs": {
+    "main": {
+      "type": "query",
+      "parameters": {
+        "type": "params",
+        "required": [
+          "actor"
+        ],
+        "properties": {
+          "actor": {
+            "type": "string",
+            "maxLength": 2048,
+            "format": "at-identifier"
+          }
+        }
+      },
+      "output": {
+        "encoding": "application/json",
+        "schema": {
+          "type": "object",
+          "required": [
+            "owner",
+            "cacheId"
+          ],
+          "properties": {
+            "owner": {
+              "type": "string",
+              "format": "did"
+            },
+            "cacheId": {
+              "type": "string",
+              "minLength": 64,
+              "maxLength": 64
+            }
+          }
+        }
+      },
+      "errors": [
+        {
+          "name": "AccountNotFound"
+        }
+      ]
+    }
+  }
+}

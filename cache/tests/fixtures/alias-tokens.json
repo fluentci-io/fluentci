@@ -1,0 +1,6 @@
+{
+  "owner": "did:plc:abcdefghijklmnopqrstuvwx",
+  "cache": "e253131024780eb99e0d600853180dac35fb53716d2f2bebf95ffe5634ae2db9",
+  "publicKey": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAIdmlG38FK0SL5Z2xCxn/Vo0yKrh4kSb74bPnRk8woOA=\n-----END PUBLIC KEY-----\n",
+  "token": "eyJhbGciOiJFZERTQSIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJkaWQ6d2ViOmFwaS5mbHVlbnRjaS5pbyIsImF1ZCI6ImZsdWVudGNpLWNhY2hlIiwic3ViIjoiZGlkOnBsYzphYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3giLCJjYWNoZSI6ImUyNTMxMzEwMjQ3ODBlYjk5ZTBkNjAwODUzMTgwZGFjMzVmYjUzNzE2ZDJmMmJlYmY5NWZmZTU2MzRhZTJkYjkiLCJzY29wZSI6ImNhY2hlOnVwbG9hZCIsIm5iZiI6MSwiZXhwIjo0MTAyNDQ0ODAwfQ.fsPj_aog5CBrx_lwG3BNmiLlS8M07M8Ki35LTcSK2CDRdad3J-bNeZ3BufSRnx_NJHXIwBkuEdlxXQVSUuXzDQ"
+}

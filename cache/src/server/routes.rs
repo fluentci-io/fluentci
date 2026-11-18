@@ -8,8 +8,9 @@ use super::{
 };
 use crate::config::Backend;
 use axum::{
+    Json,
     body::Body,
-    extract::{Path as UrlPath, Request, State},
+    extract::{FromRequest, Path as UrlPath, Request, State},
     http::{Method, StatusCode, header},
     response::{IntoResponse, Redirect, Response},
 };
@@ -23,6 +24,41 @@ pub(super) async fn handle(
     UrlPath(raw): UrlPath<String>,
     request: Request,
 ) -> Response {
+    let raw = match app.aliases.canonical(&raw).await {
+        Ok(Some(canonical)) => canonical,
+        Ok(None) => raw,
+        Err(error) => return error.into_response(),
+    };
+    // Short aliases must dispatch to the same protocol handlers as hash URLs.
+    if let Some(scoped) = raw.strip_prefix("accounts/")
+        && let Some((account, rest)) = scoped.split_once('/')
+    {
+        if rest == "_admin" && request.method() == Method::POST {
+            let headers = request.headers().clone();
+            let input = match Json::<super::manage::Input>::from_request(request, &()).await {
+                Ok(input) => input,
+                Err(error) => return error.into_response(),
+            };
+            return super::manage::handle(State(app), UrlPath(account.to_owned()), headers, input)
+                .await;
+        }
+        if let Some(rest) = rest.strip_prefix("turbo/") {
+            return super::monorepo::turbo(
+                State(app),
+                UrlPath((account.to_owned(), rest.to_owned())),
+                request,
+            )
+            .await;
+        }
+        if let Some(hash) = rest.strip_prefix("nx/v1/cache/") {
+            return super::monorepo::nx(
+                State(app),
+                UrlPath((account.to_owned(), hash.to_owned())),
+                request,
+            )
+            .await;
+        }
+    }
     app.metrics.requests.fetch_add(1, Ordering::Relaxed);
     let result = handle_inner(&app, &raw, request).await;
     if let Err(error) = &result {

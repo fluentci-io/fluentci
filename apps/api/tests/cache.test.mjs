@@ -27,6 +27,7 @@ async function fixture(t, invalid = false, options = {}) {
   writeFileSync(keyFile, privateKey.export({ type: 'pkcs8', format: 'pem' }));
   const instance = runtime.create(connection, {
     resolveSigningKey: async () => keypair.did(),
+    resolveIdentity: async () => ({ handle: 'owner.test' }),
     resolveActor: async (actor) => (actor === 'owner.test' ? did : actor),
     cachePublicUrl: invalid ? 'http://cache.example' : 'https://cache.example',
     cacheTokenPrivateKeyFile: keyFile,
@@ -68,7 +69,11 @@ async function fixture(t, invalid = false, options = {}) {
       },
       body: '{}',
     });
-  return { call, connection, publicKey, exchange };
+  const resolve = (actor) =>
+    fetch(
+      `http://127.0.0.1:${http.address().port}/xrpc/io.fluentci.cache.resolveAccount?actor=${encodeURIComponent(actor)}`,
+    );
+  return { call, connection, publicKey, exchange, resolve };
 }
 
 test('account cache tokens require method-scoped auth, owner grants and respect revocation', async (t) => {
@@ -87,7 +92,8 @@ test('account cache tokens require method-scoped auth, owner grants and respect 
   const own = await response.json();
   const hash = createHash('sha256').update(did).digest('hex');
   assert.equal(own.owner, did);
-  assert.equal(own.cacheUrl, `https://cache.example/accounts/${hash}`);
+  assert.equal(own.cacheUrl, `https://cache.example/${did}`);
+  assert.equal(own.canonicalCacheUrl, `https://cache.example/accounts/${hash}`);
   const [header, payload, signature] = own.token.split('.');
   assert.equal(
     verify(
@@ -416,4 +422,21 @@ test('persistent-token migration preserves legacy expiry and accepts new tokens 
     result.body.tokens.find((row) => row.id === 'persistent-token').expiresAt,
     undefined,
   );
+});
+
+test('public cache identity resolution verifies handles against DID documents', async (t) => {
+  const { resolve } = await fixture(t);
+  for (const actor of [did, 'owner.test']) {
+    const response = await resolve(actor);
+    assert.equal(response.status, 200);
+    assert.deepEqual(await response.json(), {
+      owner: did,
+      cacheId: createHash('sha256').update(did).digest('hex'),
+    });
+  }
+  assert.equal((await resolve('missing.test')).status, 404);
+  const mismatched = await fixture(t, false, {
+    resolveIdentity: async () => ({ handle: 'changed.test' }),
+  });
+  assert.equal((await mismatched.resolve('owner.test')).status, 404);
 });

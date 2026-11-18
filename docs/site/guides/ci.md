@@ -98,10 +98,10 @@ macOS. It compiles the PureScript Nix component to Wasm before running builds.
 
 Add these GitHub Actions repository **variables**:
 
-| Variable                  | Value                                                                                                   |
-| ------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `FLUENTCI_CACHE_URL`      | Account base URL from the cache page: `https://cache.fluentci.io/accounts/<owner-hash>`, without `/nix` |
-| `FLUENTCI_NIX_PUBLIC_KEY` | Complete public key, such as `fluentci-1:<base64>`                                                      |
+| Variable                  | Value                                                                                                                               |
+| ------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `FLUENTCI_CACHE_URL`      | Stable DID URL from the cache page: `https://cache.fluentci.io/did:plc:YOUR_DID`, without `/nix`; legacy hash URLs remain supported |
+| `FLUENTCI_NIX_PUBLIC_KEY` | Complete public key, such as `fluentci-1:<base64>`                                                                                  |
 
 Add these repository **secrets**:
 

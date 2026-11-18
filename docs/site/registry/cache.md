@@ -27,7 +27,7 @@ Configure your cache client with the returned URL and a bearer token or a
 Basic-auth password. For the Go helper:
 
 ```sh
-export FLUENTCI_CACHE_URL='https://cache.example/accounts/OWNER_HASH'
+export FLUENTCI_CACHE_URL='https://cache.example/did:plc:YOUR_DID'
 export FLUENTCI_CACHE_TOKEN='UPLOAD_TOKEN'
 export GOCACHEPROG='fluentci-cache gocache'
 go build ./...
@@ -132,7 +132,7 @@ All methods are JSON POST requests under
 | `revokeToken`        | Owner's method-bound PDS service JWT | `{ "id": "TOKEN_UUID" }`                |
 | `exchangeCredential` | CI credential in the bearer header   | `{}`                                    |
 
-`createToken` and `exchangeCredential` return `id`, `token`, `cacheUrl`, and
+`createToken` and `exchangeCredential` return `id`, `token`, `cacheUrl`, `canonicalCacheUrl`, and
 `owner`. New upload tokens omit `expiresAt`; legacy records may include it. Secret-bearing responses use `Cache-Control: no-store`. Credential lists
 return metadata only, with up to the latest 100 entries. A user may create CI
 credentials for their own cache; an invitation alone does not grant management
@@ -177,3 +177,15 @@ snapshot job keeps registered owners updated between visits; see
 [cache deployment](/development/build-cache/#usage-history).
 These measurements come from object metadata and include stored cache objects.
 They do not count direct CDN reads, request traffic, or edge cache hits.
+
+New `cacheUrl` values use the owner's stable DID, such as
+`https://cache.fluentci.io/did:plc:YOUR_DID`. Handle aliases use
+`https://cache.fluentci.io/@your.handle`. Existing `/accounts/<owner-hash>` URLs
+still access the same cache with the same tokens. `canonicalCacheUrl` exposes
+that hash namespace for gRPC instance names, Turborepo team identifiers, and
+OCI repository names.
+
+The public GET query `io.fluentci.cache.resolveAccount?actor=your.handle` returns
+`owner` (DID) and `cacheId` (the existing SHA-256 namespace). Handle resolution
+verifies that the DID document claims the handle. It grants no upload rights;
+all token issuance and ownership checks remain authenticated.

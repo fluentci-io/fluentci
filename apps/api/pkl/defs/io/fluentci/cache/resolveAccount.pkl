@@ -1,0 +1,31 @@
+amends "../../../../schema/lexicon.pkl"
+
+id = "io.fluentci.cache.resolveAccount"
+description = "Resolve a cache owner's DID or verified handle to the existing storage namespace. Public; does not grant upload access."
+defs = new Mapping {
+  ["main"] = new Query {
+    parameters = new Parameters {
+      required = List("actor")
+      properties = new Mapping {
+        ["actor"] = new StringField {
+          format = "at-identifier"
+          maxLength = 2048
+        }
+      }
+    }
+    output = new Body {
+      encoding = "application/json"
+      schema = new ObjectField {
+        required = List("owner", "cacheId")
+        properties = new Mapping {
+          ["owner"] = new StringField { format = "did" }
+          ["cacheId"] = new StringField {
+            minLength = 64
+            maxLength = 64
+          }
+        }
+      }
+    }
+    errors = List(new Error { name = "AccountNotFound" })
+  }
+}

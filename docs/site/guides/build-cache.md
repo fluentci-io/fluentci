@@ -14,14 +14,30 @@ The cache page generates tokens for the signed-in account. Invited collaborators
 can request a shared-cache token through the createToken API with the owner's handle. See [cache access and CI credentials](/registry/cache/) for
 invitations, revocation, and automated CI exchanges.
 
-Set the URL exactly as returned, including the account namespace. Replace
-`OWNER_HASH` in these examples with the path from your returned URL and replace
-`PASTE_UPLOAD_TOKEN` with your upload token:
+New tokens return a stable DID-based `cacheUrl`. The cache page also displays
+a readable handle alias:
+
+```text
+https://cache.fluentci.io/did:plc:YOUR_DID
+https://cache.fluentci.io/@your.handle
+```
+
+Use the DID URL for CI: changing or transferring a handle does not change the DID.
+Handle aliases are verified against the DID document and cached for up to 60
+seconds. Existing `/accounts/OWNER_HASH` URLs continue to work with the same
+artifacts and tokens; no migration or token replacement is required.
+
+Copy your stable URL from the cache page:
 
 ```sh
-export FLUENTCI_CACHE_URL='https://cache.fluentci.io/accounts/OWNER_HASH'
+export FLUENTCI_CACHE_URL='https://cache.fluentci.io/did:plc:YOUR_DID'
 export FLUENTCI_CACHE_TOKEN='PASTE_UPLOAD_TOKEN'
 ```
+
+The API also returns `canonicalCacheUrl` with the existing hash namespace. Use
+its `OWNER_HASH` for Bazel gRPC instance names, Turborepo team identifiers, and
+OCI/BuildKit repository names. The cache page fills these protocol identifiers
+automatically while using your DID URL for HTTP endpoints.
 
 Use HTTPS. Keep upload tokens in your terminal or CI secret store and revoke them
 when no longer needed. Do not distribute the cache server's administrator token.

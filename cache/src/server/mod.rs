@@ -12,6 +12,7 @@ use object_store::ObjectStore;
 use std::sync::Arc;
 use tokio::sync::Semaphore;
 
+mod aliases;
 mod artifacts;
 mod auth;
 mod download;
@@ -27,6 +28,7 @@ mod staging;
 mod upload;
 
 struct App {
+    aliases: aliases::Aliases,
     config: Config,
     upload_key: Option<jsonwebtoken::DecodingKey>,
     staging: Arc<staging::Budget>,
@@ -49,6 +51,7 @@ pub fn router(config: Config, store: Arc<dyn ObjectStore>) -> anyhow::Result<Rou
         })
         .transpose()?;
     let app = Arc::new(App {
+        aliases: aliases::Aliases::new(&config.identity_resolver_url)?,
         upload_key,
         staging: staging::Budget::new(config.staging_limit, config.staging_directory.clone())?,
         permits: Arc::new(Semaphore::new(config.concurrency)),

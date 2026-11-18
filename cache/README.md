@@ -4,6 +4,28 @@ A standalone Rust build-cache server built on Tokio, Axum, and `object_store`. O
 
 Writes require a token. Reads are public by default and can be made private at the server. S3 deployments require a public CDN base URL for object reads. Configuration comes from TOML, environment variables, or CLI flags.
 
+## Account URLs
+
+Use `https://cache.fluentci.io/did:plc:YOUR_DID` as a stable account base URL,
+or `https://cache.fluentci.io/@your.handle` as a readable alias. HTTP endpoints
+append their protocol path, such as `/nix`, `/bazel`, `/gradle`, or `/turbo`.
+Both aliases resolve to the existing `accounts/SHA256(owner-DID)` namespace.
+Existing `/accounts/<owner-hash>` URLs, artifacts, and upload tokens keep working.
+No storage migration is required.
+
+DID URLs resolve locally; handles are verified through the public
+`io.fluentci.cache.resolveAccount` query and cached for 60 seconds. Writes remain
+scoped to the DID owner's hash and require the same upload token. Use DID URLs
+in CI because a handle can change ownership. OCI repository names and gRPC
+instance names retain the hash identifier; token responses expose it through
+`canonicalCacheUrl` and the cache page fills it into the relevant examples.
+
+The resolver defaults to
+`https://api.fluentci.io/xrpc/io.fluentci.cache.resolveAccount`; configure
+`FLUENTCI_CACHE_IDENTITY_RESOLVER_URL` (TOML `identity_resolver_url`) when hosting
+your own API. It must be a trusted HTTPS endpoint, without credentials or query
+parameters. Local HTTP fixtures additionally require `allow_http = true`.
+
 ## Quick start
 
 From the repository root:

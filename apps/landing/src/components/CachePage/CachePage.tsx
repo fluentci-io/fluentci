@@ -21,6 +21,7 @@ import { UserIcon } from "../UserIcon";
 import { SearchIcon } from "../SearchIcon";
 import { UploadTokenList } from "./UploadTokenList";
 import { CachePageSkeleton, CacheTableSkeleton } from "./CacheSkeleton";
+import { cacheUrls } from "../../cache/instructions";
 
 const field =
   "mt-2 w-full rounded-lg border border-line bg-paper px-4 py-3 text-sm outline-none focus:border-accent";
@@ -115,6 +116,13 @@ function CacheSettings({ account }: { account: Account }) {
     );
   const [label, setLabel] = useState("");
   const [upload, setUpload] = useState<UploadToken>();
+  const urls = upload
+    ? cacheUrls(
+        upload.cacheUrl,
+        upload.owner,
+        upload.owner === account.did ? account.profile?.handle : undefined,
+      )
+    : undefined;
   const [credential, setCredential] = useState<NewCredential>();
   const [credentials, setCredentials] = useState<Credential[]>([]);
   const [pending, setPending] = useState(false);
@@ -315,20 +323,45 @@ function CacheSettings({ account }: { account: Account }) {
                       id="cache-url"
                       readOnly
                       className={`${field} min-w-0 font-mono`}
-                      value={upload.cacheUrl}
+                      value={urls?.handle ?? urls?.did}
                     />
                     <Copy
-                      text={upload.cacheUrl}
+                      text={urls?.handle ?? urls!.did}
                       label="Copy cache URL"
                       iconOnly
                     />
                   </div>
+                  <label className="mt-5 block text-sm" htmlFor="cache-ci-url">
+                    Stable URL for CI
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      id="cache-ci-url"
+                      readOnly
+                      className={`${field} min-w-0 font-mono`}
+                      value={urls!.did}
+                    />
+                    <Copy
+                      text={urls!.did}
+                      label="Copy stable cache URL"
+                      iconOnly
+                    />
+                  </div>
+                  <p className="mt-2 text-xs leading-6 text-muted">
+                    Use the DID URL for CI. It stays the same when your handle
+                    changes.
+                  </p>
                   <p className="mt-3 text-xs leading-6 text-muted">
                     Use this URL with your cache client and send the token as a
                     bearer token or Basic-auth password. Renewing does not
                     revoke an earlier token.
                   </p>
-                  <TokenInstructions cacheUrl={upload.cacheUrl} />
+                  <TokenInstructions
+                    cacheUrl={urls!.did}
+                    canonicalCacheUrl={
+                      upload.canonicalCacheUrl ?? upload.cacheUrl
+                    }
+                  />
                 </div>
               )}
               <UploadTokenList

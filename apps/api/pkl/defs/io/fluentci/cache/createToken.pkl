@@ -22,6 +22,7 @@ defs = new Mapping {
           ["token"] = new StringField {}
           ["expiresAt"] = new StringField { format = "datetime" }
           ["cacheUrl"] = new StringField { format = "uri" }
+          ["canonicalCacheUrl"] = new StringField { format = "uri" }
           ["owner"] = new StringField { format = "did" }
         }
       }

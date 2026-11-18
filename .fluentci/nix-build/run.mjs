@@ -31,13 +31,27 @@ export function configuration(env) {
   let cache;
   if (base) {
     const url = new URL(base);
+    const segments = url.pathname.replace(/\/$/, "").split("/").slice(1);
+    let accountUrl =
+      segments.length === 2 &&
+      segments[0] === "accounts" &&
+      /^[a-f0-9]{64}$/.test(segments[1]);
+    if (segments.length === 1) {
+      const actor = decodeURIComponent(segments[0]);
+      accountUrl =
+        /^did:plc:[a-z2-7]{24}$/.test(actor) ||
+        /^did:web:[A-Za-z0-9._:%-]+$/.test(actor) ||
+        /^@(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(
+          actor,
+        );
+    }
     if (
       url.protocol !== "https:" ||
       url.username ||
       url.password ||
       url.search ||
       url.hash ||
-      !/^\/accounts\/[a-f0-9]{64}\/?$/.test(url.pathname)
+      !accountUrl
     )
       throw Error(
         "FLUENTCI_CACHE_URL must be an HTTPS account URL without /nix",

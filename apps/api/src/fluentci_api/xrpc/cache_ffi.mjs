@@ -1,7 +1,20 @@
 import { createHash, createPrivateKey, randomUUID, sign } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { XRPCError } from '@atproto/xrpc-server';
-import { resolveActor } from '../node/runtime_ffi.mjs';
+import { resolveActor, resolveCacheOwner } from '../node/runtime_ffi.mjs';
+
+export async function resolveAccount(server, request) {
+  try {
+    const owner = await resolveCacheOwner(server, request.params.actor);
+    return {
+      encoding: 'application/json',
+      body: { owner, cacheId: createHash('sha256').update(owner).digest('hex') },
+      headers: { 'Cache-Control': 'public, max-age=60' },
+    };
+  } catch {
+    throw new XRPCError(404, 'The cache account could not be resolved', 'AccountNotFound');
+  }
+}
 
 const unavailable = () =>
   new XRPCError(503, 'Configure cache URL and Ed25519 signing key', 'CacheUnavailable');
@@ -65,7 +78,8 @@ export function mintToken(server, owner, actor, scope = 'cache:upload') {
       id,
       token,
       ...(exp === undefined ? {} : { expiresAt: new Date(exp * 1000).toISOString() }),
-      cacheUrl: `${base}/accounts/${cache}`,
+      cacheUrl: `${base}/${encodeURIComponent(owner).replaceAll('%3A', ':')}`,
+      canonicalCacheUrl: `${base}/accounts/${cache}`,
       owner,
     },
     headers: { 'Cache-Control': 'no-store' },
@@ -86,13 +100,16 @@ export async function manageCache(server, request, action, record = async () => 
   const actor = request.auth.credentials.did;
   const minted = mintToken(server, actor, actor, 'cache:manage').body;
   try {
-    const response = await (server.options.cacheFetch ?? fetch)(`${minted.cacheUrl}/_admin`, {
-      method: 'POST',
-      headers: { Authorization: `Bearer ${minted.token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ ...request.input.body, action }),
-      signal: AbortSignal.timeout(305000),
-      redirect: 'error',
-    });
+    const response = await (server.options.cacheFetch ?? fetch)(
+      `${minted.canonicalCacheUrl}/_admin`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${minted.token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...request.input.body, action }),
+        signal: AbortSignal.timeout(305000),
+        redirect: 'error',
+      },
+    );
     if (!response.ok) {
       if (response.status === 400)
         throw new XRPCError(400, 'Invalid cache key or pagination', 'InvalidRequest');

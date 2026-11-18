@@ -34,6 +34,13 @@ pub struct Config {
     /// Public CDN base URL pointing to the S3 bucket root. The storage prefix is appended.
     #[arg(long, env = "FLUENTCI_CACHE_CDN_URL")]
     pub cdn_url: Option<String>,
+    /// Trusted XRPC endpoint for resolving verified handle aliases.
+    #[arg(
+        long,
+        env = "FLUENTCI_CACHE_IDENTITY_RESOLVER_URL",
+        default_value = "https://api.fluentci.io/xrpc/io.fluentci.cache.resolveAccount"
+    )]
+    pub identity_resolver_url: String,
     #[arg(long, env = "FLUENTCI_CACHE_REGION", default_value = "us-east-1")]
     pub region: String,
     #[arg(long, env = "FLUENTCI_CACHE_ALLOW_HTTP", default_value_t = false, action = clap::ArgAction::Set, num_args = 0..=1, default_missing_value = "true")]
@@ -110,6 +117,18 @@ impl Config {
     }
 
     pub fn validate(&self) -> Result<()> {
+        let resolver = reqwest::Url::parse(&self.identity_resolver_url)?;
+        if !(resolver.scheme() == "https" || self.allow_http && resolver.scheme() == "http")
+            || resolver.host_str().is_none()
+            || !resolver.username().is_empty()
+            || resolver.password().is_some()
+            || resolver.query().is_some()
+            || resolver.fragment().is_some()
+        {
+            bail!(
+                "identity_resolver_url must be a trusted HTTPS endpoint without credentials or query parameters"
+            );
+        }
         if self.concurrency == 0
             || self.timeout == 0
             || self.max_upload == 0

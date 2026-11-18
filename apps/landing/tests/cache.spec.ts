@@ -126,7 +126,9 @@ async function mock(page: Page) {
                     ? {
                         id: uploadTokens.at(-1)!.id,
                         token,
-                        cacheUrl: "https://cache.example/accounts/account",
+                        cacheUrl: `https://cache.example/${did}`,
+                        canonicalCacheUrl:
+                          "https://cache.example/accounts/account",
                         owner: did,
                       }
                     : method === "createCredential"
@@ -427,9 +429,13 @@ test("upload token instructions cover every client without exposing the token in
     name: "Token setup instructions",
     exact: true,
   });
-  await expect(instructions).toContainText(
-    "https://cache.example/accounts/account",
+  await expect(instructions).toContainText(`https://cache.example/${did}`);
+  await expect(page.getByLabel("Cache URL", { exact: true })).toHaveValue(
+    "https://cache.example/@owner.example",
   );
+  await expect(
+    page.getByLabel("Stable URL for CI", { exact: true }),
+  ).toHaveValue(`https://cache.example/${did}`);
   await expect(instructions).not.toContainText(token);
   const client = page.getByLabel("Cache client", { exact: true });
   for (const [id, expected] of [
