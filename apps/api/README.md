@@ -149,7 +149,9 @@ identities, record changes and source checkpoints commit in one transaction, so
 replays remain safe after restarts and failed writes can be retried. The durable
 deduplication ledger retains indexed event identities with the actor DID,
 collection and event timestamp. Only `io.fluentci.plugin` and `io.fluentci.like`
-commits are indexed. Account status events are stored only after the DID has
+commits are indexed. Valid FluentCI commits create a missing author account with
+an initial active status, without replacing an observed account status. Account
+status events are stored only after the DID has
 recorded FluentCI activity: modules, likes, scoped event history, cache ownership,
 credentials, tokens, collaborators or usage. Revoked/inactive interaction history
 still counts. Unrelated messages advance the source checkpoint without creating

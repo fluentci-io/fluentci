@@ -683,6 +683,22 @@ fn mutate(db: Db, event: Event) -> Promise(Nil) {
   }
 }
 
+fn ensure_account(db: Db, actor: String) -> Promise(Nil) {
+  let table = a.table()
+  use _ <- promise.map(all(
+    db,
+    insert(table, [
+      set(a.did(table), actor),
+      set(a.active(table), True),
+      // A record commit is not an account-status observation. A later-arriving
+      // status must win even when it predates this commit's timestamp.
+      set(a.event_time(table), 0),
+    ])
+      |> on_conflict_do_nothing,
+  ))
+  Nil
+}
+
 pub fn apply_event(db: Db, event: Event) -> Promise(Nil) {
   let #(time, id, actor, collection) = case event {
     Upsert(package, time, id) -> #(time, Some(id), package.author, plugin)
@@ -700,6 +716,13 @@ pub fn apply_event(db: Db, event: Event) -> Promise(Nil) {
   use relevant <- promise.await(case event {
     Account(actor, _, _, _) -> participants.tracked(tx, actor)
     _ -> promise.resolve(True)
+  })
+  use _ <- promise.await(case event {
+    Upsert(_, _, _)
+    | Delete(_, _, _, _)
+    | Like(_, _, _, _, _, _, _, _)
+    | Unlike(_, _, _, _) -> ensure_account(tx, actor)
+    _ -> promise.resolve(Nil)
   })
   let apply = case id, relevant {
     None, _ | _, False -> promise.resolve(Nil)

@@ -1748,7 +1748,7 @@ test('Jetstream cleanup preserves FluentCI participants and checkpoints while re
   });
   for (const actor of [did, cacheOwner, invited, unrelated])
     await connection.client.execute({
-      sql: 'INSERT INTO accounts(did,active,event_time) VALUES (?,0,10)',
+      sql: 'INSERT INTO accounts(did,active,event_time) VALUES (?,0,10) ON CONFLICT(did) DO UPDATE SET active=0,event_time=10',
       args: [actor],
     });
   await connection.client.execute("INSERT INTO jetstream_events(id) VALUES ('legacy-unscoped-id')");
@@ -1766,5 +1766,30 @@ test('Jetstream cleanup preserves FluentCI participants and checkpoints while re
   assert.notEqual(
     (await db.get_package(connection, 'kept-participant', '1.0.0', did)).description,
     'stale',
+  );
+});
+
+test('FluentCI commits create missing accounts without overwriting observed status', async (t) => {
+  const connection = await fixture(t);
+  await add(connection, event('new-account', '1.0.0', 300));
+  assert.deepEqual(
+    (
+      await connection.client.execute({
+        sql: 'SELECT active,event_time FROM accounts WHERE did=?',
+        args: [did],
+      })
+    ).rows.map((r) => [r.active, r.event_time]),
+    [[1, 0]],
+  );
+  await add(connection, { kind: 'account', did, time_us: 200, account: { active: false } });
+  await add(connection, event('new-account', '1.0.0', 400));
+  assert.deepEqual(
+    (
+      await connection.client.execute({
+        sql: 'SELECT active,event_time FROM accounts WHERE did=?',
+        args: [did],
+      })
+    ).rows.map((r) => [r.active, r.event_time]),
+    [[0, 200]],
   );
 });
