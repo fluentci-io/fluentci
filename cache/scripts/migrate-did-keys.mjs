@@ -125,7 +125,12 @@ const manifest = [];
 async function migrate(item) {
   const existing = objects.get(item.target);
   // Never replace objects already written by the DID-aware server.
-  if (existing && existing.LastModified >= item.meta.LastModified) {
+  if (
+    existing &&
+    (existing.LastModified > item.meta.LastModified ||
+      (existing.LastModified.getTime() === item.meta.LastModified.getTime() &&
+        existing.ETag === item.meta.ETag))
+  ) {
     reused++;
     return;
   }

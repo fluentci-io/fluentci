@@ -33,10 +33,13 @@ export function cacheInstructions(
   const base = cacheUrl.replace(/\/$/, "");
   const host = new URL(base).host;
   const candidate = decodeURIComponent(
-    new URL(canonicalCacheUrl).pathname.split("/").filter(Boolean).at(-1) ?? "",
+    new URL(canonicalCacheUrl).pathname
+      .split("/")
+      .filter(Boolean)
+      .slice(-1)[0] ?? "",
   );
   const didCandidate = decodeURIComponent(
-    new URL(base).pathname.split("/").filter(Boolean).at(-1) ?? "",
+    new URL(base).pathname.split("/").filter(Boolean).slice(-1)[0] ?? "",
   );
   const account = candidate.startsWith("did:")
     ? candidate
