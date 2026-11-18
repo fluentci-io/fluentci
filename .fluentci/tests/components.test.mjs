@@ -90,7 +90,6 @@ for (const module of modules) {
         const property = declared && Object.entries(declared.input.properties)
           .find(([name]) => kebab(name) === arg.name);
         const expectedType = property ? property[1].type : "string";
-        assert.equal(arg.type, expectedType);
         const required = declared ? declared.input.required.includes(property[0]) : true;
         assert.equal(arg.required !== false, required);
         assert.ok(
@@ -99,6 +98,7 @@ for (const module of modules) {
         );
         const scalar = expectedType === "boolean" ? "bool" : expectedType;
         const type = required ? scalar : `option<${scalar}>`;
+        assert.equal(arg.type, type);
         assert.match(generatedWit, new RegExp(`${arg.name}: ${type}`));
       }
     }

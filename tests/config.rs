@@ -301,15 +301,22 @@ fn compiled_ci_components_have_typed_documented_signatures() -> anyhow::Result<(
                             name.eq_ignore_ascii_case(&argument.name.replace('-', ""))
                         })
                         .expect("cache argument must have a declared contract");
-                    assert_eq!(argument.type_name, property["type"].as_str().unwrap());
-                    assert_eq!(
-                        argument.required,
-                        contract["input"]["required"]
-                            .as_array()
-                            .unwrap()
-                            .iter()
-                            .any(|required| required.as_str() == Some(name.as_str()))
-                    );
+                    let required = contract["input"]["required"]
+                        .as_array()
+                        .unwrap()
+                        .iter()
+                        .any(|required| required.as_str() == Some(name.as_str()));
+                    let scalar = match property["type"].as_str().unwrap() {
+                        "boolean" => "bool",
+                        scalar => scalar,
+                    };
+                    let expected_type = if required {
+                        scalar.to_owned()
+                    } else {
+                        format!("option<{scalar}>")
+                    };
+                    assert_eq!(argument.type_name, expected_type);
+                    assert_eq!(argument.required, required);
                 } else {
                     assert_eq!(argument.type_name, "string");
                     assert!(argument.required);
