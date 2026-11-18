@@ -7,6 +7,7 @@ import {
   mkdir,
   rm,
   symlink,
+  realpath,
 } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -56,7 +57,11 @@ test("supported sccache platforms and generic fallback are explicit", () => {
     assert.equal(Sccache.target(os)("x64"), "");
 });
 test("generic cache streams files and directories with zstd, gzip and no compression", async (t) => {
-  const root = await mkdtemp(join(tmpdir(), "cache-roundtrip-"));
+  // macOS tmpdir() may start at /var -> /private/var. Keep fixture parents
+  // canonical so the restore guard can still reject user-created symlinks.
+  const root = await realpath(
+    await mkdtemp(join(tmpdir(), "cache-roundtrip-")),
+  );
   const previous = globalThis.fetch;
   const objects = new Map();
   globalThis.fetch = async (url, options = {}) => {
@@ -127,6 +132,18 @@ test("generic cache streams files and directories with zstd, gzip and no compres
   await mkdir(unsafe);
   await symlink(existing, join(unsafe, "link"));
   await assert.rejects(IO.pack(unsafe)("gzip")(), /symbolic/);
+  const parent = join(root, "restore-parent");
+  const linkedParent = join(root, "linked-parent");
+  await mkdir(parent);
+  await symlink(parent, linkedParent, "dir");
+  await assert.rejects(
+    run(
+      Generic.restore(env)("")("fixtures/gzip-file")(
+        join(linkedParent, "restored"),
+      )(true),
+    ),
+    /parents cannot be symlinks/,
+  );
 });
 
 // Run the real host boundary without invoking FluentCI or installing sccache.
