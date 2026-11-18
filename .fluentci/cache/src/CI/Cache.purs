@@ -7,7 +7,7 @@ import Data.Argonaut.Decode (decodeJson)
 import Data.Argonaut.Encode (encodeJson)
 import Data.Argonaut.Parser as Parser
 import Data.Array as A
-import Data.Either (Either(..), either)
+import Data.Either (Either, either)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.String as S
 import Data.String.CodeUnits as CU

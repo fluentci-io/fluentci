@@ -1,3 +1,4 @@
+import { recordContract } from "./purescript-records.mjs";
 import { build } from "esbuild";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { join, resolve } from "node:path";
@@ -154,7 +155,14 @@ export function componentContract(functions, sdk) {
       throw Error(
         `${fn.name}: component exports must return typed values instead of writing Extism output`,
       );
-    const result = fn.component?.returnType ?? returnType(fn.returnType, sdk);
+    const returned =
+      sdk === "purescript" && fn.invoke?.style === "purescript"
+        ? recordContract(fn)
+        : undefined;
+    const result =
+      returned?.result ??
+      fn.component?.returnType ??
+      returnType(fn.returnType, sdk);
     const args = fn.args ?? [];
     const fields = new Set();
     const record = args.length
@@ -172,7 +180,7 @@ export function componentContract(functions, sdk) {
       ...fn,
       witName: name,
       result,
-      declaration: `${record}${docs(fn.description)}  ${witIdentifier(name)}: func(${args.length ? `args: ${name}-args` : ""})${result ? ` -> ${result}` : ""};`,
+      declaration: `${returned?.definitions ?? ""}${record}${docs(fn.description)}  ${witIdentifier(name)}: func(${args.length ? `args: ${name}-args` : ""})${result ? ` -> ${result}` : ""};`,
     };
   });
   return {
@@ -302,7 +310,11 @@ export async function buildComponent({ root, artifact, functions, sdk }) {
       {
         name: "fluentci-dependencies",
         setup(build) {
-          build.onResolve({filter: /^fluentci:pipeline$/}, () => ({path: fileURLToPath(new URL('./composition-runtime.mjs', import.meta.url))}));
+          build.onResolve({ filter: /^fluentci:pipeline$/ }, () => ({
+            path: fileURLToPath(
+              new URL("./composition-runtime.mjs", import.meta.url),
+            ),
+          }));
           build.onResolve(
             { filter: /^fluentci:dependency\// },
             async ({ path }) => {

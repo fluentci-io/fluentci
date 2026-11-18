@@ -3,11 +3,17 @@ import { dirname, join } from "node:path";
 import { bindingFor, sourceBindings } from "../bindings.mjs";
 import { documentation, field } from "../common.mjs";
 
+function unparenthesize(type) {
+  while (type.tag === "ParensInType") type = type.contents;
+  return type;
+}
+
 function application(type) {
+  type = unparenthesize(type);
   const parameters = [];
   while (type.tag === "TypeApp") {
     parameters.unshift(type.contents[1]);
-    type = type.contents[0];
+    type = unparenthesize(type.contents[0]);
   }
   return { head: type, parameters };
 }
@@ -34,6 +40,7 @@ export function inspectPurescript(entry, root, exportNames, component = false) {
     return modules.get(name);
   }
   function resolve(type, stack = []) {
+    type = unparenthesize(type);
     const app = application(type);
     const head = constructor(app.head);
     if (
@@ -71,7 +78,9 @@ export function inspectPurescript(entry, root, exportNames, component = false) {
     ]);
   }
   function show(type) {
+    type = unparenthesize(type);
     if (type.tag === "ForAll") return show(type.contents.type);
+    type = resolve(type);
     const app = application(type);
     const head = constructor(app.head);
     if (head?.module === "Prim" && head.name === "Function")
@@ -80,7 +89,7 @@ export function inspectPurescript(entry, root, exportNames, component = false) {
       return [
         head.name,
         ...app.parameters.map((parameter) =>
-          parameter.tag === "TypeApp"
+          unparenthesize(parameter).tag === "TypeApp"
             ? `(${show(parameter)})`
             : show(parameter),
         ),
@@ -94,10 +103,11 @@ export function inspectPurescript(entry, root, exportNames, component = false) {
     throw Error(`Unsupported PureScript return type ${type.tag}`);
   }
   function rows(type) {
+    type = unparenthesize(type);
     const fields = [];
     while (type.tag === "RCons") {
       fields.push([type.contents[0], type.contents[1]]);
-      type = type.contents[2];
+      type = unparenthesize(type.contents[2]);
     }
     if (type.tag !== "REmpty")
       throw Error("Input records must have a closed, concrete row");
@@ -150,8 +160,9 @@ export function inspectPurescript(entry, root, exportNames, component = false) {
       throw Error(
         `${name}: missing compiler signature; export the typed entrypoint from its module`,
       );
-    let signature = definition.info.type;
-    while (signature.tag === "ForAll") signature = signature.contents.type;
+    let signature = unparenthesize(definition.info.type);
+    while (signature.tag === "ForAll")
+      signature = unparenthesize(signature.contents.type);
     const app = application(signature);
     const head = constructor(app.head);
     const doc = documentation(definition.comments);
