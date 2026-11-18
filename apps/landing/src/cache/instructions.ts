@@ -124,7 +124,7 @@ docker buildx build \\
       steps: [
         {
           title: "Configure the WebDAV backend",
-          code: `export SCCACHE_WEBDAV_ENDPOINT="$FLUENTCI_CACHE_URL/sccache/"
+          code: `export SCCACHE_WEBDAV_ENDPOINT="$FLUENTCI_CACHE_URL/sccache"
 export SCCACHE_WEBDAV_TOKEN="$FLUENTCI_CACHE_TOKEN"
 export SCCACHE_WEBDAV_DISABLE_CREATE_DIR=true
 export SCCACHE_WEBDAV_KEY_PREFIX='my-project/'

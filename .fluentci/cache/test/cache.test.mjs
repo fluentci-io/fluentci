@@ -146,3 +146,18 @@ test("internal setup output cannot be mistaken for the public environment result
   ));
   assert.ok(!stdout.includes(env.FLUENTCI_CACHE_TOKEN));
 });
+
+test("sccache endpoint joins rooted probe and artifact paths without empty key segments", () => {
+  const settings = Object.fromEntries(Sccache.environment(env.FLUENTCI_CACHE_URL)("/tools/sccache")
+    .map(({ name, value }) => [name, value]));
+  const endpoint = settings.SCCACHE_WEBDAV_ENDPOINT;
+  assert.equal(endpoint, env.FLUENTCI_CACHE_URL + "/sccache");
+  for (const key of [".sccache_check", "a/b/c/compiler-cache-key"]) {
+    // OpenDAL concatenates the endpoint with its rooted key prefix and path.
+    const url = new URL(endpoint + "/" + settings.SCCACHE_WEBDAV_KEY_PREFIX + key);
+    assert.equal(url.pathname, "/@example.com/sccache/fluentci/" + key);
+    assert.ok(url.pathname.split("/").slice(1).every((part) => part.length > 0));
+  }
+  assert.equal(settings.SCCACHE_WEBDAV_DISABLE_CREATE_DIR, "true");
+  assert.equal(settings.RUSTC_WRAPPER, "/tools/sccache");
+});

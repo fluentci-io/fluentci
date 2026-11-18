@@ -250,7 +250,7 @@ For consumers that must not upload, use `--remote_upload_local_results=false`. S
 ### sccache
 
 ```sh
-export SCCACHE_WEBDAV_ENDPOINT='https://cache.fluentci.io/did:plc:YOUR_DID/sccache/'
+export SCCACHE_WEBDAV_ENDPOINT='https://cache.fluentci.io/did:plc:YOUR_DID/sccache'
 export SCCACHE_WEBDAV_TOKEN="$FLUENTCI_CACHE_TOKEN"
 export SCCACHE_WEBDAV_DISABLE_CREATE_DIR=true
 export SCCACHE_WEBDAV_KEY_PREFIX='my-project/'

@@ -162,7 +162,7 @@ Use a sccache build with WebDAV support enabled.
 ### Configure the WebDAV backend
 
 ```sh
-export SCCACHE_WEBDAV_ENDPOINT="$FLUENTCI_CACHE_URL/sccache/"
+export SCCACHE_WEBDAV_ENDPOINT="$FLUENTCI_CACHE_URL/sccache"
 export SCCACHE_WEBDAV_TOKEN="$FLUENTCI_CACHE_TOKEN"
 export SCCACHE_WEBDAV_DISABLE_CREATE_DIR=true
 export SCCACHE_WEBDAV_KEY_PREFIX='my-project/'
@@ -171,6 +171,8 @@ cargo build --release --locked
 ```
 
 Directory creation must be disabled because this service does not implement PROPFIND or MKCOL. Restart an existing sccache daemon after changing its backend settings. For public reads only, omit the token and set SCCACHE_WEBDAV_RW_MODE=READ_ONLY.
+
+Keep the endpoint without a trailing slash: the WebDAV backend appends a rooted cache key.
 
 [sccache reference](https://github.com/mozilla/sccache/blob/main/docs/Webdav.md).
 

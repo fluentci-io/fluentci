@@ -246,18 +246,74 @@ fn compiled_ci_components_have_typed_documented_signatures() -> anyhow::Result<(
         // inspect verifies embedded docs/types against the component's real WIT ABI.
         let functions = inspect(&bytes, None)?;
         assert!(!functions.is_empty());
+        let cache_contract: Option<serde_json::Value> = if module.name == "cache" {
+            let schema = std::fs::read(std::path::Path::new(source).join("schema.json"))?;
+            Some(serde_json::from_slice(&schema)?)
+        } else {
+            None
+        };
+        if let Some(schema) = &cache_contract {
+            assert_eq!(
+                functions.len(),
+                schema["exports"].as_object().unwrap().len()
+            );
+        }
         for function in functions {
             assert_eq!(function.input_format, InputFormat::Wit);
-            assert_eq!(function.return_type.as_deref(), Some("unit"));
+            let declared = cache_contract.as_ref().map(|schema| {
+                schema["exports"]
+                    .as_object()
+                    .unwrap()
+                    .iter()
+                    .find(|(name, _)| name.eq_ignore_ascii_case(&function.name.replace('-', "")))
+                    .expect("cache export must have a declared contract")
+                    .1
+            });
+            let expected_return = if declared.is_some() {
+                format!("{}-result", function.name)
+            } else {
+                "unit".to_owned()
+            };
+            assert_eq!(
+                function.return_type.as_deref(),
+                Some(expected_return.as_str())
+            );
             assert!(
                 function
                     .description
                     .as_deref()
                     .is_some_and(|text| !text.is_empty())
             );
-            for argument in function.args.unwrap() {
-                assert_eq!(argument.type_name, "string");
-                assert!(argument.required);
+            let arguments = function.args.unwrap();
+            if let Some(contract) = declared {
+                assert_eq!(
+                    arguments.len(),
+                    contract["input"]["properties"].as_object().unwrap().len()
+                );
+            }
+            for argument in arguments {
+                if let Some(contract) = declared {
+                    let (name, property) = contract["input"]["properties"]
+                        .as_object()
+                        .unwrap()
+                        .iter()
+                        .find(|(name, _)| {
+                            name.eq_ignore_ascii_case(&argument.name.replace('-', ""))
+                        })
+                        .expect("cache argument must have a declared contract");
+                    assert_eq!(argument.type_name, property["type"].as_str().unwrap());
+                    assert_eq!(
+                        argument.required,
+                        contract["input"]["required"]
+                            .as_array()
+                            .unwrap()
+                            .iter()
+                            .any(|required| required.as_str() == Some(name.as_str()))
+                    );
+                } else {
+                    assert_eq!(argument.type_name, "string");
+                    assert!(argument.required);
+                }
                 assert!(
                     argument
                         .description

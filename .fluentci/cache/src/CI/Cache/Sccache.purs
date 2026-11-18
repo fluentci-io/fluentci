@@ -19,6 +19,18 @@ target os arch = case os, arch of
   "win32", "arm64" -> "aarch64-pc-windows-msvc"
   _, _ -> ""
 
+-- | OpenDAL appends a rooted path, so the endpoint must not end with a slash.
+environment :: String -> String -> Array { name :: String, value :: String }
+environment base executable =
+  [ { name: "SCCACHE_WEBDAV_ENDPOINT", value: base <> "/sccache" }
+  , { name: "SCCACHE_WEBDAV_DISABLE_CREATE_DIR", value: "true" }
+  , { name: "SCCACHE_WEBDAV_KEY_PREFIX", value: "fluentci/" }
+  , { name: "SCCACHE_WEBDAV_RW_MODE", value: "READ_WRITE" }
+  , { name: "RUSTC_WRAPPER", value: executable }
+  , { name: "FLUENTCI_RUST_CACHE_BACKEND", value: "sccache" }
+  , { name: "CARGO_INCREMENTAL", value: "0" }
+  ]
+
 install :: String -> String -> Aff { executable :: String, binDir :: String }
 install os arch = do
   let asset = "sccache-v" <> version <> "-" <> target os arch <> ".tar.gz"

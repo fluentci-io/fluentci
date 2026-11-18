@@ -19,6 +19,29 @@ const modules = [
   "cache",
 ];
 
+const kebab = (name) => name.replace(/[A-Z]/g, (letter) => "-" + letter.toLowerCase());
+
+// Assert record fields from the declared cache contract in both generated and
+// decoded WIT, including nested environment records and Boolean transfer hits.
+function assertRecord(wit, name, schema) {
+  const body = wit.match(new RegExp(`record %?${name}\\s*\\{([^}]*)\\}`));
+  assert.ok(body, `missing WIT record ${name}`);
+  const expected = Object.entries(schema.properties).map(([key, value]) => {
+    const field = kebab(key);
+    let type;
+    if (value.type === "array") {
+      if (value.items.type === "object") {
+        const nested = `${name}-${field}-item`;
+        assertRecord(wit, nested, value.items);
+        type = `list<${nested}>`;
+      } else type = `list<${value.items.type}>`;
+    } else type = value.type === "boolean" ? "bool" : value.type;
+    return `${field}: ${type}`;
+  });
+  const actual = body[1].split(",").map((field) => field.trim()).filter(Boolean);
+  assert.deepEqual(actual.sort(), expected.sort());
+}
+
 for (const module of modules) {
   test(`${module} exposes a real component ABI with synchronized typed help`, async () => {
     const directory = new URL(`${module}/dist/`, root);
@@ -41,18 +64,43 @@ for (const module of modules) {
       createHash("sha256").update(bytes).digest("hex"),
     );
     assert.ok(metadata.functions.length > 0);
+    const schema = module === "cache"
+      ? JSON.parse(await readFile(new URL("cache/schema.json", root), "utf8"))
+      : undefined;
+    if (schema) assert.deepEqual(
+      metadata.functions.map((fn) => fn.name).sort(),
+      Object.keys(schema.exports).map(kebab).sort(),
+    );
     for (const fn of metadata.functions) {
       assert.equal(fn.inputFormat, "wit");
-      assert.equal(fn.returnType, "unit"); // These CI jobs perform effects and return ().
+      const declared = schema && Object.entries(schema.exports)
+        .find(([name]) => kebab(name) === fn.name)[1];
+      const result = declared ? `${fn.name}-result` : "unit";
+      assert.equal(fn.returnType, result);
+      if (declared) {
+        for (const source of [generatedWit, wit]) {
+          assertRecord(source, result, declared.output);
+          assert.match(source, new RegExp(`%?${fn.name}: func\\([^;]*\\) -> ${result};`));
+        }
+        assert.equal(fn.args.length, Object.keys(declared.input.properties).length);
+      }
       assert.ok(fn.description?.trim(), `${module}.${fn.name} needs help text`);
       assert.match(generatedWit, new RegExp(`%?${fn.name}: func\\(`));
       for (const arg of fn.args) {
-        assert.equal(arg.type, "string");
+        const property = declared && Object.entries(declared.input.properties)
+          .find(([name]) => kebab(name) === arg.name);
+        const expectedType = property ? property[1].type : "string";
+        assert.equal(arg.type, expectedType);
+        const required = declared ? declared.input.required.includes(property[0]) : true;
+        assert.equal(arg.required !== false, required);
         assert.ok(
           arg.description?.trim(),
           `${module}.${fn.name} --${arg.name} needs help text`,
         );
-        assert.match(generatedWit, new RegExp(`${arg.name}: string`));
+        const scalar = expectedType === "boolean" ? "bool" : expectedType;
+        const type = required ? scalar : `option<${scalar}>`;
+        for (const source of [generatedWit, wit])
+          assert.match(source, new RegExp(`${arg.name}: ${type}`));
       }
     }
   });
