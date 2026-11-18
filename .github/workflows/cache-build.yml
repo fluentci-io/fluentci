@@ -81,6 +81,7 @@ jobs:
           - runner: ubuntu-24.04-arm
             target: aarch64-unknown-linux-musl
           - runner: macos-latest
+            # Cross-compile Intel macOS on the ARM64 hosted runner.
             target: x86_64-apple-darwin
           - runner: macos-latest
             target: aarch64-apple-darwin
@@ -96,6 +97,9 @@ jobs:
         shell: bash
     steps:
       - uses: actions/checkout@v4
+      - name: Require ARM64 macOS build host
+        if: runner.os == 'macOS'
+        run: test "$(uname -m)" = arm64
       - uses: fluentci-io/setup-fluentci@next
         with:
           version: ${{ env.FLUENTCI_VERSION }}
