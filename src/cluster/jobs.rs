@@ -23,8 +23,10 @@ pub struct SubmitArgs {
     /// Git commit or branch available in the clone; pin a commit for reproducibility
     #[arg(long = "ref", default_value = "HEAD")]
     pub revision: String,
+    /// Required runner labels; a runner must match every label
     #[arg(long = "label")]
     pub labels: Vec<String>,
+    /// Number of virtual CPUs assigned to the fresh VM
     #[arg(long, default_value_t = 1)]
     pub cpus: u16,
     /// VM memory in MiB

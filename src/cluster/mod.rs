@@ -37,12 +37,14 @@ pub enum ClusterCommand {
     },
     /// Inspect a run, including its result and bounded logs
     Inspect {
+        /// UUID of the run to inspect
         id: Uuid,
         #[command(flatten)]
         connection: Connection,
     },
     /// Cancel queued or running work (the runner tears down its VM)
     Cancel {
+        /// UUID of the run to cancel
         id: Uuid,
         #[command(flatten)]
         connection: Connection,
@@ -52,6 +54,7 @@ pub enum ClusterCommand {
     Nodes {
         #[command(flatten)]
         connection: Connection,
+        /// Emit runner metadata as JSON
         #[arg(long)]
         json: bool,
     },
@@ -70,19 +73,23 @@ pub enum Backend {
 
 #[derive(Debug, Args)]
 pub struct ServeArgs {
+    /// Address and port on which to serve the cluster API
     #[arg(
         long,
         env = "FLUENTCI_CLUSTER_LISTEN",
         default_value = "127.0.0.1:6080"
     )]
     pub listen: SocketAddr,
+    /// Shared state backend for runner membership and durable jobs
     #[arg(long, env = "FLUENTCI_CLUSTER_STATE", value_enum)]
     pub state: Backend,
     /// etcd v3 HTTP gateway or Consul HTTP API origin
     #[arg(long, env = "FLUENTCI_CLUSTER_STATE_URL")]
     pub state_url: String,
+    /// Cluster namespace within the shared state backend
     #[arg(long, env = "FLUENTCI_CLUSTER_NAME", default_value = "default")]
     pub name: String,
+    /// Backend ACL token for Consul or authentication token for etcd
     #[arg(long, env = "FLUENTCI_CLUSTER_STATE_TOKEN", hide_env_values = true)]
     pub state_token: Option<String>,
     /// Bearer token; generated and displayed at startup when unset
@@ -99,6 +106,7 @@ pub struct Auth {
 
 #[derive(Debug, Clone, Args)]
 pub struct Connection {
+    /// HTTP(S) origin of the cluster API
     #[arg(
         long,
         env = "FLUENTCI_CLUSTER_API",
@@ -113,6 +121,7 @@ pub struct Connection {
 pub struct JoinArgs {
     #[command(flatten)]
     pub connection: Connection,
+    /// Human-readable name advertised by this runner host
     #[arg(long, default_value = "runner")]
     pub name: String,
     /// Maximum simultaneous VMs on this host
