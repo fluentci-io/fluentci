@@ -27,6 +27,7 @@ pub mod remote;
 pub mod repl;
 pub mod scaffold;
 pub mod server;
+mod server_auth;
 pub mod services;
 pub mod tangled;
 pub mod tools;

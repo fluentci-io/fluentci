@@ -958,6 +958,21 @@ pub fn asset(path: &str) -> Response {
 }
 
 pub async fn serve(db: Db, port: u16, studio: bool) -> Result<()> {
+    let token = if studio {
+        None
+    } else {
+        let configured = std::env::var("FLUENTCI_SERVER_TOKEN")
+            .map(Some)
+            .or_else(|error| match error {
+                std::env::VarError::NotPresent => Ok(None),
+                error => Err(error),
+            })
+            .context("FLUENTCI_SERVER_TOKEN must be valid Unicode")?;
+        Some(crate::server_auth::resolve(
+            configured.as_deref(),
+            "FLUENTCI_SERVER_TOKEN",
+        )?)
+    };
     let state = AppState::new(db);
     let listener = tokio::net::TcpListener::bind((std::net::Ipv4Addr::LOCALHOST, port)).await?;
     let port = listener.local_addr()?.port();
@@ -972,7 +987,15 @@ pub async fn serve(db: Db, port: u16, studio: bool) -> Result<()> {
     {
         tracing::warn!(%error,"Could not open browser");
     }
-    axum::serve(listener, router(state, studio))
+    let app = router(state, studio);
+    let app = if let Some(token) = token {
+        println!("API token: {token}");
+        println!("Send requests with Authorization: Bearer <token>");
+        crate::server_auth::protect(app, token.into())
+    } else {
+        app
+    };
+    axum::serve(listener, app)
         .with_graceful_shutdown(async {
             let _ = tokio::signal::ctrl_c().await;
         })
