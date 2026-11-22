@@ -11,6 +11,9 @@ code locally or on a runner. The Rust CLI combines the
 [FluentCI Engine](https://github.com/fluentci-io/fluentci-engine) and
 [FluentCI Studio](https://github.com/fluentci-io/fluentci-studio) in one executable.
 
+For a pool of fresh VM runners behind one API, see the
+[cluster guide](docs/cluster.md) and [architecture diagrams](docs/cluster-architecture.md).
+
 Run WebAssembly plugins on the host, compose pipelines in TOML, or manage projects
 through Studio. The CLI uses Clap and Tokio, serves its GraphQL API and web UI
 through Axum, and persists application data in SQLite through SQLx.
@@ -619,6 +622,12 @@ the CLI from opening a browser automatically. To run only the API:
 fluentci server --port 6076
 ```
 
+The API server generates and displays a random 256-bit token at startup. Send it
+with every HTTP or WebSocket request as `Authorization: Bearer <token>`. To keep
+the token stable across restarts, set `FLUENTCI_SERVER_TOKEN` to a secret of at
+least 32 non-space ASCII characters before starting the server. An explicitly
+configured empty or invalid token is rejected.
+
 Studio registers the current directory as a project. Named workflows live in
 `.fluentci/workflows/*.toml`, with shared modules and services in `fluentci.toml`.
 Studio creates and manages these files; execution history is shared with the CLI
@@ -795,7 +804,7 @@ cd webui
 bun install --frozen-lockfile --ignore-scripts
 bun run build:web
 cd ..
-cargo run --release -- server
+FLUENTCI_NO_OPEN=1 cargo run --release -- studio
 # In a second terminal, at the repository root:
 bun run dev:studio
 ```
@@ -837,7 +846,7 @@ cargo clippy --release --all-targets --locked -- -D warnings
 cargo test --release --locked
 ```
 
-For frontend development, start `cargo run --release -- server` and then run `bun run dev`
+For frontend development, start `FLUENTCI_NO_OPEN=1 cargo run --release -- studio` and then run `bun run dev`
 inside `webui`. Vite proxies `/graphql` and `/ws` to the local API on port 6076.
 `nix develop` provides a development shell with Rust, Bun, and build tools.
 `nix build .#fluentci` builds the CLI with embedded Studio using Crane and Bun.
