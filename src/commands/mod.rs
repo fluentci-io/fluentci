@@ -49,6 +49,9 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
     }
     // Workers run before opening SQLite or starting any services.
     match &cli.command {
+        Some(Command::Cluster { command }) => {
+            return crate::cluster::execute(command, &cli.database).await;
+        }
         Some(Command::Execute(args)) => {
             return fluentci_engine::cmd::execute::execute_with_options(
                 &args.plan,
@@ -180,6 +183,7 @@ pub async fn dispatch(cli: Cli) -> Result<()> {
         Some(Command::Upgrade) => upgrade::execute().await,
         Some(
             Command::Execute(_)
+            | Command::Cluster { .. }
             | Command::Add(_)
             | Command::EngineCall { .. }
             | Command::ProviderWorker { .. }

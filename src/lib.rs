@@ -2,6 +2,7 @@ pub mod account;
 pub mod archive;
 pub mod auth;
 pub mod cli;
+pub mod cluster;
 pub mod commands;
 pub mod config;
 pub mod db;

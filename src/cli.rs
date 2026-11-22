@@ -96,6 +96,11 @@ pub struct RunArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum Command {
+    /// Coordinate machines behind one API using etcd or Consul
+    Cluster {
+        #[command(subcommand)]
+        command: crate::cluster::ClusterCommand,
+    },
     /// Execute a native DAG plan with content caching and optional Git-affected selection
     Execute(ExecuteArgs),
     /// Add a dependency to fluentci-module.toml and install it
