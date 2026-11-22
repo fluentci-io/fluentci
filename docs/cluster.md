@@ -168,30 +168,30 @@ runner registration, and run management; it is not a multi-tenant authorization
 boundary. Keep runners and the state backend on trusted networks and use HTTPS
 when credentials cross untrusted networks.
 
-| Route | Behavior |
-| --- | --- |
-| `GET /healthz` | API process liveness |
-| `GET /readyz` | Shared-state readiness and live runners |
-| `GET /v1/nodes` | Live runner metadata and capacity |
-| `POST /v1/nodes` | Register or heartbeat a runner |
-| `DELETE /v1/nodes/{id}` | Remove discovery; a running process can rejoin |
-| `POST /v1/jobs` | Idempotent `{id, spec}` submission |
-| `GET /v1/jobs` | List durable run records |
-| `GET /v1/jobs/{id}` | Inspect one run |
-| `DELETE /v1/jobs/{id}` | Cancel queued/running work |
-| `POST /v1/jobs/claim` | Claim compatible work using `{runner}` |
-| `POST /v1/jobs/{id}/renew` | Renew `{runner, claim}` ownership |
-| `POST /v1/jobs/{id}/complete` | Publish `{ownership, result}` |
+| Route                         | Behavior                                       |
+| ----------------------------- | ---------------------------------------------- |
+| `GET /healthz`                | API process liveness                           |
+| `GET /readyz`                 | Shared-state readiness and live runners        |
+| `GET /v1/nodes`               | Live runner metadata and capacity              |
+| `POST /v1/nodes`              | Register or heartbeat a runner                 |
+| `DELETE /v1/nodes/{id}`       | Remove discovery; a running process can rejoin |
+| `POST /v1/jobs`               | Idempotent `{id, spec}` submission             |
+| `GET /v1/jobs`                | List durable run records                       |
+| `GET /v1/jobs/{id}`           | Inspect one run                                |
+| `DELETE /v1/jobs/{id}`        | Cancel queued/running work                     |
+| `POST /v1/jobs/claim`         | Claim compatible work using `{runner}`         |
+| `POST /v1/jobs/{id}/renew`    | Renew `{runner, claim}` ownership              |
+| `POST /v1/jobs/{id}/complete` | Publish `{ownership, result}`                  |
 
-| Environment variable | Option / purpose |
-| --- | --- |
-| `FLUENTCI_CLUSTER_TOKEN` | `--token`; optional on the server (random token generated when unset), required on clients; at least 32 non-space ASCII characters |
-| `FLUENTCI_CLUSTER_API` | `--api`; defaults to `http://127.0.0.1:6080` |
-| `FLUENTCI_CLUSTER_STATE` | `--state`; `etcd` or `consul` |
-| `FLUENTCI_CLUSTER_STATE_URL` | `--state-url`; backend HTTP(S) origin |
-| `FLUENTCI_CLUSTER_STATE_TOKEN` | `--state-token`; Consul ACL token or etcd authentication token |
-| `FLUENTCI_CLUSTER_NAME` | `--name` on `serve`; defaults to `default` |
-| `FLUENTCI_CLUSTER_LISTEN` | `--listen` on `serve`; defaults to `127.0.0.1:6080` |
+| Environment variable           | Option / purpose                                                                                                                   |
+| ------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------- |
+| `FLUENTCI_CLUSTER_TOKEN`       | `--token`; optional on the server (random token generated when unset), required on clients; at least 32 non-space ASCII characters |
+| `FLUENTCI_CLUSTER_API`         | `--api`; defaults to `http://127.0.0.1:6080`                                                                                       |
+| `FLUENTCI_CLUSTER_STATE`       | `--state`; `etcd` or `consul`                                                                                                      |
+| `FLUENTCI_CLUSTER_STATE_URL`   | `--state-url`; backend HTTP(S) origin                                                                                              |
+| `FLUENTCI_CLUSTER_STATE_TOKEN` | `--state-token`; Consul ACL token or etcd authentication token                                                                     |
+| `FLUENTCI_CLUSTER_NAME`        | `--name` on `serve`; defaults to `default`                                                                                         |
+| `FLUENTCI_CLUSTER_LISTEN`      | `--listen` on `serve`; defaults to `127.0.0.1:6080`                                                                                |
 
 State lives below `fluentci/clusters/<name>/`. Consul ACLs need session write and
 read/write access to that prefix; etcd permissions need lease grant and

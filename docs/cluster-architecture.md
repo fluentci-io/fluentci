@@ -121,8 +121,8 @@ stateDiagram-v2
   to authenticate. Authentication is required on every API route.
 - Runner hosts need outbound access to the API, OCI registry, and Git sources.
   They do not expose an inbound machine API or require state-backend credentials.
-- A FluentCI node can join at any time with `fluentci cluster join --api
-  <cluster-origin>`. Registration immediately adds its labels and capacity to
+- A FluentCI node can join at any time with
+  `fluentci cluster join --api <cluster-origin>`. Registration immediately adds its labels and capacity to
   discovery; its next poll can claim compatible queued work. Existing nodes,
   API replicas, and running jobs do not need a restart or a fixed node inventory.
 - The runner bounds local concurrency with `--slots`; matching considers labels,
