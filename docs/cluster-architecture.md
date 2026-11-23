@@ -64,7 +64,7 @@ sequenceDiagram
     participant B as bsdkrun
     participant VM as Fresh Linux VM
 
-    R->>B: Probe VM capability; recover journaled orphan VMs
+    R->>B: Probe VM capability#59; recover journaled orphan VMs
     R->>API: Register runner ID, labels, slots, resource limits
     API->>S: Store membership with 30-second expiry
     D->>API: Submit UUID + image + repo/ref + argv + resources
@@ -79,10 +79,10 @@ sequenceDiagram
     B->>VM: Start isolated guest
     R->>B: Probe guest-agent readiness using true
     R->>B: Execute fixed checkout wrapper + positional guest argv
-    B->>VM: Clone HTTPS Git repository; checkout ref; execute command
+    B->>VM: Clone HTTPS Git repository#59; checkout ref#59; execute command
     loop Every 10 seconds while executing
         R->>API: Renew runner membership and job claim
-        API->>S: Refresh membership; compare-and-set matching job claim
+        API->>S: Refresh membership#59; compare-and-set matching job claim
     end
     VM-->>B: Exit status + stdout / stderr
     B-->>R: Bounded execution output
